@@ -1,72 +1,118 @@
 ---
 title: Getting Started
-description: Quick start guide for the BrewPage API
+description: Quick start guide for BrewPage — 4 ways to publish content
 order: 1
 ---
 
 # Getting Started
 
-BrewPage is a free hosting platform for HTML pages, key-value data, JSON documents, and files. No signup required — publish content instantly via API.
+BrewPage is a free hosting platform for HTML pages, key-value data, JSON documents, and files. No signup required — publish content instantly.
 
-## Base URL
+**Base URL:** `https://brewpage.app` (alias: `https://brewdata.app` — same API)
 
-```
-https://brewpage.app
-```
+---
 
-Both `brewpage.app` and `brewdata.app` serve the same API.
+## Quick Start — 4 Ways to Publish
 
-## Publish Your First Page
+### 1. Web UI (Zero Code)
+
+> Open browser → Drop file → Click Publish → Get link
+
+| Step | Action |
+|:----:|--------|
+| **1** | Open [brewpage.app](https://brewpage.app) |
+| **2** | Drag & drop HTML / Markdown / CSV / any file |
+| **3** | Click **Publish** |
+| **4** | Copy your link and share |
+
+No account needed. Supports password protection, TTL, tags, dark/light theme.
+
+---
+
+### 2. Claude Skill (`/brewpage`)
+
+> Type `/brewpage` → Pick namespace → Done — link + token saved
+
+Install the [brewcode](https://github.com/kochetkov-ma/claude-brewcode) plugin:
 
 ```bash
-curl -X POST https://brewpage.app/api/html \
-  -H "Content-Type: application/json" \
-  -d '{
-    "namespace": "demo",
-    "content": "<h1>Hello World</h1><p>My first BrewPage!</p>",
-    "format": "HTML"
-  }'
+npx skills add kochetkov-ma/claude-brewcode
 ```
 
-Response:
+Then in any Claude Code session:
+
+```
+/brewpage "Hello, world!"              # text → Markdown page
+/brewpage report.md                    # file → upload
+/brewpage '{"status": "ok"}'           # JSON → document
+/brewpage screenshot.png --ttl 1       # file, 1-day expiry
+```
+
+Or just say it naturally:
+
+```
+Publish this to brewpage
+Upload report.md to brewpage.app
+```
+
+Claude detects content type, asks namespace + password, publishes, and saves the owner token to `.claude/brewpage-history.md`.
+
+[Skill documentation](https://doc-claude.brewcode.app/brewdoc/brewpage/) · [Source](https://github.com/kochetkov-ma/claude-brewcode/tree/main/skills/brewpage-publish)
+
+---
+
+### 3. MCP Server (AI Agent)
+
+> Tell Claude "publish this" → Claude calls BrewPage API → Get link + token
+
+Add to your **Claude Desktop** config (`claude_desktop_config.json`):
+
 ```json
 {
-  "namespace": "demo",
-  "id": "aBcDeFgHiJ",
-  "url": "https://brewpage.app/demo/aBcDeFgHiJ",
-  "shortUrl": "https://brewpage.app/s/xYz123",
-  "ownerToken": "tok_abc123...",
-  "expiresAt": "2027-03-31T00:00:00Z"
+  "mcpServers": {
+    "brewpage": {
+      "command": "npx",
+      "args": ["-y", "brewpage-mcp"]
+    }
+  }
 }
 ```
 
-> **Save your owner token!** You need it to update or delete your content later.
+Or **Claude Code** config (`settings.json`) — same format.
 
-## Publish Markdown
+Then just ask:
+
+| You say | What happens |
+|---------|-------------|
+| "Publish this HTML to BrewPage" | Creates page, returns URL |
+| "Upload this image to BrewPage" | Uploads file, returns URL |
+| "Delete page demo/abc123 token tok_xyz" | Deletes resource |
+
+[MCP Server guide](/brewpage-openapi/mcp-server/) · [Source](https://github.com/kochetkov-ma/brewpage-openapi/tree/main/mcp-server)
+
+---
+
+### 4. REST API (curl / code)
+
+> POST JSON → Get URL + owner token → Share
+
+**Publish HTML:**
 
 ```bash
 curl -X POST https://brewpage.app/api/html \
   -H "Content-Type: application/json" \
-  -d '{
-    "namespace": "notes",
-    "content": "# My Notes\n\nMarkdown is **automatically** rendered to HTML.",
-    "format": "MARKDOWN"
-  }'
+  -d '{"content":"<h1>Hello World</h1>","format":"HTML"}'
 ```
 
-## Store Key-Value Data
+**Publish Markdown:**
 
 ```bash
-# Set a value
-curl -X PUT https://brewpage.app/api/kv/myapp/config/theme \
+curl -X POST https://brewpage.app/api/html \
   -H "Content-Type: application/json" \
-  -d '{"value": "dark"}'
-
-# Get the value
-curl https://brewpage.app/api/kv/myapp/config/theme
+  -d '{"content":"# My Notes\n\nMarkdown is **auto-rendered**.","format":"MARKDOWN"}'
 ```
 
-## Upload a File
+**Upload a file:**
 
 ```bash
 curl -X POST https://brewpage.app/api/files/uploads \
@@ -74,14 +120,81 @@ curl -X POST https://brewpage.app/api/files/uploads \
   -F "file=@image.png"
 ```
 
-## Check Platform Stats
+**Response:**
+
+```json
+{
+  "namespace": "demo",
+  "id": "aBcDeFgHiJ",
+  "url": "https://brewpage.app/demo/aBcDeFgHiJ",
+  "shortUrl": "https://brewpage.app/s/xYz123",
+  "ownerToken": "tok_abc123..."
+}
+```
+
+> **Save your `ownerToken`!** You need it to update or delete content later. It cannot be recovered.
+
+---
+
+## More API Examples
+
+**Store key-value data:**
+
+```bash
+curl -X PUT https://brewpage.app/api/kv/myapp/config/theme \
+  -H "Content-Type: application/json" \
+  -d '{"value": "dark"}'
+
+curl https://brewpage.app/api/kv/myapp/config/theme
+```
+
+**Store JSON document:**
+
+```bash
+curl -X POST https://brewpage.app/api/json/myapp/users \
+  -H "Content-Type: application/json" \
+  -d '{"document":{"name":"Alice","role":"admin"}}'
+```
+
+**Platform stats:**
 
 ```bash
 curl https://brewpage.app/api/stats
 ```
 
+**With options (password + TTL + tags):**
+
+```bash
+curl -X POST https://brewpage.app/api/html \
+  -H "Content-Type: application/json" \
+  -d '{
+    "namespace": "myproject",
+    "content": "# Private Notes",
+    "format": "MARKDOWN",
+    "password": "secret123",
+    "ttlDays": 90,
+    "tags": ["notes"]
+  }'
+```
+
+---
+
 ## Next Steps
 
-- [API Reference](/brewpage-openapi/api-reference/) — Full interactive API documentation
-- [MCP Server](/brewpage-openapi/mcp-server/) — Use BrewPage from Claude Desktop or Claude Code
-- [Examples](/brewpage-openapi/examples/) — Real-world use cases
+- [API Reference](/brewpage-openapi/api-reference/) — Interactive API explorer (Scalar)
+- [MCP Server](/brewpage-openapi/mcp-server/) — AI assistant setup guide
+- [Examples](/brewpage-openapi/examples/) — Code in JavaScript, Python, Go, Ruby, PHP
+- [Wiki](https://github.com/kochetkov-ma/brewpage-openapi/tree/main/wiki) — Quick cheatsheets and tips
+
+## All Resources
+
+| Resource | Link |
+|----------|------|
+| **Live platform** | [brewpage.app](https://brewpage.app) |
+| **Alias domain** | [brewdata.app](https://brewdata.app) |
+| **API Docs (Scalar)** | [kochetkov-ma.github.io/brewpage-openapi](https://kochetkov-ma.github.io/brewpage-openapi/api-reference/) |
+| **OpenAPI Spec** | [openapi.yaml](https://github.com/kochetkov-ma/brewpage-openapi/blob/main/openapi/openapi.yaml) |
+| **MCP Server** | [brewpage-mcp](https://github.com/kochetkov-ma/brewpage-openapi/tree/main/mcp-server) |
+| **Claude Skill** | [brewpage-publish](https://github.com/kochetkov-ma/claude-brewcode/tree/main/skills/brewpage-publish) |
+| **Skill Docs** | [doc-claude.brewcode.app](https://doc-claude.brewcode.app/brewdoc/brewpage/) |
+| **Brewcode Plugin** | [claude-brewcode](https://github.com/kochetkov-ma/claude-brewcode) |
