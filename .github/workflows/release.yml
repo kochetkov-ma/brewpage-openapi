@@ -30,7 +30,7 @@ jobs:
 
       - name: Update MCP server version
         working-directory: mcp-server
-        run: npm version ${{ steps.version.outputs.version }} --no-git-tag-version
+        run: npm version ${{ steps.version.outputs.version }} --no-git-tag-version --allow-same-version
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
