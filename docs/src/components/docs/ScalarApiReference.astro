@@ -1,0 +1,32 @@
+<div id="scalar-api" class="not-prose mt-8" style="min-height: 600px;"></div>
+
+<script>
+  document.addEventListener('astro:page-load', () => {
+    const container = document.getElementById('scalar-api');
+    if (!container || container.dataset.initialized) return;
+    container.dataset.initialized = 'true';
+
+    const script = document.createElement('script');
+    script.src = 'https://cdn.jsdelivr.net/npm/@scalar/api-reference@latest/dist/browser/standalone.min.js';
+    script.onload = () => {
+      const el = document.createElement('api-reference');
+      el.setAttribute('data-url', 'https://brewpage.app/v3/api-docs');
+      el.setAttribute('data-configuration', JSON.stringify({
+        theme: 'kepler',
+        layout: 'modern',
+        darkMode: true,
+        hideModels: false,
+        hideDownloadButton: false,
+        hiddenClients: [],
+        defaultHttpClient: { targetKey: 'shell', clientKey: 'curl' },
+        metaData: {
+          title: 'BrewPage API Reference',
+          description: 'Interactive API documentation for BrewPage',
+        },
+        customCss: '.scalar-app { --scalar-color-1: #EBBB40; --scalar-color-accent: #EBBB40; }',
+      }));
+      container.appendChild(el);
+    };
+    document.head.appendChild(script);
+  });
+</script>

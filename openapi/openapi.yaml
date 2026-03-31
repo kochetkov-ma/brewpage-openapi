@@ -1,0 +1,1484 @@
+openapi: 3.1.0
+info:
+  title: BrewPage API
+  version: 1.0.0
+  description: REST API for BrewPage — HTML/KV/JSON/file hosting platform. Publish and manage web content, key-value data,
+    JSON documents, and files with short URLs, password protection, and real-time statistics.
+  contact:
+    name: BrewPage
+    url: https://brewpage.app
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+servers:
+- url: https://brewpage.app
+  description: Generated server url
+tags:
+- name: SEO
+  description: Search engine optimization endpoints
+- name: Gallery
+  description: Browse public content from the 'public' namespace without password protection
+- name: JSON
+  description: JSON document store with up to 10,000 docs per collection
+- name: Stats
+  description: Platform-wide usage statistics
+- name: Short Links
+  description: Short URL resolver for sharing
+- name: HTML
+  description: HTML page hosting with markdown support
+- name: KV
+  description: Key-Value store with up to 1000 keys per namespace
+- name: Files
+  description: File hosting up to 5 MB per file, 1000 files per namespace
+paths:
+  /api/kv/{ns}/{id}/{key}:
+    get:
+      tags:
+      - KV
+      summary: Get key value
+      description: Returns the value and last update timestamp for a specific key
+      operationId: getKey
+      parameters:
+      - name: ns
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: key
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: X-Password
+        in: header
+        description: Access password via header
+        required: false
+        schema:
+          type: string
+      - name: p
+        in: query
+        description: Access password via query param (alternative to X-Password header)
+        required: false
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Key value
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/KvGetResponse'
+        '403':
+          description: Wrong password
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/KvGetResponse'
+        '404':
+          description: Store or key not found
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/KvGetResponse'
+    put:
+      tags:
+      - KV
+      summary: Upsert key
+      description: Creates or updates a key in the store; max 1000 keys per store
+      operationId: upsertKey
+      parameters:
+      - name: ns
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: key
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: X-Owner-Token
+        in: header
+        description: Owner token returned at creation. Required for update and delete
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/KvUpsertKeyRequest'
+        required: true
+      responses:
+        '200':
+          description: Key upserted
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/KvUpsertKeyResponse'
+        '403':
+          description: Missing or wrong owner token
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/KvUpsertKeyResponse'
+        '404':
+          description: Store not found or expired
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/KvUpsertKeyResponse'
+        '409':
+          description: Key limit exceeded
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/KvUpsertKeyResponse'
+    delete:
+      tags:
+      - KV
+      summary: Delete key
+      description: Removes a single key from the store; deleting the last key does not remove the store
+      operationId: deleteKey
+      parameters:
+      - name: ns
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: key
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: X-Owner-Token
+        in: header
+        description: Owner token returned at creation. Required for update and delete
+        required: true
+        schema:
+          type: string
+      responses:
+        '204':
+          description: Key deleted
+        '403':
+          description: Missing or wrong owner token
+        '404':
+          description: Store or key not found
+  /api/json/{ns}/{id}:
+    get:
+      tags:
+      - JSON
+      summary: Get JSON document
+      description: Returns raw JSON content with application/json content type
+      operationId: getById
+      parameters:
+      - name: ns
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: X-Password
+        in: header
+        description: Access password via header
+        required: false
+        schema:
+          type: string
+      - name: p
+        in: query
+        description: Access password via query param (alternative to X-Password header)
+        required: false
+        schema:
+          type: string
+      responses:
+        '200':
+          description: JSON content
+          content:
+            '*/*':
+              schema:
+                type: string
+        '403':
+          description: Wrong password
+          content:
+            '*/*':
+              schema:
+                type: string
+        '404':
+          description: Document not found or expired
+          content:
+            '*/*':
+              schema:
+                type: string
+    put:
+      tags:
+      - JSON
+      summary: Update JSON document
+      description: Replaces document content; requires the owner token returned at creation
+      operationId: update
+      parameters:
+      - name: ns
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: X-Owner-Token
+        in: header
+        description: Owner token returned at creation. Required for update and delete
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: string
+        required: true
+      responses:
+        '200':
+          description: Document updated
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/JsonUpdateResponse'
+        '403':
+          description: Missing or wrong owner token
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/JsonUpdateResponse'
+        '404':
+          description: Document not found or expired
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/JsonUpdateResponse'
+    delete:
+      tags:
+      - JSON
+      summary: Delete JSON document
+      description: Permanently removes the document
+      operationId: delete
+      parameters:
+      - name: ns
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: X-Owner-Token
+        in: header
+        description: Owner token returned at creation. Required for update and delete
+        required: true
+        schema:
+          type: string
+      responses:
+        '204':
+          description: Document deleted
+        '403':
+          description: Missing or wrong owner token
+        '404':
+          description: Document not found or expired
+  /api/html/{ns}/{id}:
+    get:
+      tags:
+      - HTML
+      summary: Get HTML page
+      description: Returns rendered HTML content; password-protected pages require X-Password header or ?p= query param
+      operationId: getById_1
+      parameters:
+      - name: ns
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: X-Password
+        in: header
+        description: Access password via header
+        required: false
+        schema:
+          type: string
+      - name: p
+        in: query
+        description: Access password via query param (alternative to X-Password header)
+        required: false
+        schema:
+          type: string
+      responses:
+        '200':
+          description: HTML content
+          content:
+            '*/*':
+              schema:
+                type: string
+        '403':
+          description: Wrong password
+          content:
+            '*/*':
+              schema:
+                type: string
+        '404':
+          description: Page not found or expired
+          content:
+            '*/*':
+              schema:
+                type: string
+    put:
+      tags:
+      - HTML
+      summary: Update HTML page
+      description: Replaces page content; requires the owner token returned at creation
+      operationId: update_1
+      parameters:
+      - name: ns
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: X-Owner-Token
+        in: header
+        description: Owner token returned at creation. Required for update and delete
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/HtmlUpdateRequest'
+        required: true
+      responses:
+        '200':
+          description: Page updated
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/HtmlUpdateResponse'
+        '403':
+          description: Missing or wrong owner token
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/HtmlUpdateResponse'
+        '404':
+          description: Page not found or expired
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/HtmlUpdateResponse'
+    delete:
+      tags:
+      - HTML
+      summary: Delete HTML page
+      description: Permanently removes page and frees the short URL
+      operationId: delete_1
+      parameters:
+      - name: ns
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: X-Owner-Token
+        in: header
+        description: Owner token returned at creation. Required for update and delete
+        required: true
+        schema:
+          type: string
+      responses:
+        '204':
+          description: Page deleted
+        '403':
+          description: Missing or wrong owner token
+        '404':
+          description: Page not found or expired
+  /api/kv:
+    get:
+      tags:
+      - KV
+      summary: List KV stores
+      description: Returns all KV stores owned by the given token in the namespace. Returns empty list without token
+      operationId: listStores
+      parameters:
+      - name: ns
+        in: query
+        description: Namespace
+        required: false
+        schema:
+          type: string
+          default: public
+      - name: X-Owner-Token
+        in: header
+        description: Owner token to filter by ownership. Without token returns empty list
+        required: false
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Store list
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/KvStoreListResponse'
+    post:
+      tags:
+      - KV
+      summary: Create KV store
+      description: Creates a new store with an initial key-value pair and returns a shareable link. Reuse existing owner token
+        to group entities under one owner
+      operationId: createStore
+      parameters:
+      - name: ns
+        in: query
+        description: 'Namespace. Default: public. Pages in ''public'' without password appear in gallery. Custom namespace
+          is created automatically'
+        required: false
+        schema:
+          type: string
+          default: public
+      - name: tags
+        in: query
+        description: Comma-separated tags
+        required: false
+        schema:
+          type: string
+        example: demo,test
+      - name: ttl
+        in: query
+        description: Time to live in days (1-365, default 5). Store auto-deletes after expiry
+        required: false
+        schema:
+          type: integer
+          format: int32
+      - name: X-Password
+        in: header
+        description: Access password. Empty = public store visible in gallery. With password = hidden from gallery, viewers
+          must enter password or pass ?p= in URL
+        required: false
+        schema:
+          type: string
+      - name: X-Owner-Token
+        in: header
+        description: Reuse existing owner token to group entities under one owner. If omitted, a new token is generated
+        required: false
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/KvCreateStoreRequest'
+        required: true
+      responses:
+        '201':
+          description: Store created
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/KvCreateStoreResponse'
+        '400':
+          description: Invalid request parameters
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/KvCreateStoreResponse'
+        '429':
+          description: Rate limit exceeded
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/KvCreateStoreResponse'
+  /api/json:
+    get:
+      tags:
+      - JSON
+      summary: List JSON documents
+      description: Returns documents owned by the given token. Empty list without token
+      operationId: list
+      parameters:
+      - name: ns
+        in: query
+        description: Namespace
+        required: false
+        schema:
+          type: string
+          default: public
+      - name: X-Owner-Token
+        in: header
+        description: Owner token to filter by ownership. Without token returns empty list
+        required: false
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Document list
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/JsonListResponse'
+    post:
+      tags:
+      - JSON
+      summary: Create JSON document
+      description: Stores any valid JSON and returns a shareable link. Reuse existing owner token to group entities under
+        one owner
+      operationId: create
+      parameters:
+      - name: ns
+        in: query
+        description: 'Namespace. Default: public. Pages in ''public'' without password appear in gallery. Custom namespace
+          is created automatically'
+        required: false
+        schema:
+          type: string
+          default: public
+      - name: tags
+        in: query
+        description: Comma-separated tags
+        required: false
+        schema:
+          type: string
+        example: demo,test
+      - name: ttl
+        in: query
+        description: Time to live in days (1-365, default 5). Document auto-deletes after expiry
+        required: false
+        schema:
+          type: integer
+          format: int32
+      - name: X-Password
+        in: header
+        description: Access password. Empty = public document visible in gallery. With password = hidden from gallery, viewers
+          must enter password or pass ?p= in URL
+        required: false
+        schema:
+          type: string
+      - name: X-Owner-Token
+        in: header
+        description: Reuse existing owner token to group entities under one owner. If omitted, a new token is generated
+        required: false
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: string
+        required: true
+      responses:
+        '201':
+          description: Document created
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/JsonCreateResponse'
+        '400':
+          description: Invalid JSON or request parameters
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/JsonCreateResponse'
+        '429':
+          description: Rate limit exceeded
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/JsonCreateResponse'
+  /api/html:
+    post:
+      tags:
+      - HTML
+      summary: Create HTML page
+      description: Stores HTML or markdown content and returns a shareable link. Reuse existing owner token to group entities
+        under one owner
+      operationId: create_1
+      parameters:
+      - name: ns
+        in: query
+        description: 'Namespace. Default: public. Pages in ''public'' without password appear in gallery. Custom namespace
+          is created automatically'
+        required: false
+        schema:
+          type: string
+          default: public
+      - name: tags
+        in: query
+        description: Comma-separated tags
+        required: false
+        schema:
+          type: string
+        example: demo,test
+      - name: ttl
+        in: query
+        description: Time to live in days (1-365, default 5). Page auto-deletes after expiry
+        required: false
+        schema:
+          type: integer
+          format: int32
+      - name: format
+        in: query
+        description: 'Content format: ''html'' (default), ''markdown'', or ''md''. Markdown is rendered to styled HTML with
+          github-markdown-css'
+        required: false
+        schema:
+          type: string
+          default: html
+      - name: X-Password
+        in: header
+        description: Access password. Empty = public page visible in gallery. With password = hidden from gallery, viewers
+          must enter password or pass ?p= in URL
+        required: false
+        schema:
+          type: string
+      - name: X-Owner-Token
+        in: header
+        description: Reuse existing owner token to group entities under one owner. If omitted, a new token is generated
+        required: false
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/HtmlUploadRequest'
+        required: true
+      responses:
+        '201':
+          description: Page created
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/HtmlUploadResponse'
+        '400':
+          description: Invalid request parameters
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/HtmlUploadResponse'
+        '429':
+          description: Rate limit exceeded
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/HtmlUploadResponse'
+  /api/files:
+    get:
+      tags:
+      - Files
+      summary: List files
+      description: Returns files owned by the given token. Empty list without token
+      operationId: list_1
+      parameters:
+      - name: ns
+        in: query
+        description: Namespace
+        required: false
+        schema:
+          type: string
+          default: public
+      - name: X-Owner-Token
+        in: header
+        description: Owner token to filter by ownership. Without token returns empty list
+        required: false
+        schema:
+          type: string
+      responses:
+        '200':
+          description: File list
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/FileListResponse'
+    post:
+      tags:
+      - Files
+      summary: Upload file
+      description: Stores a file via multipart upload and returns a download link. Only safe file types accepted. Reuse existing
+        owner token to group entities under one owner
+      operationId: upload
+      parameters:
+      - name: ns
+        in: query
+        description: 'Namespace. Default: public. Pages in ''public'' without password appear in gallery. Custom namespace
+          is created automatically'
+        required: false
+        schema:
+          type: string
+          default: public
+      - name: tags
+        in: query
+        description: Comma-separated tags
+        required: false
+        schema:
+          type: string
+        example: demo,test
+      - name: ttl
+        in: query
+        description: Time to live in days (1-365, default 5). File auto-deletes after expiry
+        required: false
+        schema:
+          type: integer
+          format: int32
+      - name: X-Password
+        in: header
+        description: Access password. Empty = public file visible in gallery. With password = hidden from gallery, viewers
+          must enter password or pass ?p= in URL
+        required: false
+        schema:
+          type: string
+      - name: X-Owner-Token
+        in: header
+        description: Reuse existing owner token to group entities under one owner. If omitted, a new token is generated
+        required: false
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+              required:
+              - file
+      responses:
+        '201':
+          description: File uploaded
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/FileUploadResponse'
+        '400':
+          description: Invalid request or file too large
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/FileUploadResponse'
+        '415':
+          description: Unsupported file type
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/FileUploadResponse'
+        '429':
+          description: Rate limit exceeded
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/FileUploadResponse'
+  /{ns}/{id}:
+    get:
+      tags:
+      - Short Links
+      operationId: resolve
+      parameters:
+      - name: ns
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: X-Password
+        in: header
+        description: Access password for protected resources
+        required: false
+        schema:
+          type: string
+      - name: p
+        in: query
+        description: Access password (query alternative to X-Password header)
+        required: false
+        schema:
+          type: string
+      - name: dl
+        in: query
+        description: Force download as attachment
+        required: false
+        schema:
+          type: boolean
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: object
+  /{ns}/{id}/{sub}:
+    get:
+      tags:
+      - Short Links
+      operationId: resolveWithSub
+      parameters:
+      - name: ns
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: sub
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: X-Password
+        in: header
+        description: Access password for protected resources
+        required: false
+        schema:
+          type: string
+      - name: p
+        in: query
+        description: Access password (query alternative to X-Password header)
+        required: false
+        schema:
+          type: string
+      - name: dl
+        in: query
+        description: Force download as attachment
+        required: false
+        schema:
+          type: boolean
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: object
+  /{key}.txt:
+    get:
+      tags:
+      - SEO
+      summary: IndexNow key verification
+      description: Serves the IndexNow verification key file for search engine crawlers
+      operationId: serveKeyFile
+      parameters:
+      - name: key
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Key file content
+          content:
+            text/plain:
+              schema:
+                type: string
+        '404':
+          description: Unknown key
+          content:
+            text/plain:
+              schema:
+                type: string
+  /api/stats:
+    get:
+      tags:
+      - Stats
+      summary: Get platform stats
+      description: Returns today's and all-time creation/view counts with per-type breakdown
+      operationId: getStats
+      responses:
+        '200':
+          description: Platform statistics
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/StatsResponse'
+  /api/sitemap.xml:
+    get:
+      tags:
+      - SEO
+      summary: Dynamic XML sitemap
+      description: Generates sitemap with static pages and all public gallery entries. Caddy should route /sitemap.xml to
+        this endpoint
+      operationId: sitemap
+      responses:
+        '200':
+          description: Sitemap XML
+          content:
+            application/xml:
+              schema:
+                type: string
+  /api/kv/{ns}/{id}:
+    get:
+      tags:
+      - KV
+      summary: List keys
+      description: Returns all key names and total count for a store
+      operationId: listKeys
+      parameters:
+      - name: ns
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: X-Password
+        in: header
+        description: Access password via header
+        required: false
+        schema:
+          type: string
+      - name: p
+        in: query
+        description: Access password via query param (alternative to X-Password header)
+        required: false
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Key list
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/KvListKeysResponse'
+        '403':
+          description: Wrong password
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/KvListKeysResponse'
+        '404':
+          description: Store not found or expired
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/KvListKeysResponse'
+  /api/gallery:
+    get:
+      tags:
+      - Gallery
+      summary: Browse gallery
+      description: Lists public pages (public namespace, no password) with optional case-insensitive search by title/tags
+      operationId: getGallery
+      parameters:
+      - name: q
+        in: query
+        description: Case-insensitive search by title or tags
+        required: false
+        schema:
+          type: string
+      - name: page
+        in: query
+        description: Page number (1-based)
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 1
+        example: 1
+      - name: size
+        in: query
+        description: Items per page (max 100)
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 20
+        example: 20
+      responses:
+        '200':
+          description: Paginated gallery items
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/GalleryResponse'
+  /api/files/{ns}/{id}:
+    get:
+      tags:
+      - Files
+      summary: Download file
+      description: Returns file inline for previewable types (images, PDF, media) or as attachment. Add ?dl=1 to force download.
+      operationId: download
+      parameters:
+      - name: ns
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: X-Password
+        in: header
+        description: Access password via header
+        required: false
+        schema:
+          type: string
+      - name: p
+        in: query
+        description: Access password via query param (alternative to X-Password header)
+        required: false
+        schema:
+          type: string
+      - name: dl
+        in: query
+        description: Force download as attachment
+        required: false
+        schema:
+          type: boolean
+      responses:
+        '200':
+          description: File content
+          content:
+            '*/*':
+              schema:
+                type: string
+                format: byte
+        '403':
+          description: Wrong password
+          content:
+            '*/*':
+              schema:
+                type: string
+                format: byte
+        '404':
+          description: File not found or expired
+          content:
+            '*/*':
+              schema:
+                type: string
+                format: byte
+    delete:
+      tags:
+      - Files
+      summary: Delete file
+      description: Permanently removes the file from storage
+      operationId: delete_2
+      parameters:
+      - name: ns
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: X-Owner-Token
+        in: header
+        description: Owner token returned at creation. Required for update and delete
+        required: true
+        schema:
+          type: string
+      responses:
+        '204':
+          description: File deleted
+        '403':
+          description: Missing or wrong owner token
+        '404':
+          description: File not found or expired
+components:
+  schemas:
+    KvUpsertKeyRequest:
+      type: object
+      properties:
+        value:
+          type: string
+          description: New value for the key (max 1 MB)
+    KvUpsertKeyResponse:
+      type: object
+      properties:
+        id:
+          type: string
+        namespace:
+          type: string
+        key:
+          type: string
+        sizeBytes:
+          type: integer
+          format: int64
+        link:
+          type: string
+          description: Public short URL for this key
+        ownerLink:
+          type: string
+          description: API URL for programmatic access
+    JsonUpdateResponse:
+      type: object
+      properties:
+        id:
+          type: string
+        namespace:
+          type: string
+        link:
+          type: string
+          description: Public short URL for browser viewing
+        ownerLink:
+          type: string
+          description: API URL for programmatic access
+        sizeBytes:
+          type: integer
+          format: int64
+        updatedAt:
+          type: string
+          format: date-time
+    HtmlUpdateRequest:
+      type: object
+      properties:
+        content:
+          type: string
+          description: New HTML content to replace existing page
+    HtmlUpdateResponse:
+      type: object
+      properties:
+        id:
+          type: string
+        namespace:
+          type: string
+        link:
+          type: string
+          description: Public short URL for browser viewing
+        ownerLink:
+          type: string
+          description: API URL for programmatic access
+        expiresAt:
+          type: string
+          format: date-time
+        sizeBytes:
+          type: integer
+          format: int64
+    KvCreateStoreRequest:
+      type: object
+      properties:
+        key:
+          type: string
+          description: Initial key name
+        value:
+          type: string
+          description: Value for the initial key (max 1 MB)
+    KvCreateStoreResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Unique 10-character alphanumeric store ID
+        namespace:
+          type: string
+        key:
+          type: string
+        sizeBytes:
+          type: integer
+          format: int64
+        link:
+          type: string
+          description: Public short URL for the initial key
+        ownerLink:
+          type: string
+          description: API URL for programmatic access (upsert/delete)
+        expiresAt:
+          type: string
+          format: date-time
+        tags:
+          type: array
+          items:
+            type: string
+        ownerToken:
+          type: string
+          description: Secret token required for upsert and delete operations. Store it safely -- cannot be recovered
+    JsonCreateResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Unique 10-character alphanumeric document ID
+        namespace:
+          type: string
+        link:
+          type: string
+          description: Public short URL for browser viewing
+        ownerLink:
+          type: string
+          description: API URL for programmatic access (update/delete)
+        sizeBytes:
+          type: integer
+          format: int64
+        expiresAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+        tags:
+          type: array
+          items:
+            type: string
+        ownerToken:
+          type: string
+          description: Secret token required for update and delete operations. Store it safely -- cannot be recovered
+    HtmlUploadRequest:
+      type: object
+      properties:
+        content:
+          type: string
+          description: HTML or markdown content to publish
+    HtmlUploadResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Unique 10-character alphanumeric page ID
+        namespace:
+          type: string
+        link:
+          type: string
+          description: Public short URL for browser viewing
+        ownerLink:
+          type: string
+          description: API URL for programmatic access (update/delete)
+        expiresAt:
+          type: string
+          format: date-time
+        sizeBytes:
+          type: integer
+          format: int64
+        tags:
+          type: array
+          items:
+            type: string
+        ownerToken:
+          type: string
+          description: Secret token required for update and delete operations. Store it safely -- cannot be recovered
+    FileUploadResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Unique 10-character alphanumeric file ID
+        namespace:
+          type: string
+        filename:
+          type: string
+          description: Original filename as uploaded
+        contentType:
+          type: string
+          description: Detected MIME type (e.g. image/png)
+        sizeBytes:
+          type: integer
+          format: int64
+        link:
+          type: string
+          description: Public short URL for browser download
+        ownerLink:
+          type: string
+          description: API URL for programmatic access (delete)
+        expiresAt:
+          type: string
+          format: date-time
+        tags:
+          type: array
+          items:
+            type: string
+        ownerToken:
+          type: string
+          description: Secret token required for delete operation. Store it safely -- cannot be recovered
+    StatsResponse:
+      type: object
+      properties:
+        createdToday:
+          type: integer
+          format: int64
+          description: Resources created in the last 24 hours
+        totalCreated:
+          type: integer
+          format: int64
+          description: All-time resource count
+        viewsToday:
+          type: integer
+          format: int64
+          description: Views in the last 24 hours
+        totalViews:
+          type: integer
+          format: int64
+          description: All-time view count
+        breakdown:
+          type: array
+          description: Per-type breakdown (html, json, kv, file)
+          items:
+            $ref: '#/components/schemas/TypeBreakdown'
+    TypeBreakdown:
+      type: object
+      properties:
+        type:
+          type: string
+          description: 'Resource type: html, json, kv, or file'
+        today:
+          type: integer
+          format: int64
+          description: Created in the last 24 hours
+        total:
+          type: integer
+          format: int64
+          description: All-time count
+    KvStoreListResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Unique 10-character alphanumeric store ID
+        keyCount:
+          type: integer
+          format: int32
+          description: Number of keys in the store
+        createdAt:
+          type: string
+          format: date-time
+          description: When the first key in the store was created
+    KvListKeysResponse:
+      type: object
+      properties:
+        keys:
+          type: array
+          description: All key names in the store
+          items:
+            type: string
+        count:
+          type: integer
+          format: int32
+          description: Total number of keys
+    KvGetResponse:
+      type: object
+      properties:
+        value:
+          type: string
+        updatedAt:
+          type: string
+          format: date-time
+          description: When the value was last written or updated
+    JsonListResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Unique 10-character alphanumeric document ID
+        content:
+          type: string
+        size:
+          type: integer
+          format: int64
+        createdAt:
+          type: string
+          format: date-time
+    GalleryItem:
+      type: object
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          description: 'Resource type: html, json, kv, or file'
+        title:
+          type: string
+          description: Display title derived from content or filename
+        createdAt:
+          type: string
+          format: date-time
+        views:
+          type: integer
+          format: int64
+          description: Total view count
+    GalleryResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/GalleryItem'
+        total:
+          type: integer
+          format: int64
+          description: Total number of matching items across all pages
+        page:
+          type: integer
+          format: int32
+          description: Current page number (1-based)
+        size:
+          type: integer
+          format: int32
+          description: Items per page
+    FileListResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Unique 10-character alphanumeric file ID
+        filename:
+          type: string
+          description: Original filename as uploaded
+        contentType:
+          type: string
+          description: Detected MIME type (e.g. image/png)
+        size:
+          type: integer
+          format: int64
+        link:
+          type: string
+          description: Public short URL for browser download
+        createdAt:
+          type: string
+          format: date-time
