@@ -7,20 +7,38 @@
 
 OpenAPI specification, interactive documentation, and MCP server for [BrewPage](https://brewpage.app) -- HTML/KV/JSON/file hosting platform.
 
-## Overview
+## Quick Start -- 4 Ways
 
-**BrewPage** is a content hosting platform that lets you publish and share:
+### Web UI
 
-- **HTML pages** -- publish raw HTML or Markdown with instant short URLs
-- **Key-value store** -- create named key-value pairs grouped in stores, up to 1,000 keys per store
-- **JSON documents** -- store and retrieve arbitrary JSON with collection management
-- **File hosting** -- upload files up to 5 MB with automatic MIME detection and inline preview
+Open [brewpage.app](https://brewpage.app) -> Drop a file or paste HTML -> **Publish** -> Get a shareable link.
 
-Every resource gets a short URL (`brewpage.app/{ns}/{id}`), optional password protection, configurable TTL (1--365 days), and tagging. Public content appears in a browsable gallery with search.
+### Claude Skill
 
-## Quick Start
+```
+/brewpage "Hello, world!"
+```
 
-**Publish an HTML page:**
+Publish content instantly via the [brewcode plugin](https://github.com/kochetkov-ma/claude-brewcode) skill.
+
+### MCP Server
+
+Add `brewpage-mcp` to your Claude config:
+
+```json
+{
+  "mcpServers": {
+    "brewpage": {
+      "command": "npx",
+      "args": ["-y", "brewpage-mcp"]
+    }
+  }
+}
+```
+
+Then ask Claude: *"Publish this HTML to BrewPage"*.
+
+### API
 
 ```bash
 curl -X POST https://brewpage.app/api/html \
@@ -41,6 +59,19 @@ Response:
   "sizeBytes": 22
 }
 ```
+
+## Overview
+
+**BrewPage** is a content hosting platform that lets you publish and share:
+
+- **HTML pages** -- publish raw HTML or Markdown with instant short URLs
+- **Key-value store** -- create named key-value pairs grouped in stores, up to 1,000 keys per store
+- **JSON documents** -- store and retrieve arbitrary JSON with collection management
+- **File hosting** -- upload files up to 5 MB with automatic MIME detection and inline preview
+
+Every resource gets a short URL (`brewpage.app/{ns}/{id}`), optional password protection, configurable TTL (1--365 days), and tagging. Public content appears in a browsable gallery with search.
+
+## API Examples
 
 **Get platform stats:**
 
@@ -67,6 +98,7 @@ curl -X POST https://brewpage.app/api/json \
 ## API Reference
 
 - **Interactive docs** -- [kochetkov-ma.github.io/brewpage-openapi](https://kochetkov-ma.github.io/brewpage-openapi/)
+- **API Reference (Scalar)** -- [kochetkov-ma.github.io/brewpage-openapi/api-reference](https://kochetkov-ma.github.io/brewpage-openapi/api-reference/)
 - **OpenAPI spec (YAML)** -- [`openapi/openapi.yaml`](openapi/openapi.yaml)
 - **OpenAPI spec (JSON)** -- [`openapi/openapi.json`](openapi/openapi.json)
 
@@ -152,6 +184,14 @@ brewpage-openapi/
 - **BrewPage** -- [brewpage.app](https://brewpage.app)
 - **BrewData** (alias) -- [brewdata.app](https://brewdata.app)
 - **API Docs** -- [kochetkov-ma.github.io/brewpage-openapi](https://kochetkov-ma.github.io/brewpage-openapi/)
+- **API Reference (Scalar)** -- [kochetkov-ma.github.io/brewpage-openapi/api-reference](https://kochetkov-ma.github.io/brewpage-openapi/api-reference/)
+- **OpenAPI Spec** -- [`openapi/openapi.yaml`](openapi/openapi.yaml)
+- **MCP Server** -- [`mcp-server/`](mcp-server/)
+- **Claude Skill** -- [brewpage-publish](https://github.com/kochetkov-ma/claude-brewcode/tree/main/skills/brewpage-publish)
+- **Skill Docs** -- [doc-claude.brewcode.app/brewdoc/brewpage](https://doc-claude.brewcode.app/brewdoc/brewpage/)
+- **Brewcode Plugin** -- [github.com/kochetkov-ma/claude-brewcode](https://github.com/kochetkov-ma/claude-brewcode)
+- **Wiki** -- [github.com/kochetkov-ma/brewpage-openapi/wiki](https://github.com/kochetkov-ma/brewpage-openapi/wiki)
+- **Releases** -- [github.com/kochetkov-ma/brewpage-openapi/releases](https://github.com/kochetkov-ma/brewpage-openapi/releases)
 - **GitHub** -- [github.com/kochetkov-ma/brewpage-openapi](https://github.com/kochetkov-ma/brewpage-openapi)
 
 ## License
