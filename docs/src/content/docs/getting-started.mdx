@@ -1,0 +1,87 @@
+---
+title: Getting Started
+description: Quick start guide for the BrewPage API
+order: 1
+---
+
+# Getting Started
+
+BrewPage is a free hosting platform for HTML pages, key-value data, JSON documents, and files. No signup required — publish content instantly via API.
+
+## Base URL
+
+```
+https://brewpage.app
+```
+
+Both `brewpage.app` and `brewdata.app` serve the same API.
+
+## Publish Your First Page
+
+```bash
+curl -X POST https://brewpage.app/api/html \
+  -H "Content-Type: application/json" \
+  -d '{
+    "namespace": "demo",
+    "content": "<h1>Hello World</h1><p>My first BrewPage!</p>",
+    "format": "HTML"
+  }'
+```
+
+Response:
+```json
+{
+  "namespace": "demo",
+  "id": "aBcDeFgHiJ",
+  "url": "https://brewpage.app/demo/aBcDeFgHiJ",
+  "shortUrl": "https://brewpage.app/s/xYz123",
+  "ownerToken": "tok_abc123...",
+  "expiresAt": "2027-03-31T00:00:00Z"
+}
+```
+
+> **Save your owner token!** You need it to update or delete your content later.
+
+## Publish Markdown
+
+```bash
+curl -X POST https://brewpage.app/api/html \
+  -H "Content-Type: application/json" \
+  -d '{
+    "namespace": "notes",
+    "content": "# My Notes\n\nMarkdown is **automatically** rendered to HTML.",
+    "format": "MARKDOWN"
+  }'
+```
+
+## Store Key-Value Data
+
+```bash
+# Set a value
+curl -X PUT https://brewpage.app/api/kv/myapp/config/theme \
+  -H "Content-Type: application/json" \
+  -d '{"value": "dark"}'
+
+# Get the value
+curl https://brewpage.app/api/kv/myapp/config/theme
+```
+
+## Upload a File
+
+```bash
+curl -X POST https://brewpage.app/api/files/uploads \
+  -F "namespace=assets" \
+  -F "file=@image.png"
+```
+
+## Check Platform Stats
+
+```bash
+curl https://brewpage.app/api/stats
+```
+
+## Next Steps
+
+- [API Reference](/brewpage-openapi/api-reference/) — Full interactive API documentation
+- [MCP Server](/brewpage-openapi/mcp-server/) — Use BrewPage from Claude Desktop or Claude Code
+- [Examples](/brewpage-openapi/examples/) — Real-world use cases

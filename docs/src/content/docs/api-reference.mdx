@@ -1,0 +1,43 @@
+---
+title: API Reference
+description: Interactive API documentation for BrewPage powered by Scalar
+order: 2
+---
+
+import ScalarApiReference from '../../components/docs/ScalarApiReference.astro';
+
+# API Reference
+
+<ScalarApiReference />
+
+## OpenAPI Specification
+
+The full OpenAPI 3.1 specification is available in both JSON and YAML formats:
+
+- [openapi.json](https://github.com/kochetkov-ma/brewpage-openapi/blob/main/openapi/openapi.json)
+- [openapi.yaml](https://github.com/kochetkov-ma/brewpage-openapi/blob/main/openapi/openapi.yaml)
+
+## API Endpoints Overview
+
+| Tag | Description | Key Endpoints |
+|-----|-------------|--------------|
+| **HTML** | HTML/Markdown page hosting | `POST /api/html`, `GET /api/html/{ns}/{id}` |
+| **KV** | Key-value store (1000 keys/ns) | `PUT /api/kv/{ns}/{id}/{key}`, `GET /api/kv/{ns}/{id}/{key}` |
+| **JSON** | JSON document store (10K docs/collection) | `POST /api/json/{ns}/{collection}`, `GET /api/json/{ns}/{collection}/{id}` |
+| **Files** | File hosting (5 MB/file) | `POST /api/files/uploads`, `GET /api/files/{ns}/{id}/{filename}` |
+| **Gallery** | Public content browser | `GET /api/gallery/pages`, `GET /api/gallery/files` |
+| **Stats** | Platform statistics | `GET /api/stats` |
+| **Short Links** | URL shortener | `GET /s/{code}` |
+| **SEO** | Search engine support | `GET /sitemap.xml`, `GET /robots.txt` |
+
+## Authentication
+
+Most read endpoints are public. Write operations use **namespace-level owner tokens** returned in create responses. Pass the token via:
+
+- Header: `X-Owner-Token: tok_xxx`
+- Query param: `?token=tok_xxx`
+
+Password-protected content requires:
+
+- Header: `X-Password: secret`
+- Query param: `?p=secret`

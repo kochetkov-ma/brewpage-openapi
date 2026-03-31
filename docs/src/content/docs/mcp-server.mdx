@@ -1,0 +1,88 @@
+---
+title: MCP Server
+description: Use BrewPage from Claude Desktop, Claude Code, and other MCP clients
+order: 3
+---
+
+# MCP Server
+
+The `brewpage-mcp` server lets you publish and manage BrewPage content directly from AI assistants like Claude Desktop and Claude Code.
+
+## Installation
+
+### Claude Desktop
+
+Add to your `claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "brewpage": {
+      "command": "npx",
+      "args": ["-y", "brewpage-mcp"]
+    }
+  }
+}
+```
+
+### Claude Code
+
+Add to your `settings.json`:
+
+```json
+{
+  "mcpServers": {
+    "brewpage": {
+      "command": "npx",
+      "args": ["-y", "brewpage-mcp"]
+    }
+  }
+}
+```
+
+### One-liner
+
+```bash
+npx brewpage-mcp
+```
+
+## Available Tools
+
+| Tool | Description |
+|------|-------------|
+| `publish_html` | Publish HTML or Markdown content. Returns URL + owner token |
+| `publish_file` | Upload a file via URL or base64 content |
+| `delete_resource` | Delete a resource by namespace/id with owner token |
+| `get_page` | Fetch published page content by namespace/id |
+| `get_stats` | Get platform-wide usage statistics |
+
+## Usage Examples
+
+### Publish a Page
+
+Ask Claude: *"Publish this HTML to BrewPage"*
+
+The `publish_html` tool accepts:
+- `content` — HTML or Markdown string
+- `namespace` — Optional namespace (default: random)
+- `format` — `HTML` or `MARKDOWN`
+- `password` — Optional password protection
+- `ttlDays` — Time to live in days (30-365)
+
+### Delete a Resource
+
+Ask Claude: *"Delete my BrewPage at demo/aBcDeFgHiJ using token tok_abc123"*
+
+The `delete_resource` tool requires:
+- `namespace` — Resource namespace
+- `id` — Resource ID
+- `ownerToken` — Owner token from publish response
+- `type` — Resource type: `html`, `kv`, `json`, or `file`
+
+## Owner Token Reminder
+
+Every publish response includes your **owner token**. This is the only way to update or delete your content later. Save it somewhere safe — it cannot be recovered if lost.
+
+## Source Code
+
+See the full implementation: [mcp-server/](https://github.com/kochetkov-ma/brewpage-openapi/tree/main/mcp-server)
