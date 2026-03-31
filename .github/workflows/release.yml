@@ -41,6 +41,7 @@ jobs:
             openapi/openapi.yaml
 
       - name: Publish to npm
+        if: secrets.NPM_TOKEN != ''
         working-directory: mcp-server
         run: npm publish --access public
         env:
