@@ -7,21 +7,39 @@
     "brewpage-mcp": "./dist/index.js"
   },
   "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
   "scripts": {
     "build": "tsc",
     "start": "node dist/index.js",
-    "dev": "tsx src/index.ts"
+    "dev": "tsx src/index.ts",
+    "prepublishOnly": "npm run build"
   },
   "keywords": [
     "mcp",
-    "brewpage",
+    "mcp-server",
     "model-context-protocol",
+    "brewpage",
     "claude",
+    "claude-desktop",
+    "claude-code",
     "ai",
     "hosting",
+    "html",
+    "markdown",
     "api"
   ],
-  "author": "kochetkov-ma",
+  "author": {
+    "name": "Maksim Kochetkov",
+    "url": "https://github.com/kochetkov-ma"
+  },
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -29,6 +47,9 @@
     "directory": "mcp-server"
   },
   "homepage": "https://brewpage.app",
+  "bugs": {
+    "url": "https://github.com/kochetkov-ma/brewpage-openapi/issues"
+  },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.12.0",
     "zod": "^3.24.0"
