@@ -1,14 +1,32 @@
-<div id="scalar-api" class="not-prose mt-8" style="min-height: 600px;"></div>
+---
+---
+
+<div id="scalar-container" class="not-prose mt-8">
+  <div id="scalar-loading" class="flex items-center justify-center py-20 text-base-content/50">
+    <span class="loading loading-spinner loading-lg text-primary mr-3"></span>
+    Loading API Reference...
+  </div>
+  <div id="scalar-api"></div>
+</div>
+
+<style>
+  #scalar-api :global(.scalar-app) {
+    --scalar-color-1: #EBBB40;
+    --scalar-color-accent: #EBBB40;
+  }
+</style>
 
 <script>
   document.addEventListener('astro:page-load', () => {
     const container = document.getElementById('scalar-api');
+    const loading = document.getElementById('scalar-loading');
     if (!container || container.dataset.initialized) return;
     container.dataset.initialized = 'true';
 
     const script = document.createElement('script');
     script.src = 'https://cdn.jsdelivr.net/npm/@scalar/api-reference@latest/dist/browser/standalone.min.js';
     script.onload = () => {
+      if (loading) loading.style.display = 'none';
       const el = document.createElement('api-reference');
       el.setAttribute('data-url', 'https://brewpage.app/v3/api-docs');
       el.setAttribute('data-configuration', JSON.stringify({
@@ -23,7 +41,6 @@
           title: 'BrewPage API Reference',
           description: 'Interactive API documentation for BrewPage',
         },
-        customCss: '.scalar-app { --scalar-color-1: #EBBB40; --scalar-color-accent: #EBBB40; }',
       }));
       container.appendChild(el);
     };
