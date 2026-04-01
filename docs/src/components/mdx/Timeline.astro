@@ -6,15 +6,13 @@ const { steps } = Astro.props;
 ---
 
 <div class="not-prose my-8">
-  <ol class="timeline-steps relative ml-4">
+  <ol class="tl">
     {steps.map((step, i) => (
-      <li class="timeline-step relative pl-12 pb-10 last:pb-0">
-        <div class="timeline-marker">
-          <span>{i + 1}</span>
-        </div>
-        <div>
-          <h4 class="text-base font-semibold text-base-content mb-1">{step.title}</h4>
-          <p class="text-sm text-base-content/70 leading-relaxed">{step.description}</p>
+      <li class="tl-step">
+        <div class="tl-dot"><span>{i + 1}</span></div>
+        <div class="tl-body">
+          <h4 class="tl-title">{step.title}</h4>
+          <p class="tl-desc">{step.description}</p>
         </div>
       </li>
     ))}
@@ -22,53 +20,76 @@ const { steps } = Astro.props;
 </div>
 
 <style>
-  .timeline-steps {
+  .tl {
     list-style: none;
     padding: 0;
     margin: 0;
-  }
-
-  .timeline-step {
     position: relative;
   }
 
-  /* Vertical gold line */
-  .timeline-step::before {
+  .tl-step {
+    position: relative;
+    display: flex;
+    align-items: flex-start;
+    gap: 1.25rem;
+    padding-bottom: 2rem;
+  }
+
+  .tl-step:last-child {
+    padding-bottom: 0;
+  }
+
+  /* Vertical line between dots */
+  .tl-step::before {
     content: '';
     position: absolute;
-    left: 16px;
-    top: 0;
+    left: 22px;
+    top: 48px;
     bottom: 0;
     width: 3px;
     background: #EBBB40;
+    border-radius: 2px;
   }
 
-  /* No line after last step */
-  .timeline-step:last-child::before {
-    bottom: unset;
-    height: 32px;
+  .tl-step:last-child::before {
+    display: none;
   }
 
-  /* Numbered circle */
-  .timeline-marker {
-    position: absolute;
-    left: 2px;
-    top: 0;
-    width: 32px;
-    height: 32px;
+  /* Gold circle */
+  .tl-dot {
+    flex-shrink: 0;
+    width: 44px;
+    height: 44px;
     border-radius: 50%;
     background: #EBBB40;
     color: #141414;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-weight: 700;
-    font-size: 0.875rem;
+    font-weight: 800;
+    font-size: 1rem;
     z-index: 1;
-    box-shadow: 0 0 0 4px #141414;
+    box-shadow: 0 0 0 5px #141414;
   }
 
-  .timeline-marker span {
-    line-height: 1;
+  /* Content block */
+  .tl-body {
+    padding-top: 0.35rem;
+    min-width: 0;
+  }
+
+  .tl-title {
+    font-size: 1.125rem;
+    font-weight: 700;
+    color: #E7E5E4;
+    margin: 0 0 0.25rem 0;
+    line-height: 1.3;
+  }
+
+  .tl-desc {
+    font-size: 0.875rem;
+    color: #a8a29e;
+    margin: 0;
+    line-height: 1.6;
   }
 </style>
