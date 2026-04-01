@@ -8,36 +8,96 @@ import ScalarApiReference from '../../components/docs/ScalarApiReference.astro';
 
 # API Reference
 
+Explore the full [BrewPage](https://brewpage.app) REST API — 8 tags, 15+ endpoints, all publicly accessible.
+
+## Interactive Explorer
+
 <ScalarApiReference />
+
+## Alternative API Viewers
+
+| Viewer | URL |
+|--------|-----|
+| **Swagger UI** (live on server) | [brewpage.app/swagger-ui/index.html](https://brewpage.app/swagger-ui/index.html) |
+| **Scalar** (this page) | Embedded above |
+| **OpenAPI JSON** | [brewpage.app/v3/api-docs](https://brewpage.app/v3/api-docs) |
 
 ## OpenAPI Specification
 
-The full OpenAPI 3.1 specification is available in both JSON and YAML formats:
+Download the full OpenAPI 3.1 spec:
 
-- [openapi.json](https://github.com/kochetkov-ma/brewpage-openapi/blob/main/openapi/openapi.json)
-- [openapi.yaml](https://github.com/kochetkov-ma/brewpage-openapi/blob/main/openapi/openapi.yaml)
+| Format | Source |
+|--------|--------|
+| **YAML** | [openapi.yaml](https://github.com/kochetkov-ma/brewpage-openapi/blob/main/openapi/openapi.yaml) |
+| **JSON** | [openapi.json](https://github.com/kochetkov-ma/brewpage-openapi/blob/main/openapi/openapi.json) |
+| **Live endpoint** | [brewpage.app/v3/api-docs](https://brewpage.app/v3/api-docs) |
 
 ## API Endpoints Overview
 
+Base URL: [`https://brewpage.app`](https://brewpage.app) (alias: [`https://brewdata.app`](https://brewdata.app))
+
 | Tag | Description | Key Endpoints |
 |-----|-------------|--------------|
-| **HTML** | HTML/Markdown page hosting | `POST /api/html`, `GET /api/html/{ns}/{id}` |
-| **KV** | Key-value store (1000 keys/ns) | `PUT /api/kv/{ns}/{id}/{key}`, `GET /api/kv/{ns}/{id}/{key}` |
-| **JSON** | JSON document store (10K docs/collection) | `POST /api/json/{ns}/{collection}`, `GET /api/json/{ns}/{collection}/{id}` |
-| **Files** | File hosting (5 MB/file) | `POST /api/files/uploads`, `GET /api/files/{ns}/{id}/{filename}` |
-| **Gallery** | Public content browser | `GET /api/gallery/pages`, `GET /api/gallery/files` |
-| **Stats** | Platform statistics | `GET /api/stats` |
+| **HTML** | HTML/Markdown page hosting | [`POST /api/html`](https://brewpage.app/swagger-ui/index.html#/HTML/createHtml), [`GET /api/html/{ns}/{id}`](https://brewpage.app/swagger-ui/index.html#/HTML/getHtml) |
+| **KV** | Key-value store (1000 keys/ns) | [`PUT /api/kv/{ns}/{id}/{key}`](https://brewpage.app/swagger-ui/index.html#/KV/setKey), [`GET /api/kv/{ns}/{id}/{key}`](https://brewpage.app/swagger-ui/index.html#/KV/getKey) |
+| **JSON** | JSON document store (10K docs) | [`POST /api/json/{ns}/{collection}`](https://brewpage.app/swagger-ui/index.html#/JSON), [`GET /api/json/{ns}/{collection}/{id}`](https://brewpage.app/swagger-ui/index.html#/JSON) |
+| **Files** | File hosting (5 MB/file) | [`POST /api/files/uploads`](https://brewpage.app/swagger-ui/index.html#/Files), [`GET /api/files/{ns}/{id}/{filename}`](https://brewpage.app/swagger-ui/index.html#/Files) |
+| **Gallery** | Public content browser | [`GET /api/gallery/pages`](https://brewpage.app/swagger-ui/index.html#/Gallery), [`GET /api/gallery/files`](https://brewpage.app/swagger-ui/index.html#/Gallery) |
+| **Stats** | Platform statistics | [`GET /api/stats`](https://brewpage.app/swagger-ui/index.html#/Stats) |
 | **Short Links** | URL shortener | `GET /s/{code}` |
-| **SEO** | Search engine support | `GET /sitemap.xml`, `GET /robots.txt` |
+| **SEO** | Search engine support | [`GET /sitemap.xml`](https://brewpage.app/sitemap.xml), [`GET /robots.txt`](https://brewpage.app/robots.txt) |
 
 ## Authentication
 
-Most read endpoints are public. Write operations use **namespace-level owner tokens** returned in create responses. Pass the token via:
+Most read endpoints are **public** — no auth required.
 
-- Header: `X-Owner-Token: tok_xxx`
-- Query param: `?token=tok_xxx`
+Write operations use **owner tokens** returned in create responses:
 
-Password-protected content requires:
+| Method | Example |
+|--------|---------|
+| Header | `X-Owner-Token: tok_xxx` |
+| Query param | `?token=tok_xxx` |
 
-- Header: `X-Password: secret`
-- Query param: `?p=secret`
+Password-protected content:
+
+| Method | Example |
+|--------|---------|
+| Header | `X-Password: secret` |
+| Query param | `?p=secret` |
+
+## Rate Limits
+
+| Operation | Limit |
+|-----------|-------|
+| Uploads (POST) | 60/hour/IP |
+| Reads (GET) | 300/min/IP |
+
+## Size Limits
+
+| Resource | Max Size | Max Count |
+|----------|----------|-----------|
+| HTML page | 5 MB | — |
+| KV value | 1 MB | 1,000 keys/store |
+| JSON doc | 1 MB | 10,000 docs/collection |
+| File | 5 MB | 1,000 files/ns |
+| TTL | 30–365 days | — |
+
+## Try It Now
+
+```bash
+curl https://brewpage.app/api/stats
+```
+
+```bash
+curl -X POST https://brewpage.app/api/html \
+  -H "Content-Type: application/json" \
+  -d '{"content":"<h1>Hello!</h1>","format":"HTML"}'
+```
+
+## Links
+
+- [brewpage.app](https://brewpage.app) — Live platform
+- [Swagger UI](https://brewpage.app/swagger-ui/index.html) — Built-in API explorer
+- [Getting Started](/brewpage-openapi/getting-started/) — Quick start guide
+- [Examples](/brewpage-openapi/examples/) — Code snippets in 6 languages
+- [MCP Server](/brewpage-openapi/mcp-server/) — AI assistant integration

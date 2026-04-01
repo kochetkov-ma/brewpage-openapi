@@ -1,0 +1,74 @@
+---
+interface Props {
+  steps: { title: string; description: string }[];
+}
+const { steps } = Astro.props;
+---
+
+<div class="not-prose my-8">
+  <ol class="timeline-steps relative ml-4">
+    {steps.map((step, i) => (
+      <li class="timeline-step relative pl-12 pb-10 last:pb-0">
+        <div class="timeline-marker">
+          <span>{i + 1}</span>
+        </div>
+        <div>
+          <h4 class="text-base font-semibold text-base-content mb-1">{step.title}</h4>
+          <p class="text-sm text-base-content/70 leading-relaxed">{step.description}</p>
+        </div>
+      </li>
+    ))}
+  </ol>
+</div>
+
+<style>
+  .timeline-steps {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  .timeline-step {
+    position: relative;
+  }
+
+  /* Vertical gold line */
+  .timeline-step::before {
+    content: '';
+    position: absolute;
+    left: 16px;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    background: #EBBB40;
+  }
+
+  /* No line after last step */
+  .timeline-step:last-child::before {
+    bottom: unset;
+    height: 32px;
+  }
+
+  /* Numbered circle */
+  .timeline-marker {
+    position: absolute;
+    left: 2px;
+    top: 0;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: #EBBB40;
+    color: #141414;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 0.875rem;
+    z-index: 1;
+    box-shadow: 0 0 0 4px #141414;
+  }
+
+  .timeline-marker span {
+    line-height: 1;
+  }
+</style>

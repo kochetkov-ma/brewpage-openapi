@@ -4,6 +4,8 @@ description: Quick start guide for BrewPage — 4 ways to publish content
 order: 1
 ---
 
+import Timeline from '../../components/mdx/Timeline.astro';
+
 # Getting Started
 
 BrewPage is a free hosting platform for HTML pages, key-value data, JSON documents, and files. No signup required — publish content instantly.
@@ -14,87 +16,49 @@ BrewPage is a free hosting platform for HTML pages, key-value data, JSON documen
 
 ## Quick Start — 4 Ways to Publish
 
-### 1. Web UI (Zero Code)
+### 1. Web UI
 
-> Open browser → Drop file → Click Publish → Get link
-
-| Step | Action |
-|:----:|--------|
-| **1** | Open [brewpage.app](https://brewpage.app) |
-| **2** | Drag & drop HTML / Markdown / CSV / any file |
-| **3** | Click **Publish** |
-| **4** | Copy your link and share |
-
-No account needed. Supports password protection, TTL, tags, dark/light theme.
+<Timeline steps={[
+  { title: "Open brewpage.app", description: "Open brewpage.app in any browser" },
+  { title: "Drop your content", description: "Drag & drop HTML, Markdown, CSV, image, or any file" },
+  { title: "Click Publish", description: "Optional: set password, TTL, tags" },
+  { title: "Share your link", description: "Copy the short URL and send to anyone" },
+]} />
 
 ---
 
 ### 2. Claude Skill (`/brewpage`)
 
-> Type `/brewpage` → Pick namespace → Done — link + token saved
+<Timeline steps={[
+  { title: "Install brewcode plugin", description: "Run: npx skills add kochetkov-ma/claude-brewcode" },
+  { title: "Use the slash command", description: '/brewpage "Hello world" — or say: publish this to brewpage' },
+  { title: "Pick namespace and password", description: "Claude asks interactively, defaults to public / no password" },
+  { title: "Get link + saved token", description: "URL returned, owner token saved to .claude/brewpage-history.md" },
+]} />
 
-Install the [brewcode](https://github.com/kochetkov-ma/claude-brewcode) plugin:
-
-```bash
-npx skills add kochetkov-ma/claude-brewcode
-```
-
-Then in any Claude Code session:
-
-```
-/brewpage "Hello, world!"              # text → Markdown page
-/brewpage report.md                    # file → upload
-/brewpage '{"status": "ok"}'           # JSON → document
-/brewpage screenshot.png --ttl 1       # file, 1-day expiry
-```
-
-Or just say it naturally:
-
-```
-Publish this to brewpage
-Upload report.md to brewpage.app
-```
-
-Claude detects content type, asks namespace + password, publishes, and saves the owner token to `.claude/brewpage-history.md`.
-
-[Skill documentation](https://doc-claude.brewcode.app/brewdoc/brewpage/) · [Source](https://github.com/kochetkov-ma/claude-brewcode/tree/main/skills/brewpage-publish)
+[Skill docs](https://doc-claude.brewcode.app/brewdoc/brewpage/) · [Source](https://github.com/kochetkov-ma/claude-brewcode/tree/main/skills/brewpage-publish)
 
 ---
 
 ### 3. MCP Server (AI Agent)
 
-> Tell Claude "publish this" → Claude calls BrewPage API → Get link + token
+<Timeline steps={[
+  { title: "Add brewpage-mcp to config", description: 'Add {"brewpage":{"command":"npx","args":["-y","brewpage-mcp"]}} to Claude Desktop or Claude Code config' },
+  { title: 'Ask Claude: "Publish this to BrewPage"', description: "Claude calls the API automatically, supports HTML, Markdown, files" },
+  { title: "Get link + owner token", description: "Claude returns the URL and reminds you to save the token" },
+]} />
 
-Add to your **Claude Desktop** config (`claude_desktop_config.json`):
-
-```json
-{
-  "mcpServers": {
-    "brewpage": {
-      "command": "npx",
-      "args": ["-y", "brewpage-mcp"]
-    }
-  }
-}
-```
-
-Or **Claude Code** config (`settings.json`) — same format.
-
-Then just ask:
-
-| You say | What happens |
-|---------|-------------|
-| "Publish this HTML to BrewPage" | Creates page, returns URL |
-| "Upload this image to BrewPage" | Uploads file, returns URL |
-| "Delete page demo/abc123 token tok_xyz" | Deletes resource |
-
-[MCP Server guide](/brewpage-openapi/mcp-server/) · [Source](https://github.com/kochetkov-ma/brewpage-openapi/tree/main/mcp-server)
+[MCP Server guide](/brewpage-openapi/mcp-server/) · [npm package](https://www.npmjs.com/package/brewpage-mcp)
 
 ---
 
-### 4. REST API (curl / code)
+### 4. REST API
 
-> POST JSON → Get URL + owner token → Share
+<Timeline steps={[
+  { title: "POST your content", description: "Send JSON to /api/html with content and format" },
+  { title: "Get URL + owner token", description: "Response includes url, shortUrl, ownerToken" },
+  { title: "Share the link", description: "Use the URL or short URL anywhere" },
+]} />
 
 **Publish HTML:**
 
@@ -162,21 +126,6 @@ curl -X POST https://brewpage.app/api/json/myapp/users \
 curl https://brewpage.app/api/stats
 ```
 
-**With options (password + TTL + tags):**
-
-```bash
-curl -X POST https://brewpage.app/api/html \
-  -H "Content-Type: application/json" \
-  -d '{
-    "namespace": "myproject",
-    "content": "# Private Notes",
-    "format": "MARKDOWN",
-    "password": "secret123",
-    "ttlDays": 90,
-    "tags": ["notes"]
-  }'
-```
-
 ---
 
 ## Next Steps
@@ -184,7 +133,6 @@ curl -X POST https://brewpage.app/api/html \
 - [API Reference](/brewpage-openapi/api-reference/) — Interactive API explorer (Scalar)
 - [MCP Server](/brewpage-openapi/mcp-server/) — AI assistant setup guide
 - [Examples](/brewpage-openapi/examples/) — Code in JavaScript, Python, Go, Ruby, PHP
-- [Wiki](https://github.com/kochetkov-ma/brewpage-openapi/tree/main/wiki) — Quick cheatsheets and tips
 
 ## All Resources
 
@@ -194,7 +142,7 @@ curl -X POST https://brewpage.app/api/html \
 | **Alias domain** | [brewdata.app](https://brewdata.app) |
 | **API Docs (Scalar)** | [kochetkov-ma.github.io/brewpage-openapi](https://kochetkov-ma.github.io/brewpage-openapi/api-reference/) |
 | **OpenAPI Spec** | [openapi.yaml](https://github.com/kochetkov-ma/brewpage-openapi/blob/main/openapi/openapi.yaml) |
-| **MCP Server** | [brewpage-mcp](https://github.com/kochetkov-ma/brewpage-openapi/tree/main/mcp-server) |
+| **MCP Server (npm)** | [brewpage-mcp](https://www.npmjs.com/package/brewpage-mcp) |
 | **Claude Skill** | [brewpage-publish](https://github.com/kochetkov-ma/claude-brewcode/tree/main/skills/brewpage-publish) |
 | **Skill Docs** | [doc-claude.brewcode.app](https://doc-claude.brewcode.app/brewdoc/brewpage/) |
 | **Brewcode Plugin** | [claude-brewcode](https://github.com/kochetkov-ma/claude-brewcode) |
