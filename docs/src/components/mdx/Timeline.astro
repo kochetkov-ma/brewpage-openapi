@@ -7,13 +7,10 @@ const { steps } = Astro.props;
 
 <div class="not-prose my-8">
   <ol class="tl">
-    {steps.map((step, i) => (
-      <li class="tl-step">
-        <div class="tl-dot"><span>{i + 1}</span></div>
-        <div class="tl-body">
-          <h4 class="tl-title">{step.title}</h4>
-          <p class="tl-desc">{step.description}</p>
-        </div>
+    {steps.map((step) => (
+      <li>
+        <strong>{step.title}</strong>
+        <p>{step.description}</p>
       </li>
     ))}
   </ol>
@@ -24,72 +21,72 @@ const { steps } = Astro.props;
     list-style: none;
     padding: 0;
     margin: 0;
-    position: relative;
+    counter-reset: step-counter;
   }
 
-  .tl-step {
+  .tl :global(li) {
+    display: grid;
+    grid-template-columns: 2.5rem 1fr;
+    gap: 0 1rem;
     position: relative;
-    display: flex;
-    align-items: flex-start;
-    gap: 1.25rem;
-    padding-bottom: 2rem;
+    padding-bottom: 1.75rem;
+    counter-increment: step-counter;
   }
 
-  .tl-step:last-child {
+  .tl :global(li:last-child) {
     padding-bottom: 0;
   }
 
-  /* Vertical line between dots */
-  .tl-step::before {
-    content: '';
-    position: absolute;
-    left: 22px;
-    top: 48px;
-    bottom: 0;
-    width: 3px;
-    background: #EBBB40;
-    border-radius: 2px;
-  }
-
-  .tl-step:last-child::before {
-    display: none;
-  }
-
-  /* Gold circle */
-  .tl-dot {
-    flex-shrink: 0;
-    width: 44px;
-    height: 44px;
-    border-radius: 50%;
-    background: #EBBB40;
-    color: #141414;
+  /* Numbered circle */
+  .tl :global(li)::before {
+    content: counter(step-counter);
+    grid-column: 1;
+    grid-row: 1 / -1;
+    align-self: start;
     display: flex;
     align-items: center;
     justify-content: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 9999px;
+    background: oklch(var(--p));
+    color: oklch(var(--pc));
     font-weight: 800;
-    font-size: 1rem;
+    font-size: 0.95rem;
     z-index: 1;
-    box-shadow: 0 0 0 5px #141414;
   }
 
-  /* Content block */
-  .tl-body {
-    padding-top: 0.35rem;
-    min-width: 0;
+  /* Connecting line */
+  .tl :global(li)::after {
+    content: '';
+    position: absolute;
+    left: 1.125rem;
+    top: 2.5rem;
+    bottom: 0;
+    width: 0.25rem;
+    border-radius: 0.125rem;
+    background: oklch(var(--p));
   }
 
-  .tl-title {
-    font-size: 1.125rem;
+  .tl :global(li:last-child)::after {
+    display: none;
+  }
+
+  /* Title */
+  .tl :global(strong) {
+    grid-column: 2;
+    font-size: 1.05rem;
     font-weight: 700;
     color: #E7E5E4;
-    margin: 0 0 0.25rem 0;
-    line-height: 1.3;
+    line-height: 2.5rem;
   }
 
-  .tl-desc {
+  /* Description */
+  .tl :global(p) {
+    grid-column: 2;
     font-size: 0.875rem;
     color: #a8a29e;
-    margin: 0;
+    margin: 0.125rem 0 0 0;
     line-height: 1.6;
   }
 </style>
