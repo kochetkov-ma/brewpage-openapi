@@ -764,8 +764,7 @@
             "description": "Comma-separated tags",
             "required": false,
             "schema": {
-              "type": "string",
-              "example": "demo,test"
+              "type": "string"
             }
           },
           {
@@ -910,8 +909,7 @@
             "description": "Comma-separated tags",
             "required": false,
             "schema": {
-              "type": "string",
-              "example": "demo,test"
+              "type": "string"
             }
           },
           {
@@ -1012,8 +1010,7 @@
             "description": "Comma-separated tags",
             "required": false,
             "schema": {
-              "type": "string",
-              "example": "demo,test"
+              "type": "string"
             }
           },
           {
@@ -1168,8 +1165,7 @@
             "description": "Comma-separated tags",
             "required": false,
             "schema": {
-              "type": "string",
-              "example": "demo,test"
+              "type": "string"
             }
           },
           {
@@ -1591,8 +1587,7 @@
             "schema": {
               "type": "integer",
               "format": "int32",
-              "default": 1,
-              "example": 1
+              "default": 1
             }
           },
           {
@@ -1603,8 +1598,7 @@
             "schema": {
               "type": "integer",
               "format": "int32",
-              "default": 20,
-              "example": 20
+              "default": 20
             }
           }
         ],
@@ -1783,8 +1777,7 @@
             "description": "Comma-separated tags",
             "required": false,
             "schema": {
-              "type": "string",
-              "example": "demo,portfolio"
+              "type": "string"
             }
           },
           {
@@ -2062,8 +2055,7 @@
             "required": true,
             "description": "Relative file path within the site. May contain slashes for nested paths, e.g.: assets/css/main.css",
             "schema": {
-              "type": "string",
-              "example": "assets/css/main.css"
+              "type": "string"
             }
           },
           {
