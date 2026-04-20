@@ -2706,7 +2706,6 @@
           },
           "contentType": {
             "type": "string",
-            "nullable": true,
             "description": "Detected MIME type"
           },
           "sizeBytes": {
