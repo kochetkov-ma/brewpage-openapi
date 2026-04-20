@@ -8,49 +8,45 @@
 </dialog>
 
 <script>
-  document.addEventListener('astro:page-load', () => {
-    const dialog = document.getElementById('search-dialog') as HTMLDialogElement | null;
-    if (!dialog) return;
+  const dialog = document.getElementById('search-dialog') as HTMLDialogElement | null;
+  const container = document.getElementById('pagefind-search');
 
-    const container = document.getElementById('pagefind-search');
-    if (!container) return;
+  if (dialog && container && !container.dataset.initialized) {
+    container.dataset.initialized = 'true';
 
-    if (!container.dataset.initialized) {
-      container.dataset.initialized = 'true';
-      import('@pagefind/default-ui').then(({ PagefindUI }) => {
-        new PagefindUI({
-          element: '#pagefind-search',
-          bundlePath: '/brewpage-openapi/pagefind/',
-          showSubResults: true,
-          showImages: false,
-          autofocus: true,
-        });
+    import('@pagefind/default-ui').then(({ PagefindUI }) => {
+      new PagefindUI({
+        element: '#pagefind-search',
+        bundlePath: '/brewpage-openapi/pagefind/',
+        showSubResults: true,
+        showImages: false,
+        autofocus: true,
       });
+    });
 
-      document.addEventListener('keydown', (e: KeyboardEvent) => {
-        if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
-          e.preventDefault();
-          if (dialog.open) {
-            dialog.close();
-          } else {
-            dialog.showModal();
-          }
+    document.addEventListener('keydown', (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        if (dialog.open) {
+          dialog.close();
+        } else {
+          dialog.showModal();
         }
+      }
+    });
+
+    const searchBtn = document.getElementById('search-btn');
+    if (searchBtn) {
+      searchBtn.addEventListener('click', () => {
+        dialog.showModal();
       });
-
-      const searchBtn = document.getElementById('search-btn');
-      if (searchBtn) {
-        searchBtn.addEventListener('click', () => {
-          dialog.showModal();
-        });
-      }
-
-      const searchBtnMobile = document.getElementById('search-btn-mobile');
-      if (searchBtnMobile) {
-        searchBtnMobile.addEventListener('click', () => {
-          dialog.showModal();
-        });
-      }
     }
-  });
+
+    const searchBtnMobile = document.getElementById('search-btn-mobile');
+    if (searchBtnMobile) {
+      searchBtnMobile.addEventListener('click', () => {
+        dialog.showModal();
+      });
+    }
+  }
 </script>
