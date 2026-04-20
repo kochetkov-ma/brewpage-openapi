@@ -28,7 +28,7 @@
     script.onload = () => {
       if (loading) loading.style.display = 'none';
       const el = document.createElement('api-reference');
-      el.setAttribute('data-url', 'https://brewpage.app/v3/api-docs');
+      el.setAttribute('data-url', '/brewpage-openapi/openapi.json');
       el.setAttribute('data-configuration', JSON.stringify({
         theme: 'kepler',
         layout: 'modern',
