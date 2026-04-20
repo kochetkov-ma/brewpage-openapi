@@ -764,9 +764,9 @@
             "description": "Comma-separated tags",
             "required": false,
             "schema": {
-              "type": "string"
-            },
-            "example": "demo,test"
+              "type": "string",
+              "example": "demo,test"
+            }
           },
           {
             "name": "ttl",
@@ -910,9 +910,9 @@
             "description": "Comma-separated tags",
             "required": false,
             "schema": {
-              "type": "string"
-            },
-            "example": "demo,test"
+              "type": "string",
+              "example": "demo,test"
+            }
           },
           {
             "name": "ttl",
@@ -1012,9 +1012,9 @@
             "description": "Comma-separated tags",
             "required": false,
             "schema": {
-              "type": "string"
-            },
-            "example": "demo,test"
+              "type": "string",
+              "example": "demo,test"
+            }
           },
           {
             "name": "ttl",
@@ -1168,9 +1168,9 @@
             "description": "Comma-separated tags",
             "required": false,
             "schema": {
-              "type": "string"
-            },
-            "example": "demo,test"
+              "type": "string",
+              "example": "demo,test"
+            }
           },
           {
             "name": "ttl",
@@ -1591,9 +1591,9 @@
             "schema": {
               "type": "integer",
               "format": "int32",
-              "default": 1
-            },
-            "example": 1
+              "default": 1,
+              "example": 1
+            }
           },
           {
             "name": "size",
@@ -1603,9 +1603,9 @@
             "schema": {
               "type": "integer",
               "format": "int32",
-              "default": 20
-            },
-            "example": 20
+              "default": 20,
+              "example": 20
+            }
           }
         ],
         "responses": {
@@ -1783,9 +1783,9 @@
             "description": "Comma-separated tags",
             "required": false,
             "schema": {
-              "type": "string"
-            },
-            "example": "demo,portfolio"
+              "type": "string",
+              "example": "demo,portfolio"
+            }
           },
           {
             "name": "ttl",

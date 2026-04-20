@@ -487,7 +487,7 @@ paths:
         required: false
         schema:
           type: string
-        example: demo,test
+          example: demo,test
       - name: ttl
         in: query
         description: Time to live in days (1-365, default 5). Store auto-deletes after expiry
@@ -585,7 +585,7 @@ paths:
         required: false
         schema:
           type: string
-        example: demo,test
+          example: demo,test
       - name: ttl
         in: query
         description: Time to live in days (1-365, default 5). Document auto-deletes after expiry
@@ -654,7 +654,7 @@ paths:
         required: false
         schema:
           type: string
-        example: demo,test
+          example: demo,test
       - name: ttl
         in: query
         description: Time to live in days (1-365, default 5). Page auto-deletes after expiry
@@ -760,7 +760,7 @@ paths:
         required: false
         schema:
           type: string
-        example: demo,test
+          example: demo,test
       - name: ttl
         in: query
         description: Time to live in days (1-365, default 5). File auto-deletes after expiry
@@ -1030,7 +1030,7 @@ paths:
           type: integer
           format: int32
           default: 1
-        example: 1
+          example: 1
       - name: size
         in: query
         description: Items per page (max 100)
@@ -1039,7 +1039,7 @@ paths:
           type: integer
           format: int32
           default: 20
-        example: 20
+          example: 20
       responses:
         '200':
           description: Paginated gallery items
@@ -1156,7 +1156,7 @@ paths:
         required: false
         schema:
           type: string
-        example: demo,portfolio
+          example: demo,portfolio
       - name: ttl
         in: query
         description: Time to live in days (1-30, default 5)
