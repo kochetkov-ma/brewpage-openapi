@@ -17,10 +17,9 @@
 </style>
 
 <script>
-  document.addEventListener('astro:page-load', () => {
-    const container = document.getElementById('scalar-api');
-    const loading = document.getElementById('scalar-loading');
-    if (!container || container.dataset.initialized) return;
+  const container = document.getElementById('scalar-api');
+  const loading = document.getElementById('scalar-loading');
+  if (container && !container.dataset.initialized) {
     container.dataset.initialized = 'true';
 
     const script = document.createElement('script');
@@ -45,5 +44,5 @@
       container.appendChild(el);
     };
     document.head.appendChild(script);
-  });
+  }
 </script>
