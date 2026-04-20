@@ -114,6 +114,44 @@ curl -X POST https://brewpage.app/api/files/uploads \
   -F "file=@report.pdf"
 ```
 
+## Sites (Multi-File HTML)
+
+### Upload a Site
+
+Upload a multi-file HTML site and get a public URL:
+
+```bash
+curl -X POST "https://brewpage.app/api/sites" \
+  -F "files=@index.html;type=text/html" \
+  -F "files=@style.css;type=text/css" \
+  -F "paths=index.html" \
+  -F "paths=style.css"
+```
+
+Response:
+
+```json
+{
+  "id": "aBcDeFgHiJ",
+  "namespace": "public",
+  "entryFile": "index.html",
+  "link": "https://brewpage.app/public/aBcDeFgHiJ",
+  "ownerLink": "https://brewpage.app/api/sites/public/aBcDeFgHiJ",
+  "fileCount": 2,
+  "totalSizeBytes": 1024,
+  "expiresAt": "2026-04-25T12:00:00Z",
+  "tags": [],
+  "ownerToken": "your-secret-token"
+}
+```
+
+Or upload via ZIP archive:
+
+```bash
+curl -X POST "https://brewpage.app/api/sites" \
+  -F "archive=@site.zip;type=application/zip"
+```
+
 ## JavaScript / Fetch
 
 ### Publish from Browser

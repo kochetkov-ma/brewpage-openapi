@@ -71,6 +71,22 @@ Limits: **5 MB/file**, **1,000 files/namespace**
 
 ---
 
+## Sites
+
+| Action | Method | Endpoint |
+|--------|--------|----------|
+| Upload site (ZIP) | `POST` | `/api/sites` |
+| Upload site (files) | `POST` | `/api/sites` |
+| Get site info | `GET` | `/api/sites/{ns}/{id}` |
+| Serve site file | `GET` | `/api/sites/{ns}/{id}/files/{filePath}` |
+| Delete site | `DELETE` | `/api/sites/{ns}/{id}` |
+
+**Query params (upload):** `ns` (default: public), `tags` (comma-separated), `ttl` (1-30 days), `entry` (override entry file)
+**Headers:** `X-Password` (protection), `X-Owner-Token` (owner grouping / info / delete)
+**Response (201):** `id`, `namespace`, `entryFile`, `link`, `ownerLink`, `fileCount`, `totalSizeBytes`, `expiresAt`, `tags`, `ownerToken`
+
+---
+
 ## Gallery & Stats
 
 ```

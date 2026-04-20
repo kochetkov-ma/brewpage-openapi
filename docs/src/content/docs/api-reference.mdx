@@ -42,6 +42,7 @@ Base URL: [`https://brewpage.app`](https://brewpage.app) (alias: [`https://brewd
 | **KV** | Key-value store (1000 keys/ns) | [`PUT /api/kv/{ns}/{id}/{key}`](https://brewpage.app/swagger-ui/index.html#/KV/setKey), [`GET /api/kv/{ns}/{id}/{key}`](https://brewpage.app/swagger-ui/index.html#/KV/getKey) |
 | **JSON** | JSON document store (10K docs) | [`POST /api/json/{ns}/{collection}`](https://brewpage.app/swagger-ui/index.html#/JSON), [`GET /api/json/{ns}/{collection}/{id}`](https://brewpage.app/swagger-ui/index.html#/JSON) |
 | **Files** | File hosting (5 MB/file) | [`POST /api/files/uploads`](https://brewpage.app/swagger-ui/index.html#/Files), [`GET /api/files/{ns}/{id}/{filename}`](https://brewpage.app/swagger-ui/index.html#/Files) |
+| **Sites** | Multi-file HTML site hosting | [`POST /api/sites`](https://brewpage.app/swagger-ui/index.html#/Sites), [`GET /api/sites/{ns}/{id}`](https://brewpage.app/swagger-ui/index.html#/Sites), [`GET /api/sites/{ns}/{id}/files/{filePath}`](https://brewpage.app/swagger-ui/index.html#/Sites), [`DELETE /api/sites/{ns}/{id}`](https://brewpage.app/swagger-ui/index.html#/Sites) |
 | **Gallery** | Public content browser | [`GET /api/gallery/pages`](https://brewpage.app/swagger-ui/index.html#/Gallery), [`GET /api/gallery/files`](https://brewpage.app/swagger-ui/index.html#/Gallery) |
 | **Stats** | Platform statistics | [`GET /api/stats`](https://brewpage.app/swagger-ui/index.html#/Stats) |
 | **Short Links** | URL shortener | `GET /s/{code}` |

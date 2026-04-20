@@ -1,6 +1,13 @@
 # BrewPage API Wiki
 
-> **Publish anything in seconds.** HTML, Markdown, files, JSON, key-value data — no signup required.
+> **Publish anything in seconds.** HTML, Markdown, files, JSON, key-value data, multi-file sites — no signup required.
+
+**Resource types:**
+- **HTML** — Single-page HTML or Markdown publishing
+- **KV** — Key-value store
+- **JSON** — JSON document collections
+- **Files** — File uploads and downloads
+- **Sites** — Multi-file HTML site hosting via ZIP or individual files
 
 ---
 

@@ -2,8 +2,8 @@
   "openapi": "3.1.0",
   "info": {
     "title": "BrewPage API",
-    "version": "1.0.0",
-    "description": "REST API for BrewPage — HTML/KV/JSON/file hosting platform. Publish and manage web content, key-value data, JSON documents, and files with short URLs, password protection, and real-time statistics.",
+    "version": "1.1.0",
+    "description": "REST API for BrewPage \u2014 HTML/KV/JSON/file hosting platform. Publish and manage web content, key-value data, JSON documents, and files with short URLs, password protection, and real-time statistics.",
     "contact": {
       "name": "BrewPage",
       "url": "https://brewpage.app"
@@ -51,6 +51,10 @@
     {
       "name": "Files",
       "description": "File hosting up to 5 MB per file, 1000 files per namespace"
+    },
+    {
+      "name": "Sites",
+      "description": "Multi-file HTML site hosting via ZIP or folder upload (up to 5 MB per file, 1000 files per site)"
     }
   ],
   "paths": {
@@ -1753,6 +1757,367 @@
           }
         }
       }
+    },
+    "/api/sites": {
+      "post": {
+        "tags": [
+          "Sites"
+        ],
+        "summary": "Upload site",
+        "description": "Upload a multi-file HTML site as a ZIP archive or as individual files with paths. Returns a link to the published site",
+        "operationId": "uploadSite",
+        "parameters": [
+          {
+            "name": "ns",
+            "in": "query",
+            "description": "Namespace. Default: public",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "public"
+            }
+          },
+          {
+            "name": "tags",
+            "in": "query",
+            "description": "Comma-separated tags",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "example": "demo,portfolio"
+          },
+          {
+            "name": "ttl",
+            "in": "query",
+            "description": "Time to live in days (1-30, default 5)",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 30
+            }
+          },
+          {
+            "name": "entry",
+            "in": "query",
+            "description": "Entry file path override (default: auto-detect index.html)",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Password",
+            "in": "header",
+            "description": "Access password",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Owner-Token",
+            "in": "header",
+            "description": "Reuse existing owner token to group entities under one owner",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "archive": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "ZIP archive containing site files"
+                  },
+                  "files": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "format": "binary"
+                    },
+                    "description": "Individual files (alternative to archive)"
+                  },
+                  "paths": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "Relative paths for each file (must match files order)"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Site uploaded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SiteUploadResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request, no HTML files, or limits exceeded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Unsupported file type in archive",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/sites/{ns}/{id}": {
+      "get": {
+        "tags": [
+          "Sites"
+        ],
+        "summary": "Get site info",
+        "description": "Returns site metadata and file list. Requires owner token",
+        "operationId": "getSiteInfo",
+        "parameters": [
+          {
+            "name": "ns",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Owner-Token",
+            "in": "header",
+            "description": "Owner token returned at creation",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Site info",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SiteInfoResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing or wrong owner token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Site not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Sites"
+        ],
+        "summary": "Delete site",
+        "description": "Permanently removes the site and all its files from storage",
+        "operationId": "deleteSite",
+        "parameters": [
+          {
+            "name": "ns",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Owner-Token",
+            "in": "header",
+            "description": "Owner token returned at creation. Required for delete",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Site deleted"
+          },
+          "403": {
+            "description": "Missing or wrong owner token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Site not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/sites/{ns}/{id}/files/{filePath}": {
+      "get": {
+        "tags": [
+          "Sites"
+        ],
+        "summary": "Serve site file",
+        "description": "Serves an individual file from the site with correct content type",
+        "operationId": "serveSiteFile",
+        "parameters": [
+          {
+            "name": "ns",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "filePath",
+            "in": "path",
+            "required": true,
+            "description": "Relative file path within the site",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Password",
+            "in": "header",
+            "description": "Access password via header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "p",
+            "in": "query",
+            "description": "Access password via query param",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "File content",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong password",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Site or file not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -2241,6 +2606,137 @@
           "createdAt": {
             "type": "string",
             "format": "date-time"
+          }
+        }
+      },
+      "SiteUploadResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Unique 10-character alphanumeric site ID"
+          },
+          "namespace": {
+            "type": "string"
+          },
+          "entryFile": {
+            "type": "string",
+            "description": "Entry HTML file resolved from the upload (e.g. index.html)"
+          },
+          "link": {
+            "type": "string",
+            "description": "Public URL to view the site"
+          },
+          "ownerLink": {
+            "type": "string",
+            "description": "API URL for programmatic access (info, delete)"
+          },
+          "fileCount": {
+            "type": "integer"
+          },
+          "totalSizeBytes": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "ownerToken": {
+            "type": "string",
+            "description": "Secret token required for info and delete operations. Store it safely -- cannot be recovered"
+          }
+        }
+      },
+      "SiteInfoResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Unique 10-character alphanumeric site ID"
+          },
+          "namespace": {
+            "type": "string"
+          },
+          "entryFile": {
+            "type": "string",
+            "description": "Entry HTML file resolved from the upload"
+          },
+          "fileCount": {
+            "type": "integer"
+          },
+          "totalSizeBytes": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "files": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SiteFileInfo"
+            },
+            "description": "List of all files in the site"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "views": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "SiteFileInfo": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Relative file path within the site"
+          },
+          "contentType": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Detected MIME type"
+          },
+          "sizeBytes": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "string",
+            "description": "Error code or short identifier"
+          },
+          "message": {
+            "type": "string",
+            "description": "Human-readable error message"
+          },
+          "status": {
+            "type": "integer",
+            "format": "int32",
+            "description": "HTTP status code"
           }
         }
       }
