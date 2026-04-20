@@ -141,3 +141,54 @@ $result = json_decode(curl_exec($ch), true);
 echo "URL: {$result['url']}\n";
 echo "Token: {$result['ownerToken']}\n"; // Save this!
 ```
+
+---
+
+## Sites
+
+### Upload site (individual files) — curl
+
+```bash
+curl -X POST "https://brewpage.app/api/sites" \
+  -F "files=@index.html;type=text/html" \
+  -F "files=@style.css;type=text/css" \
+  -F "paths=index.html" \
+  -F "paths=style.css"
+```
+
+### Upload site (ZIP archive) — curl
+
+```bash
+curl -X POST "https://brewpage.app/api/sites?ttl=7" \
+  -F "archive=@mysite.zip;type=application/zip"
+```
+
+### Get site info — curl
+
+```bash
+curl https://brewpage.app/api/sites/public/aBcDeFgHiJ \
+  -H "X-Owner-Token: your-owner-token"
+```
+
+### Delete site — curl
+
+```bash
+curl -X DELETE https://brewpage.app/api/sites/public/aBcDeFgHiJ \
+  -H "X-Owner-Token: your-owner-token"
+```
+
+### Upload site — JavaScript
+
+```javascript
+const formData = new FormData();
+const html = '<html><body><h1>Hello!</h1></body></html>';
+formData.append('files', new Blob([html], { type: 'text/html' }), 'index.html');
+formData.append('paths', 'index.html');
+
+const res = await fetch('https://brewpage.app/api/sites', {
+  method: 'POST',
+  body: formData,
+});
+const site = await res.json();
+console.log(site.link, site.ownerToken);
+```

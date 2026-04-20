@@ -306,6 +306,79 @@ server.tool(
   }
 );
 
+server.tool(
+  "publish_site",
+  "Publish a multi-file HTML site to BrewPage. Provide HTML content as the entry file (index.html). Returns a public URL and owner token.",
+  {
+    entryContent: z.string().describe("HTML content for the site entry file (index.html)"),
+    namespace: z
+      .string()
+      .optional()
+      .describe("Namespace for the site (optional, defaults to 'public')"),
+    password: z
+      .string()
+      .optional()
+      .describe("Optional password to protect the site"),
+    ttlDays: z
+      .number()
+      .min(1)
+      .max(30)
+      .optional()
+      .describe("Time to live in days (1-30, default: 5)"),
+  },
+  async ({ entryContent, namespace, password, ttlDays }) => {
+    const formData = new FormData();
+    const entryBlob = new Blob([entryContent], { type: "text/html" });
+    formData.append("files", entryBlob, "index.html");
+    formData.append("paths", "index.html");
+    if (namespace) formData.append("ns", namespace);
+    if (ttlDays) formData.append("ttl", String(ttlDays));
+
+    const headers: Record<string, string> = {};
+    if (password) headers["X-Password"] = password;
+
+    const url = `${BASE_URL}/api/sites`;
+    const res = await fetch(url, { method: "POST", headers, body: formData });
+    const data = await res.json().catch(() => null);
+
+    if (!res.ok) {
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: `Failed to publish site: ${JSON.stringify(data)}`,
+          },
+        ],
+        isError: true,
+      };
+    }
+
+    const site = data as Record<string, unknown>;
+    const lines = [
+      `Site published successfully!`,
+      ``,
+      `URL: ${site.link || "N/A"}`,
+      `Namespace: ${site.namespace || "N/A"}`,
+      `ID: ${site.id || "N/A"}`,
+      `Entry file: ${site.entryFile || "index.html"}`,
+      `Files: ${site.fileCount || 1}`,
+    ];
+    if (site.expiresAt) lines.push(`Expires: ${site.expiresAt}`);
+    lines.push(
+      ``,
+      `===================================`,
+      `OWNER TOKEN: ${site.ownerToken}`,
+      `===================================`,
+      ``,
+      `IMPORTANT: Save your owner token! You need it to view info or delete this site. It cannot be recovered if lost.`
+    );
+
+    return {
+      content: [{ type: "text" as const, text: lines.join("\n") }],
+    };
+  }
+);
+
 async function main() {
   const transport = new StdioServerTransport();
   await server.connect(transport);

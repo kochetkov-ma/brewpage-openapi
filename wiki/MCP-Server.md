@@ -68,6 +68,7 @@ npx brewpage-mcp
 |------|-------------|
 | `publish_html` | Publish HTML or Markdown → URL + token |
 | `publish_file` | Upload file from URL → URL + token |
+| `publish_site` | Publish a multi-file HTML site from HTML content (`entryContent`, `namespace?`, `password?`, `ttlDays?`) |
 | `delete_resource` | Delete with owner token |
 | `get_page` | Fetch page content |
 | `get_stats` | Platform statistics |
