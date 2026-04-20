@@ -1794,9 +1794,8 @@ components:
           type: string
           description: Relative file path within the site
         contentType:
-          type:
-          - string
-          - 'null'
+          type: string
+          nullable: true
           description: Detected MIME type
         sizeBytes:
           type: integer
