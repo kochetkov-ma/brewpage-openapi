@@ -30,6 +30,9 @@ jobs:
         working-directory: docs
         run: npm ci
 
+      - name: Copy OpenAPI spec to public
+        run: cp openapi/openapi.json docs/public/openapi.json
+
       - name: Build site
         working-directory: docs
         run: npm run build
