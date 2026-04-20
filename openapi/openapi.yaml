@@ -1332,7 +1332,10 @@ paths:
       - name: filePath
         in: path
         required: true
-        description: Relative file path within the site
+        description: Relative file path within the site. May contain slashes for nested paths (e.g. assets/css/main.css)
+        style: simple
+        allowReserved: true
+        example: assets/css/main.css
         schema:
           type: string
       - name: X-Password
@@ -1735,6 +1738,7 @@ components:
           description: API URL for programmatic access (info, delete)
         fileCount:
           type: integer
+          format: int32
         totalSizeBytes:
           type: integer
           format: int64
@@ -1761,6 +1765,7 @@ components:
           description: Entry HTML file resolved from the upload
         fileCount:
           type: integer
+          format: int32
         totalSizeBytes:
           type: integer
           format: int64
@@ -1809,3 +1814,7 @@ components:
           type: integer
           format: int32
           description: HTTP status code
+        timestamp:
+          type: string
+          format: date-time
+          description: ISO-8601 timestamp of when the error occurred

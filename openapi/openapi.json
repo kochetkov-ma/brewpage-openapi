@@ -3,7 +3,7 @@
   "info": {
     "title": "BrewPage API",
     "version": "1.1.0",
-    "description": "REST API for BrewPage \u2014 HTML/KV/JSON/file hosting platform. Publish and manage web content, key-value data, JSON documents, and files with short URLs, password protection, and real-time statistics.",
+    "description": "REST API for BrewPage — HTML/KV/JSON/file hosting platform. Publish and manage web content, key-value data, JSON documents, and files with short URLs, password protection, and real-time statistics.",
     "contact": {
       "name": "BrewPage",
       "url": "https://brewpage.app"
@@ -2060,7 +2060,10 @@
             "name": "filePath",
             "in": "path",
             "required": true,
-            "description": "Relative file path within the site",
+            "description": "Relative file path within the site. May contain slashes for nested paths (e.g. assets/css/main.css)",
+            "style": "simple",
+            "allowReserved": true,
+            "example": "assets/css/main.css",
             "schema": {
               "type": "string"
             }
@@ -2632,7 +2635,8 @@
             "description": "API URL for programmatic access (info, delete)"
           },
           "fileCount": {
-            "type": "integer"
+            "type": "integer",
+            "format": "int32"
           },
           "totalSizeBytes": {
             "type": "integer",
@@ -2669,7 +2673,8 @@
             "description": "Entry HTML file resolved from the upload"
           },
           "fileCount": {
-            "type": "integer"
+            "type": "integer",
+            "format": "int32"
           },
           "totalSizeBytes": {
             "type": "integer",
@@ -2737,6 +2742,11 @@
             "type": "integer",
             "format": "int32",
             "description": "HTTP status code"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "description": "ISO-8601 timestamp of when the error occurred"
           }
         }
       }

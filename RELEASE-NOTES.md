@@ -1,5 +1,16 @@
 # Release Notes
 
+## v1.1.1 (2026-04-20)
+
+### Fixed
+- OpenAPI: `{filePath}` parameter now documents multi-segment slash support (`allowReserved: true`, example added)
+- OpenAPI: `ErrorResponse` schema now includes `timestamp` field (matches backend)
+- OpenAPI: `SiteUploadResponse` and `SiteInfoResponse` `fileCount` now typed as `int32`
+- MCP: `publish_site` tool now accepts and forwards `X-Owner-Token` for owner grouping
+- MCP: server runtime version corrected to `1.1.1`
+- MCP: `publish_site` description corrected to accurately describe single-page upload
+- Docs: `api-reference.mdx` Files row fixed to reference correct endpoints
+
 ## v1.1.0 (2026-04-20)
 
 ### Added

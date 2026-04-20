@@ -8,7 +8,7 @@ const BASE_URL = process.env.BREWPAGE_URL || "https://brewpage.app";
 
 const server = new McpServer({
   name: "brewpage-mcp",
-  version: "1.0.0",
+  version: "1.1.1",
 });
 
 async function apiRequest(
@@ -308,7 +308,7 @@ server.tool(
 
 server.tool(
   "publish_site",
-  "Publish a multi-file HTML site to BrewPage. Provide HTML content as the entry file (index.html). Returns a public URL and owner token.",
+  "Publish a single-page HTML site to BrewPage. Accepts HTML content as the entry file (index.html). For multi-file sites with CSS/JS/images, use the REST API directly. Returns a public URL and owner token.",
   {
     entryContent: z.string().describe("HTML content for the site entry file (index.html)"),
     namespace: z
@@ -325,8 +325,12 @@ server.tool(
       .max(30)
       .optional()
       .describe("Time to live in days (1-30, default: 5)"),
+    ownerToken: z
+      .string()
+      .optional()
+      .describe("Existing owner token to group this site under the same owner as previous content"),
   },
-  async ({ entryContent, namespace, password, ttlDays }) => {
+  async ({ entryContent, namespace, password, ttlDays, ownerToken }) => {
     const formData = new FormData();
     const entryBlob = new Blob([entryContent], { type: "text/html" });
     formData.append("files", entryBlob, "index.html");
@@ -336,6 +340,7 @@ server.tool(
 
     const headers: Record<string, string> = {};
     if (password) headers["X-Password"] = password;
+    if (ownerToken) headers["X-Owner-Token"] = ownerToken;
 
     const url = `${BASE_URL}/api/sites`;
     const res = await fetch(url, { method: "POST", headers, body: formData });
