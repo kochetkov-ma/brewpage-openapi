@@ -2060,12 +2060,10 @@
             "name": "filePath",
             "in": "path",
             "required": true,
-            "description": "Relative file path within the site. May contain slashes for nested paths (e.g. assets/css/main.css)",
-            "style": "simple",
-            "allowReserved": true,
-            "example": "assets/css/main.css",
+            "description": "Relative file path within the site. May contain slashes for nested paths, e.g.: assets/css/main.css",
             "schema": {
-              "type": "string"
+              "type": "string",
+              "example": "assets/css/main.css"
             }
           },
           {
