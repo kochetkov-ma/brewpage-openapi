@@ -9,6 +9,8 @@
 > a proprietary HTML/KV/JSON/file hosting platform.
 > The backend, frontend, and infrastructure remain closed-source.
 
+**Docs:** https://kochetkov-ma.github.io/brewpage-openapi/ | **API Reference:** https://kochetkov-ma.github.io/brewpage-openapi/api-reference/
+
 ## Table of Contents
 
 - [What's Open Here](#whats-open-here)
