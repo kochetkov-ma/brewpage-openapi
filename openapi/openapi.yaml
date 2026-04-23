@@ -1,9 +1,36 @@
 openapi: 3.1.0
 info:
   title: BrewPage API
-  version: 1.1.0
-  description: REST API for BrewPage — HTML/KV/JSON/file hosting platform. Publish and manage web content, key-value data,
+  version: 1.7.0
+  description: |
+    REST API for BrewPage — HTML/KV/JSON/file hosting platform. Publish and manage web content, key-value data,
     JSON documents, and files with short URLs, password protection, and real-time statistics.
+
+    ## Namespaces
+
+    All namespaces are PUBLIC and indexable. Namespace format: `[a-z0-9-]{3,32}`. The `public` namespace (default)
+    appears in the gallery when there is no password. Custom namespaces are created automatically on first use.
+
+    On `ns + id` collision the server returns `409 Conflict`. Clients should either retry with a different `id`
+    or omit `id` to let the server generate one.
+
+    ## TTL
+
+    `ttl_days` applies to html, markdown, json, kv, files, and sites. Default `15`, allowed range `1..30`
+    (max `30`). Resources auto-delete after expiry.
+
+    ## Short URL GET resolvers
+
+    Every short-URL GET resolver (HTML, markdown, JSON, KV, file, site) returns the current view counter in the
+    `X-Views: <integer>` response header.
+
+    ## File serving
+
+    File responses support HTTP Range requests (`Accept-Ranges: bytes`, `206 Partial Content`), carry an `ETag`
+    header, and are cached with `Cache-Control: public, max-age=3600`.
+
+    Allowed file extensions include (non-exhaustive): html, md, json, txt, css, js, jsx, mjs, ts, tsx,
+    plus images, audio, and video types permitted by platform limits.
   contact:
     name: BrewPage
     url: https://brewpage.app
@@ -475,12 +502,14 @@ paths:
       parameters:
       - name: ns
         in: query
-        description: 'Namespace. Default: public. Pages in ''public'' without password appear in gallery. Custom namespace
-          is created automatically'
+        description: 'Namespace. Default: public. All namespaces are PUBLIC and indexable. Pages in ''public'' without
+          password appear in gallery. Custom namespace is created automatically. Format: [a-z0-9-]{3,32}. On ns+id
+          collision the server returns 409 Conflict — retry with a different id or omit id to let the server generate one'
         required: false
         schema:
           type: string
           default: public
+          pattern: '^[a-z0-9-]{3,32}$'
       - name: tags
         in: query
         description: Comma-separated tags
@@ -489,11 +518,14 @@ paths:
           type: string
       - name: ttl
         in: query
-        description: Time to live in days (1-365, default 5). Store auto-deletes after expiry
+        description: Time to live in days (1-30, default 15, max 30). Store auto-deletes after expiry
         required: false
         schema:
           type: integer
           format: int32
+          minimum: 1
+          maximum: 30
+          default: 15
       - name: X-Password
         in: header
         description: Access password. Empty = public store visible in gallery. With password = hidden from gallery, viewers
@@ -572,12 +604,14 @@ paths:
       parameters:
       - name: ns
         in: query
-        description: 'Namespace. Default: public. Pages in ''public'' without password appear in gallery. Custom namespace
-          is created automatically'
+        description: 'Namespace. Default: public. All namespaces are PUBLIC and indexable. Pages in ''public'' without
+          password appear in gallery. Custom namespace is created automatically. Format: [a-z0-9-]{3,32}. On ns+id
+          collision the server returns 409 Conflict — retry with a different id or omit id to let the server generate one'
         required: false
         schema:
           type: string
           default: public
+          pattern: '^[a-z0-9-]{3,32}$'
       - name: tags
         in: query
         description: Comma-separated tags
@@ -586,11 +620,14 @@ paths:
           type: string
       - name: ttl
         in: query
-        description: Time to live in days (1-365, default 5). Document auto-deletes after expiry
+        description: Time to live in days (1-30, default 15, max 30). Document auto-deletes after expiry
         required: false
         schema:
           type: integer
           format: int32
+          minimum: 1
+          maximum: 30
+          default: 15
       - name: X-Password
         in: header
         description: Access password. Empty = public document visible in gallery. With password = hidden from gallery, viewers
@@ -640,12 +677,14 @@ paths:
       parameters:
       - name: ns
         in: query
-        description: 'Namespace. Default: public. Pages in ''public'' without password appear in gallery. Custom namespace
-          is created automatically'
+        description: 'Namespace. Default: public. All namespaces are PUBLIC and indexable. Pages in ''public'' without
+          password appear in gallery. Custom namespace is created automatically. Format: [a-z0-9-]{3,32}. On ns+id
+          collision the server returns 409 Conflict — retry with a different id or omit id to let the server generate one'
         required: false
         schema:
           type: string
           default: public
+          pattern: '^[a-z0-9-]{3,32}$'
       - name: tags
         in: query
         description: Comma-separated tags
@@ -654,11 +693,14 @@ paths:
           type: string
       - name: ttl
         in: query
-        description: Time to live in days (1-365, default 5). Page auto-deletes after expiry
+        description: Time to live in days (1-30, default 15, max 30). Page auto-deletes after expiry
         required: false
         schema:
           type: integer
           format: int32
+          minimum: 1
+          maximum: 30
+          default: 15
       - name: format
         in: query
         description: 'Content format: ''html'' (default), ''markdown'', or ''md''. Markdown is rendered to styled HTML with
@@ -745,12 +787,14 @@ paths:
       parameters:
       - name: ns
         in: query
-        description: 'Namespace. Default: public. Pages in ''public'' without password appear in gallery. Custom namespace
-          is created automatically'
+        description: 'Namespace. Default: public. All namespaces are PUBLIC and indexable. Pages in ''public'' without
+          password appear in gallery. Custom namespace is created automatically. Format: [a-z0-9-]{3,32}. On ns+id
+          collision the server returns 409 Conflict — retry with a different id or omit id to let the server generate one'
         required: false
         schema:
           type: string
           default: public
+          pattern: '^[a-z0-9-]{3,32}$'
       - name: tags
         in: query
         description: Comma-separated tags
@@ -759,11 +803,14 @@ paths:
           type: string
       - name: ttl
         in: query
-        description: Time to live in days (1-365, default 5). File auto-deletes after expiry
+        description: Time to live in days (1-30, default 15, max 30). File auto-deletes after expiry
         required: false
         schema:
           type: integer
           format: int32
+          minimum: 1
+          maximum: 30
+          default: 15
       - name: X-Password
         in: header
         description: Access password. Empty = public file visible in gallery. With password = hidden from gallery, viewers
@@ -817,6 +864,14 @@ paths:
     get:
       tags:
       - Short Links
+      summary: Resolve short URL
+      description: |
+        Resolves a short URL to the underlying resource (HTML, markdown, JSON, KV, file, or site entry).
+
+        Response headers:
+        - `X-Views: <integer>` — current view counter for this resource.
+        - For file/site responses: `Accept-Ranges: bytes`, `ETag`, and `Cache-Control: public, max-age=3600`.
+          Range requests return `206 Partial Content`.
       operationId: resolve
       parameters:
       - name: ns
@@ -850,14 +905,59 @@ paths:
       responses:
         '200':
           description: OK
+          headers:
+            X-Views:
+              description: Current view counter for the resolved resource
+              schema:
+                type: integer
+                format: int64
+            Accept-Ranges:
+              description: 'Present for file/site responses: bytes'
+              schema:
+                type: string
+            ETag:
+              description: Entity tag for file/site responses
+              schema:
+                type: string
+            Cache-Control:
+              description: 'Present for file/site responses: public, max-age=3600'
+              schema:
+                type: string
           content:
             '*/*':
               schema:
                 type: object
+        '206':
+          description: Partial Content (Range requests for files/sites)
+          headers:
+            Content-Range:
+              schema:
+                type: string
+            Accept-Ranges:
+              schema:
+                type: string
+            ETag:
+              schema:
+                type: string
+          content:
+            '*/*':
+              schema:
+                type: string
+                format: binary
+        '409':
+          description: Conflict — ns+id already exists. Retry with a different id or omit id to let the server generate one
   /{ns}/{id}/{sub}:
     get:
       tags:
       - Short Links
+      summary: Resolve short URL with sub-path
+      description: |
+        Resolves a short URL with a sub-path (e.g. entry file within an uploaded site).
+
+        Response headers:
+        - `X-Views: <integer>` — current view counter for this resource.
+        - For file/site responses: `Accept-Ranges: bytes`, `ETag`, and `Cache-Control: public, max-age=3600`.
+          Range requests return `206 Partial Content`.
       operationId: resolveWithSub
       parameters:
       - name: ns
@@ -896,10 +996,45 @@ paths:
       responses:
         '200':
           description: OK
+          headers:
+            X-Views:
+              description: Current view counter for the resolved resource
+              schema:
+                type: integer
+                format: int64
+            Accept-Ranges:
+              description: 'Present for file/site responses: bytes'
+              schema:
+                type: string
+            ETag:
+              description: Entity tag for file/site responses
+              schema:
+                type: string
+            Cache-Control:
+              description: 'Present for file/site responses: public, max-age=3600'
+              schema:
+                type: string
           content:
             '*/*':
               schema:
                 type: object
+        '206':
+          description: Partial Content (Range requests for files/sites)
+          headers:
+            Content-Range:
+              schema:
+                type: string
+            Accept-Ranges:
+              schema:
+                type: string
+            ETag:
+              schema:
+                type: string
+          content:
+            '*/*':
+              schema:
+                type: string
+                format: binary
   /{key}.txt:
     get:
       tags:
@@ -1152,12 +1287,13 @@ paths:
           type: string
       - name: ttl
         in: query
-        description: Time to live in days (1-30, default 5)
+        description: Time to live in days (1-30, default 15, max 30). Site auto-deletes after expiry
         required: false
         schema:
           type: integer
           minimum: 1
           maximum: 30
+          default: 15
       - name: entry
         in: query
         description: 'Entry file path override (default: auto-detect index.html)'
