@@ -1,5 +1,17 @@
 # Release Notes
 
+## v1.7.6 (2026-04-24)
+
+### Added
+- Reports API: `POST /api/reports` public abuse report submission (rate-limited 60/hr/IP)
+- Admin API: `GET /api/admin/reports`, `GET /api/admin/reports/{id}`, `PATCH /api/admin/reports/{id}` (protected by `X-Admin-Password`)
+- Schemas: `ReportRequest`, `ReportResponse`, `ReportSummary`, `ReportDetail`, `ReportUpdateRequest`
+- Tags: `Reports`, `Admin`
+
+### Changed
+- OpenAPI spec version bumped to `1.7.6` (matches brewpage-app backend)
+- `openapi/openapi.json` regenerated from YAML (was stale at `1.1.0`)
+
 ## v1.1.1 (2026-04-20)
 
 ### Fixed
