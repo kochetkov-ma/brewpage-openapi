@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "BrewPage API",
-    "version": "1.7.6",
+    "version": "1.7.7",
     "description": "REST API for BrewPage — HTML/KV/JSON/file hosting platform. Publish and manage web content, key-value data,\nJSON documents, and files with short URLs, password protection, and real-time statistics.\n\n## Namespaces\n\nAll namespaces are PUBLIC and indexable. Namespace format: `[a-z0-9-]{3,32}`. The `public` namespace (default)\nappears in the gallery when there is no password. Custom namespaces are created automatically on first use.\n\nOn `ns + id` collision the server returns `409 Conflict`. Clients should either retry with a different `id`\nor omit `id` to let the server generate one.\n\n## TTL\n\n`ttl_days` applies to html, markdown, json, kv, files, and sites. Default `15`, allowed range `1..30`\n(max `30`). Resources auto-delete after expiry.\n\n## Short URL GET resolvers\n\nEvery short-URL GET resolver (HTML, markdown, JSON, KV, file, site) returns the current view counter in the\n`X-Views: <integer>` response header.\n\n## File serving\n\nFile responses support HTTP Range requests (`Accept-Ranges: bytes`, `206 Partial Content`), carry an `ETag`\nheader, and are cached with `Cache-Control: public, max-age=3600`.\n\nAllowed file extensions include (non-exhaustive): html, md, json, txt, css, js, jsx, mjs, ts, tsx,\nplus images, audio, and video types permitted by platform limits.\n",
     "contact": {
       "name": "BrewPage",
@@ -2532,6 +2532,146 @@
           }
         }
       }
+    },
+    "/api/admin/access": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "List access log events",
+        "description": "List recent HTTP access events persisted into `access_events`. Every external request is logged with\nIP, User-Agent, method, path, status, and latency. Retention is 30 days (nightly cleanup job).\nRequires admin password.\n\nFilters are mutually exclusive and applied in priority order: `resource` > `ip` > (none, returns most recent).\n",
+        "operationId": "listAccess",
+        "parameters": [
+          {
+            "name": "X-Admin-Password",
+            "in": "header",
+            "description": "Admin password",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "resource",
+            "in": "query",
+            "description": "Filter events by resource ID (e.g. a 10-character short ID). Takes priority over `ip`",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "ip",
+            "in": "query",
+            "description": "Filter events by client IP address. Ignored if `resource` is also provided",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Maximum number of events to return",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 100
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "description": "Offset into the result set for pagination",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Access events list, most recent first",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AccessEventSummary"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or wrong admin password",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/access/stats": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Aggregated access log stats",
+        "description": "Aggregated statistics over the access log for the last `days` days, including totals, unique IPs,\ntop paths / IPs / user-agents / referers, and a request-count distribution over the 24 hours of day.\nRequires admin password.\n",
+        "operationId": "accessStats",
+        "parameters": [
+          {
+            "name": "X-Admin-Password",
+            "in": "header",
+            "description": "Admin password",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "days",
+            "in": "query",
+            "description": "Number of days to look back from now",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 7
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Aggregated access stats",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccessStats"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or wrong admin password",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -3376,6 +3516,174 @@
           "reviewerNote": {
             "type": "string",
             "description": "Optional reviewer note to attach to the report"
+          }
+        }
+      },
+      "AccessEventSummary": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Auto-incremented event ID"
+          },
+          "resourceType": {
+            "type": "string",
+            "description": "Resource category (e.g. `html`, `kv`, `json`, `file`, `site`, or other internal label)"
+          },
+          "resourceId": {
+            "type": "string",
+            "description": "Resolved resource short ID, if the request targeted a known resource"
+          },
+          "resourceNamespace": {
+            "type": "string",
+            "description": "Resolved namespace, if the request targeted a known resource"
+          },
+          "method": {
+            "type": "string",
+            "description": "HTTP method (`GET`, `POST`, ...)"
+          },
+          "path": {
+            "type": "string",
+            "description": "Request path (without query string)"
+          },
+          "query": {
+            "type": "string",
+            "description": "Raw query string, if any"
+          },
+          "status": {
+            "type": "integer",
+            "format": "int32",
+            "description": "HTTP response status code"
+          },
+          "durationMs": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Request handling duration, in milliseconds"
+          },
+          "clientIp": {
+            "type": "string",
+            "description": "Client IP address (from X-Forwarded-For)"
+          },
+          "userAgent": {
+            "type": "string",
+            "description": "Client User-Agent header"
+          },
+          "referer": {
+            "type": "string",
+            "description": "Request `Referer` header, if present"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When the event was logged"
+          }
+        }
+      },
+      "PathCount": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Request path"
+          },
+          "count": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Number of requests to this path in the period"
+          }
+        }
+      },
+      "IpCount": {
+        "type": "object",
+        "properties": {
+          "ip": {
+            "type": "string",
+            "description": "Client IP address"
+          },
+          "count": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Number of requests from this IP in the period"
+          }
+        }
+      },
+      "UaCount": {
+        "type": "object",
+        "properties": {
+          "userAgent": {
+            "type": "string",
+            "description": "Client User-Agent"
+          },
+          "count": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Number of requests with this User-Agent in the period"
+          }
+        }
+      },
+      "ReferCount": {
+        "type": "object",
+        "properties": {
+          "referer": {
+            "type": "string",
+            "description": "Referer value"
+          },
+          "count": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Number of requests with this Referer in the period"
+          }
+        }
+      },
+      "AccessStats": {
+        "type": "object",
+        "properties": {
+          "totalRequests": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Total number of requests in the period"
+          },
+          "uniqueIps": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Number of distinct client IPs in the period"
+          },
+          "topPaths": {
+            "type": "array",
+            "description": "Most frequently requested paths, ordered descending by count",
+            "items": {
+              "$ref": "#/components/schemas/PathCount"
+            }
+          },
+          "topIps": {
+            "type": "array",
+            "description": "Most active client IPs, ordered descending by count",
+            "items": {
+              "$ref": "#/components/schemas/IpCount"
+            }
+          },
+          "topUserAgents": {
+            "type": "array",
+            "description": "Most frequent User-Agents, ordered descending by count",
+            "items": {
+              "$ref": "#/components/schemas/UaCount"
+            }
+          },
+          "topReferers": {
+            "type": "array",
+            "description": "Most frequent Referer values, ordered descending by count",
+            "items": {
+              "$ref": "#/components/schemas/ReferCount"
+            }
+          },
+          "hourlyDistribution": {
+            "type": "object",
+            "description": "Request count grouped by hour-of-day (0..23). Keys are stringified hour numbers; values are the\nrequest count for that hour across the selected period.\n",
+            "additionalProperties": {
+              "type": "integer",
+              "format": "int32"
+            }
           }
         }
       }
