@@ -2,8 +2,8 @@
   "openapi": "3.1.0",
   "info": {
     "title": "BrewPage API",
-    "version": "1.1.0",
-    "description": "REST API for BrewPage — HTML/KV/JSON/file hosting platform. Publish and manage web content, key-value data, JSON documents, and files with short URLs, password protection, and real-time statistics.",
+    "version": "1.7.6",
+    "description": "REST API for BrewPage — HTML/KV/JSON/file hosting platform. Publish and manage web content, key-value data,\nJSON documents, and files with short URLs, password protection, and real-time statistics.\n\n## Namespaces\n\nAll namespaces are PUBLIC and indexable. Namespace format: `[a-z0-9-]{3,32}`. The `public` namespace (default)\nappears in the gallery when there is no password. Custom namespaces are created automatically on first use.\n\nOn `ns + id` collision the server returns `409 Conflict`. Clients should either retry with a different `id`\nor omit `id` to let the server generate one.\n\n## TTL\n\n`ttl_days` applies to html, markdown, json, kv, files, and sites. Default `15`, allowed range `1..30`\n(max `30`). Resources auto-delete after expiry.\n\n## Short URL GET resolvers\n\nEvery short-URL GET resolver (HTML, markdown, JSON, KV, file, site) returns the current view counter in the\n`X-Views: <integer>` response header.\n\n## File serving\n\nFile responses support HTTP Range requests (`Accept-Ranges: bytes`, `206 Partial Content`), carry an `ETag`\nheader, and are cached with `Cache-Control: public, max-age=3600`.\n\nAllowed file extensions include (non-exhaustive): html, md, json, txt, css, js, jsx, mjs, ts, tsx,\nplus images, audio, and video types permitted by platform limits.\n",
     "contact": {
       "name": "BrewPage",
       "url": "https://brewpage.app"
@@ -55,6 +55,14 @@
     {
       "name": "Sites",
       "description": "Multi-file HTML site hosting via ZIP or folder upload (up to 5 MB per file, 1000 files per site)"
+    },
+    {
+      "name": "Reports",
+      "description": "Abuse reports for published content (public submission endpoint)"
+    },
+    {
+      "name": "Admin",
+      "description": "Administrative endpoints protected by the X-Admin-Password header"
     }
   ],
   "paths": {
@@ -751,11 +759,12 @@
           {
             "name": "ns",
             "in": "query",
-            "description": "Namespace. Default: public. Pages in 'public' without password appear in gallery. Custom namespace is created automatically",
+            "description": "Namespace. Default: public. All namespaces are PUBLIC and indexable. Pages in 'public' without password appear in gallery. Custom namespace is created automatically. Format: [a-z0-9-]{3,32}. On ns+id collision the server returns 409 Conflict — retry with a different id or omit id to let the server generate one",
             "required": false,
             "schema": {
               "type": "string",
-              "default": "public"
+              "default": "public",
+              "pattern": "^[a-z0-9-]{3,32}$"
             }
           },
           {
@@ -770,11 +779,14 @@
           {
             "name": "ttl",
             "in": "query",
-            "description": "Time to live in days (1-365, default 5). Store auto-deletes after expiry",
+            "description": "Time to live in days (1-30, default 15, max 30). Store auto-deletes after expiry",
             "required": false,
             "schema": {
               "type": "integer",
-              "format": "int32"
+              "format": "int32",
+              "minimum": 1,
+              "maximum": 30,
+              "default": 15
             }
           },
           {
@@ -896,11 +908,12 @@
           {
             "name": "ns",
             "in": "query",
-            "description": "Namespace. Default: public. Pages in 'public' without password appear in gallery. Custom namespace is created automatically",
+            "description": "Namespace. Default: public. All namespaces are PUBLIC and indexable. Pages in 'public' without password appear in gallery. Custom namespace is created automatically. Format: [a-z0-9-]{3,32}. On ns+id collision the server returns 409 Conflict — retry with a different id or omit id to let the server generate one",
             "required": false,
             "schema": {
               "type": "string",
-              "default": "public"
+              "default": "public",
+              "pattern": "^[a-z0-9-]{3,32}$"
             }
           },
           {
@@ -915,11 +928,14 @@
           {
             "name": "ttl",
             "in": "query",
-            "description": "Time to live in days (1-365, default 5). Document auto-deletes after expiry",
+            "description": "Time to live in days (1-30, default 15, max 30). Document auto-deletes after expiry",
             "required": false,
             "schema": {
               "type": "integer",
-              "format": "int32"
+              "format": "int32",
+              "minimum": 1,
+              "maximum": 30,
+              "default": 15
             }
           },
           {
@@ -997,11 +1013,12 @@
           {
             "name": "ns",
             "in": "query",
-            "description": "Namespace. Default: public. Pages in 'public' without password appear in gallery. Custom namespace is created automatically",
+            "description": "Namespace. Default: public. All namespaces are PUBLIC and indexable. Pages in 'public' without password appear in gallery. Custom namespace is created automatically. Format: [a-z0-9-]{3,32}. On ns+id collision the server returns 409 Conflict — retry with a different id or omit id to let the server generate one",
             "required": false,
             "schema": {
               "type": "string",
-              "default": "public"
+              "default": "public",
+              "pattern": "^[a-z0-9-]{3,32}$"
             }
           },
           {
@@ -1016,11 +1033,14 @@
           {
             "name": "ttl",
             "in": "query",
-            "description": "Time to live in days (1-365, default 5). Page auto-deletes after expiry",
+            "description": "Time to live in days (1-30, default 15, max 30). Page auto-deletes after expiry",
             "required": false,
             "schema": {
               "type": "integer",
-              "format": "int32"
+              "format": "int32",
+              "minimum": 1,
+              "maximum": 30,
+              "default": 15
             }
           },
           {
@@ -1152,11 +1172,12 @@
           {
             "name": "ns",
             "in": "query",
-            "description": "Namespace. Default: public. Pages in 'public' without password appear in gallery. Custom namespace is created automatically",
+            "description": "Namespace. Default: public. All namespaces are PUBLIC and indexable. Pages in 'public' without password appear in gallery. Custom namespace is created automatically. Format: [a-z0-9-]{3,32}. On ns+id collision the server returns 409 Conflict — retry with a different id or omit id to let the server generate one",
             "required": false,
             "schema": {
               "type": "string",
-              "default": "public"
+              "default": "public",
+              "pattern": "^[a-z0-9-]{3,32}$"
             }
           },
           {
@@ -1171,11 +1192,14 @@
           {
             "name": "ttl",
             "in": "query",
-            "description": "Time to live in days (1-365, default 5). File auto-deletes after expiry",
+            "description": "Time to live in days (1-30, default 15, max 30). File auto-deletes after expiry",
             "required": false,
             "schema": {
               "type": "integer",
-              "format": "int32"
+              "format": "int32",
+              "minimum": 1,
+              "maximum": 30,
+              "default": 15
             }
           },
           {
@@ -1264,6 +1288,8 @@
         "tags": [
           "Short Links"
         ],
+        "summary": "Resolve short URL",
+        "description": "Resolves a short URL to the underlying resource (HTML, markdown, JSON, KV, file, or site entry).\n\nResponse headers:\n- `X-Views: <integer>` — current view counter for this resource.\n- For file/site responses: `Accept-Ranges: bytes`, `ETag`, and `Cache-Control: public, max-age=3600`.\n  Range requests return `206 Partial Content`.\n",
         "operationId": "resolve",
         "parameters": [
           {
@@ -1313,6 +1339,33 @@
         "responses": {
           "200": {
             "description": "OK",
+            "headers": {
+              "X-Views": {
+                "description": "Current view counter for the resolved resource",
+                "schema": {
+                  "type": "integer",
+                  "format": "int64"
+                }
+              },
+              "Accept-Ranges": {
+                "description": "Present for file/site responses: bytes",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "ETag": {
+                "description": "Entity tag for file/site responses",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Cache-Control": {
+                "description": "Present for file/site responses: public, max-age=3600",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
             "content": {
               "*/*": {
                 "schema": {
@@ -1320,6 +1373,37 @@
                 }
               }
             }
+          },
+          "206": {
+            "description": "Partial Content (Range requests for files/sites)",
+            "headers": {
+              "Content-Range": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Accept-Ranges": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict — ns+id already exists. Retry with a different id or omit id to let the server generate one"
           }
         }
       }
@@ -1329,6 +1413,8 @@
         "tags": [
           "Short Links"
         ],
+        "summary": "Resolve short URL with sub-path",
+        "description": "Resolves a short URL with a sub-path (e.g. entry file within an uploaded site).\n\nResponse headers:\n- `X-Views: <integer>` — current view counter for this resource.\n- For file/site responses: `Accept-Ranges: bytes`, `ETag`, and `Cache-Control: public, max-age=3600`.\n  Range requests return `206 Partial Content`.\n",
         "operationId": "resolveWithSub",
         "parameters": [
           {
@@ -1386,10 +1472,65 @@
         "responses": {
           "200": {
             "description": "OK",
+            "headers": {
+              "X-Views": {
+                "description": "Current view counter for the resolved resource",
+                "schema": {
+                  "type": "integer",
+                  "format": "int64"
+                }
+              },
+              "Accept-Ranges": {
+                "description": "Present for file/site responses: bytes",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "ETag": {
+                "description": "Entity tag for file/site responses",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Cache-Control": {
+                "description": "Present for file/site responses: public, max-age=3600",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
             "content": {
               "*/*": {
                 "schema": {
                   "type": "object"
+                }
+              }
+            }
+          },
+          "206": {
+            "description": "Partial Content (Range requests for files/sites)",
+            "headers": {
+              "Content-Range": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Accept-Ranges": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
                 }
               }
             }
@@ -1783,12 +1924,13 @@
           {
             "name": "ttl",
             "in": "query",
-            "description": "Time to live in days (1-30, default 5)",
+            "description": "Time to live in days (1-30, default 15, max 30). Site auto-deletes after expiry",
             "required": false,
             "schema": {
               "type": "integer",
               "minimum": 1,
-              "maximum": 30
+              "maximum": 30,
+              "default": 15
             }
           },
           {
@@ -2101,6 +2243,285 @@
           },
           "404": {
             "description": "Site or file not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/reports": {
+      "post": {
+        "tags": [
+          "Reports"
+        ],
+        "summary": "Submit abuse report",
+        "description": "Submit a report about content hosted on brewpage.app or brewdata.app. Public endpoint, rate-limited (60/hr/IP). The server records the reporter's IP (from X-Forwarded-For) and User-Agent automatically",
+        "operationId": "submitReport",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReportRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Report accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failure (invalid URL, unknown category, description out of range, malformed email)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/reports": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "List abuse reports",
+        "description": "List abuse reports with optional status filtering and pagination. Requires admin password",
+        "operationId": "listReports",
+        "parameters": [
+          {
+            "name": "X-Admin-Password",
+            "in": "header",
+            "description": "Admin password",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "description": "Filter by report status",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "new",
+                "reviewed",
+                "dismissed",
+                "actioned"
+              ]
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Maximum number of reports to return",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 50
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "description": "Offset into the result set for pagination",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Reports list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ReportSummary"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or wrong admin password",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/reports/{id}": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Get abuse report",
+        "description": "Fetch the full details of a single abuse report, including reporter metadata and reviewer note. Requires admin password",
+        "operationId": "getReport",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "10-character alphanumeric report ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9]{10}$"
+            }
+          },
+          {
+            "name": "X-Admin-Password",
+            "in": "header",
+            "description": "Admin password",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Report detail",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportDetail"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or wrong admin password",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Report not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Update abuse report",
+        "description": "Update the status and reviewer note of a report. Requires admin password",
+        "operationId": "updateReport",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "10-character alphanumeric report ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9]{10}$"
+            }
+          },
+          {
+            "name": "X-Admin-Password",
+            "in": "header",
+            "description": "Admin password",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReportUpdateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Updated report detail",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportDetail"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid status value",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or wrong admin password",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Report not found",
             "content": {
               "application/json": {
                 "schema": {
@@ -2734,6 +3155,227 @@
             "type": "string",
             "format": "date-time",
             "description": "ISO-8601 timestamp of when the error occurred"
+          }
+        }
+      },
+      "ReportRequest": {
+        "type": "object",
+        "required": [
+          "reportedUrl",
+          "category",
+          "description"
+        ],
+        "properties": {
+          "reportedUrl": {
+            "type": "string",
+            "description": "Full URL of the reported resource on brewpage.app or brewdata.app"
+          },
+          "category": {
+            "type": "string",
+            "description": "Report category",
+            "enum": [
+              "spam",
+              "phishing",
+              "malware",
+              "copyright",
+              "harassment",
+              "illegal",
+              "other"
+            ]
+          },
+          "description": {
+            "type": "string",
+            "minLength": 10,
+            "maxLength": 5000,
+            "description": "Details of the issue (10..5000 characters)"
+          },
+          "reporterEmail": {
+            "type": "string",
+            "format": "email",
+            "description": "Optional reporter contact email"
+          }
+        }
+      },
+      "ReportResponse": {
+        "type": "object",
+        "properties": {
+          "reportId": {
+            "type": "string",
+            "description": "Unique 10-character alphanumeric report ID"
+          },
+          "receivedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "ISO-8601 server timestamp when the report was received"
+          }
+        }
+      },
+      "ReportSummary": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Unique 10-character alphanumeric report ID"
+          },
+          "reportedUrl": {
+            "type": "string",
+            "description": "Full URL of the reported resource"
+          },
+          "resourceType": {
+            "type": "string",
+            "description": "Resource type resolved from the reported URL",
+            "enum": [
+              "html",
+              "kv",
+              "json",
+              "file",
+              "site",
+              "unknown"
+            ]
+          },
+          "resourceNamespace": {
+            "type": "string",
+            "description": "Resolved namespace of the reported resource (if known)"
+          },
+          "resourceId": {
+            "type": "string",
+            "description": "Resolved ID of the reported resource (if known)"
+          },
+          "category": {
+            "type": "string",
+            "description": "Report category",
+            "enum": [
+              "spam",
+              "phishing",
+              "malware",
+              "copyright",
+              "harassment",
+              "illegal",
+              "other"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "description": "Current review status",
+            "enum": [
+              "new",
+              "reviewed",
+              "dismissed",
+              "actioned"
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When the report was submitted"
+          }
+        }
+      },
+      "ReportDetail": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Unique 10-character alphanumeric report ID"
+          },
+          "reportedUrl": {
+            "type": "string",
+            "description": "Full URL of the reported resource"
+          },
+          "resourceType": {
+            "type": "string",
+            "description": "Resource type resolved from the reported URL",
+            "enum": [
+              "html",
+              "kv",
+              "json",
+              "file",
+              "site",
+              "unknown"
+            ]
+          },
+          "resourceNamespace": {
+            "type": "string",
+            "description": "Resolved namespace of the reported resource (if known)"
+          },
+          "resourceId": {
+            "type": "string",
+            "description": "Resolved ID of the reported resource (if known)"
+          },
+          "category": {
+            "type": "string",
+            "description": "Report category",
+            "enum": [
+              "spam",
+              "phishing",
+              "malware",
+              "copyright",
+              "harassment",
+              "illegal",
+              "other"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "description": "Current review status",
+            "enum": [
+              "new",
+              "reviewed",
+              "dismissed",
+              "actioned"
+            ]
+          },
+          "description": {
+            "type": "string",
+            "description": "Reporter-provided details of the issue"
+          },
+          "reporterEmail": {
+            "type": "string",
+            "description": "Reporter contact email (if provided)"
+          },
+          "reporterIp": {
+            "type": "string",
+            "description": "Client IP captured at submission (from X-Forwarded-For)"
+          },
+          "reporterUserAgent": {
+            "type": "string",
+            "description": "Client User-Agent captured at submission"
+          },
+          "reviewerNote": {
+            "type": "string",
+            "description": "Internal note added by the reviewer"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When the report was submitted"
+          },
+          "reviewedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When the report was most recently reviewed (null if never reviewed)"
+          }
+        }
+      },
+      "ReportUpdateRequest": {
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "description": "New review status",
+            "enum": [
+              "new",
+              "reviewed",
+              "dismissed",
+              "actioned"
+            ]
+          },
+          "reviewerNote": {
+            "type": "string",
+            "description": "Optional reviewer note to attach to the report"
           }
         }
       }
