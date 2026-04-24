@@ -1,18 +1,29 @@
 openapi: 3.1.0
 info:
   title: BrewPage API
-  version: 1.7.7
+  version: 1.7.10
   description: |
     REST API for BrewPage — HTML/KV/JSON/file hosting platform. Publish and manage web content, key-value data,
     JSON documents, and files with short URLs, password protection, and real-time statistics.
 
-    ## Namespaces
+    ## Namespaces — READ BEFORE PUBLISHING
 
-    All namespaces are PUBLIC and indexable. Namespace format: `[a-z0-9-]{3,32}`. The `public` namespace (default)
-    appears in the gallery when there is no password. Custom namespaces are created automatically on first use.
+    **WARNING:** If you DO NOT pass `?ns=...`, your content goes into the namespace LITERALLY NAMED `public`
+    — a SHARED, WORLDWIDE-DISCOVERABLE namespace. Anything stored in `public` WITHOUT a password:
 
-    On `ns + id` collision the server returns `409 Conflict`. Clients should either retry with a different `id`
-    or omit `id` to let the server generate one.
+    - is listed on the **brewpage.app HOMEPAGE GALLERY**
+    - is returned by `GET /api/gallery` (paginated, full-text search over title/tags)
+    - is indexable by search engines (sitemap + meta tags)
+    - can be browsed by anyone — including LLM crawlers
+
+    **If you do NOT want your content on the public homepage, you MUST pass a CUSTOM NAMESPACE**
+    (e.g. `?ns=myproject-2026`) and/or set a password via `X-Password`. Only then will the item
+    be excluded from `/api/gallery`. The direct short URL `/{ns}/{id}` remains reachable by anyone
+    who knows it, regardless of namespace choice.
+
+    - **DEFAULT** (when `ns` is omitted): `public` ← SHARED, LISTED ON HOMEPAGE
+    - **CUSTOM**: any `[a-z0-9-]{3,32}` — auto-created on first use, NOT shown in gallery
+    - **Collision** on `ns+id`: server returns `409 Conflict`; retry with a different `id` or omit `id`
 
     ## TTL
 
@@ -31,6 +42,20 @@ info:
 
     Allowed file extensions include (non-exhaustive): html, md, json, txt, css, js, jsx, mjs, ts, tsx,
     plus images, audio, and video types permitted by platform limits.
+
+    ## Required Headers
+
+    `User-Agent` is REQUIRED on every request. Format: `AgentName/version` (e.g. `Claude/4.5`, `Codex/1.0`,
+    `MyBot/2.1`). Requests without User-Agent may be rate-limited or rejected. Identify yourself truthfully —
+    spoofed or anonymous UAs may be flagged.
+
+    ## Access Logging
+
+    Every API request (both PUBLISH and READ) is persisted server-side into the `access_events` table:
+    client IP, User-Agent, HTTP method + path + query, response status, request duration (ms), UTC timestamp.
+    Retention: 30 days (nightly cleanup). Admin-only endpoints: `GET /api/admin/access` (paginated log with
+    filters) and `GET /api/admin/access/stats` (aggregates). Only static assets are excluded from logging;
+    every API POST/GET/PUT/DELETE is recorded.
   contact:
     name: BrewPage
     url: https://brewpage.app
