@@ -308,9 +308,20 @@ server.tool(
 
 server.tool(
   "publish_site",
-  "Publish a single-page HTML site to BrewPage. Accepts HTML content as the entry file (index.html). For multi-file sites with CSS/JS/images, use the REST API directly. Returns a public URL and owner token.",
+  "Publish an HTML site to BrewPage. Single-page: pass `entryContent`. Multi-page: pass `files` (array of `{path, content}`). Optional `entry` overrides default `index.html`.",
   {
-    entryContent: z.string().describe("HTML content for the site entry file (index.html)"),
+    entryContent: z
+      .string()
+      .optional()
+      .describe("HTML content for a single-page site (entry file). Mutually exclusive with `files`."),
+    files: z
+      .array(z.object({ path: z.string(), content: z.string() }))
+      .optional()
+      .describe("Multi-file site: array of `{path, content}`. Mutually exclusive with `entryContent`."),
+    entry: z
+      .string()
+      .optional()
+      .describe("Entry file path, default index.html"),
     namespace: z
       .string()
       .optional()
@@ -324,25 +335,49 @@ server.tool(
       .min(1)
       .max(30)
       .optional()
-      .describe("Time to live in days (1-30, default: 5)"),
+      .describe("Time to live in days (1-30, default: 15)"),
     ownerToken: z
       .string()
       .optional()
       .describe("Existing owner token to group this site under the same owner as previous content"),
   },
-  async ({ entryContent, namespace, password, ttlDays, ownerToken }) => {
-    const formData = new FormData();
-    const entryBlob = new Blob([entryContent], { type: "text/html" });
-    formData.append("files", entryBlob, "index.html");
-    formData.append("paths", "index.html");
-    if (namespace) formData.append("ns", namespace);
-    if (ttlDays) formData.append("ttl", String(ttlDays));
+  async ({ entryContent, files, entry, namespace, password, ttlDays, ownerToken }) => {
+    const hasEntry = typeof entryContent === "string";
+    const hasFiles = Array.isArray(files) && files.length > 0;
+    if (hasEntry === hasFiles) {
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: "Provide exactly one of `entryContent` (single-page) or `files` (multi-page).",
+          },
+        ],
+        isError: true,
+      };
+    }
 
+    const formData = new FormData();
+    if (hasFiles) {
+      for (const f of files!) {
+        formData.append("files", new Blob([f.content], { type: "text/html" }), f.path);
+        formData.append("paths", f.path);
+      }
+    } else {
+      const entryBlob = new Blob([entryContent!], { type: "text/html" });
+      const entryName = entry || "index.html";
+      formData.append("files", entryBlob, entryName);
+      formData.append("paths", entryName);
+    }
     const headers: Record<string, string> = {};
     if (password) headers["X-Password"] = password;
     if (ownerToken) headers["X-Owner-Token"] = ownerToken;
 
-    const url = `${BASE_URL}/api/sites`;
+    const qsParams: string[] = [];
+    if (entry) qsParams.push(`entry=${encodeURIComponent(entry)}`);
+    if (namespace) qsParams.push(`ns=${encodeURIComponent(namespace)}`);
+    if (ttlDays) qsParams.push(`ttl=${encodeURIComponent(String(ttlDays))}`);
+    const qs = qsParams.length ? `?${qsParams.join("&")}` : "";
+    const url = `${BASE_URL}/api/sites${qs}`;
     const res = await fetch(url, { method: "POST", headers, body: formData });
     const data = await res.json().catch(() => null);
 
@@ -368,6 +403,9 @@ server.tool(
       `Entry file: ${site.entryFile || "index.html"}`,
       `Files: ${site.fileCount || 1}`,
     ];
+    if (site.totalSizeBytes !== undefined) lines.push(`Size: ${site.totalSizeBytes} bytes`);
+    if (site.ownerLink) lines.push(`Owner link: ${site.ownerLink}`);
+    if (Array.isArray(site.tags) && site.tags.length) lines.push(`Tags: ${(site.tags as string[]).join(", ")}`);
     if (site.expiresAt) lines.push(`Expires: ${site.expiresAt}`);
     lines.push(
       ``,
