@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: BrewPage API
-  version: 1.7.10
+  version: 1.7.11
   description: |
     REST API for BrewPage — HTML/KV/JSON/file hosting platform. Publish and manage web content, key-value data,
     JSON documents, and files with short URLs, password protection, and real-time statistics.
@@ -1198,6 +1198,16 @@ paths:
           type: integer
           format: int32
           default: 20
+      - name: sort
+        in: query
+        description: Sort order for gallery results. `date` (default) — newest first by creation date. `views` — most viewed first, then newest by date as tiebreaker.
+        required: false
+        schema:
+          type: string
+          enum:
+          - date
+          - views
+          default: date
       responses:
         '200':
           description: Paginated gallery items
@@ -1363,6 +1373,38 @@ paths:
                   items:
                     type: string
                   description: Relative paths for each file (must match files order)
+            examples:
+              archive_zip:
+                summary: Upload a ZIP archive (archive mode)
+                description: |
+                  Send the ZIP as `archive` field. Query string controls namespace, TTL, and entry file.
+                  curl equivalent:
+                    curl -X POST "https://brewpage.app/api/sites?ns=docs&ttl=15&entry=index.html" \
+                      -F "archive=@site.zip"
+                value:
+                  archive: <binary zip content>
+              files_paths:
+                summary: Upload individual files with explicit paths (parallel-arrays mode)
+                description: |
+                  Send each file as a `files` field and its relative path as the matching `paths` field.
+                  The arrays must be the same length and in the same order.
+                  curl equivalent:
+                    curl -X POST "https://brewpage.app/api/sites?ns=docs&ttl=15&entry=index.html" \
+                      -F "files=@index.html" -F "paths=index.html" \
+                      -F "files=@about.html" -F "paths=about.html" \
+                      -F "files=@gallery.html" -F "paths=gallery.html" \
+                      -F "files=@contact.html" -F "paths=contact.html"
+                value:
+                  files:
+                    - <binary content of index.html>
+                    - <binary content of about.html>
+                    - <binary content of gallery.html>
+                    - <binary content of contact.html>
+                  paths:
+                    - index.html
+                    - about.html
+                    - gallery.html
+                    - contact.html
       responses:
         '201':
           description: Site uploaded
@@ -1370,6 +1412,20 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SiteUploadResponse'
+              examples:
+                site_created:
+                  summary: Successful site upload response
+                  value:
+                    id: a1b2c3d4e5
+                    namespace: docs
+                    entryFile: index.html
+                    link: https://brewpage.app/docs/a1b2c3d4e5
+                    ownerLink: https://brewpage.app/api/sites/docs/a1b2c3d4e5
+                    fileCount: 4
+                    totalSizeBytes: 24576
+                    expiresAt: '2026-05-16T00:00:00Z'
+                    tags: []
+                    ownerToken: 9f3a1c7d2e4b8a056f1234567890abcd
         '400':
           description: Invalid request, no HTML files, or limits exceeded
           content:

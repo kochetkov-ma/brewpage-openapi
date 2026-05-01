@@ -1,5 +1,18 @@
 # Release Notes
 
+## v1.2.0 (2026-05-01)
+
+### Added
+- OpenAPI: `POST /api/sites` examples for multi-file publishing modes — `archive_zip` (ZIP upload) and `files_paths` (parallel arrays), plus 201 response example
+- MCP `publish_site`: multi-file site support via `files: [{path, content}]` array (backward compatible with existing `entryContent` single-file mode)
+- MCP `publish_site`: optional `entry` override to pick the entry file from a multi-file set
+- MCP `publish_site`: XOR validation between `entryContent` and `files` (exactly one required)
+
+### Changed
+- MCP `publish_site`: `ns` and `ttl` moved from formData to query string (matches actual API)
+- MCP `publish_site`: TTL default doc corrected to 15 days
+- OpenAPI spec bumped to `1.7.11` (additive examples only — contract unchanged)
+
 ## v1.7.6 (2026-04-24)
 
 ### Added
