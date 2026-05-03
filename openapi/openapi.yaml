@@ -901,6 +901,8 @@ paths:
         - `X-Views: <integer>` — current view counter for this resource.
         - For file/site responses: `Accept-Ranges: bytes`, `ETag`, and `Cache-Control: public, max-age=3600`.
           Range requests return `206 Partial Content`.
+        - For HTML resolves: `X-Show-Top-Bar: true|false` — effective resolved value of `showTopBar`
+          (per-page override, else server default `app.ui.show-top-bar-default`).
       operationId: resolve
       parameters:
       - name: ns
@@ -952,6 +954,14 @@ paths:
               description: 'Present for file/site responses: public, max-age=3600'
               schema:
                 type: string
+            X-Show-Top-Bar:
+              description: |
+                Effective resolved value of showTopBar for HTML content (per-page override,
+                else server default app.ui.show-top-bar-default). Reflects whether the served
+                page renders the BrewPage top toolbar. Present on HTML resolves only.
+              schema:
+                type: string
+                enum: ["true", "false"]
           content:
             '*/*':
               schema:
@@ -2002,10 +2012,33 @@ components:
           description: Secret token required for update and delete operations. Store it safely -- cannot be recovered
     HtmlUploadRequest:
       type: object
+      required:
+        - content
       properties:
         content:
           type: string
           description: HTML or markdown content to publish
+        filename:
+          type:
+            - string
+            - "null"
+          maxLength: 200
+          description: |
+            Optional original filename. Used as tab title fallback when no <title>/<h1>
+            is present, and as the download basename. Trimmed; rejected if it contains
+            path separators, control characters, length > 200, or bare name shorter
+            than 4 chars. Immutable on update.
+        showTopBar:
+          type:
+            - boolean
+            - "null"
+          description: |
+            Per-page toggle for the BrewPage top toolbar (filename + Download button + theme toggle)
+            on the served page.
+            - true  -> always show the top bar
+            - false -> always hide the top bar
+            - null/omitted -> use server default (app.ui.show-top-bar-default)
+            Effective resolved value is reflected on GET responses via the X-Show-Top-Bar header.
     HtmlUploadResponse:
       type: object
       properties:
