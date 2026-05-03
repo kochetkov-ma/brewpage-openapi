@@ -55,7 +55,7 @@ function formatPublishResponse(data: Record<string, unknown>): string {
 
 server.tool(
   "publish_html",
-  "Publish HTML or Markdown content to BrewPage. Returns a public URL and owner token. Supports password protection and custom TTL.",
+  "Publish HTML or Markdown content to BrewPage. Returns a public URL and owner token. Supports password protection, custom TTL, optional filename, and an opt-in top toolbar (showTopBar).",
   {
     content: z.string().describe("HTML or Markdown content to publish"),
     format: z
@@ -72,16 +72,28 @@ server.tool(
       .describe("Optional password to protect the page"),
     ttlDays: z
       .number()
-      .min(30)
-      .max(365)
+      .int()
+      .min(1)
+      .max(30)
       .optional()
-      .describe("Time to live in days (30-365, default: 365)"),
+      .describe("Time to live in days (1-30, default: 15)"),
+    filename: z
+      .string()
+      .max(200)
+      .optional()
+      .describe("Optional original filename (≤200 chars). Used as title fallback when no <title>/<h1>; immutable on update."),
+    showTopBar: z
+      .boolean()
+      .optional()
+      .describe("Add a thin top toolbar (filename + Download button + theme toggle) on the served page. Default: hidden."),
   },
-  async ({ content, format, namespace, password, ttlDays }) => {
+  async ({ content, format, namespace, password, ttlDays, filename, showTopBar }) => {
     const body: Record<string, unknown> = { content, format };
     if (namespace) body.namespace = namespace;
     if (password) body.password = password;
     if (ttlDays) body.ttlDays = ttlDays;
+    if (filename) body.filename = filename;
+    if (showTopBar !== undefined) body.showTopBar = showTopBar;
 
     const { ok, data } = await apiRequest("POST", "/api/html", body);
 
