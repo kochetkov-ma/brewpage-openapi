@@ -3006,6 +3006,36 @@
             "items": {
               "$ref": "#/components/schemas/TypeBreakdown"
             }
+          },
+          "deletedToday": {
+            "type": ["integer", "null"],
+            "format": "int64",
+            "description": "Resources deleted in the last 24 hours via explicit user delete; excludes TTL evictions."
+          },
+          "deletedTodayPublic": {
+            "type": ["integer", "null"],
+            "format": "int64",
+            "description": "Resources deleted today in the public namespace."
+          },
+          "deletedTodayPrivate": {
+            "type": ["integer", "null"],
+            "format": "int64",
+            "description": "Resources deleted today in private namespaces."
+          },
+          "totalDeleted": {
+            "type": ["integer", "null"],
+            "format": "int64",
+            "description": "All-time count of explicitly deleted resources."
+          },
+          "totalDeletedPublic": {
+            "type": ["integer", "null"],
+            "format": "int64",
+            "description": "All-time count of explicitly deleted resources in the public namespace."
+          },
+          "totalDeletedPrivate": {
+            "type": ["integer", "null"],
+            "format": "int64",
+            "description": "All-time count of explicitly deleted resources in private namespaces."
           }
         }
       },
@@ -3025,6 +3055,36 @@
             "type": "integer",
             "format": "int64",
             "description": "All-time count"
+          },
+          "todayDeleted": {
+            "type": ["integer", "null"],
+            "format": "int64",
+            "description": "Deleted in the last 24 hours via explicit user delete; excludes TTL evictions."
+          },
+          "todayDeletedPublic": {
+            "type": ["integer", "null"],
+            "format": "int64",
+            "description": "Deleted today in the public namespace."
+          },
+          "todayDeletedPrivate": {
+            "type": ["integer", "null"],
+            "format": "int64",
+            "description": "Deleted today in private namespaces."
+          },
+          "totalDeleted": {
+            "type": ["integer", "null"],
+            "format": "int64",
+            "description": "All-time count of explicitly deleted resources of this type."
+          },
+          "totalDeletedPublic": {
+            "type": ["integer", "null"],
+            "format": "int64",
+            "description": "All-time count of explicitly deleted resources of this type in the public namespace."
+          },
+          "totalDeletedPrivate": {
+            "type": ["integer", "null"],
+            "format": "int64",
+            "description": "All-time count of explicitly deleted resources of this type in private namespaces."
           }
         }
       },
