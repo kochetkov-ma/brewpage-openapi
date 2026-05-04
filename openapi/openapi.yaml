@@ -147,7 +147,12 @@ paths:
       tags:
       - KV
       summary: Upsert key
-      description: Creates or updates a key in the store; max 1000 keys per store
+      description: |
+        Sets (creates or replaces) a key value while preserving the key short URL `/{ns}/{id}/{key}` —
+        agents poll the same URL and see the latest value.
+        Typical use: deploy-status counters, AI agent step state, current-config flags.
+        Max 1000 keys per store. No version history: previous value is overwritten.
+        Requires the owner token returned at creation.
       operationId: upsertKey
       parameters:
       - name: ns
@@ -290,7 +295,12 @@ paths:
       tags:
       - JSON
       summary: Update JSON document
-      description: Replaces document content; requires the owner token returned at creation
+      description: |
+        Replaces document content while preserving the short URL — share once, edit in place.
+        Useful for AI agents iterating on a JSON artifact (test results, plan state, config snapshot)
+        without producing a new URL each time.
+        Immutable on update: tags. No version history: previous content is overwritten.
+        Requires the owner token returned at creation.
       operationId: update
       parameters:
       - name: ns
@@ -417,7 +427,12 @@ paths:
       tags:
       - HTML
       summary: Update HTML page
-      description: Replaces page content; requires the owner token returned at creation
+      description: |
+        Replaces page content while preserving the short URL — share once, edit in place.
+        The link already shared stays valid; readers see the new content on next load.
+        Primary use cases: AI agents iterating on output, fixing typos in already-shared pages.
+        Immutable on update: tags, password, format, filename, showTopBar — delete and recreate to change those.
+        No version history: previous content is overwritten. Requires the owner token returned at creation.
       operationId: update_1
       parameters:
       - name: ns
