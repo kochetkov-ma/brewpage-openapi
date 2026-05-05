@@ -8,7 +8,7 @@ const BASE_URL = process.env.BREWPAGE_URL || "https://brewpage.app";
 
 const server = new McpServer({
   name: "brewpage-mcp",
-  version: "1.1.1",
+  version: "1.3.1",
 });
 
 async function apiRequest(
@@ -154,7 +154,7 @@ server.tool(
     );
     if (namespace) formData.append("namespace", namespace);
 
-    const res = await fetch(`${BASE_URL}/api/files/uploads`, {
+    const res = await fetch(`${BASE_URL}/api/files`, {
       method: "POST",
       body: formData,
     });

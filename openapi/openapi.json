@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "BrewPage API",
-    "version": "1.7.11",
+    "version": "1.28.1",
     "description": "REST API for BrewPage — HTML/KV/JSON/file hosting platform. Publish and manage web content, key-value data,\nJSON documents, and files with short URLs, password protection, and real-time statistics.\n\n## Namespaces — READ BEFORE PUBLISHING\n\n**WARNING:** If you DO NOT pass `?ns=...`, your content goes into the namespace LITERALLY NAMED `public`\n— a SHARED, WORLDWIDE-DISCOVERABLE namespace. Anything stored in `public` WITHOUT a password:\n\n- is listed on the **brewpage.app HOMEPAGE GALLERY**\n- is returned by `GET /api/gallery` (paginated, full-text search over title/tags)\n- is indexable by search engines (sitemap + meta tags)\n- can be browsed by anyone — including LLM crawlers\n\n**If you do NOT want your content on the public homepage, you MUST pass a CUSTOM NAMESPACE**\n(e.g. `?ns=myproject-2026`) and/or set a password via `X-Password`. Only then will the item\nbe excluded from `/api/gallery`. The direct short URL `/{ns}/{id}` remains reachable by anyone\nwho knows it, regardless of namespace choice.\n\n- **DEFAULT** (when `ns` is omitted): `public` ← SHARED, LISTED ON HOMEPAGE\n- **CUSTOM**: any `[a-z0-9-]{3,32}` — auto-created on first use, NOT shown in gallery\n- **Collision** on `ns+id`: server returns `409 Conflict`; retry with a different `id` or omit `id`\n\n## TTL\n\n`ttl_days` applies to html, markdown, json, kv, files, and sites. Default `15`, allowed range `1..30`\n(max `30`). Resources auto-delete after expiry.\n\n## Short URL GET resolvers\n\nEvery short-URL GET resolver (HTML, markdown, JSON, KV, file, site) returns the current view counter in the\n`X-Views: <integer>` response header.\n\n## File serving\n\nFile responses support HTTP Range requests (`Accept-Ranges: bytes`, `206 Partial Content`), carry an `ETag`\nheader, and are cached with `Cache-Control: public, max-age=3600`.\n\nAllowed file extensions include (non-exhaustive): html, md, json, txt, css, js, jsx, mjs, ts, tsx,\nplus images, audio, and video types permitted by platform limits.\n\n## Required Headers\n\n`User-Agent` is REQUIRED on every request. Format: `AgentName/version` (e.g. `Claude/4.5`, `Codex/1.0`,\n`MyBot/2.1`). Requests without User-Agent may be rate-limited or rejected. Identify yourself truthfully —\nspoofed or anonymous UAs may be flagged.\n\n## Access Logging\n\nEvery API request (both PUBLISH and READ) is persisted server-side into the `access_events` table:\nclient IP, User-Agent, HTTP method + path + query, response status, request duration (ms), UTC timestamp.\nRetention: 30 days (nightly cleanup). Admin-only endpoints: `GET /api/admin/access` (paginated log with\nfilters) and `GET /api/admin/access/stats` (aggregates). Only static assets are excluded from logging;\nevery API POST/GET/PUT/DELETE is recorded.\n",
     "contact": {
       "name": "BrewPage",
@@ -156,7 +156,7 @@
           "KV"
         ],
         "summary": "Upsert key",
-        "description": "Creates or updates a key in the store; max 1000 keys per store",
+        "description": "Sets (creates or replaces) a key value while preserving the key short URL `/{ns}/{id}/{key}` —\nagents poll the same URL and see the latest value.\nTypical use: deploy-status counters, AI agent step state, current-config flags.\nMax 1000 keys per store. No version history: previous value is overwritten.\nRequires the owner token returned at creation.\n",
         "operationId": "upsertKey",
         "parameters": [
           {
@@ -383,7 +383,7 @@
           "JSON"
         ],
         "summary": "Update JSON document",
-        "description": "Replaces document content; requires the owner token returned at creation",
+        "description": "Replaces document content while preserving the short URL — share once, edit in place.\nUseful for AI agents iterating on a JSON artifact (test results, plan state, config snapshot)\nwithout producing a new URL each time.\nImmutable on update: tags. No version history: previous content is overwritten.\nRequires the owner token returned at creation.\n",
         "operationId": "update",
         "parameters": [
           {
@@ -584,7 +584,7 @@
           "HTML"
         ],
         "summary": "Update HTML page",
-        "description": "Replaces page content; requires the owner token returned at creation",
+        "description": "Replaces page content while preserving the short URL — share once, edit in place.\nThe link already shared stays valid; readers see the new content on next load.\nPrimary use cases: AI agents iterating on output, fixing typos in already-shared pages.\nImmutable on update: tags, password, format, filename, showTopBar — delete and recreate to change those.\nNo version history: previous content is overwritten. Requires the owner token returned at creation.\n",
         "operationId": "update_1",
         "parameters": [
           {
@@ -1289,7 +1289,7 @@
           "Short Links"
         ],
         "summary": "Resolve short URL",
-        "description": "Resolves a short URL to the underlying resource (HTML, markdown, JSON, KV, file, or site entry).\n\nResponse headers:\n- `X-Views: <integer>` — current view counter for this resource.\n- For file/site responses: `Accept-Ranges: bytes`, `ETag`, and `Cache-Control: public, max-age=3600`.\n  Range requests return `206 Partial Content`.\n",
+        "description": "Resolves a short URL to the underlying resource (HTML, markdown, JSON, KV, file, or site entry).\n\nResponse headers:\n- `X-Views: <integer>` — current view counter for this resource.\n- For file/site responses: `Accept-Ranges: bytes`, `ETag`, and `Cache-Control: public, max-age=3600`.\n  Range requests return `206 Partial Content`.\n- For HTML resolves: `X-Show-Top-Bar: true|false` — effective resolved value of `showTopBar`\n  (per-page override, else server default `app.ui.show-top-bar-default`).\n",
         "operationId": "resolve",
         "parameters": [
           {
@@ -1363,6 +1363,16 @@
                 "description": "Present for file/site responses: public, max-age=3600",
                 "schema": {
                   "type": "string"
+                }
+              },
+              "X-Show-Top-Bar": {
+                "description": "Effective resolved value of showTopBar for HTML content (per-page override,\nelse server default app.ui.show-top-bar-default). Reflects whether the served\npage renders the BrewPage top toolbar. Present on HTML resolves only.\n",
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "true",
+                    "false"
+                  ]
                 }
               }
             },
@@ -1700,6 +1710,52 @@
             }
           }
         }
+      },
+      "delete": {
+        "tags": [
+          "KV"
+        ],
+        "summary": "Delete KV store",
+        "description": "Deletes the entire KV store and all its keys. Requires owner token.",
+        "operationId": "deleteKvStore",
+        "parameters": [
+          {
+            "name": "ns",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Owner-Token",
+            "in": "header",
+            "description": "Owner token required to delete",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Store deleted"
+          },
+          "403": {
+            "description": "Invalid owner token"
+          },
+          "404": {
+            "description": "Store not found or expired"
+          }
+        }
       }
     },
     "/api/gallery": {
@@ -2003,6 +2059,33 @@
                     "description": "Relative paths for each file (must match files order)"
                   }
                 }
+              },
+              "examples": {
+                "archive_zip": {
+                  "summary": "Upload a ZIP archive (archive mode)",
+                  "description": "Send the ZIP as `archive` field. Query string controls namespace, TTL, and entry file.\ncurl equivalent:\n  curl -X POST \"https://brewpage.app/api/sites?ns=docs&ttl=15&entry=index.html\" \\\n    -F \"archive=@site.zip\"\n",
+                  "value": {
+                    "archive": "<binary zip content>"
+                  }
+                },
+                "files_paths": {
+                  "summary": "Upload individual files with explicit paths (parallel-arrays mode)",
+                  "description": "Send each file as a `files` field and its relative path as the matching `paths` field.\nThe arrays must be the same length and in the same order.\ncurl equivalent:\n  curl -X POST \"https://brewpage.app/api/sites?ns=docs&ttl=15&entry=index.html\" \\\n    -F \"files=@index.html\" -F \"paths=index.html\" \\\n    -F \"files=@about.html\" -F \"paths=about.html\" \\\n    -F \"files=@gallery.html\" -F \"paths=gallery.html\" \\\n    -F \"files=@contact.html\" -F \"paths=contact.html\"\n",
+                  "value": {
+                    "files": [
+                      "<binary content of index.html>",
+                      "<binary content of about.html>",
+                      "<binary content of gallery.html>",
+                      "<binary content of contact.html>"
+                    ],
+                    "paths": [
+                      "index.html",
+                      "about.html",
+                      "gallery.html",
+                      "contact.html"
+                    ]
+                  }
+                }
               }
             }
           }
@@ -2014,6 +2097,23 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/SiteUploadResponse"
+                },
+                "examples": {
+                  "site_created": {
+                    "summary": "Successful site upload response",
+                    "value": {
+                      "id": "a1b2c3d4e5",
+                      "namespace": "docs",
+                      "entryFile": "index.html",
+                      "link": "https://brewpage.app/docs/a1b2c3d4e5",
+                      "ownerLink": "https://brewpage.app/api/sites/docs/a1b2c3d4e5",
+                      "fileCount": 4,
+                      "totalSizeBytes": 24576,
+                      "expiresAt": "2026-05-16T00:00:00Z",
+                      "tags": [],
+                      "ownerToken": "9f3a1c7d2e4b8a056f1234567890abcd"
+                    }
+                  }
                 }
               }
             }
@@ -2686,10 +2786,173 @@
           }
         }
       }
+    },
+    "/api/{ns}/{id}/owner-check": {
+      "get": {
+        "tags": [
+          "Owner Check"
+        ],
+        "summary": "Verify whether the supplied X-Owner-Token owns the resource",
+        "description": "Returns `{isOwner, type}`. Constant-time BCrypt match.\n404 when the resource does not exist (or has expired).\n200 with `isOwner:false` when the X-Owner-Token header is absent.\n",
+        "operationId": "ownerCheck",
+        "parameters": [
+          {
+            "name": "ns",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Owner-Token",
+            "in": "header",
+            "description": "Owner token to verify (constant-time match)",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/OwnerCheckResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource does not exist or has expired"
+          }
+        }
+      }
+    },
+    "/preview-html/{ns}/{id}": {
+      "get": {
+        "tags": [
+          "preview"
+        ],
+        "summary": "OpenGraph HTML stub",
+        "description": "Tiny HTML response with og:title/og:description/og:image meta tags for social-bot unfurls",
+        "operationId": "previewHtml",
+        "parameters": [
+          {
+            "name": "ns",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "HTML stub with OG meta (or generic stub when resource is missing)",
+            "content": {
+              "text/html": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/preview/{ns}/{id}.png": {
+      "get": {
+        "tags": [
+          "preview"
+        ],
+        "summary": "Per-content OG image",
+        "description": "Returns 1200×630 PNG, cached, with ETag/If-None-Match support; falls back to /og-image.png?v=2 on any failure",
+        "operationId": "preview",
+        "parameters": [
+          {
+            "name": "ns",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "If-None-Match",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "PNG image bytes",
+            "content": {
+              "image/png": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "302": {
+            "description": "Fallback to static og-image.png (flag off, no source, generation error, oversized)"
+          },
+          "304": {
+            "description": "Not modified (If-None-Match matched current ETag)"
+          },
+          "429": {
+            "description": "Per-IP rate limit exceeded"
+          }
+        }
+      }
     }
   },
   "components": {
     "schemas": {
+      "OwnerCheckResponse": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "description": "Resource type (html, kv, json, file, site)"
+          },
+          "isOwner": {
+            "type": "boolean",
+            "description": "True when the supplied owner token matches the stored hash"
+          }
+        }
+      },
       "KvUpsertKeyRequest": {
         "type": "object",
         "properties": {
@@ -2886,10 +3149,28 @@
       },
       "HtmlUploadRequest": {
         "type": "object",
+        "required": [
+          "content"
+        ],
         "properties": {
           "content": {
             "type": "string",
             "description": "HTML or markdown content to publish"
+          },
+          "filename": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 200,
+            "description": "Optional original filename. Used as tab title fallback when no <title>/<h1>\nis present, and as the download basename. Trimmed; rejected if it contains\npath separators, control characters, length > 200, or bare name shorter\nthan 4 chars. Immutable on update.\n"
+          },
+          "showTopBar": {
+            "type": [
+              "boolean",
+              "null"
+            ],
+            "description": "Per-page toggle for the BrewPage top toolbar (filename + Download button + theme toggle)\non the served page.\n- true  -> always show the top bar\n- false -> always hide the top bar\n- null/omitted -> use server default (app.ui.show-top-bar-default)\nEffective resolved value is reflected on GET responses via the X-Show-Top-Bar header.\n"
           }
         }
       },
@@ -3008,32 +3289,50 @@
             }
           },
           "deletedToday": {
-            "type": ["integer", "null"],
+            "type": [
+              "integer",
+              "null"
+            ],
             "format": "int64",
             "description": "Resources deleted in the last 24 hours via explicit user delete; excludes TTL evictions."
           },
           "deletedTodayPublic": {
-            "type": ["integer", "null"],
+            "type": [
+              "integer",
+              "null"
+            ],
             "format": "int64",
             "description": "Resources deleted today in the public namespace."
           },
           "deletedTodayPrivate": {
-            "type": ["integer", "null"],
+            "type": [
+              "integer",
+              "null"
+            ],
             "format": "int64",
             "description": "Resources deleted today in private namespaces."
           },
           "totalDeleted": {
-            "type": ["integer", "null"],
+            "type": [
+              "integer",
+              "null"
+            ],
             "format": "int64",
             "description": "All-time count of explicitly deleted resources."
           },
           "totalDeletedPublic": {
-            "type": ["integer", "null"],
+            "type": [
+              "integer",
+              "null"
+            ],
             "format": "int64",
             "description": "All-time count of explicitly deleted resources in the public namespace."
           },
           "totalDeletedPrivate": {
-            "type": ["integer", "null"],
+            "type": [
+              "integer",
+              "null"
+            ],
             "format": "int64",
             "description": "All-time count of explicitly deleted resources in private namespaces."
           }
@@ -3057,32 +3356,50 @@
             "description": "All-time count"
           },
           "todayDeleted": {
-            "type": ["integer", "null"],
+            "type": [
+              "integer",
+              "null"
+            ],
             "format": "int64",
             "description": "Deleted in the last 24 hours via explicit user delete; excludes TTL evictions."
           },
           "todayDeletedPublic": {
-            "type": ["integer", "null"],
+            "type": [
+              "integer",
+              "null"
+            ],
             "format": "int64",
             "description": "Deleted today in the public namespace."
           },
           "todayDeletedPrivate": {
-            "type": ["integer", "null"],
+            "type": [
+              "integer",
+              "null"
+            ],
             "format": "int64",
             "description": "Deleted today in private namespaces."
           },
           "totalDeleted": {
-            "type": ["integer", "null"],
+            "type": [
+              "integer",
+              "null"
+            ],
             "format": "int64",
             "description": "All-time count of explicitly deleted resources of this type."
           },
           "totalDeletedPublic": {
-            "type": ["integer", "null"],
+            "type": [
+              "integer",
+              "null"
+            ],
             "format": "int64",
             "description": "All-time count of explicitly deleted resources of this type in the public namespace."
           },
           "totalDeletedPrivate": {
-            "type": ["integer", "null"],
+            "type": [
+              "integer",
+              "null"
+            ],
             "format": "int64",
             "description": "All-time count of explicitly deleted resources of this type in private namespaces."
           }
