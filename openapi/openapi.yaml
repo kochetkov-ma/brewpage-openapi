@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: BrewPage API
-  version: 1.7.11
+  version: 1.28.1
   description: |
     REST API for BrewPage — HTML/KV/JSON/file hosting platform. Publish and manage web content, key-value data,
     JSON documents, and files with short URLs, password protection, and real-time statistics.
@@ -1193,6 +1193,36 @@ paths:
             '*/*':
               schema:
                 $ref: '#/components/schemas/KvListKeysResponse'
+    delete:
+      tags:
+      - KV
+      summary: Delete KV store
+      description: Deletes the entire KV store and all its keys. Requires owner token.
+      operationId: deleteKvStore
+      parameters:
+      - name: ns
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: X-Owner-Token
+        in: header
+        description: Owner token required to delete
+        required: true
+        schema:
+          type: string
+      responses:
+        '204':
+          description: Store deleted
+        '403':
+          description: Invalid owner token
+        '404':
+          description: Store not found or expired
   /api/gallery:
     get:
       tags:
@@ -1887,8 +1917,115 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /api/{ns}/{id}/owner-check:
+    get:
+      tags:
+      - Owner Check
+      summary: Verify whether the supplied X-Owner-Token owns the resource
+      description: |
+        Returns `{isOwner, type}`. Constant-time BCrypt match.
+        404 when the resource does not exist (or has expired).
+        200 with `isOwner:false` when the X-Owner-Token header is absent.
+      operationId: ownerCheck
+      parameters:
+      - name: ns
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: X-Owner-Token
+        in: header
+        description: Owner token to verify (constant-time match)
+        required: false
+        schema:
+          type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/OwnerCheckResponse'
+        '404':
+          description: Resource does not exist or has expired
+  /preview-html/{ns}/{id}:
+    get:
+      tags:
+      - preview
+      summary: OpenGraph HTML stub
+      description: Tiny HTML response with og:title/og:description/og:image meta tags for social-bot unfurls
+      operationId: previewHtml
+      parameters:
+      - name: ns
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: HTML stub with OG meta (or generic stub when resource is missing)
+          content:
+            text/html:
+              schema:
+                type: string
+  /preview/{ns}/{id}.png:
+    get:
+      tags:
+      - preview
+      summary: Per-content OG image
+      description: Returns 1200×630 PNG, cached, with ETag/If-None-Match support; falls back to /og-image.png?v=2 on any failure
+      operationId: preview
+      parameters:
+      - name: ns
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: If-None-Match
+        in: header
+        required: false
+        schema:
+          type: string
+      responses:
+        '200':
+          description: PNG image bytes
+          content:
+            image/png:
+              schema:
+                type: string
+                format: binary
+        '302':
+          description: Fallback to static og-image.png (flag off, no source, generation error, oversized)
+        '304':
+          description: Not modified (If-None-Match matched current ETag)
+        '429':
+          description: Per-IP rate limit exceeded
 components:
   schemas:
+    OwnerCheckResponse:
+      type: object
+      properties:
+        type:
+          type: string
+          description: Resource type (html, kv, json, file, site)
+        isOwner:
+          type: boolean
+          description: True when the supplied owner token matches the stored hash
     KvUpsertKeyRequest:
       type: object
       properties:
