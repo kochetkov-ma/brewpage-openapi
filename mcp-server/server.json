@@ -2,7 +2,7 @@
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.kochetkov-ma/brewpage-mcp",
   "title": "BrewPage MCP",
-  "description": "MCP server for BrewPage — publish and manage HTML, Markdown, KV, JSON, and files on brewpage.app directly from AI assistants. No signup. Returns public short URL + owner token per artifact.",
+  "description": "Publish HTML, Markdown, KV, JSON, and files to brewpage.app from AI assistants. No signup.",
   "repository": {
     "url": "https://github.com/kochetkov-ma/brewpage-openapi",
     "source": "github",
