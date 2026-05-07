@@ -290,10 +290,18 @@ server.tool(
 
 server.tool(
   "get_stats",
-  "Get BrewPage platform-wide usage statistics including page count, file count, and storage usage.",
-  {},
-  async () => {
-    const { ok, data } = await apiRequest("GET", "/api/stats");
+  "Get BrewPage platform-wide usage statistics including page count, file count, and storage usage. Counts use disjoint split: alive_public + alive_private + deleted == total. Optional `tz` shifts the 'today' boundary to the given IANA zone (default UTC).",
+  {
+    tz: z
+      .string()
+      .optional()
+      .describe(
+        "Optional IANA timezone id for the 'today' boundary, e.g. 'Europe/Lisbon'. Defaults to UTC. Invalid value falls back to UTC silently."
+      ),
+  },
+  async ({ tz }) => {
+    const path = tz ? `/api/stats?tz=${encodeURIComponent(tz)}` : "/api/stats";
+    const { ok, data } = await apiRequest("GET", path);
 
     if (!ok) {
       return {

@@ -2,8 +2,8 @@
   "openapi": "3.1.0",
   "info": {
     "title": "BrewPage API",
-    "version": "1.28.1",
-    "description": "REST API for BrewPage — HTML/KV/JSON/file hosting platform. Publish and manage web content, key-value data,\nJSON documents, and files with short URLs, password protection, and real-time statistics.\n\n## Namespaces — READ BEFORE PUBLISHING\n\n**WARNING:** If you DO NOT pass `?ns=...`, your content goes into the namespace LITERALLY NAMED `public`\n— a SHARED, WORLDWIDE-DISCOVERABLE namespace. Anything stored in `public` WITHOUT a password:\n\n- is listed on the **brewpage.app HOMEPAGE GALLERY**\n- is returned by `GET /api/gallery` (paginated, full-text search over title/tags)\n- is indexable by search engines (sitemap + meta tags)\n- can be browsed by anyone — including LLM crawlers\n\n**If you do NOT want your content on the public homepage, you MUST pass a CUSTOM NAMESPACE**\n(e.g. `?ns=myproject-2026`) and/or set a password via `X-Password`. Only then will the item\nbe excluded from `/api/gallery`. The direct short URL `/{ns}/{id}` remains reachable by anyone\nwho knows it, regardless of namespace choice.\n\n- **DEFAULT** (when `ns` is omitted): `public` ← SHARED, LISTED ON HOMEPAGE\n- **CUSTOM**: any `[a-z0-9-]{3,32}` — auto-created on first use, NOT shown in gallery\n- **Collision** on `ns+id`: server returns `409 Conflict`; retry with a different `id` or omit `id`\n\n## TTL\n\n`ttl_days` applies to html, markdown, json, kv, files, and sites. Default `15`, allowed range `1..30`\n(max `30`). Resources auto-delete after expiry.\n\n## Short URL GET resolvers\n\nEvery short-URL GET resolver (HTML, markdown, JSON, KV, file, site) returns the current view counter in the\n`X-Views: <integer>` response header.\n\n## File serving\n\nFile responses support HTTP Range requests (`Accept-Ranges: bytes`, `206 Partial Content`), carry an `ETag`\nheader, and are cached with `Cache-Control: public, max-age=3600`.\n\nAllowed file extensions include (non-exhaustive): html, md, json, txt, css, js, jsx, mjs, ts, tsx,\nplus images, audio, and video types permitted by platform limits.\n\n## Required Headers\n\n`User-Agent` is REQUIRED on every request. Format: `AgentName/version` (e.g. `Claude/4.5`, `Codex/1.0`,\n`MyBot/2.1`). Requests without User-Agent may be rate-limited or rejected. Identify yourself truthfully —\nspoofed or anonymous UAs may be flagged.\n\n## Access Logging\n\nEvery API request (both PUBLISH and READ) is persisted server-side into the `access_events` table:\nclient IP, User-Agent, HTTP method + path + query, response status, request duration (ms), UTC timestamp.\nRetention: 30 days (nightly cleanup). Admin-only endpoints: `GET /api/admin/access` (paginated log with\nfilters) and `GET /api/admin/access/stats` (aggregates). Only static assets are excluded from logging;\nevery API POST/GET/PUT/DELETE is recorded.\n",
+    "version": "1.30.3",
+    "description": "REST API for BrewPage \u2014 HTML/KV/JSON/file hosting platform. Publish and manage web content, key-value data,\nJSON documents, and files with short URLs, password protection, and real-time statistics.\n\n## Namespaces \u2014 READ BEFORE PUBLISHING\n\n**WARNING:** If you DO NOT pass `?ns=...`, your content goes into the namespace LITERALLY NAMED `public`\n\u2014 a SHARED, WORLDWIDE-DISCOVERABLE namespace. Anything stored in `public` WITHOUT a password:\n\n- is listed on the **brewpage.app HOMEPAGE GALLERY**\n- is returned by `GET /api/gallery` (paginated, full-text search over title/tags)\n- is indexable by search engines (sitemap + meta tags)\n- can be browsed by anyone \u2014 including LLM crawlers\n\n**If you do NOT want your content on the public homepage, you MUST pass a CUSTOM NAMESPACE**\n(e.g. `?ns=myproject-2026`) and/or set a password via `X-Password`. Only then will the item\nbe excluded from `/api/gallery`. The direct short URL `/{ns}/{id}` remains reachable by anyone\nwho knows it, regardless of namespace choice.\n\n- **DEFAULT** (when `ns` is omitted): `public` \u2190 SHARED, LISTED ON HOMEPAGE\n- **CUSTOM**: any `[a-z0-9-]{3,32}` \u2014 auto-created on first use, NOT shown in gallery\n- **Collision** on `ns+id`: server returns `409 Conflict`; retry with a different `id` or omit `id`\n\n## TTL\n\n`ttl_days` applies to html, markdown, json, kv, files, and sites. Default `15`, allowed range `1..30`\n(max `30`). Resources auto-delete after expiry.\n\n## Short URL GET resolvers\n\nEvery short-URL GET resolver (HTML, markdown, JSON, KV, file, site) returns the current view counter in the\n`X-Views: <integer>` response header.\n\n## File serving\n\nFile responses support HTTP Range requests (`Accept-Ranges: bytes`, `206 Partial Content`), carry an `ETag`\nheader, and are cached with `Cache-Control: public, max-age=3600`.\n\nAllowed file extensions include (non-exhaustive): html, md, json, txt, css, js, jsx, mjs, ts, tsx,\nplus images, audio, and video types permitted by platform limits.\n\n## Required Headers\n\n`User-Agent` is REQUIRED on every request. Format: `AgentName/version` (e.g. `Claude/4.5`, `Codex/1.0`,\n`MyBot/2.1`). Requests without User-Agent may be rate-limited or rejected. Identify yourself truthfully \u2014\nspoofed or anonymous UAs may be flagged.\n\n## Access Logging\n\nEvery API request (both PUBLISH and READ) is persisted server-side into the `access_events` table:\nclient IP, User-Agent, HTTP method + path + query, response status, request duration (ms), UTC timestamp.\nRetention: 30 days (nightly cleanup). Admin-only endpoints: `GET /api/admin/access` (paginated log with\nfilters) and `GET /api/admin/access/stats` (aggregates). Only static assets are excluded from logging;\nevery API POST/GET/PUT/DELETE is recorded.\n",
     "contact": {
       "name": "BrewPage",
       "url": "https://brewpage.app"
@@ -156,7 +156,7 @@
           "KV"
         ],
         "summary": "Upsert key",
-        "description": "Sets (creates or replaces) a key value while preserving the key short URL `/{ns}/{id}/{key}` —\nagents poll the same URL and see the latest value.\nTypical use: deploy-status counters, AI agent step state, current-config flags.\nMax 1000 keys per store. No version history: previous value is overwritten.\nRequires the owner token returned at creation.\n",
+        "description": "Sets (creates or replaces) a key value while preserving the key short URL `/{ns}/{id}/{key}` \u2014\nagents poll the same URL and see the latest value.\nTypical use: deploy-status counters, AI agent step state, current-config flags.\nMax 1000 keys per store. No version history: previous value is overwritten.\nRequires the owner token returned at creation.\n",
         "operationId": "upsertKey",
         "parameters": [
           {
@@ -383,7 +383,7 @@
           "JSON"
         ],
         "summary": "Update JSON document",
-        "description": "Replaces document content while preserving the short URL — share once, edit in place.\nUseful for AI agents iterating on a JSON artifact (test results, plan state, config snapshot)\nwithout producing a new URL each time.\nImmutable on update: tags. No version history: previous content is overwritten.\nRequires the owner token returned at creation.\n",
+        "description": "Replaces document content while preserving the short URL \u2014 share once, edit in place.\nUseful for AI agents iterating on a JSON artifact (test results, plan state, config snapshot)\nwithout producing a new URL each time.\nImmutable on update: tags. No version history: previous content is overwritten.\nRequires the owner token returned at creation.\n",
         "operationId": "update",
         "parameters": [
           {
@@ -584,7 +584,7 @@
           "HTML"
         ],
         "summary": "Update HTML page",
-        "description": "Replaces page content while preserving the short URL — share once, edit in place.\nThe link already shared stays valid; readers see the new content on next load.\nPrimary use cases: AI agents iterating on output, fixing typos in already-shared pages.\nImmutable on update: tags, password, format, filename, showTopBar — delete and recreate to change those.\nNo version history: previous content is overwritten. Requires the owner token returned at creation.\n",
+        "description": "Replaces page content while preserving the short URL \u2014 share once, edit in place.\nThe link already shared stays valid; readers see the new content on next load.\nPrimary use cases: AI agents iterating on output, fixing typos in already-shared pages.\nImmutable on update: tags, password, format, filename, showTopBar \u2014 delete and recreate to change those.\nNo version history: previous content is overwritten. Requires the owner token returned at creation.\n",
         "operationId": "update_1",
         "parameters": [
           {
@@ -759,7 +759,7 @@
           {
             "name": "ns",
             "in": "query",
-            "description": "Namespace. Default: public. All namespaces are PUBLIC and indexable. Pages in 'public' without password appear in gallery. Custom namespace is created automatically. Format: [a-z0-9-]{3,32}. On ns+id collision the server returns 409 Conflict — retry with a different id or omit id to let the server generate one",
+            "description": "Namespace. Default: public. All namespaces are PUBLIC and indexable. Pages in 'public' without password appear in gallery. Custom namespace is created automatically. Format: [a-z0-9-]{3,32}. On ns+id collision the server returns 409 Conflict \u2014 retry with a different id or omit id to let the server generate one",
             "required": false,
             "schema": {
               "type": "string",
@@ -908,7 +908,7 @@
           {
             "name": "ns",
             "in": "query",
-            "description": "Namespace. Default: public. All namespaces are PUBLIC and indexable. Pages in 'public' without password appear in gallery. Custom namespace is created automatically. Format: [a-z0-9-]{3,32}. On ns+id collision the server returns 409 Conflict — retry with a different id or omit id to let the server generate one",
+            "description": "Namespace. Default: public. All namespaces are PUBLIC and indexable. Pages in 'public' without password appear in gallery. Custom namespace is created automatically. Format: [a-z0-9-]{3,32}. On ns+id collision the server returns 409 Conflict \u2014 retry with a different id or omit id to let the server generate one",
             "required": false,
             "schema": {
               "type": "string",
@@ -1013,7 +1013,7 @@
           {
             "name": "ns",
             "in": "query",
-            "description": "Namespace. Default: public. All namespaces are PUBLIC and indexable. Pages in 'public' without password appear in gallery. Custom namespace is created automatically. Format: [a-z0-9-]{3,32}. On ns+id collision the server returns 409 Conflict — retry with a different id or omit id to let the server generate one",
+            "description": "Namespace. Default: public. All namespaces are PUBLIC and indexable. Pages in 'public' without password appear in gallery. Custom namespace is created automatically. Format: [a-z0-9-]{3,32}. On ns+id collision the server returns 409 Conflict \u2014 retry with a different id or omit id to let the server generate one",
             "required": false,
             "schema": {
               "type": "string",
@@ -1172,7 +1172,7 @@
           {
             "name": "ns",
             "in": "query",
-            "description": "Namespace. Default: public. All namespaces are PUBLIC and indexable. Pages in 'public' without password appear in gallery. Custom namespace is created automatically. Format: [a-z0-9-]{3,32}. On ns+id collision the server returns 409 Conflict — retry with a different id or omit id to let the server generate one",
+            "description": "Namespace. Default: public. All namespaces are PUBLIC and indexable. Pages in 'public' without password appear in gallery. Custom namespace is created automatically. Format: [a-z0-9-]{3,32}. On ns+id collision the server returns 409 Conflict \u2014 retry with a different id or omit id to let the server generate one",
             "required": false,
             "schema": {
               "type": "string",
@@ -1289,7 +1289,7 @@
           "Short Links"
         ],
         "summary": "Resolve short URL",
-        "description": "Resolves a short URL to the underlying resource (HTML, markdown, JSON, KV, file, or site entry).\n\nResponse headers:\n- `X-Views: <integer>` — current view counter for this resource.\n- For file/site responses: `Accept-Ranges: bytes`, `ETag`, and `Cache-Control: public, max-age=3600`.\n  Range requests return `206 Partial Content`.\n- For HTML resolves: `X-Show-Top-Bar: true|false` — effective resolved value of `showTopBar`\n  (per-page override, else server default `app.ui.show-top-bar-default`).\n",
+        "description": "Resolves a short URL to the underlying resource (HTML, markdown, JSON, KV, file, or site entry).\n\nResponse headers:\n- `X-Views: <integer>` \u2014 current view counter for this resource.\n- For file/site responses: `Accept-Ranges: bytes`, `ETag`, and `Cache-Control: public, max-age=3600`.\n  Range requests return `206 Partial Content`.\n- For HTML resolves: `X-Show-Top-Bar: true|false` \u2014 effective resolved value of `showTopBar`\n  (per-page override, else server default `app.ui.show-top-bar-default`).\n",
         "operationId": "resolve",
         "parameters": [
           {
@@ -1413,7 +1413,7 @@
             }
           },
           "409": {
-            "description": "Conflict — ns+id already exists. Retry with a different id or omit id to let the server generate one"
+            "description": "Conflict \u2014 ns+id already exists. Retry with a different id or omit id to let the server generate one"
           }
         }
       }
@@ -1424,7 +1424,7 @@
           "Short Links"
         ],
         "summary": "Resolve short URL with sub-path",
-        "description": "Resolves a short URL with a sub-path (e.g. entry file within an uploaded site).\n\nResponse headers:\n- `X-Views: <integer>` — current view counter for this resource.\n- For file/site responses: `Accept-Ranges: bytes`, `ETag`, and `Cache-Control: public, max-age=3600`.\n  Range requests return `206 Partial Content`.\n",
+        "description": "Resolves a short URL with a sub-path (e.g. entry file within an uploaded site).\n\nResponse headers:\n- `X-Views: <integer>` \u2014 current view counter for this resource.\n- For file/site responses: `Accept-Ranges: bytes`, `ETag`, and `Cache-Control: public, max-age=3600`.\n  Range requests return `206 Partial Content`.\n",
         "operationId": "resolveWithSub",
         "parameters": [
           {
@@ -1596,8 +1596,20 @@
           "Stats"
         ],
         "summary": "Get platform stats",
-        "description": "Returns today's and all-time creation/view counts with per-type breakdown",
+        "description": "Returns today's and all-time creation/view counts with per-type breakdown.\n\nDisjoint split semantics: `*Public` and `*Private` count alive (non-deleted) resources only;\n`*Deleted` is a separate disjoint bucket. Invariant: `Public + Private + Deleted == Total`.\n\nOptional `tz` query param shifts the boundary of \"today\" to the given IANA timezone.\nDefaults to UTC. Invalid value falls back to UTC silently.\n",
         "operationId": "getStats",
+        "parameters": [
+          {
+            "name": "tz",
+            "in": "query",
+            "description": "IANA timezone id for the \"today\" boundary (e.g. Europe/Lisbon, Asia/Tokyo). Defaults to UTC.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "example": "Europe/Lisbon"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Platform statistics",
@@ -1801,7 +1813,7 @@
           {
             "name": "sort",
             "in": "query",
-            "description": "Sort order for gallery results. `date` (default) — newest first by creation date. `views` — most viewed first, then newest by date as tiebreaker.",
+            "description": "Sort order for gallery results. `date` (default) \u2014 newest first by creation date. `views` \u2014 most viewed first, then newest by date as tiebreaker.",
             "required": false,
             "schema": {
               "type": "string",
@@ -2885,7 +2897,7 @@
           "preview"
         ],
         "summary": "Per-content OG image",
-        "description": "Returns 1200×630 PNG, cached, with ETag/If-None-Match support; falls back to /og-image.png?v=2 on any failure",
+        "description": "Returns 1200\u00d7630 PNG, cached, with ETag/If-None-Match support; falls back to /og-image.png?v=2 on any failure",
         "operationId": "preview",
         "parameters": [
           {
@@ -3264,12 +3276,12 @@
           "createdToday": {
             "type": "integer",
             "format": "int64",
-            "description": "Resources created in the last 24 hours"
+            "description": "Resources created in the last 24 hours (disjoint sum: alive_public + alive_private + deleted)."
           },
           "totalCreated": {
             "type": "integer",
             "format": "int64",
-            "description": "All-time resource count"
+            "description": "All-time resource count (disjoint sum: alive_public + alive_private + deleted)."
           },
           "viewsToday": {
             "type": "integer",
@@ -3283,10 +3295,74 @@
           },
           "breakdown": {
             "type": "array",
-            "description": "Per-type breakdown (html, json, kv, file)",
+            "description": "Per-type breakdown (html, json, kv, file, multi-file site)",
             "items": {
               "$ref": "#/components/schemas/TypeBreakdown"
             }
+          },
+          "createdTodayPublic": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Alive resources created today in the public namespace (alive only, deleted excluded)."
+          },
+          "createdTodayPrivate": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Alive resources created today in private namespaces (alive only, deleted excluded)."
+          },
+          "viewsTodayPublic": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Views today on public-namespace resources."
+          },
+          "viewsTodayPrivate": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Views today on private-namespace resources."
+          },
+          "totalCreatedPublic": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "All-time alive resources in the public namespace (alive only, deleted excluded)."
+          },
+          "totalCreatedPrivate": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "All-time alive resources in private namespaces (alive only, deleted excluded)."
+          },
+          "totalViewsPublic": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "All-time views on public-namespace resources."
+          },
+          "totalViewsPrivate": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "All-time views on private-namespace resources."
           },
           "deletedToday": {
             "type": [
@@ -3343,17 +3419,49 @@
         "properties": {
           "type": {
             "type": "string",
-            "description": "Resource type: html, json, kv, or file"
+            "description": "Resource type: HTML pages, JSON docs, KV entries, Files, Multi-file sites"
           },
           "today": {
             "type": "integer",
             "format": "int64",
-            "description": "Created in the last 24 hours"
+            "description": "Created in the last 24 hours (disjoint sum: alive_public + alive_private + deleted)."
           },
           "total": {
             "type": "integer",
             "format": "int64",
-            "description": "All-time count"
+            "description": "All-time count (disjoint sum: alive_public + alive_private + deleted)."
+          },
+          "todayPublic": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Alive today in the public namespace (alive only, deleted excluded)."
+          },
+          "todayPrivate": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Alive today in private namespaces (alive only, deleted excluded)."
+          },
+          "totalPublic": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "All-time alive in the public namespace (alive only, deleted excluded)."
+          },
+          "totalPrivate": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "All-time alive in private namespaces (alive only, deleted excluded)."
           },
           "todayDeleted": {
             "type": [

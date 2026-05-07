@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: BrewPage API
-  version: 1.28.1
+  version: 1.30.3
   description: |
     REST API for BrewPage — HTML/KV/JSON/file hosting platform. Publish and manage web content, key-value data,
     JSON documents, and files with short URLs, password protection, and real-time statistics.
@@ -1120,8 +1120,23 @@ paths:
       tags:
       - Stats
       summary: Get platform stats
-      description: Returns today's and all-time creation/view counts with per-type breakdown
+      description: |
+        Returns today's and all-time creation/view counts with per-type breakdown.
+
+        Disjoint split semantics: `*Public` and `*Private` count alive (non-deleted) resources only;
+        `*Deleted` is a separate disjoint bucket. Invariant: `Public + Private + Deleted == Total`.
+
+        Optional `tz` query param shifts the boundary of "today" to the given IANA timezone.
+        Defaults to UTC. Invalid value falls back to UTC silently.
       operationId: getStats
+      parameters:
+      - name: tz
+        in: query
+        description: 'IANA timezone id for the "today" boundary (e.g. Europe/Lisbon, Asia/Tokyo). Defaults to UTC.'
+        required: false
+        schema:
+          type: string
+          example: Europe/Lisbon
       responses:
         '200':
           description: Platform statistics
@@ -2257,11 +2272,11 @@ components:
         createdToday:
           type: integer
           format: int64
-          description: Resources created in the last 24 hours
+          description: 'Resources created in the last 24 hours (disjoint sum: alive_public + alive_private + deleted).'
         totalCreated:
           type: integer
           format: int64
-          description: All-time resource count
+          description: 'All-time resource count (disjoint sum: alive_public + alive_private + deleted).'
         viewsToday:
           type: integer
           format: int64
@@ -2272,9 +2287,57 @@ components:
           description: All-time view count
         breakdown:
           type: array
-          description: Per-type breakdown (html, json, kv, file)
+          description: Per-type breakdown (html, json, kv, file, multi-file site)
           items:
             $ref: '#/components/schemas/TypeBreakdown'
+        createdTodayPublic:
+          type:
+            - integer
+            - "null"
+          format: int64
+          description: Alive resources created today in the public namespace (alive only, deleted excluded).
+        createdTodayPrivate:
+          type:
+            - integer
+            - "null"
+          format: int64
+          description: Alive resources created today in private namespaces (alive only, deleted excluded).
+        viewsTodayPublic:
+          type:
+            - integer
+            - "null"
+          format: int64
+          description: Views today on public-namespace resources.
+        viewsTodayPrivate:
+          type:
+            - integer
+            - "null"
+          format: int64
+          description: Views today on private-namespace resources.
+        totalCreatedPublic:
+          type:
+            - integer
+            - "null"
+          format: int64
+          description: All-time alive resources in the public namespace (alive only, deleted excluded).
+        totalCreatedPrivate:
+          type:
+            - integer
+            - "null"
+          format: int64
+          description: All-time alive resources in private namespaces (alive only, deleted excluded).
+        totalViewsPublic:
+          type:
+            - integer
+            - "null"
+          format: int64
+          description: All-time views on public-namespace resources.
+        totalViewsPrivate:
+          type:
+            - integer
+            - "null"
+          format: int64
+          description: All-time views on private-namespace resources.
         deletedToday:
           type:
             - integer
@@ -2316,15 +2379,39 @@ components:
       properties:
         type:
           type: string
-          description: 'Resource type: html, json, kv, or file'
+          description: 'Resource type: HTML pages, JSON docs, KV entries, Files, Multi-file sites'
         today:
           type: integer
           format: int64
-          description: Created in the last 24 hours
+          description: 'Created in the last 24 hours (disjoint sum: alive_public + alive_private + deleted).'
         total:
           type: integer
           format: int64
-          description: All-time count
+          description: 'All-time count (disjoint sum: alive_public + alive_private + deleted).'
+        todayPublic:
+          type:
+            - integer
+            - "null"
+          format: int64
+          description: Alive today in the public namespace (alive only, deleted excluded).
+        todayPrivate:
+          type:
+            - integer
+            - "null"
+          format: int64
+          description: Alive today in private namespaces (alive only, deleted excluded).
+        totalPublic:
+          type:
+            - integer
+            - "null"
+          format: int64
+          description: All-time alive in the public namespace (alive only, deleted excluded).
+        totalPrivate:
+          type:
+            - integer
+            - "null"
+          format: int64
+          description: All-time alive in private namespaces (alive only, deleted excluded).
         todayDeleted:
           type:
             - integer
