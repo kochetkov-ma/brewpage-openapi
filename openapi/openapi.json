@@ -63,6 +63,10 @@
     {
       "name": "Admin",
       "description": "Administrative endpoints protected by the X-Admin-Password header"
+    },
+    {
+      "name": "Namespace",
+      "description": "Fresh, collision-free namespace suggestions"
     }
   ],
   "paths": {
@@ -2948,6 +2952,34 @@
           }
         }
       }
+    },
+    "/api/namespace/random": {
+      "get": {
+        "tags": [
+          "Namespace"
+        ],
+        "summary": "Suggest a random namespace",
+        "description": "Returns a fresh `<word>-<word>-NN` namespace from the EFF Short Wordlist that does not collide\nwith any existing resource (html, kv, json, file, site). Pure read; no resource is allocated.\n\nUse this to suggest a unique namespace to the user before publishing — pass the returned value\nas the `?ns=` query parameter on subsequent publish calls. Subject to the same per-IP read\nrate limit as other GET endpoints (default 300/min/IP).\n",
+        "operationId": "randomNamespace",
+        "responses": {
+          "200": {
+            "description": "Namespace suggested",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/RandomNamespaceResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Per-IP rate limit exceeded"
+          },
+          "503": {
+            "description": "Namespace pool exhausted — retry budget hit consecutive collisions"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -2962,6 +2994,16 @@
           "isOwner": {
             "type": "boolean",
             "description": "True when the supplied owner token matches the stored hash"
+          }
+        }
+      },
+      "RandomNamespaceResponse": {
+        "type": "object",
+        "properties": {
+          "namespace": {
+            "type": "string",
+            "description": "Fresh `<word>-<word>-NN` namespace not currently in use",
+            "example": "cobra-ledger-42"
           }
         }
       },
