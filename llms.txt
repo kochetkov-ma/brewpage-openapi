@@ -1,0 +1,38 @@
+# brewpage-openapi
+
+Single source of truth for the BrewPage REST API contract and the BrewPage MCP server.
+
+## What's here
+
+- `openapi/openapi.yaml` — hand-written OpenAPI 3.1 spec. Currently `info.version: 1.31.0`.
+- `openapi/openapi.json` — same spec, regenerated via `npx js-yaml`.
+- `mcp-server/` — TypeScript implementation of the BrewPage MCP server. Currently `version: 1.4.0`. Published as `brewpage-mcp` on npm.
+- `docs/` — Astro docs site published at https://kochetkov-ma.github.io/brewpage-openapi/.
+
+## Where to read the live API
+
+- Spec (browser-rendered): https://kochetkov-ma.github.io/brewpage-openapi/api-reference/
+- Spec (raw YAML): https://kochetkov-ma.github.io/brewpage-openapi/openapi.yaml
+- Live `/v3/api-docs` from production backend: https://brewpage.app/v3/api-docs
+- `llms.txt`: https://brewpage.app/llms.txt
+- `llms-full.txt`: https://brewpage.app/llms-full.txt
+
+## Recent contract changes
+
+- 1.31.0 (matches backend v1.41.0): `POST /api/html` and `PUT /api/html/{ns}/{id}` accept raw `text/*` and (POST only) `application/octet-stream` bodies. Binary payloads route to `/api/files`. New 422 response with `supportedTypes` array; 415 enriched. See `https://brewpage.app/llms-full.txt`.
+
+## How to use the MCP server
+
+```bash
+npx -y brewpage-mcp@latest
+```
+
+Or pin a version: `npx -y brewpage-mcp@1.4.0`.
+
+The server exposes the same operations the OpenAPI spec describes — read `mcp-server/README.md` for tool list and usage.
+
+## Source
+
+GitHub: https://github.com/kochetkov-ma/brewpage-openapi (repo)
+Backend (BrewPage app): https://github.com/kochetkov-ma/brewpage-app
+Docs: https://kochetkov-ma.github.io/brewpage-openapi/

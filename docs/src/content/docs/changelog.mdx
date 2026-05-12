@@ -1,0 +1,15 @@
+---
+title: Changelog
+description: Release notes for the BrewPage OpenAPI spec and MCP server
+order: 5
+---
+
+# Changelog
+
+## Spec 1.31.0 / MCP 1.4.0 — Content-Type fallback on `POST /api/html`
+
+`POST /api/html` and `PUT /api/html/{ns}/{id}` now accept raw `text/*` bodies and (POST only) `application/octet-stream`. Binary payloads sniffed as PNG, JPEG, GIF, WEBP, MP4, PDF or ZIP auto-route to `/api/files` and return a 201 with the file resource location. The existing `application/json` contract is unchanged — JSON clients see no difference.
+
+`UnsupportedFileTypeException` now responds with **422 Unprocessable Entity** (was 415). Both 415 and 422 error bodies expose a `supportedTypes` array on `ErrorResponse` listing the MIME types the endpoint accepts, so clients can surface actionable guidance.
+
+For the full MIME → format dispatch table and ready-to-paste `curl` examples, see the live BrewPage [`/llms-full.txt`](https://brewpage.app/llms-full.txt). The interactive OpenAPI explorer is published at [kochetkov-ma.github.io/brewpage-openapi](https://kochetkov-ma.github.io/brewpage-openapi/).

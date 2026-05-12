@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: BrewPage API
-  version: 1.30.3
+  version: 1.31.0
   description: |
     REST API for BrewPage — HTML/KV/JSON/file hosting platform. Publish and manage web content, key-value data,
     JSON documents, and files with short URLs, password protection, and real-time statistics.
@@ -428,13 +428,14 @@ paths:
     put:
       tags:
       - HTML
-      summary: Update HTML page
+      summary: Update HTML page (accepts JSON or raw text/*)
       description: |
         Replaces page content while preserving the short URL — share once, edit in place.
         The link already shared stays valid; readers see the new content on next load.
         Primary use cases: AI agents iterating on output, fixing typos in already-shared pages.
         Immutable on update: tags, password, format, filename, showTopBar — delete and recreate to change those.
         No version history: previous content is overwritten. Requires the owner token returned at creation.
+        Also accepts raw text/* bodies — see /llms-full.txt.
       operationId: update_1
       parameters:
       - name: ns
@@ -454,30 +455,47 @@ paths:
         schema:
           type: string
       requestBody:
+        description: |
+          Primary path: application/json with HtmlUpdateRequest. Fallback paths accept raw text/* bodies — server
+          records the fallback admission but htmlService.update preserves the stored format. See /llms-full.txt.
         content:
           application/json:
             schema:
               $ref: '#/components/schemas/HtmlUpdateRequest'
+          text/html:        { schema: { type: string }, example: "<!doctype html><h1>Hi</h1>" }
+          text/markdown:    { schema: { type: string }, example: "# Title\n\nBody" }
+          text/plain:       { schema: { type: string }, example: "plain text" }
+          text/yaml:        { schema: { type: string }, example: "key: value" }
+          text/xml:         { schema: { type: string }, example: "<root/>" }
+          text/csv:         { schema: { type: string }, example: "a,b\n1,2" }
+          text/css:         { schema: { type: string }, example: "body{margin:0}" }
+          text/javascript:  { schema: { type: string }, example: "console.log(1)" }
+          text/x-toml:      { schema: { type: string }, example: "key = \"value\"" }
+          application/xml:         { schema: { type: string }, example: "<root/>" }
+          application/yaml:        { schema: { type: string }, example: "key: value" }
+          application/x-yaml:      { schema: { type: string }, example: "key: value" }
+          application/javascript:  { schema: { type: string }, example: "console.log(1)" }
+          application/toml:        { schema: { type: string }, example: "key = \"value\"" }
         required: true
       responses:
         '200':
           description: Page updated
           content:
-            '*/*':
+            application/json:
               schema:
                 $ref: '#/components/schemas/HtmlUpdateResponse'
         '403':
           description: Missing or wrong owner token
           content:
-            '*/*':
+            application/json:
               schema:
-                $ref: '#/components/schemas/HtmlUpdateResponse'
+                $ref: '#/components/schemas/ErrorResponse'
         '404':
           description: Page not found or expired
           content:
-            '*/*':
+            application/json:
               schema:
-                $ref: '#/components/schemas/HtmlUpdateResponse'
+                $ref: '#/components/schemas/ErrorResponse'
     delete:
       tags:
       - HTML
@@ -716,9 +734,10 @@ paths:
     post:
       tags:
       - HTML
-      summary: Create HTML page
+      summary: Create HTML page (accepts JSON or raw text/*/octet-stream)
       description: Stores HTML or markdown content and returns a shareable link. Reuse existing owner token to group entities
-        under one owner
+        under one owner. Also accepts raw text/* (HTML, Markdown, YAML, XML, CSV, code) and application/octet-stream bodies
+        — see /llms-full.txt.
       operationId: create_1
       parameters:
       - name: ns
@@ -769,30 +788,64 @@ paths:
         schema:
           type: string
       requestBody:
+        description: |
+          Primary path: `application/json` with `HtmlUploadRequest`. Fallback paths accept raw text/* and
+          `application/octet-stream` bodies — server detects format (or use `?format=`). See `/llms-full.txt`.
         content:
           application/json:
             schema:
               $ref: '#/components/schemas/HtmlUploadRequest'
+          text/html:        { schema: { type: string }, example: "<!doctype html><h1>Hi</h1>" }
+          text/markdown:    { schema: { type: string }, example: "# Title\n\nBody" }
+          text/plain:       { schema: { type: string }, example: "plain text" }
+          text/yaml:        { schema: { type: string }, example: "key: value" }
+          text/xml:         { schema: { type: string }, example: "<root/>" }
+          text/csv:         { schema: { type: string }, example: "a,b\n1,2" }
+          text/css:         { schema: { type: string }, example: "body{margin:0}" }
+          text/javascript:  { schema: { type: string }, example: "console.log(1)" }
+          text/x-toml:      { schema: { type: string }, example: "key = \"value\"" }
+          application/xml:         { schema: { type: string }, example: "<root/>" }
+          application/yaml:        { schema: { type: string }, example: "key: value" }
+          application/x-yaml:      { schema: { type: string }, example: "key: value" }
+          application/javascript:  { schema: { type: string }, example: "console.log(1)" }
+          application/toml:        { schema: { type: string }, example: "key = \"value\"" }
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
+              description: "Binary — auto-routes to /api/files for png/jpg/gif/webp/mp4/pdf/zip; otherwise text-sniffed."
         required: true
       responses:
         '201':
           description: Page created
           content:
-            '*/*':
+            application/json:
               schema:
                 $ref: '#/components/schemas/HtmlUploadResponse'
         '400':
           description: Invalid request parameters
           content:
-            '*/*':
+            application/json:
               schema:
-                $ref: '#/components/schemas/HtmlUploadResponse'
+                $ref: '#/components/schemas/ErrorResponse'
+        '415':
+          description: Unsupported Content-Type — body did not match any supported text/* or application/* fallback.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Body parsed but failed validation (e.g. binary detected on text path, size limit exceeded).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '429':
           description: Rate limit exceeded
           content:
-            '*/*':
+            application/json:
               schema:
-                $ref: '#/components/schemas/HtmlUploadResponse'
+                $ref: '#/components/schemas/ErrorResponse'
   /api/files:
     get:
       tags:
@@ -871,41 +924,49 @@ paths:
         schema:
           type: string
       requestBody:
+        required: true
         content:
-          application/json:
+          multipart/form-data:
             schema:
               type: object
               properties:
                 file:
                   type: string
                   format: binary
+                  description: The file to upload. The original filename is preserved from the multipart part headers.
               required:
               - file
       responses:
         '201':
           description: File uploaded
           content:
-            '*/*':
+            application/json:
               schema:
                 $ref: '#/components/schemas/FileUploadResponse'
         '400':
           description: Invalid request or file too large
           content:
-            '*/*':
+            application/json:
               schema:
-                $ref: '#/components/schemas/FileUploadResponse'
+                $ref: '#/components/schemas/ErrorResponse'
         '415':
           description: Unsupported file type
           content:
-            '*/*':
+            application/json:
               schema:
-                $ref: '#/components/schemas/FileUploadResponse'
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: File parsed but failed validation (e.g. extension allowed but content sniffed as a disallowed type).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '429':
           description: Rate limit exceeded
           content:
-            '*/*':
+            application/json:
               schema:
-                $ref: '#/components/schemas/FileUploadResponse'
+                $ref: '#/components/schemas/ErrorResponse'
   /{ns}/{id}:
     get:
       tags:
@@ -1506,6 +1567,12 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '415':
           description: Unsupported file type in archive
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Archive parsed but failed validation (e.g. file extension allowed but content sniffed as a disallowed type).
           content:
             application/json:
               schema:
@@ -2685,6 +2752,32 @@ components:
           type: string
           format: date-time
           description: ISO-8601 timestamp of when the error occurred
+        supportedTypes:
+          type:
+          - array
+          - 'null'
+          items:
+            type: string
+          description: |
+            Present on 415/422 responses from endpoints with raw-body fallback parsing. Lists the Content-Type
+            values the server accepts for that endpoint (mirrors `FallbackFormatResolver.SUPPORTED_CONTENT_TYPES`).
+          example:
+            - text/html
+            - text/markdown
+            - text/plain
+            - text/yaml
+            - text/xml
+            - text/csv
+            - text/css
+            - text/javascript
+            - text/x-toml
+            - application/xml
+            - application/yaml
+            - application/x-yaml
+            - application/javascript
+            - application/toml
+            - application/octet-stream
+            - application/json
     ReportRequest:
       type: object
       required:

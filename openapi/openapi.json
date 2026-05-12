@@ -2,8 +2,8 @@
   "openapi": "3.1.0",
   "info": {
     "title": "BrewPage API",
-    "version": "1.30.3",
-    "description": "REST API for BrewPage \u2014 HTML/KV/JSON/file hosting platform. Publish and manage web content, key-value data,\nJSON documents, and files with short URLs, password protection, and real-time statistics.\n\n## Namespaces \u2014 READ BEFORE PUBLISHING\n\n**WARNING:** If you DO NOT pass `?ns=...`, your content goes into the namespace LITERALLY NAMED `public`\n\u2014 a SHARED, WORLDWIDE-DISCOVERABLE namespace. Anything stored in `public` WITHOUT a password:\n\n- is listed on the **brewpage.app HOMEPAGE GALLERY**\n- is returned by `GET /api/gallery` (paginated, full-text search over title/tags)\n- is indexable by search engines (sitemap + meta tags)\n- can be browsed by anyone \u2014 including LLM crawlers\n\n**If you do NOT want your content on the public homepage, you MUST pass a CUSTOM NAMESPACE**\n(e.g. `?ns=myproject-2026`) and/or set a password via `X-Password`. Only then will the item\nbe excluded from `/api/gallery`. The direct short URL `/{ns}/{id}` remains reachable by anyone\nwho knows it, regardless of namespace choice.\n\n- **DEFAULT** (when `ns` is omitted): `public` \u2190 SHARED, LISTED ON HOMEPAGE\n- **CUSTOM**: any `[a-z0-9-]{3,32}` \u2014 auto-created on first use, NOT shown in gallery\n- **Collision** on `ns+id`: server returns `409 Conflict`; retry with a different `id` or omit `id`\n\n## TTL\n\n`ttl_days` applies to html, markdown, json, kv, files, and sites. Default `15`, allowed range `1..30`\n(max `30`). Resources auto-delete after expiry.\n\n## Short URL GET resolvers\n\nEvery short-URL GET resolver (HTML, markdown, JSON, KV, file, site) returns the current view counter in the\n`X-Views: <integer>` response header.\n\n## File serving\n\nFile responses support HTTP Range requests (`Accept-Ranges: bytes`, `206 Partial Content`), carry an `ETag`\nheader, and are cached with `Cache-Control: public, max-age=3600`.\n\nAllowed file extensions include (non-exhaustive): html, md, json, txt, css, js, jsx, mjs, ts, tsx,\nplus images, audio, and video types permitted by platform limits.\n\n## Required Headers\n\n`User-Agent` is REQUIRED on every request. Format: `AgentName/version` (e.g. `Claude/4.5`, `Codex/1.0`,\n`MyBot/2.1`). Requests without User-Agent may be rate-limited or rejected. Identify yourself truthfully \u2014\nspoofed or anonymous UAs may be flagged.\n\n## Access Logging\n\nEvery API request (both PUBLISH and READ) is persisted server-side into the `access_events` table:\nclient IP, User-Agent, HTTP method + path + query, response status, request duration (ms), UTC timestamp.\nRetention: 30 days (nightly cleanup). Admin-only endpoints: `GET /api/admin/access` (paginated log with\nfilters) and `GET /api/admin/access/stats` (aggregates). Only static assets are excluded from logging;\nevery API POST/GET/PUT/DELETE is recorded.\n",
+    "version": "1.31.0",
+    "description": "REST API for BrewPage — HTML/KV/JSON/file hosting platform. Publish and manage web content, key-value data,\nJSON documents, and files with short URLs, password protection, and real-time statistics.\n\n## Namespaces — READ BEFORE PUBLISHING\n\n**WARNING:** If you DO NOT pass `?ns=...`, your content goes into the namespace LITERALLY NAMED `public`\n— a SHARED, WORLDWIDE-DISCOVERABLE namespace. Anything stored in `public` WITHOUT a password:\n\n- is listed on the **brewpage.app HOMEPAGE GALLERY**\n- is returned by `GET /api/gallery` (paginated, full-text search over title/tags)\n- is indexable by search engines (sitemap + meta tags)\n- can be browsed by anyone — including LLM crawlers\n\n**If you do NOT want your content on the public homepage, you MUST pass a CUSTOM NAMESPACE**\n(e.g. `?ns=myproject-2026`) and/or set a password via `X-Password`. Only then will the item\nbe excluded from `/api/gallery`. The direct short URL `/{ns}/{id}` remains reachable by anyone\nwho knows it, regardless of namespace choice.\n\n- **DEFAULT** (when `ns` is omitted): `public` ← SHARED, LISTED ON HOMEPAGE\n- **CUSTOM**: any `[a-z0-9-]{3,32}` — auto-created on first use, NOT shown in gallery\n- **Collision** on `ns+id`: server returns `409 Conflict`; retry with a different `id` or omit `id`\n\n## TTL\n\n`ttl_days` applies to html, markdown, json, kv, files, and sites. Default `15`, allowed range `1..30`\n(max `30`). Resources auto-delete after expiry.\n\n## Short URL GET resolvers\n\nEvery short-URL GET resolver (HTML, markdown, JSON, KV, file, site) returns the current view counter in the\n`X-Views: <integer>` response header.\n\n## File serving\n\nFile responses support HTTP Range requests (`Accept-Ranges: bytes`, `206 Partial Content`), carry an `ETag`\nheader, and are cached with `Cache-Control: public, max-age=3600`.\n\nAllowed file extensions include (non-exhaustive): html, md, json, txt, css, js, jsx, mjs, ts, tsx,\nplus images, audio, and video types permitted by platform limits.\n\n## Required Headers\n\n`User-Agent` is REQUIRED on every request. Format: `AgentName/version` (e.g. `Claude/4.5`, `Codex/1.0`,\n`MyBot/2.1`). Requests without User-Agent may be rate-limited or rejected. Identify yourself truthfully —\nspoofed or anonymous UAs may be flagged.\n\n## Access Logging\n\nEvery API request (both PUBLISH and READ) is persisted server-side into the `access_events` table:\nclient IP, User-Agent, HTTP method + path + query, response status, request duration (ms), UTC timestamp.\nRetention: 30 days (nightly cleanup). Admin-only endpoints: `GET /api/admin/access` (paginated log with\nfilters) and `GET /api/admin/access/stats` (aggregates). Only static assets are excluded from logging;\nevery API POST/GET/PUT/DELETE is recorded.\n",
     "contact": {
       "name": "BrewPage",
       "url": "https://brewpage.app"
@@ -160,7 +160,7 @@
           "KV"
         ],
         "summary": "Upsert key",
-        "description": "Sets (creates or replaces) a key value while preserving the key short URL `/{ns}/{id}/{key}` \u2014\nagents poll the same URL and see the latest value.\nTypical use: deploy-status counters, AI agent step state, current-config flags.\nMax 1000 keys per store. No version history: previous value is overwritten.\nRequires the owner token returned at creation.\n",
+        "description": "Sets (creates or replaces) a key value while preserving the key short URL `/{ns}/{id}/{key}` —\nagents poll the same URL and see the latest value.\nTypical use: deploy-status counters, AI agent step state, current-config flags.\nMax 1000 keys per store. No version history: previous value is overwritten.\nRequires the owner token returned at creation.\n",
         "operationId": "upsertKey",
         "parameters": [
           {
@@ -387,7 +387,7 @@
           "JSON"
         ],
         "summary": "Update JSON document",
-        "description": "Replaces document content while preserving the short URL \u2014 share once, edit in place.\nUseful for AI agents iterating on a JSON artifact (test results, plan state, config snapshot)\nwithout producing a new URL each time.\nImmutable on update: tags. No version history: previous content is overwritten.\nRequires the owner token returned at creation.\n",
+        "description": "Replaces document content while preserving the short URL — share once, edit in place.\nUseful for AI agents iterating on a JSON artifact (test results, plan state, config snapshot)\nwithout producing a new URL each time.\nImmutable on update: tags. No version history: previous content is overwritten.\nRequires the owner token returned at creation.\n",
         "operationId": "update",
         "parameters": [
           {
@@ -587,8 +587,8 @@
         "tags": [
           "HTML"
         ],
-        "summary": "Update HTML page",
-        "description": "Replaces page content while preserving the short URL \u2014 share once, edit in place.\nThe link already shared stays valid; readers see the new content on next load.\nPrimary use cases: AI agents iterating on output, fixing typos in already-shared pages.\nImmutable on update: tags, password, format, filename, showTopBar \u2014 delete and recreate to change those.\nNo version history: previous content is overwritten. Requires the owner token returned at creation.\n",
+        "summary": "Update HTML page (accepts JSON or raw text/*)",
+        "description": "Replaces page content while preserving the short URL — share once, edit in place.\nThe link already shared stays valid; readers see the new content on next load.\nPrimary use cases: AI agents iterating on output, fixing typos in already-shared pages.\nImmutable on update: tags, password, format, filename, showTopBar — delete and recreate to change those.\nNo version history: previous content is overwritten. Requires the owner token returned at creation.\nAlso accepts raw text/* bodies — see /llms-full.txt.\n",
         "operationId": "update_1",
         "parameters": [
           {
@@ -618,11 +618,96 @@
           }
         ],
         "requestBody": {
+          "description": "Primary path: application/json with HtmlUpdateRequest. Fallback paths accept raw text/* bodies — server\nrecords the fallback admission but htmlService.update preserves the stored format. See /llms-full.txt.\n",
           "content": {
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/HtmlUpdateRequest"
               }
+            },
+            "text/html": {
+              "schema": {
+                "type": "string"
+              },
+              "example": "<!doctype html><h1>Hi</h1>"
+            },
+            "text/markdown": {
+              "schema": {
+                "type": "string"
+              },
+              "example": "# Title\n\nBody"
+            },
+            "text/plain": {
+              "schema": {
+                "type": "string"
+              },
+              "example": "plain text"
+            },
+            "text/yaml": {
+              "schema": {
+                "type": "string"
+              },
+              "example": "key: value"
+            },
+            "text/xml": {
+              "schema": {
+                "type": "string"
+              },
+              "example": "<root/>"
+            },
+            "text/csv": {
+              "schema": {
+                "type": "string"
+              },
+              "example": "a,b\n1,2"
+            },
+            "text/css": {
+              "schema": {
+                "type": "string"
+              },
+              "example": "body{margin:0}"
+            },
+            "text/javascript": {
+              "schema": {
+                "type": "string"
+              },
+              "example": "console.log(1)"
+            },
+            "text/x-toml": {
+              "schema": {
+                "type": "string"
+              },
+              "example": "key = \"value\""
+            },
+            "application/xml": {
+              "schema": {
+                "type": "string"
+              },
+              "example": "<root/>"
+            },
+            "application/yaml": {
+              "schema": {
+                "type": "string"
+              },
+              "example": "key: value"
+            },
+            "application/x-yaml": {
+              "schema": {
+                "type": "string"
+              },
+              "example": "key: value"
+            },
+            "application/javascript": {
+              "schema": {
+                "type": "string"
+              },
+              "example": "console.log(1)"
+            },
+            "application/toml": {
+              "schema": {
+                "type": "string"
+              },
+              "example": "key = \"value\""
             }
           },
           "required": true
@@ -631,7 +716,7 @@
           "200": {
             "description": "Page updated",
             "content": {
-              "*/*": {
+              "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/HtmlUpdateResponse"
                 }
@@ -641,9 +726,9 @@
           "403": {
             "description": "Missing or wrong owner token",
             "content": {
-              "*/*": {
+              "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HtmlUpdateResponse"
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
@@ -651,9 +736,9 @@
           "404": {
             "description": "Page not found or expired",
             "content": {
-              "*/*": {
+              "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HtmlUpdateResponse"
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
@@ -763,7 +848,7 @@
           {
             "name": "ns",
             "in": "query",
-            "description": "Namespace. Default: public. All namespaces are PUBLIC and indexable. Pages in 'public' without password appear in gallery. Custom namespace is created automatically. Format: [a-z0-9-]{3,32}. On ns+id collision the server returns 409 Conflict \u2014 retry with a different id or omit id to let the server generate one",
+            "description": "Namespace. Default: public. All namespaces are PUBLIC and indexable. Pages in 'public' without password appear in gallery. Custom namespace is created automatically. Format: [a-z0-9-]{3,32}. On ns+id collision the server returns 409 Conflict — retry with a different id or omit id to let the server generate one",
             "required": false,
             "schema": {
               "type": "string",
@@ -912,7 +997,7 @@
           {
             "name": "ns",
             "in": "query",
-            "description": "Namespace. Default: public. All namespaces are PUBLIC and indexable. Pages in 'public' without password appear in gallery. Custom namespace is created automatically. Format: [a-z0-9-]{3,32}. On ns+id collision the server returns 409 Conflict \u2014 retry with a different id or omit id to let the server generate one",
+            "description": "Namespace. Default: public. All namespaces are PUBLIC and indexable. Pages in 'public' without password appear in gallery. Custom namespace is created automatically. Format: [a-z0-9-]{3,32}. On ns+id collision the server returns 409 Conflict — retry with a different id or omit id to let the server generate one",
             "required": false,
             "schema": {
               "type": "string",
@@ -1010,14 +1095,14 @@
         "tags": [
           "HTML"
         ],
-        "summary": "Create HTML page",
-        "description": "Stores HTML or markdown content and returns a shareable link. Reuse existing owner token to group entities under one owner",
+        "summary": "Create HTML page (accepts JSON or raw text/*/octet-stream)",
+        "description": "Stores HTML or markdown content and returns a shareable link. Reuse existing owner token to group entities under one owner. Also accepts raw text/* (HTML, Markdown, YAML, XML, CSV, code) and application/octet-stream bodies — see /llms-full.txt.",
         "operationId": "create_1",
         "parameters": [
           {
             "name": "ns",
             "in": "query",
-            "description": "Namespace. Default: public. All namespaces are PUBLIC and indexable. Pages in 'public' without password appear in gallery. Custom namespace is created automatically. Format: [a-z0-9-]{3,32}. On ns+id collision the server returns 409 Conflict \u2014 retry with a different id or omit id to let the server generate one",
+            "description": "Namespace. Default: public. All namespaces are PUBLIC and indexable. Pages in 'public' without password appear in gallery. Custom namespace is created automatically. Format: [a-z0-9-]{3,32}. On ns+id collision the server returns 409 Conflict — retry with a different id or omit id to let the server generate one",
             "required": false,
             "schema": {
               "type": "string",
@@ -1077,10 +1162,102 @@
           }
         ],
         "requestBody": {
+          "description": "Primary path: `application/json` with `HtmlUploadRequest`. Fallback paths accept raw text/* and\n`application/octet-stream` bodies — server detects format (or use `?format=`). See `/llms-full.txt`.\n",
           "content": {
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/HtmlUploadRequest"
+              }
+            },
+            "text/html": {
+              "schema": {
+                "type": "string"
+              },
+              "example": "<!doctype html><h1>Hi</h1>"
+            },
+            "text/markdown": {
+              "schema": {
+                "type": "string"
+              },
+              "example": "# Title\n\nBody"
+            },
+            "text/plain": {
+              "schema": {
+                "type": "string"
+              },
+              "example": "plain text"
+            },
+            "text/yaml": {
+              "schema": {
+                "type": "string"
+              },
+              "example": "key: value"
+            },
+            "text/xml": {
+              "schema": {
+                "type": "string"
+              },
+              "example": "<root/>"
+            },
+            "text/csv": {
+              "schema": {
+                "type": "string"
+              },
+              "example": "a,b\n1,2"
+            },
+            "text/css": {
+              "schema": {
+                "type": "string"
+              },
+              "example": "body{margin:0}"
+            },
+            "text/javascript": {
+              "schema": {
+                "type": "string"
+              },
+              "example": "console.log(1)"
+            },
+            "text/x-toml": {
+              "schema": {
+                "type": "string"
+              },
+              "example": "key = \"value\""
+            },
+            "application/xml": {
+              "schema": {
+                "type": "string"
+              },
+              "example": "<root/>"
+            },
+            "application/yaml": {
+              "schema": {
+                "type": "string"
+              },
+              "example": "key: value"
+            },
+            "application/x-yaml": {
+              "schema": {
+                "type": "string"
+              },
+              "example": "key: value"
+            },
+            "application/javascript": {
+              "schema": {
+                "type": "string"
+              },
+              "example": "console.log(1)"
+            },
+            "application/toml": {
+              "schema": {
+                "type": "string"
+              },
+              "example": "key = \"value\""
+            },
+            "application/octet-stream": {
+              "schema": {
+                "type": "string",
+                "format": "binary",
+                "description": "Binary — auto-routes to /api/files for png/jpg/gif/webp/mp4/pdf/zip; otherwise text-sniffed."
               }
             }
           },
@@ -1090,7 +1267,7 @@
           "201": {
             "description": "Page created",
             "content": {
-              "*/*": {
+              "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/HtmlUploadResponse"
                 }
@@ -1100,9 +1277,29 @@
           "400": {
             "description": "Invalid request parameters",
             "content": {
-              "*/*": {
+              "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HtmlUploadResponse"
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Unsupported Content-Type — body did not match any supported text/* or application/* fallback.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Body parsed but failed validation (e.g. binary detected on text path, size limit exceeded).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
@@ -1110,9 +1307,9 @@
           "429": {
             "description": "Rate limit exceeded",
             "content": {
-              "*/*": {
+              "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HtmlUploadResponse"
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
@@ -1176,7 +1373,7 @@
           {
             "name": "ns",
             "in": "query",
-            "description": "Namespace. Default: public. All namespaces are PUBLIC and indexable. Pages in 'public' without password appear in gallery. Custom namespace is created automatically. Format: [a-z0-9-]{3,32}. On ns+id collision the server returns 409 Conflict \u2014 retry with a different id or omit id to let the server generate one",
+            "description": "Namespace. Default: public. All namespaces are PUBLIC and indexable. Pages in 'public' without password appear in gallery. Custom namespace is created automatically. Format: [a-z0-9-]{3,32}. On ns+id collision the server returns 409 Conflict — retry with a different id or omit id to let the server generate one",
             "required": false,
             "schema": {
               "type": "string",
@@ -1226,14 +1423,16 @@
           }
         ],
         "requestBody": {
+          "required": true,
           "content": {
-            "application/json": {
+            "multipart/form-data": {
               "schema": {
                 "type": "object",
                 "properties": {
                   "file": {
                     "type": "string",
-                    "format": "binary"
+                    "format": "binary",
+                    "description": "The file to upload. The original filename is preserved from the multipart part headers."
                   }
                 },
                 "required": [
@@ -1247,7 +1446,7 @@
           "201": {
             "description": "File uploaded",
             "content": {
-              "*/*": {
+              "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/FileUploadResponse"
                 }
@@ -1257,9 +1456,9 @@
           "400": {
             "description": "Invalid request or file too large",
             "content": {
-              "*/*": {
+              "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/FileUploadResponse"
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
@@ -1267,9 +1466,19 @@
           "415": {
             "description": "Unsupported file type",
             "content": {
-              "*/*": {
+              "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/FileUploadResponse"
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "File parsed but failed validation (e.g. extension allowed but content sniffed as a disallowed type).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
@@ -1277,9 +1486,9 @@
           "429": {
             "description": "Rate limit exceeded",
             "content": {
-              "*/*": {
+              "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/FileUploadResponse"
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
@@ -1293,7 +1502,7 @@
           "Short Links"
         ],
         "summary": "Resolve short URL",
-        "description": "Resolves a short URL to the underlying resource (HTML, markdown, JSON, KV, file, or site entry).\n\nResponse headers:\n- `X-Views: <integer>` \u2014 current view counter for this resource.\n- For file/site responses: `Accept-Ranges: bytes`, `ETag`, and `Cache-Control: public, max-age=3600`.\n  Range requests return `206 Partial Content`.\n- For HTML resolves: `X-Show-Top-Bar: true|false` \u2014 effective resolved value of `showTopBar`\n  (per-page override, else server default `app.ui.show-top-bar-default`).\n",
+        "description": "Resolves a short URL to the underlying resource (HTML, markdown, JSON, KV, file, or site entry).\n\nResponse headers:\n- `X-Views: <integer>` — current view counter for this resource.\n- For file/site responses: `Accept-Ranges: bytes`, `ETag`, and `Cache-Control: public, max-age=3600`.\n  Range requests return `206 Partial Content`.\n- For HTML resolves: `X-Show-Top-Bar: true|false` — effective resolved value of `showTopBar`\n  (per-page override, else server default `app.ui.show-top-bar-default`).\n",
         "operationId": "resolve",
         "parameters": [
           {
@@ -1417,7 +1626,7 @@
             }
           },
           "409": {
-            "description": "Conflict \u2014 ns+id already exists. Retry with a different id or omit id to let the server generate one"
+            "description": "Conflict — ns+id already exists. Retry with a different id or omit id to let the server generate one"
           }
         }
       }
@@ -1428,7 +1637,7 @@
           "Short Links"
         ],
         "summary": "Resolve short URL with sub-path",
-        "description": "Resolves a short URL with a sub-path (e.g. entry file within an uploaded site).\n\nResponse headers:\n- `X-Views: <integer>` \u2014 current view counter for this resource.\n- For file/site responses: `Accept-Ranges: bytes`, `ETag`, and `Cache-Control: public, max-age=3600`.\n  Range requests return `206 Partial Content`.\n",
+        "description": "Resolves a short URL with a sub-path (e.g. entry file within an uploaded site).\n\nResponse headers:\n- `X-Views: <integer>` — current view counter for this resource.\n- For file/site responses: `Accept-Ranges: bytes`, `ETag`, and `Cache-Control: public, max-age=3600`.\n  Range requests return `206 Partial Content`.\n",
         "operationId": "resolveWithSub",
         "parameters": [
           {
@@ -1817,7 +2026,7 @@
           {
             "name": "sort",
             "in": "query",
-            "description": "Sort order for gallery results. `date` (default) \u2014 newest first by creation date. `views` \u2014 most viewed first, then newest by date as tiebreaker.",
+            "description": "Sort order for gallery results. `date` (default) — newest first by creation date. `views` — most viewed first, then newest by date as tiebreaker.",
             "required": false,
             "schema": {
               "type": "string",
@@ -2146,6 +2355,16 @@
           },
           "415": {
             "description": "Unsupported file type in archive",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Archive parsed but failed validation (e.g. file extension allowed but content sniffed as a disallowed type).",
             "content": {
               "application/json": {
                 "schema": {
@@ -2901,7 +3120,7 @@
           "preview"
         ],
         "summary": "Per-content OG image",
-        "description": "Returns 1200\u00d7630 PNG, cached, with ETag/If-None-Match support; falls back to /og-image.png?v=2 on any failure",
+        "description": "Returns 1200×630 PNG, cached, with ETag/If-None-Match support; falls back to /og-image.png?v=2 on any failure",
         "operationId": "preview",
         "parameters": [
           {
@@ -3836,6 +4055,34 @@
             "type": "string",
             "format": "date-time",
             "description": "ISO-8601 timestamp of when the error occurred"
+          },
+          "supportedTypes": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "description": "Present on 415/422 responses from endpoints with raw-body fallback parsing. Lists the Content-Type\nvalues the server accepts for that endpoint (mirrors `FallbackFormatResolver.SUPPORTED_CONTENT_TYPES`).\n",
+            "example": [
+              "text/html",
+              "text/markdown",
+              "text/plain",
+              "text/yaml",
+              "text/xml",
+              "text/csv",
+              "text/css",
+              "text/javascript",
+              "text/x-toml",
+              "application/xml",
+              "application/yaml",
+              "application/x-yaml",
+              "application/javascript",
+              "application/toml",
+              "application/octet-stream",
+              "application/json"
+            ]
           }
         }
       },

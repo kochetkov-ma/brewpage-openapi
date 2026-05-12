@@ -100,6 +100,11 @@ Both [brewpage.app](https://brewpage.app) and [brewdata.app](https://brewdata.ap
 - [Claude Skill](https://github.com/kochetkov-ma/claude-brewcode/tree/main/skills/brewpage-publish) -- `/brewpage` command
 - [Brewcode Plugin](https://github.com/kochetkov-ma/claude-brewcode) -- Claude Code plugin suite
 
+## Changelog
+
+## 1.4.0 — 2026-05-12
+- Sync to spec 1.31.0 — adds raw text/* and application/octet-stream variants on POST /api/html; PUT mirror; 422 with supportedTypes.
+
 ## License
 
 [MIT](LICENSE)
