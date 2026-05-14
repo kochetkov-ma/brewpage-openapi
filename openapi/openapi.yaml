@@ -735,9 +735,18 @@ paths:
       tags:
       - HTML
       summary: Create HTML page (accepts JSON or raw text/*/octet-stream)
-      description: Stores HTML or markdown content and returns a shareable link. Reuse existing owner token to group entities
-        under one owner. Also accepts raw text/* (HTML, Markdown, YAML, XML, CSV, code) and application/octet-stream bodies
-        — see /llms-full.txt.
+      description: |
+        Stores HTML or markdown content and returns a shareable link. Reuse
+        existing owner token to group entities under one owner. Also accepts
+        raw text/* (HTML, Markdown, YAML, XML, CSV, code) and
+        application/octet-stream bodies — see /llms-full.txt.
+
+        Idempotent for the (owner_token, content, public/, 24h) tuple:
+        a byte-identical repost from the same owner to `ns=public` without a
+        password within 24h returns the existing id. Response status stays
+        201 and body shape is unchanged; the silently-merged response carries
+        header `X-Existing-Resource: 1`. To replace content at the same id
+        use `PUT /api/html/{ns}/{id}` (the canonical republish path).
       operationId: create_1
       parameters:
       - name: ns
