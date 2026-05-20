@@ -1,9 +1,10 @@
 # BrewPage API -- Open Source Public Layer
 
+[![npm](https://img.shields.io/npm/v/brewpage-mcp?label=brewpage-mcp)](https://www.npmjs.com/package/brewpage-mcp)
+[![GitHub Stars](https://img.shields.io/github/stars/kochetkov-ma/brewpage-openapi)](https://github.com/kochetkov-ma/brewpage-openapi/stargazers)
 [![OpenAPI](https://img.shields.io/badge/OpenAPI-3.1-green?logo=openapiinitiative)](openapi/openapi.yaml)
-[![Docs](https://img.shields.io/badge/Docs-GitHub%20Pages-blue)](https://kochetkov-ma.github.io/brewpage-openapi/)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue)](LICENSE)
 [![MCP Server](https://img.shields.io/badge/MCP-brewpage--mcp-gold)](mcp-server/)
-[![License](https://img.shields.io/badge/License-MIT-yellow)](LICENSE)
 
 > This repository is the **open-source public layer** of [BrewPage](https://brewpage.app) --
 > a proprietary HTML/KV/JSON/file hosting platform.
@@ -11,76 +12,40 @@
 
 **Docs:** https://kochetkov-ma.github.io/brewpage-openapi/ | **API Reference:** https://kochetkov-ma.github.io/brewpage-openapi/api-reference/
 
-## Table of Contents
+## What is BrewPage
 
-- [What's Open Here](#whats-open-here)
-- [What's Proprietary](#whats-proprietary)
-- [Quick Start](#quick-start)
-- [API Features](#api-features)
-- [API Examples](#api-examples)
-- [API Reference](#api-reference)
-- [MCP Server](#mcp-server)
-- [Documentation](#documentation)
-- [Project Structure](#project-structure)
-- [Links](#links)
-- [License](#license)
+[BrewPage](https://brewpage.app) is a free instant hosting service for HTML pages, Markdown documents,
+multi-file sites, AI artifacts, JSON documents, key-value stores, and binary files.
+No signup or API key required. Every published resource gets a short HTTPS URL
+(`brewpage.app/{namespace}/{id}`) within seconds.
 
-## What's Open Here
+Key characteristics:
 
-| Component | Description |
-|-----------|-------------|
-| OpenAPI 3.1 spec | Complete API contract for all public endpoints (YAML + JSON) |
-| Interactive docs | Astro + Scalar documentation site (GitHub Pages) |
-| MCP server | `brewpage-mcp` -- Claude Desktop/Code integration (6 tools) |
-| Wiki | Code snippets, cheatsheet, tips & tricks |
-| Release notes | Changelog for API and public tooling |
+- **HTML and Markdown pages** -- publish raw HTML or Markdown rendered to styled HTML, up to 5 MB, with instant short URLs.
+- **Multi-file sites** -- upload a ZIP archive or individual files (up to 20 MB / 100 files) and get a fully served static site.
+- **Key-value store** -- namespace-scoped KV pairs, up to 1,000 keys per namespace, mutable in place via the owner token.
+- **JSON documents** -- store and retrieve arbitrary JSON, up to 1 MB per document, 10,000 documents per collection.
+- **File hosting** -- upload any safe file type (images, PDFs, video, audio, archives, code), up to 5 MB (video 20 MB), with inline preview.
+- **Public namespace** -- omitting `?ns=` publishes to the shared `public` namespace, which is listed on the homepage gallery and indexed by search engines. Pass a custom namespace or `X-Password` header to keep content private.
+- **Owner tokens** -- every publish response includes an `ownerToken`. Use it to update content in place (stable URL), delete it, or list your own resources. No accounts, no sessions.
+- **TTL** -- content expires automatically. Default 15 days, maximum 30 days, configurable per request via `ttl_days`.
+- **No auth required** for reads. Writes are open (rate-limited to 60 uploads/hr per IP). All requests require a `User-Agent` header.
 
-## What's Proprietary
+Both `brewpage.app` and `brewdata.app` serve the same API.
 
-| Component | Description |
-|-----------|-------------|
-| Backend | Spring Boot + Kotlin REST API |
-| Frontend | HTML/CSS/JS + Caddy reverse proxy |
-| Infrastructure | VPS deployment, CI/CD pipelines |
-| E2E test suite | Playwright + Testcontainers |
+## Why this matters for LLMs and agents
+
+AI agents frequently need to share structured outputs -- reports, artifacts, generated HTML, intermediate JSON state -- with users or downstream systems via a stable URL. BrewPage provides that as a zero-setup REST API: one `POST` call, one URL back. No OAuth, no S3 bucket configuration, no infrastructure. The MCP server (`brewpage-mcp`) wraps the API into six typed tools that any MCP-compatible agent (Claude, Codex, Gemini, Cursor) can call directly.
 
 ## Quick Start
 
-### Web UI
-
-Open [brewpage.app](https://brewpage.app) -> Drop a file or paste HTML -> **Publish** -> Get a shareable link.
-
-### Claude Skill
-
-```
-/brewpage "Hello, world!"
-```
-
-Publish content instantly via the [brewcode plugin](https://github.com/kochetkov-ma/claude-brewcode) skill.
-
-### MCP Server
-
-Add `brewpage-mcp` to your Claude config:
-
-```json
-{
-  "mcpServers": {
-    "brewpage": {
-      "command": "npx",
-      "args": ["-y", "brewpage-mcp"]
-    }
-  }
-}
-```
-
-Then ask Claude: *"Publish this HTML to BrewPage"*.
-
-### API
+Publish an HTML page and get a shareable link:
 
 ```bash
 curl -X POST https://brewpage.app/api/html \
   -H "Content-Type: application/json" \
-  -d '{"content": "<h1>Hello, world!</h1>"}'
+  -H "User-Agent: MyAgent/1.0" \
+  -d '{"content": "<h1>Hello, world!</h1>", "ttlDays": 15}'
 ```
 
 Response:
@@ -92,38 +57,43 @@ Response:
   "link": "https://brewpage.app/public/aBcDeFgHiJ",
   "ownerLink": "https://brewpage.app/api/html/public/aBcDeFgHiJ",
   "ownerToken": "your-secret-token",
-  "expiresAt": "2026-04-05T12:00:00Z",
+  "expiresAt": "2026-06-04T02:00:00Z",
   "sizeBytes": 22
 }
 ```
 
-## API Features
+Open `link` in any browser -- no further steps required.
 
-**BrewPage** is a content hosting platform. Publish and share:
+## Use Cases for LLMs and Agents
+
+| Scenario | API call |
+|----------|----------|
+| An AI agent generates a shareable HTML report and needs a stable URL to return to the user | `POST /api/html` -- returns link immediately |
+| A GPT pipeline needs to persist JSON state between conversation turns without external storage | `POST /api/json?ns=myproject` then `GET /api/json/myproject/{id}` |
+| A code-generation tool produces a downloadable file (PDF, archive, script) and needs to host it | `POST /api/files` -- file served with correct MIME type and inline preview |
+| An agent publishes an artifact and later refines it without invalidating the shared URL | `PUT /api/html/{ns}/{id}` with `X-Owner-Token` -- content replaced, URL unchanged |
+| A multi-step pipeline deploys a complete static site (HTML + CSS + JS) from a ZIP | `POST /api/sites` with `archive=@site.zip` -- all files served with relative links intact |
+
+## API Features
 
 | Resource | Description | Limits |
 |----------|-------------|--------|
-| **HTML pages** | Raw HTML or Markdown with instant short URLs | 5 MB, TTL 30--365d |
+| **HTML pages** | Raw HTML or Markdown with instant short URLs | 5 MB, TTL 1--30d |
 | **Key-value store** | Named key-value pairs grouped in namespaces | 1,000 keys/namespace |
 | **JSON documents** | Store and retrieve arbitrary JSON with collection management | 1 MB, 10,000 docs/collection |
-| **Files** | Upload files with automatic MIME detection and inline preview | 5 MB, 1,000 files/namespace |
-| **Sites** | Multi-file HTML sites via ZIP or individual files | 5 MB/file, 1,000 files/site, TTL 1--30d |
+| **Files** | Upload files with automatic MIME detection and inline preview | 5 MB (video 20 MB), 1,000 files/namespace |
+| **Sites** | Multi-file HTML sites via ZIP or individual files | 20 MB total, 100 files, 5 MB/file, TTL 1--30d |
 
-Every resource gets a short URL (`brewpage.app/{ns}/{id}`), optional password protection, configurable TTL, and tagging. Public content appears in a browsable gallery with search.
+Every resource gets a short URL (`brewpage.app/{ns}/{id}`), optional password protection, configurable TTL, and tagging. Public content appears in a browsable gallery with full-text search.
 
 ## API Examples
-
-**Get platform stats:**
-
-```bash
-curl https://brewpage.app/api/stats
-```
 
 **Publish Markdown:**
 
 ```bash
 curl -X POST "https://brewpage.app/api/html?format=markdown" \
   -H "Content-Type: application/json" \
+  -H "User-Agent: MyAgent/1.0" \
   -d '{"content": "# My Document\n\nHello **world**"}'
 ```
 
@@ -132,24 +102,32 @@ curl -X POST "https://brewpage.app/api/html?format=markdown" \
 ```bash
 curl -X POST https://brewpage.app/api/json \
   -H "Content-Type: application/json" \
+  -H "User-Agent: MyAgent/1.0" \
   -d '{"name": "config", "version": 1}'
-```
-
-**Upload a site (individual files):**
-
-```bash
-curl -X POST "https://brewpage.app/api/sites" \
-  -F "files=@index.html;type=text/html" \
-  -F "files=@style.css;type=text/css" \
-  -F "paths=index.html" \
-  -F "paths=style.css"
 ```
 
 **Upload a site (ZIP archive):**
 
 ```bash
 curl -X POST "https://brewpage.app/api/sites" \
+  -H "User-Agent: MyAgent/1.0" \
   -F "archive=@site.zip;type=application/zip"
+```
+
+**Update content in place (stable URL):**
+
+```bash
+curl -X PUT "https://brewpage.app/api/html/public/aBcDeFgHiJ" \
+  -H "Content-Type: application/json" \
+  -H "User-Agent: MyAgent/1.0" \
+  -H "X-Owner-Token: your-secret-token" \
+  -d '{"content": "<h1>Updated content</h1>"}'
+```
+
+**Get platform stats:**
+
+```bash
+curl https://brewpage.app/api/stats
 ```
 
 ## API Reference
@@ -172,6 +150,8 @@ curl -X POST "https://brewpage.app/api/sites" \
 | **Stats** | Platform-wide usage statistics |
 | **Short Links** | URL shortener for published content |
 | **SEO** | Sitemap and robots.txt endpoints |
+| **Reports** | Abuse reports for published content |
+| **Namespace** | Collision-free namespace suggestions |
 
 ## MCP Server
 
@@ -179,16 +159,16 @@ The `brewpage-mcp` package provides a Model Context Protocol server with **6 too
 
 | Tool | Description |
 |------|-------------|
-| `publish_html` | Publish HTML or Markdown content |
-| `publish_file` | Upload a file from URL |
-| `publish_site` | Publish a multi-file HTML site |
-| `delete_resource` | Delete any resource by owner token |
-| `get_page` | Fetch a published HTML page |
-| `get_stats` | Get platform-wide statistics |
+| `publish_html` | Publish HTML or Markdown content with optional password, TTL, filename, and top toolbar |
+| `publish_file` | Upload a file from a URL |
+| `publish_site` | Publish a single-page or multi-file HTML site |
+| `delete_resource` | Delete any resource (HTML, KV, JSON, file) by owner token |
+| `get_page` | Fetch a published HTML page and its content |
+| `get_stats` | Get platform-wide usage statistics |
 
 ### Claude Desktop
 
-Add to `claude_desktop_config.json`:
+Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
 
 ```json
 {
@@ -203,7 +183,7 @@ Add to `claude_desktop_config.json`:
 
 ### Claude Code
 
-Add to `settings.json`:
+Add to `~/.claude/settings.json`:
 
 ```json
 {
@@ -216,13 +196,42 @@ Add to `settings.json`:
 }
 ```
 
-## Documentation
+## Resources
 
-Full documentation is deployed to GitHub Pages:
+| Resource | URL |
+|----------|-----|
+| Live platform | https://brewpage.app |
+| LLM context file | https://brewpage.app/llms.txt |
+| Full LLM reference | https://brewpage.app/llms-full.txt |
+| OpenAPI spec (YAML) | [`openapi/openapi.yaml`](openapi/openapi.yaml) |
+| MCP server | [`mcp-server/`](mcp-server/) |
+| npm package | https://www.npmjs.com/package/brewpage-mcp |
+| Interactive API docs | https://kochetkov-ma.github.io/brewpage-openapi/ |
+| Claude skill | https://github.com/kochetkov-ma/claude-brewcode/tree/main/skills/brewpage-publish |
+| BrewCode plugin suite | https://github.com/kochetkov-ma/claude-brewcode |
+| Wiki | https://github.com/kochetkov-ma/brewpage-openapi/wiki |
+| Releases | https://github.com/kochetkov-ma/brewpage-openapi/releases |
 
-**[kochetkov-ma.github.io/brewpage-openapi](https://kochetkov-ma.github.io/brewpage-openapi/)**
+BrewPage is described using [schema.org/SoftwareApplication](https://schema.org/SoftwareApplication) structured data on the platform homepage.
 
-The docs site includes getting started guides, API examples, and MCP server usage instructions.
+## What's Open Here
+
+| Component | Description |
+|-----------|-------------|
+| OpenAPI 3.1 spec | Complete API contract for all public endpoints (YAML + JSON) |
+| Interactive docs | Astro + Scalar documentation site (GitHub Pages) |
+| MCP server | `brewpage-mcp` -- Claude Desktop/Code integration (6 tools) |
+| Wiki | Code snippets, cheatsheet, tips & tricks |
+| Release notes | Changelog for API and public tooling |
+
+## What's Proprietary
+
+| Component | Description |
+|-----------|-------------|
+| Backend | Spring Boot + Kotlin REST API |
+| Frontend | HTML/CSS/JS + Caddy reverse proxy |
+| Infrastructure | VPS deployment, CI/CD pipelines |
+| E2E test suite | Playwright + Testcontainers |
 
 ## Project Structure
 
@@ -238,7 +247,6 @@ brewpage-openapi/
   mcp-server/             # MCP server (brewpage-mcp)
     src/
       index.ts            # Server entry point
-      tools/              # MCP tool implementations
   .github/
     workflows/            # CI/CD (docs deploy, releases)
   README.md
@@ -246,21 +254,6 @@ brewpage-openapi/
   LICENSE
 ```
 
-## Links
-
-- **BrewPage** -- [brewpage.app](https://brewpage.app)
-- **BrewData** (alias) -- [brewdata.app](https://brewdata.app)
-- **API Docs** -- [kochetkov-ma.github.io/brewpage-openapi](https://kochetkov-ma.github.io/brewpage-openapi/)
-- **API Reference (Scalar)** -- [kochetkov-ma.github.io/brewpage-openapi/api-reference](https://kochetkov-ma.github.io/brewpage-openapi/api-reference/)
-- **OpenAPI Spec** -- [`openapi/openapi.yaml`](openapi/openapi.yaml)
-- **MCP Server** -- [`mcp-server/`](mcp-server/)
-- **Claude Skill** -- [brewpage-publish](https://github.com/kochetkov-ma/claude-brewcode/tree/main/skills/brewpage-publish)
-- **Skill Docs** -- [doc-claude.brewcode.app/brewdoc/brewpage](https://doc-claude.brewcode.app/brewdoc/brewpage/)
-- **Brewcode Plugin** -- [github.com/kochetkov-ma/claude-brewcode](https://github.com/kochetkov-ma/claude-brewcode)
-- **Wiki** -- [github.com/kochetkov-ma/brewpage-openapi/wiki](https://github.com/kochetkov-ma/brewpage-openapi/wiki)
-- **Releases** -- [github.com/kochetkov-ma/brewpage-openapi/releases](https://github.com/kochetkov-ma/brewpage-openapi/releases)
-- **GitHub** -- [github.com/kochetkov-ma/brewpage-openapi](https://github.com/kochetkov-ma/brewpage-openapi)
-
 ## License
 
-[MIT](LICENSE)
+[Apache 2.0](LICENSE)
