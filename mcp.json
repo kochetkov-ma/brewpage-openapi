@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "brewpage": {
+      "command": "npx",
+      "args": ["-y", "brewpage-mcp"]
+    }
+  }
+}
