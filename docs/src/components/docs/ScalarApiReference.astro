@@ -1,47 +1,43 @@
 ---
 ---
 
-<div id="scalar-container" class="not-prose mt-8">
-  <div id="scalar-loading" class="flex items-center justify-center py-20 text-base-content/50">
+<div id="api-doc-container" class="not-prose mt-8">
+  <div id="api-doc-loading" class="flex items-center justify-center py-20 text-base-content/50">
     <span class="loading loading-spinner loading-lg text-primary mr-3"></span>
     Loading API Reference...
   </div>
-  <div id="scalar-api"></div>
+  <div id="api-doc-target"></div>
 </div>
 
 <style>
-  #scalar-api :global(.scalar-app) {
-    --scalar-color-1: #EBBB40;
-    --scalar-color-accent: #EBBB40;
+  #api-doc-target :global(redoc) {
+    --redoc-color-primary: #EBBB40;
   }
 </style>
 
 <script>
-  const container = document.getElementById('scalar-api');
-  const loading = document.getElementById('scalar-loading');
+  const container = document.getElementById('api-doc-target');
+  const loading = document.getElementById('api-doc-loading');
   if (container && !container.dataset.initialized) {
     container.dataset.initialized = 'true';
 
     const script = document.createElement('script');
-    script.src = 'https://cdn.jsdelivr.net/npm/@scalar/api-reference@1.57.2/dist/browser/standalone.min.js';
+    script.src = 'https://cdn.jsdelivr.net/npm/redoc@2.5.2/bundles/redoc.standalone.js';
     script.onload = () => {
       if (loading) loading.style.display = 'none';
-      const el = document.createElement('api-reference');
-      el.setAttribute('data-url', '/brewpage-openapi/openapi.json');
-      el.setAttribute('data-configuration', JSON.stringify({
-        theme: 'kepler',
-        layout: 'modern',
-        darkMode: true,
-        hideModels: false,
-        hideDownloadButton: false,
-        hiddenClients: [],
-        defaultHttpClient: { targetKey: 'shell', clientKey: 'curl' },
-        metaData: {
-          title: 'BrewPage API Reference',
-          description: 'Interactive API documentation for BrewPage',
+      // @ts-ignore — Redoc is exposed on window after standalone bundle loads
+      window.Redoc.init('/brewpage-openapi/openapi.json', {
+        theme: {
+          colors: { primary: { main: '#EBBB40' } },
+          typography: { fontSize: '14px' },
         },
-      }));
-      container.appendChild(el);
+        scrollYOffset: 80,
+        hideDownloadButton: false,
+        expandResponses: '200,201',
+        nativeScrollbars: true,
+        pathInMiddlePanel: true,
+        requiredPropsFirst: true,
+      }, container);
     };
     document.head.appendChild(script);
   }
