@@ -2,7 +2,6 @@
 const SPEC_JSON_URL = '/brewpage-openapi/openapi.json';
 const REDOCLY_VIEWER = 'https://redocly.github.io/redoc/?url=https://kochetkov-ma.github.io/brewpage-openapi/openapi.json';
 const SWAGGER_UI_LIVE = 'https://brewpage.app/swagger-ui/index.html';
-const SCALAR_HOSTED = 'https://scalar.com/?url=https://kochetkov-ma.github.io/brewpage-openapi/openapi.json';
 const SPEC_YAML_REPO = 'https://github.com/kochetkov-ma/brewpage-openapi/blob/main/openapi/openapi.yaml';
 const SPEC_JSON_REPO = 'https://github.com/kochetkov-ma/brewpage-openapi/blob/main/openapi/openapi.json';
 ---
@@ -14,17 +13,13 @@ const SPEC_JSON_REPO = 'https://github.com/kochetkov-ma/brewpage-openapi/blob/ma
       Pick a renderer — each one loads our live <code>openapi.json</code> from this site.
     </p>
 
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
       <a href={REDOCLY_VIEWER} target="_blank" rel="noopener" class="btn btn-primary btn-sm justify-start gap-2">
         Open in Redocly
         <span class="text-xs opacity-70 ml-auto">↗</span>
       </a>
       <a href={SWAGGER_UI_LIVE} target="_blank" rel="noopener" class="btn btn-outline btn-sm justify-start gap-2">
         Open in Swagger UI (live)
-        <span class="text-xs opacity-70 ml-auto">↗</span>
-      </a>
-      <a href={SCALAR_HOSTED} target="_blank" rel="noopener" class="btn btn-outline btn-sm justify-start gap-2">
-        Open in Scalar
         <span class="text-xs opacity-70 ml-auto">↗</span>
       </a>
     </div>
