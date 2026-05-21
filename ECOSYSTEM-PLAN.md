@@ -6,14 +6,14 @@
 
 **Per-repo distribution + monorepo coordination from `brewpage-openapi`.**
 
-Every module ships from its own GitHub repo (`kochetkov-ma/brewpage-*`). This repo is the coordination layer: it holds the OpenAPI contract, the existing `mcp-server`, agents and skills, the master plan, and one stub folder per module under `modules/<name>/`. When a module's dev repo exists, that folder becomes a git submodule mount.
+Every module ships from its own GitHub repo (`kochetkov-ma/brewpage-*`). This repo is the coordination layer: it holds the OpenAPI contract, the existing `mcp-server`, agents and skills, the master plan, and one reference folder per module under `modules/<name>/`. No git submodules. The reference folder either holds a stub README (module not yet built) or a working snapshot of the dev repo's tree (module built and tracked here for visibility).
 
 | Layer | Where | Why |
 |---|---|---|
 | OpenAPI contract (source of truth) | this repo `openapi/openapi.yaml` | Single contract, every module consumes it |
 | `brewpage-mcp` (MCP server) | this repo `mcp-server/` | Already released; explicit exception |
 | Every other module | dedicated repo `kochetkov-ma/brewpage-*` | One marketplace listing per repo, entity-graph SEO, clean `@v1` for Actions, per-repo issues/stars/topics |
-| Module stubs | this repo `modules/<name>/` | Folder + summary README; becomes git submodule once dev repo exists |
+| Module reference folder | this repo `modules/<name>/` | Stub README until dev repo exists; working snapshot once it does. Plain files in master -- no git submodules |
 | Agents, skills, CLAUDE.md | this repo `.claude/` | Single dev coordination point -- all work driven from here |
 | Per-repo dev docs | inside each module repo | Full developer docs in the dev repo |
 | User-facing full docs | separate repo `brewpage-docs` (Astro) | Distinct audience; site assembled from this repo until migration completes |
@@ -42,9 +42,9 @@ Every module ships from its own GitHub repo (`kochetkov-ma/brewpage-*`). This re
 
 **Development.**
 - All work coordinated from this repo. Each agent in `.claude/agents/` owns exactly one module.
-- When a module repo exists: `git submodule add https://github.com/kochetkov-ma/<repo> modules/<name>` replaces the placeholder folder.
-- Agents edit code inside the submodule path (`modules/<name>/src/...`). Commits land in the submodule's repo, not this one.
-- This repo records submodule pointers (commit SHA per module). Bumping a module = bump the submodule SHA here.
+- When a module repo exists: the agent maintains the dev repo independently and refreshes `modules/<name>/` here with the latest snapshot (manual copy or scripted sync). No submodules, no commit-SHA tracking.
+- For modules small enough to fit in a few files (e.g. `hf-space` -- 3 static files), `modules/<name>/` IS the canonical working tree; the dev repo is bootstrapped from it once needed.
+- For larger modules, the dev repo stays authoritative and the reference folder under `modules/` is informational (stub README + links).
 
 **Release.**
 - Each module repo owns its own release flow, CI workflow, and tags.
@@ -61,11 +61,12 @@ Match the existing `brewpage-mcp` README pattern.
 
 ## Per-module folder contents (here)
 
-Each `modules/<name>/` here:
-- `README.md` -- compact summary, one page max: intent, channel, install command, planned commands/features, links.
-- Once the dev repo is added as a submodule, this folder mirrors the dev repo content; the user-facing summary stays in the dev repo's `README.md`.
+Each `modules/<name>/` here is one of two shapes:
 
-Until then: stub README only. No code, no dependencies, no CI configs.
+- **Stub** -- single `README.md`: compact summary, one page max (intent, channel, install command, planned commands/features, links). Use until the dev repo exists or until the module accrues enough surface to mirror.
+- **Snapshot** -- the actual working files the dev repo will publish (e.g. `hf-space/`: HF Space `README.md` + `index.html` + `LICENSE`). Use for small modules where copying the tree is cheaper than maintaining a stub plus a separate repo. The reference snapshot stays on `main` in this repo; the dev repo is bootstrapped from it on demand.
+
+No submodules. No branches. Plain files in master.
 
 ## Build order
 
@@ -106,7 +107,7 @@ Reflected in the TaskList via `blockedBy` edges.
 1. **`brewpage` name availability** on npm and PyPI. Claim before P1 ship. Fallback: `brewpage-cli`.
 2. **`docs/` migration to `brewpage-docs`.** Existing `docs/` deploys to GitHub Pages via `.github/workflows/docs.yml`. Migrate after `brewpage-docs` ships; needs Pages source switch + redirect plan.
 3. **Public surface for module stubs.** Options: (a) GitHub tree only; (b) routed under `brewpage.app/modules/<name>` for SEO. Decide before P1 ship.
-4. **Submodule update cadence.** Manual bumps vs. automated PR via Renovate / a workflow on submodule release tag. Default: manual until friction proves automation worth it.
+4. **Snapshot sync cadence.** For modules carried as `modules/<name>/` snapshots (e.g. `hf-space/`), how often the dev repo and the in-tree snapshot are reconciled. Default: manual, on every dev repo tag. Automate only if drift becomes painful.
 
 ## Update protocol
 

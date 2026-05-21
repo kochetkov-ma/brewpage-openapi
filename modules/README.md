@@ -1,6 +1,11 @@
 # modules/
 
-One folder per planned ecosystem repo. Each folder holds a stub README; when its dev repo exists, the folder becomes a git submodule (`git submodule add ...`).
+One folder per ecosystem repo. Each folder is either:
+
+- a **stub** -- single `README.md` describing the planned module (used when the dev repo doesn't exist yet), or
+- a **snapshot** -- the working files that the dev repo will publish (used for small modules where carrying the tree on `main` here is cheaper than maintaining a separate dev repo right away; e.g. `hf-space/`).
+
+No git submodules. No branches. Plain files in master. Modules are tracked here as references for cross-repo coordination; the actual release artefacts live in each module's own GitHub repo.
 
 See `../ECOSYSTEM-PLAN.md` for strategy, repo map, naming, workflow, and open questions.
 

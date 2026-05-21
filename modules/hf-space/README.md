@@ -1,37 +1,99 @@
-# brewpage-hf-space
+---
+title: BrewPage MCP
+emoji: 🍺
+colorFrom: blue
+colorTo: indigo
+sdk: static
+pinned: true
+license: apache-2.0
+---
 
-> **Module stub.** Dev repo: [`kochetkov-ma/brewpage-hf-space`](https://github.com/kochetkov-ma/brewpage-hf-space) -- not created yet (TaskList #10).
-> Once created, this folder becomes a git submodule. Development is coordinated from `brewpage-openapi` via the future `hf-space-engineer` subagent (`.claude/agents/hf-space-engineer.md`).
-> Note: the dev repo's `main` branch doubles as the HuggingFace Space source -- HF clones it on every push.
+# BrewPage MCP
 
-**Status:** SCAFFOLD -- repo not yet created. A working draft of the three deliverable files was prepared in `hf-space/` at commit `d1fa5ca` (since reverted) and can be recovered with `git show d1fa5ca:hf-space/<file>` if the dev repo wants a seed.
+## What is BrewPage
 
-**Intent.** A static HuggingFace Space that mirrors the `brewpage-mcp` README, the install snippets, and the BrewPage backlink set. The Space is a discovery + SEO surface for the AI-tooling audience that browses HuggingFace; it is not a runtime demo.
+[BrewPage](https://brewpage.app) is a free instant hosting platform for HTML pages, multi-file static sites, KV entries, JSON documents, and binary files. One `POST` returns a stable HTTPS short URL with no accounts or API keys; every resource carries an **owner token** for in-place updates, deletes, and cross-session listing. BrewPage is built as an LLM-friendly surface: it ships [`/llms.txt`](https://brewpage.app/llms.txt), [`/llms-full.txt`](https://brewpage.app/llms-full.txt), an [OpenAPI spec](https://brewpage.app/api/openapi.yaml), and the [`brewpage-mcp`](https://www.npmjs.com/package/brewpage-mcp) Model Context Protocol server so AI agents (Claude, Codex, Gemini, Cursor, Cline) can publish and manage content without leaving the conversation.
 
-**Channel.** HuggingFace Spaces -- `https://huggingface.co/spaces/<user>/brewpage-mcp`. SDK: `static`. Pinned. License: Apache 2.0.
+## Tools
 
-**Depends on.** `brewpage-mcp` (this repo's `mcp-server/`). The Space pins a specific version (`brewpage-mcp@1.4.0` at scaffold time) in its README install snippets and tool table; bumping the MCP version requires a Space content update.
+The `brewpage-mcp` server exposes six typed MCP tools. All write operations return an owner token; keep it to modify or delete the resource later.
 
-**Architecture note (Docker SDK rejected).** HuggingFace's `sdk: docker` probes the container on HTTP port 7860; `brewpage-mcp` speaks the stdio MCP transport (correct for local clients like Claude Desktop, Cursor, Cline) and opens no HTTP socket, so a Docker Space would fail probe on boot. The static SDK ships pure HTML + README and is the only platform-compatible option until a Gradio shim is built (out of scope; tracked as future T9c).
+| Tool | Purpose | Key parameters |
+|------|---------|----------------|
+| `publish_html` | Publish HTML or Markdown content; returns public URL + owner token. | `content`, `format` (`HTML` \| `MARKDOWN`), `namespace`, `password`, `ttlDays` (1-30, default 15), `filename`, `showTopBar` |
+| `publish_file` | Upload a file by fetching it from a URL (images, PDFs, video, audio, code, archives). | `url`, `namespace`, `filename` |
+| `publish_site` | Publish a single-page or multi-file static HTML site. | `entryContent` *or* `files` (`[{path, content}]`), `entry` (default `index.html`), `namespace`, `password`, `ttlDays`, `ownerToken` |
+| `delete_resource` | Delete an HTML page, KV entry, JSON collection, or file using the owner token. | `type` (`html` \| `kv` \| `json` \| `file`), `namespace`, `id`, `ownerToken` |
+| `get_page` | Fetch the content of a published HTML page by namespace + ID. | `namespace`, `id`, `password` (optional) |
+| `get_stats` | Platform-wide usage statistics (page count, file count, storage, daily totals). | `tz` (optional IANA timezone, default UTC) |
 
-**Planned content.**
-- `README.md` -- HF Space frontmatter (`title`, `emoji`, `colorFrom`, `colorTo`, `sdk: static`, `pinned: true`, `license: apache-2.0`) + "What is BrewPage" intro + MCP tool table (6 tools, mirrored from `mcp-server/README.md`) + install snippets (Claude Desktop, Codex CLI TOML, Cursor, Cline, all pinned to a specific `brewpage-mcp` version) + backlink table (brewpage.app, /llms.txt, OpenAPI YAML, npm package, GitHub repo).
-- `index.html` -- minimal well-formed static landing page mirroring the same backlinks; HF static SDK serves this as the Space's HTTP root.
-- `LICENSE` -- Apache 2.0 verbatim from this repo's root LICENSE.
+## Install
 
-**Release.** Inside dev repo: push to `main` -> HuggingFace clones the repo and rebuilds the Space (typically <5 min). No CI workflow required for static SDK. Version bumps to the pinned `brewpage-mcp` are content-only commits.
+The MCP server is published to npm as [`brewpage-mcp`](https://www.npmjs.com/package/brewpage-mcp) (pinned to `1.4.0`). All snippets below use `npx` to fetch and execute the pinned version on demand.
 
-**Pre-requisites for first push.** HuggingFace account + write-scope token. `huggingface-cli login --token $HF_TOKEN`, then `git remote add hf https://huggingface.co/spaces/<user>/brewpage-mcp` and `git push hf main`.
+### Claude Desktop
 
-**Verification (post-publish).**
-```bash
-curl -s https://huggingface.co/spaces/<user>/brewpage-mcp | grep -c brewpage.app  # expect >= 1
+Add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) or `%APPDATA%\Claude\claude_desktop_config.json` (Windows):
+
+```json
+{
+  "mcpServers": {
+    "brewpage": {
+      "command": "npx",
+      "args": ["-y", "brewpage-mcp@1.4.0"]
+    }
+  }
+}
 ```
 
-**Links.**
-- BrewPage -- https://brewpage.app
-- OpenAPI contract -- https://github.com/kochetkov-ma/brewpage-openapi
-- Master plan -- ../../ECOSYSTEM-PLAN.md
-- MCP server source -- ../../mcp-server/
-- Dev repo -- TBD (TaskList #10)
-- Subagent -- ../../.claude/agents/hf-space-engineer.md (TBD)
+### Codex CLI
+
+Add to `~/.codex/config.toml`:
+
+```toml
+[mcp_servers.brewpage]
+command = "npx"
+args = ["-y", "brewpage-mcp@1.4.0"]
+```
+
+### Cursor
+
+Open **Settings > MCP** and add:
+
+```json
+{
+  "mcpServers": {
+    "brewpage": {
+      "command": "npx",
+      "args": ["-y", "brewpage-mcp@1.4.0"]
+    }
+  }
+}
+```
+
+### Cline (VS Code extension)
+
+Open the Cline MCP settings panel and add:
+
+```json
+{
+  "brewpage": {
+    "command": "npx",
+    "args": ["-y", "brewpage-mcp@1.4.0"]
+  }
+}
+```
+
+## Links
+
+| Resource | URL |
+|----------|-----|
+| BrewPage platform | https://brewpage.app/ |
+| LLM context file | https://brewpage.app/llms.txt |
+| OpenAPI spec (YAML) | https://brewpage.app/api/openapi.yaml |
+| npm package | https://www.npmjs.com/package/brewpage-mcp |
+| GitHub repository | https://github.com/kochetkov-ma/brewpage-openapi |
+
+## License
+
+Apache License 2.0 -- see [LICENSE](LICENSE).
