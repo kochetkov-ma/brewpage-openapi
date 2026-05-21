@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "BrewPage API",
-    "version": "1.31.0",
+    "version": "1.57.0",
     "description": "REST API for BrewPage — HTML/KV/JSON/file hosting platform. Publish and manage web content, key-value data,\nJSON documents, and files with short URLs, password protection, and real-time statistics.\n\n## Namespaces — READ BEFORE PUBLISHING\n\n**WARNING:** If you DO NOT pass `?ns=...`, your content goes into the namespace LITERALLY NAMED `public`\n— a SHARED, WORLDWIDE-DISCOVERABLE namespace. Anything stored in `public` WITHOUT a password:\n\n- is listed on the **brewpage.app HOMEPAGE GALLERY**\n- is returned by `GET /api/gallery` (paginated, full-text search over title/tags)\n- is indexable by search engines (sitemap + meta tags)\n- can be browsed by anyone — including LLM crawlers\n\n**If you do NOT want your content on the public homepage, you MUST pass a CUSTOM NAMESPACE**\n(e.g. `?ns=myproject-2026`) and/or set a password via `X-Password`. Only then will the item\nbe excluded from `/api/gallery`. The direct short URL `/{ns}/{id}` remains reachable by anyone\nwho knows it, regardless of namespace choice.\n\n- **DEFAULT** (when `ns` is omitted): `public` ← SHARED, LISTED ON HOMEPAGE\n- **CUSTOM**: any `[a-z0-9-]{3,32}` — auto-created on first use, NOT shown in gallery\n- **Collision** on `ns+id`: server returns `409 Conflict`; retry with a different `id` or omit `id`\n\n## TTL\n\n`ttl_days` applies to html, markdown, json, kv, files, and sites. Default `15`, allowed range `1..30`\n(max `30`). Resources auto-delete after expiry.\n\n## Short URL GET resolvers\n\nEvery short-URL GET resolver (HTML, markdown, JSON, KV, file, site) returns the current view counter in the\n`X-Views: <integer>` response header.\n\n## File serving\n\nFile responses support HTTP Range requests (`Accept-Ranges: bytes`, `206 Partial Content`), carry an `ETag`\nheader, and are cached with `Cache-Control: public, max-age=3600`.\n\nAllowed file extensions include (non-exhaustive): html, md, json, txt, css, js, jsx, mjs, ts, tsx,\nplus images, audio, and video types permitted by platform limits.\n\n## Required Headers\n\n`User-Agent` is REQUIRED on every request. Format: `AgentName/version` (e.g. `Claude/4.5`, `Codex/1.0`,\n`MyBot/2.1`). Requests without User-Agent may be rate-limited or rejected. Identify yourself truthfully —\nspoofed or anonymous UAs may be flagged.\n\n## Access Logging\n\nEvery API request (both PUBLISH and READ) is persisted server-side into the `access_events` table:\nclient IP, User-Agent, HTTP method + path + query, response status, request duration (ms), UTC timestamp.\nRetention: 30 days (nightly cleanup). Admin-only endpoints: `GET /api/admin/access` (paginated log with\nfilters) and `GET /api/admin/access/stats` (aggregates). Only static assets are excluded from logging;\nevery API POST/GET/PUT/DELETE is recorded.\n",
     "contact": {
       "name": "BrewPage",
@@ -792,6 +792,164 @@
         }
       }
     },
+    "/api/html/{ns}/{id}/settings": {
+      "get": {
+        "tags": [
+          "HTML"
+        ],
+        "summary": "Get HTML page settings",
+        "description": "Returns the republish-prefill projection (namespace, ttlDays, hasPassword, showTopBar,\nformat, title, filename, createdAt, expiresAt) without the content body. Owner-only —\nrequires the X-Owner-Token returned at creation. Designed for the SPA Republish entry\nfrom gallery cards and the in-page badge: callers supplying a fresh body skip the cost\nof shipping the previous content (HTML rows can be up to 5 MB). Mirrors `/source`'s\n404/403 semantics; a blank token returns 400 with `OWNER_TOKEN_REQUIRED` so the SPA\ncan distinguish \"no token pasted yet\" from \"token rejected\".\n",
+        "operationId": "getHtmlSettings",
+        "parameters": [
+          {
+            "name": "ns",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Owner-Token",
+            "in": "header",
+            "description": "Owner token returned at creation. Required for settings access",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Settings projection",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HtmlSettingsResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Owner token missing (code OWNER_TOKEN_REQUIRED)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong owner token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Page not found or expired",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/html/{ns}/{id}/source": {
+      "get": {
+        "tags": [
+          "HTML"
+        ],
+        "summary": "Get HTML page raw source",
+        "description": "Returns the raw user-submitted body (pre-render, pre-sanitize) plus metadata for\nrepublish (format, title, namespace, id, ttlDays, createdAt, expiresAt, filename,\nshowTopBar). Owner-only — requires the X-Owner-Token returned at creation. The\nserved bytes are the verbatim original — markdown is NOT re-rendered, HTML is NOT\nre-sanitized. A blank token returns 400 with `OWNER_TOKEN_REQUIRED` so the SPA can\ndistinguish \"no token pasted yet\" from \"token rejected\".\n",
+        "operationId": "getHtmlSource",
+        "parameters": [
+          {
+            "name": "ns",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Owner-Token",
+            "in": "header",
+            "description": "Owner token returned at creation. Required for source access",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Raw source body and metadata",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HtmlSourceResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Owner token missing (code OWNER_TOKEN_REQUIRED)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong owner token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Page not found or expired",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/kv": {
       "get": {
         "tags": [
@@ -1017,7 +1175,7 @@
           {
             "name": "ttl",
             "in": "query",
-            "description": "Time to live in days (1-30, default 15, max 30). Document auto-deletes after expiry",
+            "description": "Time to live in days (1-30, default 15, max 30). Document auto-deletes after expiry.\nSince v1.49.0 the query string also accepts a suffixed form like `'30d'` or `'30 days'`\n(parsed server-side back to an integer) — useful for clients that prefer human-readable\ndurations.\n",
             "required": false,
             "schema": {
               "type": "integer",
@@ -1096,7 +1254,7 @@
           "HTML"
         ],
         "summary": "Create HTML page (accepts JSON or raw text/*/octet-stream)",
-        "description": "Stores HTML or markdown content and returns a shareable link. Reuse existing owner token to group entities under one owner. Also accepts raw text/* (HTML, Markdown, YAML, XML, CSV, code) and application/octet-stream bodies — see /llms-full.txt.",
+        "description": "Stores HTML or markdown content and returns a shareable link. Reuse\nexisting owner token to group entities under one owner. Accepts three\ncontent-type families: `application/json` (structured `HtmlUploadRequest`\npayload — primary path), raw `text/*` (HTML, Markdown, YAML, XML, CSV,\ncode — server detects format), and `application/octet-stream` (binary —\nauto-routes to /api/files for png/jpg/gif/webp/mp4/pdf/zip; otherwise\ntext-sniffed). See /llms-full.txt.\n\nIdempotent for the (owner_token, content, public/, 24h) tuple:\na byte-identical repost from the same owner to `ns=public` without a\npassword within 24h returns the existing id. Response status stays\n201 and body shape is unchanged; the silently-merged response carries\nheader `X-Existing-Resource: 1`. To replace content at the same id\nuse `PUT /api/html/{ns}/{id}` (the canonical republish path).\n",
         "operationId": "create_1",
         "parameters": [
           {
@@ -1122,7 +1280,7 @@
           {
             "name": "ttl",
             "in": "query",
-            "description": "Time to live in days (1-30, default 15, max 30). Page auto-deletes after expiry",
+            "description": "Time to live in days (1-30, default 15, max 30). Page auto-deletes after expiry.\nSince v1.49.0 the query string also accepts a suffixed form like `'30d'` or `'30 days'`\n(parsed server-side back to an integer) — useful for clients that prefer human-readable\ndurations.\n",
             "required": false,
             "schema": {
               "type": "integer",
@@ -1393,7 +1551,7 @@
           {
             "name": "ttl",
             "in": "query",
-            "description": "Time to live in days (1-30, default 15, max 30). File auto-deletes after expiry",
+            "description": "Time to live in days (1-30, default 15, max 30). File auto-deletes after expiry.\nSince v1.49.0 the query string also accepts a suffixed form like `'30d'` or `'30 days'`\n(parsed server-side back to an integer) — useful for clients that prefer human-readable\ndurations.\n",
             "required": false,
             "schema": {
               "type": "integer",
@@ -1502,7 +1660,7 @@
           "Short Links"
         ],
         "summary": "Resolve short URL",
-        "description": "Resolves a short URL to the underlying resource (HTML, markdown, JSON, KV, file, or site entry).\n\nResponse headers:\n- `X-Views: <integer>` — current view counter for this resource.\n- For file/site responses: `Accept-Ranges: bytes`, `ETag`, and `Cache-Control: public, max-age=3600`.\n  Range requests return `206 Partial Content`.\n- For HTML resolves: `X-Show-Top-Bar: true|false` — effective resolved value of `showTopBar`\n  (per-page override, else server default `app.ui.show-top-bar-default`).\n",
+        "description": "Resolves a short URL to the underlying resource (HTML, markdown, JSON, KV, file, or site entry).\n\nThe `?raw=1` query parameter bypasses the SPA shell and streams raw resource bytes directly.\nRequired for browser-native consumers that cannot run the SPA wrapper — `<video src>`, `<audio src>`,\n`<iframe src>` for PDF, and any other embed that must receive the original Content-Type rather\nthan the SPA's HTML wrapper.\n\nResponse headers:\n- `X-Views: <integer>` — current view counter for this resource.\n- For file/site responses: `Accept-Ranges: bytes`, `ETag`, and `Cache-Control: public, max-age=3600`.\n  Range requests return `206 Partial Content`.\n- For HTML resolves: `X-Show-Top-Bar: true|false` — effective resolved value of `showTopBar`\n  (per-page override, else server default `app.ui.show-top-bar-default`).\n",
         "operationId": "resolve",
         "parameters": [
           {
@@ -1543,6 +1701,15 @@
             "name": "dl",
             "in": "query",
             "description": "Force download as attachment",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "raw",
+            "in": "query",
+            "description": "Bypass the SPA wrapper and stream raw resource bytes directly with the original Content-Type.\nRequired for `<video src>`, `<audio src>`, `<iframe src>` for PDF, and other browser-native embeds\nthat cannot run the SPA shell.\n",
             "required": false,
             "schema": {
               "type": "boolean"
@@ -2035,6 +2202,25 @@
                 "views"
               ],
               "default": "date"
+            }
+          },
+          {
+            "name": "mine",
+            "in": "query",
+            "description": "When true, filter to only the caller's own resources; requires X-Owner-Token header.",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          },
+          {
+            "name": "X-Owner-Token",
+            "in": "header",
+            "description": "Required only when mine=true; otherwise ignored.",
+            "required": false,
+            "schema": {
+              "type": "string"
             }
           }
         ],
@@ -3321,6 +3507,122 @@
           "sizeBytes": {
             "type": "integer",
             "format": "int64"
+          }
+        }
+      },
+      "HtmlSettingsResponse": {
+        "type": "object",
+        "description": "Republish-prefill projection returned by `GET /api/html/{ns}/{id}/settings`.\nSettings only, no content body. Owner-token gated.\n",
+        "properties": {
+          "namespace": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string",
+            "description": "10-character short id"
+          },
+          "ttlDays": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "TTL in days, derived from (expiresAt - createdAt) rounded to whole days"
+          },
+          "hasPassword": {
+            "type": "boolean",
+            "description": "True when the page is password-protected. The hash is never returned;\nthe SPA uses this to render a placeholder.\n"
+          },
+          "showTopBar": {
+            "type": "boolean",
+            "description": "Per-content toggle for the frontend top toolbar; reflects the stored\nvalue or true if not stored.\n"
+          },
+          "format": {
+            "type": "string",
+            "description": "Stored format identifier — 'html', 'markdown', or one of the code-format\nlanguages (yaml, json, xml, csv, tsv, log, toml, ini, sql, sh, bat, env,\njavascript, typescript, tsx, jsx, css, properties, docker, txt).\n"
+          },
+          "title": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Title extracted at create/update time; null if no title was derivable"
+          },
+          "filename": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Original filename captured at upload, used as tab title fallback and download basename"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "expiresAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          }
+        }
+      },
+      "HtmlSourceResponse": {
+        "type": "object",
+        "description": "Raw user-submitted body returned by `GET /api/html/{ns}/{id}/source`. Owner-only.\nBytes are verbatim — markdown is NOT re-rendered, HTML is NOT re-sanitized.\n",
+        "properties": {
+          "content": {
+            "type": "string",
+            "description": "Raw user-submitted content (pre-render, pre-sanitize)"
+          },
+          "format": {
+            "type": "string",
+            "description": "Stored format identifier ('html', 'markdown', or a code-format language)"
+          },
+          "title": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Title extracted at create/update time; null if no title was derivable"
+          },
+          "namespace": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string",
+            "description": "10-character short id"
+          },
+          "ttlDays": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "TTL in days, derived from (expiresAt - createdAt) rounded to whole days"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "expiresAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "filename": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Original filename captured at upload, used as tab title fallback and download basename"
+          },
+          "showTopBar": {
+            "type": "boolean",
+            "description": "Per-content toggle for the frontend top toolbar; reflects the stored value or true if not stored"
           }
         }
       },

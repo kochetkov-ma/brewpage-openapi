@@ -1,5 +1,29 @@
 # Release Notes
 
+## v1.57.0 (2026-05-21)
+
+### Added
+- OpenAPI: `GET /api/html/{ns}/{id}/source` -- owner-only raw HTML source (requires `X-Owner-Token`)
+- OpenAPI: `GET /api/html/{ns}/{id}/settings` -- owner-only page settings (requires `X-Owner-Token`)
+
+### Changed
+- OpenAPI: `POST /api/html` documents all three accepted content types -- `application/json`, `application/octet-stream`, `multipart/form-data`
+- OpenAPI: TTL parameters documented with string suffix form (`'30d'`) alongside numeric `ttlDays`
+- OpenAPI: short-link resolver documents `?raw=1` query param to bypass HTML rendering
+- OpenAPI spec version bumped from `1.31.0` to `1.57.0` -- tracks current backend contract surface (brewpage-app v1.57.0)
+
+### MCP 1.5.0
+
+New MCP tools for full public API parity:
+- `update_html` -- PUT /api/html/{ns}/{id} (owner-token authorized)
+- `publish_json` -- POST /api/json
+- `get_json` -- GET /api/json/{ns}/{id}
+- `update_json` -- PUT /api/json/{ns}/{id} (owner-token)
+- `publish_kv` -- POST /api/kv
+- `set_kv` -- PUT /api/kv/{ns}/{id}/{key} (owner-token)
+- `get_kv` -- GET /api/kv/{ns}/{id}/{key}
+- `search_gallery` -- GET /api/gallery (free-text + pagination + mine-filter)
+
 ## v1.2.0 (2026-05-01)
 
 ### Added
