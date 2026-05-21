@@ -2,8 +2,9 @@
   "openapi": "3.1.0",
   "info": {
     "title": "BrewPage API",
-    "version": "1.7.6",
-    "description": "REST API for BrewPage — HTML/KV/JSON/file hosting platform. Publish and manage web content, key-value data,\nJSON documents, and files with short URLs, password protection, and real-time statistics.\n\n## Namespaces\n\nAll namespaces are PUBLIC and indexable. Namespace format: `[a-z0-9-]{3,32}`. The `public` namespace (default)\nappears in the gallery when there is no password. Custom namespaces are created automatically on first use.\n\nOn `ns + id` collision the server returns `409 Conflict`. Clients should either retry with a different `id`\nor omit `id` to let the server generate one.\n\n## TTL\n\n`ttl_days` applies to html, markdown, json, kv, files, and sites. Default `15`, allowed range `1..30`\n(max `30`). Resources auto-delete after expiry.\n\n## Short URL GET resolvers\n\nEvery short-URL GET resolver (HTML, markdown, JSON, KV, file, site) returns the current view counter in the\n`X-Views: <integer>` response header.\n\n## File serving\n\nFile responses support HTTP Range requests (`Accept-Ranges: bytes`, `206 Partial Content`), carry an `ETag`\nheader, and are cached with `Cache-Control: public, max-age=3600`.\n\nAllowed file extensions include (non-exhaustive): html, md, json, txt, css, js, jsx, mjs, ts, tsx,\nplus images, audio, and video types permitted by platform limits.\n",
+    "version": "1.57.2",
+    "termsOfService": "https://brewpage.app/terms",
+    "description": "REST API for BrewPage — HTML/KV/JSON/file hosting platform. Publish and manage web content, key-value data,\nJSON documents, and files with short URLs, password protection, and real-time statistics.\n\n## Namespaces — READ BEFORE PUBLISHING\n\n**WARNING:** If you DO NOT pass `?ns=...`, your content goes into the namespace LITERALLY NAMED `public`\n— a SHARED, WORLDWIDE-DISCOVERABLE namespace. Anything stored in `public` WITHOUT a password:\n\n- is listed on the **brewpage.app HOMEPAGE GALLERY**\n- is returned by `GET /api/gallery` (paginated, full-text search over title/tags)\n- is indexable by search engines (sitemap + meta tags)\n- can be browsed by anyone — including LLM crawlers\n\n**If you do NOT want your content on the public homepage, you MUST pass a CUSTOM NAMESPACE**\n(e.g. `?ns=myproject-2026`) and/or set a password via `X-Password`. Only then will the item\nbe excluded from `/api/gallery`. The direct short URL `/{ns}/{id}` remains reachable by anyone\nwho knows it, regardless of namespace choice.\n\n- **DEFAULT** (when `ns` is omitted): `public` ← SHARED, LISTED ON HOMEPAGE\n- **CUSTOM**: any `[a-z0-9-]{3,32}` — auto-created on first use, NOT shown in gallery\n- **Collision** on `ns+id`: server returns `409 Conflict`; retry with a different `id` or omit `id`\n\n## TTL\n\n`ttl_days` applies to html, markdown, json, kv, files, and sites. Default `15`, allowed range `1..30`\n(max `30`). Resources auto-delete after expiry.\n\n## Short URL GET resolvers\n\nEvery short-URL GET resolver (HTML, markdown, JSON, KV, file, site) returns the current view counter in the\n`X-Views: <integer>` response header.\n\n## File serving\n\nFile responses support HTTP Range requests (`Accept-Ranges: bytes`, `206 Partial Content`), carry an `ETag`\nheader, and are cached with `Cache-Control: public, max-age=3600`.\n\nAllowed file extensions include (non-exhaustive): html, md, json, txt, css, js, jsx, mjs, ts, tsx,\nplus images, audio, and video types permitted by platform limits.\n\n## Required Headers\n\n`User-Agent` is REQUIRED on every request. Format: `AgentName/version` (e.g. `Claude/4.5`, `Codex/1.0`,\n`MyBot/2.1`). Requests without User-Agent may be rate-limited or rejected. Identify yourself truthfully —\nspoofed or anonymous UAs may be flagged.\n\n## Access Logging\n\nEvery API request (both PUBLISH and READ) is persisted server-side into the `access_events` table:\nclient IP, User-Agent, HTTP method + path + query, response status, request duration (ms), UTC timestamp.\nRetention: 30 days (nightly cleanup). Admin-only endpoints: `GET /api/admin/access` (paginated log with\nfilters) and `GET /api/admin/access/stats` (aggregates). Only static assets are excluded from logging;\nevery API POST/GET/PUT/DELETE is recorded.\n",
     "contact": {
       "name": "BrewPage",
       "url": "https://brewpage.app"
@@ -12,6 +13,10 @@
       "name": "MIT",
       "url": "https://opensource.org/licenses/MIT"
     }
+  },
+  "externalDocs": {
+    "description": "BrewPage API documentation (Scalar)",
+    "url": "https://kochetkov-ma.github.io/brewpage-openapi/"
   },
   "servers": [
     {
@@ -63,6 +68,10 @@
     {
       "name": "Admin",
       "description": "Administrative endpoints protected by the X-Admin-Password header"
+    },
+    {
+      "name": "Namespace",
+      "description": "Fresh, collision-free namespace suggestions"
     }
   ],
   "paths": {
@@ -156,7 +165,7 @@
           "KV"
         ],
         "summary": "Upsert key",
-        "description": "Creates or updates a key in the store; max 1000 keys per store",
+        "description": "Sets (creates or replaces) a key value while preserving the key short URL `/{ns}/{id}/{key}` —\nagents poll the same URL and see the latest value.\nTypical use: deploy-status counters, AI agent step state, current-config flags.\nMax 1000 keys per store. No version history: previous value is overwritten.\nRequires the owner token returned at creation.\n",
         "operationId": "upsertKey",
         "parameters": [
           {
@@ -383,7 +392,7 @@
           "JSON"
         ],
         "summary": "Update JSON document",
-        "description": "Replaces document content; requires the owner token returned at creation",
+        "description": "Replaces document content while preserving the short URL — share once, edit in place.\nUseful for AI agents iterating on a JSON artifact (test results, plan state, config snapshot)\nwithout producing a new URL each time.\nImmutable on update: tags. No version history: previous content is overwritten.\nRequires the owner token returned at creation.\n",
         "operationId": "update",
         "parameters": [
           {
@@ -583,8 +592,8 @@
         "tags": [
           "HTML"
         ],
-        "summary": "Update HTML page",
-        "description": "Replaces page content; requires the owner token returned at creation",
+        "summary": "Update HTML page (accepts JSON or raw text/*)",
+        "description": "Replaces page content while preserving the short URL — share once, edit in place.\nThe link already shared stays valid; readers see the new content on next load.\nPrimary use cases: AI agents iterating on output, fixing typos in already-shared pages.\nImmutable on update: tags, password, format, filename, showTopBar — delete and recreate to change those.\nNo version history: previous content is overwritten. Requires the owner token returned at creation.\nAlso accepts raw text/* bodies — see /llms-full.txt.\n",
         "operationId": "update_1",
         "parameters": [
           {
@@ -614,10 +623,81 @@
           }
         ],
         "requestBody": {
+          "description": "Primary path: application/json with HtmlUpdateRequest. Fallback paths accept raw text/* bodies — server\nrecords the fallback admission but htmlService.update preserves the stored format. See /llms-full.txt.\n",
           "content": {
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/HtmlUpdateRequest"
+              }
+            },
+            "text/html": {
+              "schema": {
+                "type": "string"
+              }
+            },
+            "text/markdown": {
+              "schema": {
+                "type": "string"
+              }
+            },
+            "text/plain": {
+              "schema": {
+                "type": "string"
+              }
+            },
+            "text/yaml": {
+              "schema": {
+                "type": "string"
+              }
+            },
+            "text/xml": {
+              "schema": {
+                "type": "string"
+              }
+            },
+            "text/csv": {
+              "schema": {
+                "type": "string"
+              }
+            },
+            "text/css": {
+              "schema": {
+                "type": "string"
+              }
+            },
+            "text/javascript": {
+              "schema": {
+                "type": "string"
+              }
+            },
+            "text/x-toml": {
+              "schema": {
+                "type": "string"
+              }
+            },
+            "application/xml": {
+              "schema": {
+                "type": "string"
+              }
+            },
+            "application/yaml": {
+              "schema": {
+                "type": "string"
+              }
+            },
+            "application/x-yaml": {
+              "schema": {
+                "type": "string"
+              }
+            },
+            "application/javascript": {
+              "schema": {
+                "type": "string"
+              }
+            },
+            "application/toml": {
+              "schema": {
+                "type": "string"
               }
             }
           },
@@ -627,7 +707,7 @@
           "200": {
             "description": "Page updated",
             "content": {
-              "*/*": {
+              "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/HtmlUpdateResponse"
                 }
@@ -637,9 +717,9 @@
           "403": {
             "description": "Missing or wrong owner token",
             "content": {
-              "*/*": {
+              "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HtmlUpdateResponse"
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
@@ -647,9 +727,9 @@
           "404": {
             "description": "Page not found or expired",
             "content": {
-              "*/*": {
+              "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HtmlUpdateResponse"
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
@@ -699,6 +779,164 @@
           },
           "404": {
             "description": "Page not found or expired"
+          }
+        }
+      }
+    },
+    "/api/html/{ns}/{id}/settings": {
+      "get": {
+        "tags": [
+          "HTML"
+        ],
+        "summary": "Get HTML page settings",
+        "description": "Returns the republish-prefill projection (namespace, ttlDays, hasPassword, showTopBar,\nformat, title, filename, createdAt, expiresAt) without the content body. Owner-only —\nrequires the X-Owner-Token returned at creation. Designed for the SPA Republish entry\nfrom gallery cards and the in-page badge: callers supplying a fresh body skip the cost\nof shipping the previous content (HTML rows can be up to 5 MB). Mirrors `/source`'s\n404/403 semantics; a blank token returns 400 with `OWNER_TOKEN_REQUIRED` so the SPA\ncan distinguish \"no token pasted yet\" from \"token rejected\".\n",
+        "operationId": "getHtmlSettings",
+        "parameters": [
+          {
+            "name": "ns",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Owner-Token",
+            "in": "header",
+            "description": "Owner token returned at creation. Required for settings access",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Settings projection",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HtmlSettingsResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Owner token missing (code OWNER_TOKEN_REQUIRED)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong owner token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Page not found or expired",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/html/{ns}/{id}/source": {
+      "get": {
+        "tags": [
+          "HTML"
+        ],
+        "summary": "Get HTML page raw source",
+        "description": "Returns the raw user-submitted body (pre-render, pre-sanitize) plus metadata for\nrepublish (format, title, namespace, id, ttlDays, createdAt, expiresAt, filename,\nshowTopBar). Owner-only — requires the X-Owner-Token returned at creation. The\nserved bytes are the verbatim original — markdown is NOT re-rendered, HTML is NOT\nre-sanitized. A blank token returns 400 with `OWNER_TOKEN_REQUIRED` so the SPA can\ndistinguish \"no token pasted yet\" from \"token rejected\".\n",
+        "operationId": "getHtmlSource",
+        "parameters": [
+          {
+            "name": "ns",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Owner-Token",
+            "in": "header",
+            "description": "Owner token returned at creation. Required for source access",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Raw source body and metadata",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HtmlSourceResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Owner token missing (code OWNER_TOKEN_REQUIRED)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong owner token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Page not found or expired",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -928,7 +1166,7 @@
           {
             "name": "ttl",
             "in": "query",
-            "description": "Time to live in days (1-30, default 15, max 30). Document auto-deletes after expiry",
+            "description": "Time to live in days (1-30, default 15, max 30). Document auto-deletes after expiry.\nSince v1.49.0 the query string also accepts a suffixed form like `'30d'` or `'30 days'`\n(parsed server-side back to an integer) — useful for clients that prefer human-readable\ndurations.\n",
             "required": false,
             "schema": {
               "type": "integer",
@@ -1006,8 +1244,8 @@
         "tags": [
           "HTML"
         ],
-        "summary": "Create HTML page",
-        "description": "Stores HTML or markdown content and returns a shareable link. Reuse existing owner token to group entities under one owner",
+        "summary": "Create HTML page (accepts JSON or raw text/*/octet-stream)",
+        "description": "Stores HTML or markdown content and returns a shareable link. Reuse\nexisting owner token to group entities under one owner. Accepts three\ncontent-type families: `application/json` (structured `HtmlUploadRequest`\npayload — primary path), raw `text/*` (HTML, Markdown, YAML, XML, CSV,\ncode — server detects format), and `application/octet-stream` (binary —\nauto-routes to /api/files for png/jpg/gif/webp/mp4/pdf/zip; otherwise\ntext-sniffed). See /llms-full.txt.\n\nIdempotent for the (owner_token, content, public/, 24h) tuple:\na byte-identical repost from the same owner to `ns=public` without a\npassword within 24h returns the existing id. Response status stays\n201 and body shape is unchanged; the silently-merged response carries\nheader `X-Existing-Resource: 1`. To replace content at the same id\nuse `PUT /api/html/{ns}/{id}` (the canonical republish path).\n",
         "operationId": "create_1",
         "parameters": [
           {
@@ -1033,7 +1271,7 @@
           {
             "name": "ttl",
             "in": "query",
-            "description": "Time to live in days (1-30, default 15, max 30). Page auto-deletes after expiry",
+            "description": "Time to live in days (1-30, default 15, max 30). Page auto-deletes after expiry.\nSince v1.49.0 the query string also accepts a suffixed form like `'30d'` or `'30 days'`\n(parsed server-side back to an integer) — useful for clients that prefer human-readable\ndurations.\n",
             "required": false,
             "schema": {
               "type": "integer",
@@ -1073,10 +1311,88 @@
           }
         ],
         "requestBody": {
+          "description": "Primary path: `application/json` with `HtmlUploadRequest`. Fallback paths accept raw text/* and\n`application/octet-stream` bodies — server detects format (or use `?format=`). See `/llms-full.txt`.\n",
           "content": {
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/HtmlUploadRequest"
+              }
+            },
+            "text/html": {
+              "schema": {
+                "type": "string"
+              }
+            },
+            "text/markdown": {
+              "schema": {
+                "type": "string"
+              }
+            },
+            "text/plain": {
+              "schema": {
+                "type": "string"
+              }
+            },
+            "text/yaml": {
+              "schema": {
+                "type": "string"
+              }
+            },
+            "text/xml": {
+              "schema": {
+                "type": "string"
+              }
+            },
+            "text/csv": {
+              "schema": {
+                "type": "string"
+              }
+            },
+            "text/css": {
+              "schema": {
+                "type": "string"
+              }
+            },
+            "text/javascript": {
+              "schema": {
+                "type": "string"
+              }
+            },
+            "text/x-toml": {
+              "schema": {
+                "type": "string"
+              }
+            },
+            "application/xml": {
+              "schema": {
+                "type": "string"
+              }
+            },
+            "application/yaml": {
+              "schema": {
+                "type": "string"
+              }
+            },
+            "application/x-yaml": {
+              "schema": {
+                "type": "string"
+              }
+            },
+            "application/javascript": {
+              "schema": {
+                "type": "string"
+              }
+            },
+            "application/toml": {
+              "schema": {
+                "type": "string"
+              }
+            },
+            "application/octet-stream": {
+              "schema": {
+                "type": "string",
+                "format": "binary",
+                "description": "Binary — auto-routes to /api/files for png/jpg/gif/webp/mp4/pdf/zip; otherwise text-sniffed."
               }
             }
           },
@@ -1086,7 +1402,7 @@
           "201": {
             "description": "Page created",
             "content": {
-              "*/*": {
+              "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/HtmlUploadResponse"
                 }
@@ -1096,9 +1412,29 @@
           "400": {
             "description": "Invalid request parameters",
             "content": {
-              "*/*": {
+              "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HtmlUploadResponse"
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Unsupported Content-Type — body did not match any supported text/* or application/* fallback.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Body parsed but failed validation (e.g. binary detected on text path, size limit exceeded).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
@@ -1106,9 +1442,9 @@
           "429": {
             "description": "Rate limit exceeded",
             "content": {
-              "*/*": {
+              "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HtmlUploadResponse"
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
@@ -1192,7 +1528,7 @@
           {
             "name": "ttl",
             "in": "query",
-            "description": "Time to live in days (1-30, default 15, max 30). File auto-deletes after expiry",
+            "description": "Time to live in days (1-30, default 15, max 30). File auto-deletes after expiry.\nSince v1.49.0 the query string also accepts a suffixed form like `'30d'` or `'30 days'`\n(parsed server-side back to an integer) — useful for clients that prefer human-readable\ndurations.\n",
             "required": false,
             "schema": {
               "type": "integer",
@@ -1222,14 +1558,16 @@
           }
         ],
         "requestBody": {
+          "required": true,
           "content": {
-            "application/json": {
+            "multipart/form-data": {
               "schema": {
                 "type": "object",
                 "properties": {
                   "file": {
                     "type": "string",
-                    "format": "binary"
+                    "format": "binary",
+                    "description": "The file to upload. The original filename is preserved from the multipart part headers."
                   }
                 },
                 "required": [
@@ -1243,7 +1581,7 @@
           "201": {
             "description": "File uploaded",
             "content": {
-              "*/*": {
+              "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/FileUploadResponse"
                 }
@@ -1253,9 +1591,9 @@
           "400": {
             "description": "Invalid request or file too large",
             "content": {
-              "*/*": {
+              "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/FileUploadResponse"
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
@@ -1263,9 +1601,19 @@
           "415": {
             "description": "Unsupported file type",
             "content": {
-              "*/*": {
+              "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/FileUploadResponse"
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "File parsed but failed validation (e.g. extension allowed but content sniffed as a disallowed type).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
@@ -1273,9 +1621,9 @@
           "429": {
             "description": "Rate limit exceeded",
             "content": {
-              "*/*": {
+              "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/FileUploadResponse"
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
@@ -1289,7 +1637,7 @@
           "Short Links"
         ],
         "summary": "Resolve short URL",
-        "description": "Resolves a short URL to the underlying resource (HTML, markdown, JSON, KV, file, or site entry).\n\nResponse headers:\n- `X-Views: <integer>` — current view counter for this resource.\n- For file/site responses: `Accept-Ranges: bytes`, `ETag`, and `Cache-Control: public, max-age=3600`.\n  Range requests return `206 Partial Content`.\n",
+        "description": "Resolves a short URL to the underlying resource (HTML, markdown, JSON, KV, file, or site entry).\n\nThe `?raw=1` query parameter bypasses the SPA shell and streams raw resource bytes directly.\nRequired for browser-native consumers that cannot run the SPA wrapper — `<video src>`, `<audio src>`,\n`<iframe src>` for PDF, and any other embed that must receive the original Content-Type rather\nthan the SPA's HTML wrapper.\n\nResponse headers:\n- `X-Views: <integer>` — current view counter for this resource.\n- For file/site responses: `Accept-Ranges: bytes`, `ETag`, and `Cache-Control: public, max-age=3600`.\n  Range requests return `206 Partial Content`.\n- For HTML resolves: `X-Show-Top-Bar: true|false` — effective resolved value of `showTopBar`\n  (per-page override, else server default `app.ui.show-top-bar-default`).\n",
         "operationId": "resolve",
         "parameters": [
           {
@@ -1334,6 +1682,15 @@
             "schema": {
               "type": "boolean"
             }
+          },
+          {
+            "name": "raw",
+            "in": "query",
+            "description": "Bypass the SPA wrapper and stream raw resource bytes directly with the original Content-Type.\nRequired for `<video src>`, `<audio src>`, `<iframe src>` for PDF, and other browser-native embeds\nthat cannot run the SPA shell.\n",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
           }
         ],
         "responses": {
@@ -1363,6 +1720,16 @@
                 "description": "Present for file/site responses: public, max-age=3600",
                 "schema": {
                   "type": "string"
+                }
+              },
+              "X-Show-Top-Bar": {
+                "description": "Effective resolved value of showTopBar for HTML content (per-page override,\nelse server default app.ui.show-top-bar-default). Reflects whether the served\npage renders the BrewPage top toolbar. Present on HTML resolves only.\n",
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "true",
+                    "false"
+                  ]
                 }
               }
             },
@@ -1586,8 +1953,19 @@
           "Stats"
         ],
         "summary": "Get platform stats",
-        "description": "Returns today's and all-time creation/view counts with per-type breakdown",
+        "description": "Returns today's and all-time creation/view counts with per-type breakdown.\n\nDisjoint split semantics: `*Public` and `*Private` count alive (non-deleted) resources only;\n`*Deleted` is a separate disjoint bucket. Invariant: `Public + Private + Deleted == Total`.\n\nOptional `tz` query param shifts the boundary of \"today\" to the given IANA timezone.\nDefaults to UTC. Invalid value falls back to UTC silently.\n",
         "operationId": "getStats",
+        "parameters": [
+          {
+            "name": "tz",
+            "in": "query",
+            "description": "IANA timezone id for the \"today\" boundary (e.g. Europe/Lisbon, Asia/Tokyo). Defaults to UTC.",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Platform statistics",
@@ -1700,6 +2078,52 @@
             }
           }
         }
+      },
+      "delete": {
+        "tags": [
+          "KV"
+        ],
+        "summary": "Delete KV store",
+        "description": "Deletes the entire KV store and all its keys. Requires owner token.",
+        "operationId": "deleteKvStore",
+        "parameters": [
+          {
+            "name": "ns",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Owner-Token",
+            "in": "header",
+            "description": "Owner token required to delete",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Store deleted"
+          },
+          "403": {
+            "description": "Invalid owner token"
+          },
+          "404": {
+            "description": "Store not found or expired"
+          }
+        }
       }
     },
     "/api/gallery": {
@@ -1740,6 +2164,39 @@
               "type": "integer",
               "format": "int32",
               "default": 20
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "description": "Sort order for gallery results. `date` (default) — newest first by creation date. `views` — most viewed first, then newest by date as tiebreaker.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "date",
+                "views"
+              ],
+              "default": "date"
+            }
+          },
+          {
+            "name": "mine",
+            "in": "query",
+            "description": "When true, filter to only the caller's own resources; requires X-Owner-Token header.",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          },
+          {
+            "name": "X-Owner-Token",
+            "in": "header",
+            "description": "Required only when mine=true; otherwise ignored.",
+            "required": false,
+            "schema": {
+              "type": "string"
             }
           }
         ],
@@ -1989,6 +2446,33 @@
                     "description": "Relative paths for each file (must match files order)"
                   }
                 }
+              },
+              "examples": {
+                "archive_zip": {
+                  "summary": "Upload a ZIP archive (archive mode)",
+                  "description": "Send the ZIP as `archive` field. Query string controls namespace, TTL, and entry file.\ncurl equivalent:\n  curl -X POST \"https://brewpage.app/api/sites?ns=docs&ttl=15&entry=index.html\" \\\n    -F \"archive=@site.zip\"\n",
+                  "value": {
+                    "archive": "<binary zip content>"
+                  }
+                },
+                "files_paths": {
+                  "summary": "Upload individual files with explicit paths (parallel-arrays mode)",
+                  "description": "Send each file as a `files` field and its relative path as the matching `paths` field.\nThe arrays must be the same length and in the same order.\ncurl equivalent:\n  curl -X POST \"https://brewpage.app/api/sites?ns=docs&ttl=15&entry=index.html\" \\\n    -F \"files=@index.html\" -F \"paths=index.html\" \\\n    -F \"files=@about.html\" -F \"paths=about.html\" \\\n    -F \"files=@gallery.html\" -F \"paths=gallery.html\" \\\n    -F \"files=@contact.html\" -F \"paths=contact.html\"\n",
+                  "value": {
+                    "files": [
+                      "<binary content of index.html>",
+                      "<binary content of about.html>",
+                      "<binary content of gallery.html>",
+                      "<binary content of contact.html>"
+                    ],
+                    "paths": [
+                      "index.html",
+                      "about.html",
+                      "gallery.html",
+                      "contact.html"
+                    ]
+                  }
+                }
               }
             }
           }
@@ -2000,6 +2484,23 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/SiteUploadResponse"
+                },
+                "examples": {
+                  "site_created": {
+                    "summary": "Successful site upload response",
+                    "value": {
+                      "id": "a1b2c3d4e5",
+                      "namespace": "docs",
+                      "entryFile": "index.html",
+                      "link": "https://brewpage.app/docs/a1b2c3d4e5",
+                      "ownerLink": "https://brewpage.app/api/sites/docs/a1b2c3d4e5",
+                      "fileCount": 4,
+                      "totalSizeBytes": 24576,
+                      "expiresAt": "2026-05-16T00:00:00Z",
+                      "tags": [],
+                      "ownerToken": "9f3a1c7d2e4b8a056f1234567890abcd"
+                    }
+                  }
                 }
               }
             }
@@ -2016,6 +2517,16 @@
           },
           "415": {
             "description": "Unsupported file type in archive",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Archive parsed but failed validation (e.g. file extension allowed but content sniffed as a disallowed type).",
             "content": {
               "application/json": {
                 "schema": {
@@ -2532,10 +3043,350 @@
           }
         }
       }
+    },
+    "/api/admin/access": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "List access log events",
+        "description": "List recent HTTP access events persisted into `access_events`. Every external request is logged with\nIP, User-Agent, method, path, status, and latency. Retention is 30 days (nightly cleanup job).\nRequires admin password.\n\nFilters are mutually exclusive and applied in priority order: `resource` > `ip` > (none, returns most recent).\n",
+        "operationId": "listAccess",
+        "parameters": [
+          {
+            "name": "X-Admin-Password",
+            "in": "header",
+            "description": "Admin password",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "resource",
+            "in": "query",
+            "description": "Filter events by resource ID (e.g. a 10-character short ID). Takes priority over `ip`",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "ip",
+            "in": "query",
+            "description": "Filter events by client IP address. Ignored if `resource` is also provided",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Maximum number of events to return",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 100
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "description": "Offset into the result set for pagination",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Access events list, most recent first",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AccessEventSummary"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or wrong admin password",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/access/stats": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Aggregated access log stats",
+        "description": "Aggregated statistics over the access log for the last `days` days, including totals, unique IPs,\ntop paths / IPs / user-agents / referers, and a request-count distribution over the 24 hours of day.\nRequires admin password.\n",
+        "operationId": "accessStats",
+        "parameters": [
+          {
+            "name": "X-Admin-Password",
+            "in": "header",
+            "description": "Admin password",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "days",
+            "in": "query",
+            "description": "Number of days to look back from now",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 7
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Aggregated access stats",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccessStats"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or wrong admin password",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/{ns}/{id}/owner-check": {
+      "get": {
+        "tags": [
+          "Owner Check"
+        ],
+        "summary": "Verify whether the supplied X-Owner-Token owns the resource",
+        "description": "Returns `{isOwner, type}`. Constant-time BCrypt match.\n404 when the resource does not exist (or has expired).\n200 with `isOwner:false` when the X-Owner-Token header is absent.\n",
+        "operationId": "ownerCheck",
+        "parameters": [
+          {
+            "name": "ns",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Owner-Token",
+            "in": "header",
+            "description": "Owner token to verify (constant-time match)",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/OwnerCheckResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource does not exist or has expired"
+          }
+        }
+      }
+    },
+    "/preview-html/{ns}/{id}": {
+      "get": {
+        "tags": [
+          "preview"
+        ],
+        "summary": "OpenGraph HTML stub",
+        "description": "Tiny HTML response with og:title/og:description/og:image meta tags for social-bot unfurls",
+        "operationId": "previewHtml",
+        "parameters": [
+          {
+            "name": "ns",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "HTML stub with OG meta (or generic stub when resource is missing)",
+            "content": {
+              "text/html": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/preview/{ns}/{id}.png": {
+      "get": {
+        "tags": [
+          "preview"
+        ],
+        "summary": "Per-content OG image",
+        "description": "Returns 1200×630 PNG, cached, with ETag/If-None-Match support; falls back to /og-image.png?v=2 on any failure",
+        "operationId": "preview",
+        "parameters": [
+          {
+            "name": "ns",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "If-None-Match",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "PNG image bytes",
+            "content": {
+              "image/png": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "302": {
+            "description": "Fallback to static og-image.png (flag off, no source, generation error, oversized)"
+          },
+          "304": {
+            "description": "Not modified (If-None-Match matched current ETag)"
+          },
+          "429": {
+            "description": "Per-IP rate limit exceeded"
+          }
+        }
+      }
+    },
+    "/api/namespace/random": {
+      "get": {
+        "tags": [
+          "Namespace"
+        ],
+        "summary": "Suggest a random namespace",
+        "description": "Returns a fresh `<word>-<word>-NN` namespace from the EFF Short Wordlist that does not collide\nwith any existing resource (html, kv, json, file, site). Pure read; no resource is allocated.\n\nUse this to suggest a unique namespace to the user before publishing — pass the returned value\nas the `?ns=` query parameter on subsequent publish calls. Subject to the same per-IP read\nrate limit as other GET endpoints (default 300/min/IP).\n",
+        "operationId": "randomNamespace",
+        "responses": {
+          "200": {
+            "description": "Namespace suggested",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/RandomNamespaceResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Per-IP rate limit exceeded"
+          },
+          "503": {
+            "description": "Namespace pool exhausted — retry budget hit consecutive collisions"
+          }
+        }
+      }
     }
   },
   "components": {
     "schemas": {
+      "OwnerCheckResponse": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "description": "Resource type (html, kv, json, file, site)"
+          },
+          "isOwner": {
+            "type": "boolean",
+            "description": "True when the supplied owner token matches the stored hash"
+          }
+        }
+      },
+      "RandomNamespaceResponse": {
+        "type": "object",
+        "properties": {
+          "namespace": {
+            "type": "string",
+            "description": "Fresh `<word>-<word>-NN` namespace not currently in use"
+          }
+        }
+      },
       "KvUpsertKeyRequest": {
         "type": "object",
         "properties": {
@@ -2631,6 +3482,122 @@
           "sizeBytes": {
             "type": "integer",
             "format": "int64"
+          }
+        }
+      },
+      "HtmlSettingsResponse": {
+        "type": "object",
+        "description": "Republish-prefill projection returned by `GET /api/html/{ns}/{id}/settings`.\nSettings only, no content body. Owner-token gated.\n",
+        "properties": {
+          "namespace": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string",
+            "description": "10-character short id"
+          },
+          "ttlDays": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "TTL in days, derived from (expiresAt - createdAt) rounded to whole days"
+          },
+          "hasPassword": {
+            "type": "boolean",
+            "description": "True when the page is password-protected. The hash is never returned;\nthe SPA uses this to render a placeholder.\n"
+          },
+          "showTopBar": {
+            "type": "boolean",
+            "description": "Per-content toggle for the frontend top toolbar; reflects the stored\nvalue or true if not stored.\n"
+          },
+          "format": {
+            "type": "string",
+            "description": "Stored format identifier — 'html', 'markdown', or one of the code-format\nlanguages (yaml, json, xml, csv, tsv, log, toml, ini, sql, sh, bat, env,\njavascript, typescript, tsx, jsx, css, properties, docker, txt).\n"
+          },
+          "title": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Title extracted at create/update time; null if no title was derivable"
+          },
+          "filename": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Original filename captured at upload, used as tab title fallback and download basename"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "expiresAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          }
+        }
+      },
+      "HtmlSourceResponse": {
+        "type": "object",
+        "description": "Raw user-submitted body returned by `GET /api/html/{ns}/{id}/source`. Owner-only.\nBytes are verbatim — markdown is NOT re-rendered, HTML is NOT re-sanitized.\n",
+        "properties": {
+          "content": {
+            "type": "string",
+            "description": "Raw user-submitted content (pre-render, pre-sanitize)"
+          },
+          "format": {
+            "type": "string",
+            "description": "Stored format identifier ('html', 'markdown', or a code-format language)"
+          },
+          "title": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Title extracted at create/update time; null if no title was derivable"
+          },
+          "namespace": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string",
+            "description": "10-character short id"
+          },
+          "ttlDays": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "TTL in days, derived from (expiresAt - createdAt) rounded to whole days"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "expiresAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "filename": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Original filename captured at upload, used as tab title fallback and download basename"
+          },
+          "showTopBar": {
+            "type": "boolean",
+            "description": "Per-content toggle for the frontend top toolbar; reflects the stored value or true if not stored"
           }
         }
       },
@@ -2732,10 +3699,28 @@
       },
       "HtmlUploadRequest": {
         "type": "object",
+        "required": [
+          "content"
+        ],
         "properties": {
           "content": {
             "type": "string",
             "description": "HTML or markdown content to publish"
+          },
+          "filename": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 200,
+            "description": "Optional original filename. Used as tab title fallback when no <title>/<h1>\nis present, and as the download basename. Trimmed; rejected if it contains\npath separators, control characters, length > 200, or bare name shorter\nthan 4 chars. Immutable on update.\n"
+          },
+          "showTopBar": {
+            "type": [
+              "boolean",
+              "null"
+            ],
+            "description": "Per-page toggle for the BrewPage top toolbar (filename + Download button + theme toggle)\non the served page.\n- true  -> always show the top bar\n- false -> always hide the top bar\n- null/omitted -> use server default (app.ui.show-top-bar-default)\nEffective resolved value is reflected on GET responses via the X-Show-Top-Bar header.\n"
           }
         }
       },
@@ -2829,12 +3814,12 @@
           "createdToday": {
             "type": "integer",
             "format": "int64",
-            "description": "Resources created in the last 24 hours"
+            "description": "Resources created in the last 24 hours (disjoint sum: alive_public + alive_private + deleted)."
           },
           "totalCreated": {
             "type": "integer",
             "format": "int64",
-            "description": "All-time resource count"
+            "description": "All-time resource count (disjoint sum: alive_public + alive_private + deleted)."
           },
           "viewsToday": {
             "type": "integer",
@@ -2848,10 +3833,122 @@
           },
           "breakdown": {
             "type": "array",
-            "description": "Per-type breakdown (html, json, kv, file)",
+            "description": "Per-type breakdown (html, json, kv, file, multi-file site)",
             "items": {
               "$ref": "#/components/schemas/TypeBreakdown"
             }
+          },
+          "createdTodayPublic": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Alive resources created today in the public namespace (alive only, deleted excluded)."
+          },
+          "createdTodayPrivate": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Alive resources created today in private namespaces (alive only, deleted excluded)."
+          },
+          "viewsTodayPublic": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Views today on public-namespace resources."
+          },
+          "viewsTodayPrivate": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Views today on private-namespace resources."
+          },
+          "totalCreatedPublic": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "All-time alive resources in the public namespace (alive only, deleted excluded)."
+          },
+          "totalCreatedPrivate": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "All-time alive resources in private namespaces (alive only, deleted excluded)."
+          },
+          "totalViewsPublic": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "All-time views on public-namespace resources."
+          },
+          "totalViewsPrivate": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "All-time views on private-namespace resources."
+          },
+          "deletedToday": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Resources deleted in the last 24 hours via explicit user delete; excludes TTL evictions."
+          },
+          "deletedTodayPublic": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Resources deleted today in the public namespace."
+          },
+          "deletedTodayPrivate": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Resources deleted today in private namespaces."
+          },
+          "totalDeleted": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "All-time count of explicitly deleted resources."
+          },
+          "totalDeletedPublic": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "All-time count of explicitly deleted resources in the public namespace."
+          },
+          "totalDeletedPrivate": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "All-time count of explicitly deleted resources in private namespaces."
           }
         }
       },
@@ -2860,17 +3957,97 @@
         "properties": {
           "type": {
             "type": "string",
-            "description": "Resource type: html, json, kv, or file"
+            "description": "Resource type: HTML pages, JSON docs, KV entries, Files, Multi-file sites"
           },
           "today": {
             "type": "integer",
             "format": "int64",
-            "description": "Created in the last 24 hours"
+            "description": "Created in the last 24 hours (disjoint sum: alive_public + alive_private + deleted)."
           },
           "total": {
             "type": "integer",
             "format": "int64",
-            "description": "All-time count"
+            "description": "All-time count (disjoint sum: alive_public + alive_private + deleted)."
+          },
+          "todayPublic": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Alive today in the public namespace (alive only, deleted excluded)."
+          },
+          "todayPrivate": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Alive today in private namespaces (alive only, deleted excluded)."
+          },
+          "totalPublic": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "All-time alive in the public namespace (alive only, deleted excluded)."
+          },
+          "totalPrivate": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "All-time alive in private namespaces (alive only, deleted excluded)."
+          },
+          "todayDeleted": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Deleted in the last 24 hours via explicit user delete; excludes TTL evictions."
+          },
+          "todayDeletedPublic": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Deleted today in the public namespace."
+          },
+          "todayDeletedPrivate": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Deleted today in private namespaces."
+          },
+          "totalDeleted": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "All-time count of explicitly deleted resources of this type."
+          },
+          "totalDeletedPublic": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "All-time count of explicitly deleted resources of this type in the public namespace."
+          },
+          "totalDeletedPrivate": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "All-time count of explicitly deleted resources of this type in private namespaces."
           }
         }
       },
@@ -3155,6 +4332,16 @@
             "type": "string",
             "format": "date-time",
             "description": "ISO-8601 timestamp of when the error occurred"
+          },
+          "supportedTypes": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "description": "Present on 415/422 responses from endpoints with raw-body fallback parsing. Lists the Content-Type\nvalues the server accepts for that endpoint (mirrors `FallbackFormatResolver.SUPPORTED_CONTENT_TYPES`).\n"
           }
         }
       },
@@ -3376,6 +4563,174 @@
           "reviewerNote": {
             "type": "string",
             "description": "Optional reviewer note to attach to the report"
+          }
+        }
+      },
+      "AccessEventSummary": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Auto-incremented event ID"
+          },
+          "resourceType": {
+            "type": "string",
+            "description": "Resource category (e.g. `html`, `kv`, `json`, `file`, `site`, or other internal label)"
+          },
+          "resourceId": {
+            "type": "string",
+            "description": "Resolved resource short ID, if the request targeted a known resource"
+          },
+          "resourceNamespace": {
+            "type": "string",
+            "description": "Resolved namespace, if the request targeted a known resource"
+          },
+          "method": {
+            "type": "string",
+            "description": "HTTP method (`GET`, `POST`, ...)"
+          },
+          "path": {
+            "type": "string",
+            "description": "Request path (without query string)"
+          },
+          "query": {
+            "type": "string",
+            "description": "Raw query string, if any"
+          },
+          "status": {
+            "type": "integer",
+            "format": "int32",
+            "description": "HTTP response status code"
+          },
+          "durationMs": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Request handling duration, in milliseconds"
+          },
+          "clientIp": {
+            "type": "string",
+            "description": "Client IP address (from X-Forwarded-For)"
+          },
+          "userAgent": {
+            "type": "string",
+            "description": "Client User-Agent header"
+          },
+          "referer": {
+            "type": "string",
+            "description": "Request `Referer` header, if present"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When the event was logged"
+          }
+        }
+      },
+      "PathCount": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Request path"
+          },
+          "count": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Number of requests to this path in the period"
+          }
+        }
+      },
+      "IpCount": {
+        "type": "object",
+        "properties": {
+          "ip": {
+            "type": "string",
+            "description": "Client IP address"
+          },
+          "count": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Number of requests from this IP in the period"
+          }
+        }
+      },
+      "UaCount": {
+        "type": "object",
+        "properties": {
+          "userAgent": {
+            "type": "string",
+            "description": "Client User-Agent"
+          },
+          "count": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Number of requests with this User-Agent in the period"
+          }
+        }
+      },
+      "ReferCount": {
+        "type": "object",
+        "properties": {
+          "referer": {
+            "type": "string",
+            "description": "Referer value"
+          },
+          "count": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Number of requests with this Referer in the period"
+          }
+        }
+      },
+      "AccessStats": {
+        "type": "object",
+        "properties": {
+          "totalRequests": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Total number of requests in the period"
+          },
+          "uniqueIps": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Number of distinct client IPs in the period"
+          },
+          "topPaths": {
+            "type": "array",
+            "description": "Most frequently requested paths, ordered descending by count",
+            "items": {
+              "$ref": "#/components/schemas/PathCount"
+            }
+          },
+          "topIps": {
+            "type": "array",
+            "description": "Most active client IPs, ordered descending by count",
+            "items": {
+              "$ref": "#/components/schemas/IpCount"
+            }
+          },
+          "topUserAgents": {
+            "type": "array",
+            "description": "Most frequent User-Agents, ordered descending by count",
+            "items": {
+              "$ref": "#/components/schemas/UaCount"
+            }
+          },
+          "topReferers": {
+            "type": "array",
+            "description": "Most frequent Referer values, ordered descending by count",
+            "items": {
+              "$ref": "#/components/schemas/ReferCount"
+            }
+          },
+          "hourlyDistribution": {
+            "type": "object",
+            "description": "Request count grouped by hour-of-day (0..23). Keys are stringified hour numbers; values are the\nrequest count for that hour across the selected period.\n",
+            "additionalProperties": {
+              "type": "integer",
+              "format": "int32"
+            }
           }
         }
       }

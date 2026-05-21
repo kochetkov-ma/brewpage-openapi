@@ -1,7 +1,8 @@
 openapi: 3.1.0
 info:
   title: BrewPage API
-  version: 1.57.1
+  version: 1.57.2
+  termsOfService: https://brewpage.app/terms
   description: |
     REST API for BrewPage — HTML/KV/JSON/file hosting platform. Publish and manage web content, key-value data,
     JSON documents, and files with short URLs, password protection, and real-time statistics.
@@ -62,6 +63,9 @@ info:
   license:
     name: MIT
     url: https://opensource.org/licenses/MIT
+externalDocs:
+  description: BrewPage API documentation (Scalar)
+  url: https://kochetkov-ma.github.io/brewpage-openapi/
 servers:
 - url: https://brewpage.app
   description: Generated server url

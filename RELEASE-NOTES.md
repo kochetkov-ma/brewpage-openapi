@@ -1,5 +1,13 @@
 # Release Notes
 
+## v1.57.2 — 2026-05-21
+
+### Added
+- OpenAPI: `info.termsOfService` → `https://brewpage.app/terms` (was unset).
+- OpenAPI: top-level `externalDocs` → Scalar docs site at `https://kochetkov-ma.github.io/brewpage-openapi/`. Gives every API directory (Postman, public-apis-*, awesome-openapi, etc.) a clean outbound link to the hosted documentation.
+
+Spec-only patch — no MCP version bump, no npm publish, no tag. Docs site auto-redeploys via `.github/workflows/docs.yml` on push to `main`.
+
 ## v1.57.1 — 2026-05-21
 
 ### Fixed
