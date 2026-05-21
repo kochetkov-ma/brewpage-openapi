@@ -4,6 +4,7 @@
 
 ### Fixed
 - API docs site (Scalar @latest): removed 3 residual `example:` fields that Scalar's parseSafe rejects ("Invalid YAML object" error). Aligns with project's known scalar compat policy.
+- Pinned Scalar CDN from `@latest` to concrete `@1.57.2` in `ScalarApiReference.astro` — prevents silent breakage on upstream auto-update.
 
 ### MCP 1.5.1
 
