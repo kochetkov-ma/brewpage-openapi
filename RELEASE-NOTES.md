@@ -1,5 +1,16 @@
 # Release Notes
 
+## v1.57.1 — 2026-05-21
+
+### Fixed
+- API docs site (Scalar @latest): removed 3 residual `example:` fields that Scalar's parseSafe rejects ("Invalid YAML object" error). Aligns with project's known scalar compat policy.
+
+### MCP 1.5.1
+
+- Bumped `@modelcontextprotocol/sdk` ^1.12.0 → ^1.29.0 (minor; resolves 5 transitive vulns: 4 moderate + 1 high in fast-uri/hono/ip-address chain).
+- Raised `engines.node` floor `>=18` → `>=20` (Node 18 EOL'd 2025-04-30).
+- No public-surface API changes; same 14 tools.
+
 ## v1.57.0 (2026-05-21)
 
 ### Added

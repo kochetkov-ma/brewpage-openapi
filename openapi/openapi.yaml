@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: BrewPage API
-  version: 1.57.0
+  version: 1.57.1
   description: |
     REST API for BrewPage — HTML/KV/JSON/file hosting platform. Publish and manage web content, key-value data,
     JSON documents, and files with short URLs, password protection, and real-time statistics.
@@ -462,20 +462,20 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/HtmlUpdateRequest'
-          text/html:        { schema: { type: string }, example: "<!doctype html><h1>Hi</h1>" }
-          text/markdown:    { schema: { type: string }, example: "# Title\n\nBody" }
-          text/plain:       { schema: { type: string }, example: "plain text" }
-          text/yaml:        { schema: { type: string }, example: "key: value" }
-          text/xml:         { schema: { type: string }, example: "<root/>" }
-          text/csv:         { schema: { type: string }, example: "a,b\n1,2" }
-          text/css:         { schema: { type: string }, example: "body{margin:0}" }
-          text/javascript:  { schema: { type: string }, example: "console.log(1)" }
-          text/x-toml:      { schema: { type: string }, example: "key = \"value\"" }
-          application/xml:         { schema: { type: string }, example: "<root/>" }
-          application/yaml:        { schema: { type: string }, example: "key: value" }
-          application/x-yaml:      { schema: { type: string }, example: "key: value" }
-          application/javascript:  { schema: { type: string }, example: "console.log(1)" }
-          application/toml:        { schema: { type: string }, example: "key = \"value\"" }
+          text/html:        { schema: { type: string } }
+          text/markdown:    { schema: { type: string } }
+          text/plain:       { schema: { type: string } }
+          text/yaml:        { schema: { type: string } }
+          text/xml:         { schema: { type: string } }
+          text/csv:         { schema: { type: string } }
+          text/css:         { schema: { type: string } }
+          text/javascript:  { schema: { type: string } }
+          text/x-toml:      { schema: { type: string } }
+          application/xml:         { schema: { type: string } }
+          application/yaml:        { schema: { type: string } }
+          application/x-yaml:      { schema: { type: string } }
+          application/javascript:  { schema: { type: string } }
+          application/toml:        { schema: { type: string } }
         required: true
       responses:
         '200':
@@ -926,20 +926,20 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/HtmlUploadRequest'
-          text/html:        { schema: { type: string }, example: "<!doctype html><h1>Hi</h1>" }
-          text/markdown:    { schema: { type: string }, example: "# Title\n\nBody" }
-          text/plain:       { schema: { type: string }, example: "plain text" }
-          text/yaml:        { schema: { type: string }, example: "key: value" }
-          text/xml:         { schema: { type: string }, example: "<root/>" }
-          text/csv:         { schema: { type: string }, example: "a,b\n1,2" }
-          text/css:         { schema: { type: string }, example: "body{margin:0}" }
-          text/javascript:  { schema: { type: string }, example: "console.log(1)" }
-          text/x-toml:      { schema: { type: string }, example: "key = \"value\"" }
-          application/xml:         { schema: { type: string }, example: "<root/>" }
-          application/yaml:        { schema: { type: string }, example: "key: value" }
-          application/x-yaml:      { schema: { type: string }, example: "key: value" }
-          application/javascript:  { schema: { type: string }, example: "console.log(1)" }
-          application/toml:        { schema: { type: string }, example: "key = \"value\"" }
+          text/html:        { schema: { type: string } }
+          text/markdown:    { schema: { type: string } }
+          text/plain:       { schema: { type: string } }
+          text/yaml:        { schema: { type: string } }
+          text/xml:         { schema: { type: string } }
+          text/csv:         { schema: { type: string } }
+          text/css:         { schema: { type: string } }
+          text/javascript:  { schema: { type: string } }
+          text/x-toml:      { schema: { type: string } }
+          application/xml:         { schema: { type: string } }
+          application/yaml:        { schema: { type: string } }
+          application/x-yaml:      { schema: { type: string } }
+          application/javascript:  { schema: { type: string } }
+          application/toml:        { schema: { type: string } }
           application/octet-stream:
             schema:
               type: string
@@ -1348,7 +1348,6 @@ paths:
         required: false
         schema:
           type: string
-          example: Europe/Lisbon
       responses:
         '200':
           description: Platform statistics
@@ -2302,7 +2301,6 @@ components:
         namespace:
           type: string
           description: Fresh `<word>-<word>-NN` namespace not currently in use
-          example: cobra-ledger-42
     KvUpsertKeyRequest:
       type: object
       properties:
@@ -3018,23 +3016,6 @@ components:
           description: |
             Present on 415/422 responses from endpoints with raw-body fallback parsing. Lists the Content-Type
             values the server accepts for that endpoint (mirrors `FallbackFormatResolver.SUPPORTED_CONTENT_TYPES`).
-          example:
-            - text/html
-            - text/markdown
-            - text/plain
-            - text/yaml
-            - text/xml
-            - text/csv
-            - text/css
-            - text/javascript
-            - text/x-toml
-            - application/xml
-            - application/yaml
-            - application/x-yaml
-            - application/javascript
-            - application/toml
-            - application/octet-stream
-            - application/json
     ReportRequest:
       type: object
       required:
