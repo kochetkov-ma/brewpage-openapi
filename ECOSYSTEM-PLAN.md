@@ -36,6 +36,7 @@ Every module ships from its own GitHub repo (`kochetkov-ma/brewpage-*`). This re
 | `modules/ext-chrome/` | `kochetkov-ma/brewpage-chrome` | Chrome Web Store + Edge + AMO | P2 | #7 |
 | `modules/cli-homebrew/` | `kochetkov-ma/homebrew-tap` | `brew install kochetkov-ma/tap/brewpage` | P2 | #5 |
 | `modules/docs-user/` | `kochetkov-ma/brewpage-docs` | Pages (route TBD) | P2 | #9 |
+| `modules/hf-space/` | `kochetkov-ma/brewpage-hf-space` | HuggingFace Spaces (static SDK) | P3 | #10 |
 
 ## Workflow
 
@@ -75,6 +76,7 @@ client-ts ---+--- cli-node -----+--- cli-homebrew
              +--- ext-chrome
 client-python -- cli-python
 docs-user (independent)
+hf-space  (independent -- depends only on mcp-server content; P3 backlink surface)
 ```
 
 Reflected in the TaskList via `blockedBy` edges.

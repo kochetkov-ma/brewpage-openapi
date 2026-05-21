@@ -15,6 +15,7 @@ See `../ECOSYSTEM-PLAN.md` for strategy, repo map, naming, workflow, and open qu
 | `ext-chrome/` | `brewpage-chrome` | Chrome + Edge + AMO | P2 | SCAFFOLD |
 | `cli-homebrew/` | `homebrew-tap` | Homebrew tap | P2 | SCAFFOLD |
 | `docs-user/` | `brewpage-docs` | Pages (route TBD) | P2 | SCAFFOLD |
+| `hf-space/` | `brewpage-hf-space` | HuggingFace Spaces (static SDK) | P3 | SCAFFOLD |
 
 > `mcp-server/` (at repo root, not under `modules/`) is the exception -- already released from this repo.
 
