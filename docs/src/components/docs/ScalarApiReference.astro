@@ -1,44 +1,43 @@
 ---
+const SPEC_JSON_URL = '/brewpage-openapi/openapi.json';
+const REDOCLY_VIEWER = 'https://redocly.github.io/redoc/?url=https://kochetkov-ma.github.io/brewpage-openapi/openapi.json';
+const SWAGGER_UI_LIVE = 'https://brewpage.app/swagger-ui/index.html';
+const SCALAR_HOSTED = 'https://scalar.com/?url=https://kochetkov-ma.github.io/brewpage-openapi/openapi.json';
+const SPEC_YAML_REPO = 'https://github.com/kochetkov-ma/brewpage-openapi/blob/main/openapi/openapi.yaml';
+const SPEC_JSON_REPO = 'https://github.com/kochetkov-ma/brewpage-openapi/blob/main/openapi/openapi.json';
 ---
 
-<div id="api-doc-container" class="not-prose mt-8">
-  <div id="api-doc-loading" class="flex items-center justify-center py-20 text-base-content/50">
-    <span class="loading loading-spinner loading-lg text-primary mr-3"></span>
-    Loading API Reference...
+<div class="not-prose mt-8 mb-8">
+  <div class="rounded-xl border border-base-300 bg-base-200/30 p-6">
+    <h3 class="text-lg font-semibold text-primary mb-2">Open the API in a viewer</h3>
+    <p class="text-base-content/70 text-sm mb-4">
+      Pick a renderer — each one loads our live <code>openapi.json</code> from this site.
+    </p>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+      <a href={REDOCLY_VIEWER} target="_blank" rel="noopener" class="btn btn-primary btn-sm justify-start gap-2">
+        Open in Redocly
+        <span class="text-xs opacity-70 ml-auto">↗</span>
+      </a>
+      <a href={SWAGGER_UI_LIVE} target="_blank" rel="noopener" class="btn btn-outline btn-sm justify-start gap-2">
+        Open in Swagger UI (live)
+        <span class="text-xs opacity-70 ml-auto">↗</span>
+      </a>
+      <a href={SCALAR_HOSTED} target="_blank" rel="noopener" class="btn btn-outline btn-sm justify-start gap-2">
+        Open in Scalar
+        <span class="text-xs opacity-70 ml-auto">↗</span>
+      </a>
+    </div>
+
+    <div class="mt-5 pt-4 border-t border-base-300/60">
+      <p class="text-xs text-base-content/60 mb-2">Or download the spec directly:</p>
+      <div class="flex flex-wrap gap-2 text-sm">
+        <a href={SPEC_JSON_URL} target="_blank" rel="noopener" class="link link-primary">openapi.json (live)</a>
+        <span class="text-base-content/40">·</span>
+        <a href={SPEC_YAML_REPO} target="_blank" rel="noopener" class="link link-primary">openapi.yaml on GitHub</a>
+        <span class="text-base-content/40">·</span>
+        <a href={SPEC_JSON_REPO} target="_blank" rel="noopener" class="link link-primary">openapi.json on GitHub</a>
+      </div>
+    </div>
   </div>
-  <div id="api-doc-target"></div>
 </div>
-
-<style>
-  #api-doc-target :global(redoc) {
-    --redoc-color-primary: #EBBB40;
-  }
-</style>
-
-<script>
-  const container = document.getElementById('api-doc-target');
-  const loading = document.getElementById('api-doc-loading');
-  if (container && !container.dataset.initialized) {
-    container.dataset.initialized = 'true';
-
-    const script = document.createElement('script');
-    script.src = 'https://cdn.jsdelivr.net/npm/redoc@2.5.2/bundles/redoc.standalone.js';
-    script.onload = () => {
-      if (loading) loading.style.display = 'none';
-      // @ts-ignore — Redoc is exposed on window after standalone bundle loads
-      window.Redoc.init('/brewpage-openapi/openapi.json', {
-        theme: {
-          colors: { primary: { main: '#EBBB40' } },
-          typography: { fontSize: '14px' },
-        },
-        scrollYOffset: 80,
-        hideDownloadButton: false,
-        expandResponses: '200,201',
-        nativeScrollbars: true,
-        pathInMiddlePanel: true,
-        requiredPropsFirst: true,
-      }, container);
-    };
-    document.head.appendChild(script);
-  }
-</script>

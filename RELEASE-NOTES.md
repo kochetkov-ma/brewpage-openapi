@@ -4,7 +4,7 @@
 
 ### Fixed
 - API docs site (Scalar @latest): removed 3 residual `example:` fields that Scalar's parseSafe rejects ("Invalid YAML object" error). Aligns with project's known scalar compat policy.
-- **API docs renderer migrated from Scalar to Redoc 2.5.2** — Scalar 1.25.x through 1.57.x all failed to parse our OpenAPI 3.1 spec ("Invalid YAML object" in parseSafe or "Invalid value used in weak set"); Redoc has stable 3.1 support. Component path kept as `ScalarApiReference.astro` to avoid import churn. CDN pinned to concrete `@2.5.2` (no floating tags).
+- **API Reference page: removed embedded renderer entirely** — Scalar 1.25.x through 1.57.x failed to parse our OpenAPI 3.1 spec; Redoc embed had unreadable dark-on-dark text + broken scroll inside Starlight layout. Replaced with a CTA card linking to external viewers (Redocly hosted, Swagger UI live on server, Scalar hosted) plus direct spec downloads. Pragmatic — no iframe, no CSS warfare, users open spec in their tool of choice.
 
 ### MCP 1.5.1
 
