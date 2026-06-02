@@ -2592,6 +2592,25 @@ components:
         ownerToken:
           type: string
           description: Secret token required for update and delete operations. Store it safely -- cannot be recovered
+        result:
+          type: object
+          description: "Outcome envelope. `code` is success|duplicate|warned|failed; `action` is the specific outcome. When a single HTML page references relative sibling files (e.g. `data.js`) — which 404 because single-file pages have no sibling hosting — the page is still created (201) with `action: created_missing_assets`, a human `reason` (e.g. \"This page is broken: it loads files (data.js) that don't exist on a single page. Publish it as a multi-file site so they work.\"), and `extras.localAssetRefs` listing example paths; publish such content as a multi-file site (`POST /api/sites`) instead."
+          properties:
+            code:
+              type: string
+              enum: [success, duplicate, warned, failed]
+            action:
+              type: string
+              enum: [created, created_missing_assets, updated, merged, created_warned, unavailable, rate_limited, rejected]
+            reason:
+              type: string
+              nullable: true
+              description: Human-readable note (e.g. the created_missing_assets advisory). Omitted when absent.
+            extras:
+              type: object
+              nullable: true
+              additionalProperties: true
+              description: 'Outcome-specific extras. created_missing_assets → { "localAssetRefs": ["data.js", ...] }; merged → { "isOwner": boolean }.'
     FileUploadResponse:
       type: object
       properties:
