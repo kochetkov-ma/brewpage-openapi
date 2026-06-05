@@ -8,8 +8,43 @@ const BASE_URL = process.env.BREWPAGE_URL || "https://brewpage.app";
 
 const server = new McpServer({
   name: "brewpage-mcp",
-  version: "1.5.1",
+  version: "1.6.0",
 });
+
+const PUBLIC_NAMESPACE = "public";
+
+/**
+ * Generate a short, unlisted private namespace slug used when the caller omits
+ * `namespace`. Sending an explicit non-public ns prevents the backend from
+ * applying its `public` default, which would gallery-list + index the content.
+ * Format: `priv-<6 lowercase-alphanumeric chars>`.
+ */
+function defaultPrivateNamespace(): string {
+  const alphabet = "abcdefghijklmnopqrstuvwxyz0123456789";
+  let slug = "";
+  for (let i = 0; i < 6; i++) {
+    slug += alphabet[Math.floor(Math.random() * alphabet.length)];
+  }
+  return `priv-${slug}`;
+}
+
+/**
+ * Resolve the effective namespace actually sent to the API: the caller's value
+ * verbatim when provided (including `public`), otherwise a generated private slug.
+ */
+function resolveNamespace(namespace?: string): string {
+  return namespace && namespace.length > 0 ? namespace : defaultPrivateNamespace();
+}
+
+const UNLISTED_NOTICE =
+  "Unlisted link — anyone who has it can open it, but it's not in the gallery or search. " +
+  "Publish with namespace `public` to list it in the gallery and have search engines index it.";
+
+const NAMESPACE_DESCRIPTION =
+  "Optional. Omit to keep the content PRIVATE/unlisted (reachable only by its link — " +
+  "not listed in the gallery and not indexed by search engines). Pass a custom namespace " +
+  "to group private content, or pass `public` ONLY when the user explicitly wants the page " +
+  "listed in the brewpage.app gallery and indexed by search engines.";
 
 async function apiRequest(
   method: string,
@@ -30,7 +65,10 @@ async function apiRequest(
   return { ok: res.ok, status: res.status, data };
 }
 
-function formatPublishResponse(data: Record<string, unknown>): string {
+function formatPublishResponse(
+  data: Record<string, unknown>,
+  effectiveNamespace?: string
+): string {
   const lines = [
     `Published successfully!`,
     ``,
@@ -50,6 +88,10 @@ function formatPublishResponse(data: Record<string, unknown>): string {
     ``,
     `IMPORTANT: Save your owner token! You need it to update or delete this resource later. It cannot be recovered if lost.`
   );
+  const ns = (effectiveNamespace ?? (data.namespace as string | undefined)) || "";
+  if (ns !== PUBLIC_NAMESPACE) {
+    lines.push(``, UNLISTED_NOTICE);
+  }
   return lines.join("\n");
 }
 
@@ -81,7 +123,7 @@ server.tool(
     namespace: z
       .string()
       .optional()
-      .describe("Namespace for the page (optional, defaults to 'public')"),
+      .describe(NAMESPACE_DESCRIPTION),
     password: z
       .string()
       .optional()
@@ -104,8 +146,9 @@ server.tool(
       .describe("Add a thin top toolbar (filename + Download button + theme toggle) on the served page. Default: hidden."),
   },
   async ({ content, format, namespace, password, ttlDays, filename, showTopBar }) => {
+    const effectiveNamespace = resolveNamespace(namespace);
     const body: Record<string, unknown> = { content, format };
-    if (namespace) body.namespace = namespace;
+    body.namespace = effectiveNamespace;
     if (password) body.password = password;
     if (ttlDays) body.ttlDays = ttlDays;
     if (filename) body.filename = filename;
@@ -129,7 +172,7 @@ server.tool(
       content: [
         {
           type: "text" as const,
-          text: formatPublishResponse(data as Record<string, unknown>),
+          text: formatPublishResponse(data as Record<string, unknown>, effectiveNamespace),
         },
       ],
     };
@@ -144,10 +187,11 @@ server.tool(
     namespace: z
       .string()
       .optional()
-      .describe("Namespace for the file (optional, defaults to 'public')"),
+      .describe(NAMESPACE_DESCRIPTION),
     filename: z.string().optional().describe("Custom filename (optional)"),
   },
   async ({ url: fileUrl, namespace, filename }) => {
+    const effectiveNamespace = resolveNamespace(namespace);
     const fileRes = await fetch(fileUrl);
     if (!fileRes.ok) {
       return {
@@ -168,7 +212,7 @@ server.tool(
       blob,
       filename || fileUrl.split("/").pop() || "file"
     );
-    if (namespace) formData.append("namespace", namespace);
+    formData.append("namespace", effectiveNamespace);
 
     const res = await fetch(`${BASE_URL}/api/files`, {
       method: "POST",
@@ -193,7 +237,7 @@ server.tool(
       content: [
         {
           type: "text" as const,
-          text: formatPublishResponse(data as Record<string, unknown>),
+          text: formatPublishResponse(data as Record<string, unknown>, effectiveNamespace),
         },
       ],
     };
@@ -361,7 +405,7 @@ server.tool(
     namespace: z
       .string()
       .optional()
-      .describe("Namespace for the site (optional, defaults to 'public')"),
+      .describe(NAMESPACE_DESCRIPTION),
     password: z
       .string()
       .optional()
@@ -408,9 +452,10 @@ server.tool(
     if (password) headers["X-Password"] = password;
     if (ownerToken) headers["X-Owner-Token"] = ownerToken;
 
+    const effectiveNamespace = resolveNamespace(namespace);
     const qsParams: string[] = [];
     if (entry) qsParams.push(`entry=${encodeURIComponent(entry)}`);
-    if (namespace) qsParams.push(`ns=${encodeURIComponent(namespace)}`);
+    qsParams.push(`ns=${encodeURIComponent(effectiveNamespace)}`);
     if (ttlDays) qsParams.push(`ttl=${encodeURIComponent(String(ttlDays))}`);
     const qs = qsParams.length ? `?${qsParams.join("&")}` : "";
     const url = `${BASE_URL}/api/sites${qs}`;
@@ -451,6 +496,10 @@ server.tool(
       ``,
       `IMPORTANT: Save your owner token! You need it to view info or delete this site. It cannot be recovered if lost.`
     );
+    const ns = ((site.namespace as string | undefined) || effectiveNamespace) || "";
+    if (ns !== PUBLIC_NAMESPACE) {
+      lines.push(``, UNLISTED_NOTICE);
+    }
 
     return {
       content: [{ type: "text" as const, text: lines.join("\n") }],
@@ -517,7 +566,7 @@ server.tool(
     namespace: z
       .string()
       .optional()
-      .describe("Namespace for the document (optional, defaults to 'public')"),
+      .describe(NAMESPACE_DESCRIPTION),
     password: z
       .string()
       .optional()
@@ -541,8 +590,9 @@ server.tool(
   async ({ json, namespace, password, ttlDays, tags, ownerToken }) => {
     const jsonString = typeof json === "string" ? json : JSON.stringify(json);
 
+    const effectiveNamespace = resolveNamespace(namespace);
     const qsParams: string[] = [];
-    if (namespace) qsParams.push(`ns=${encodeURIComponent(namespace)}`);
+    qsParams.push(`ns=${encodeURIComponent(effectiveNamespace)}`);
     if (ttlDays !== undefined) qsParams.push(`ttl=${encodeURIComponent(String(ttlDays))}`);
     if (tags && tags.length) {
       for (const t of tags) qsParams.push(`tags=${encodeURIComponent(t)}`);
@@ -576,7 +626,7 @@ server.tool(
       content: [
         {
           type: "text" as const,
-          text: formatPublishResponse(data as Record<string, unknown>),
+          text: formatPublishResponse(data as Record<string, unknown>, effectiveNamespace),
         },
       ],
     };
@@ -688,7 +738,7 @@ server.tool(
     namespace: z
       .string()
       .optional()
-      .describe("Namespace for the KV store (optional, defaults to 'public')"),
+      .describe(NAMESPACE_DESCRIPTION),
     password: z
       .string()
       .optional()
@@ -712,8 +762,9 @@ server.tool(
   async ({ key, value, namespace, password, ttlDays, tags, ownerToken }) => {
     const body: Record<string, unknown> = { key, value };
 
+    const effectiveNamespace = resolveNamespace(namespace);
     const qsParams: string[] = [];
-    if (namespace) qsParams.push(`ns=${encodeURIComponent(namespace)}`);
+    qsParams.push(`ns=${encodeURIComponent(effectiveNamespace)}`);
     if (ttlDays !== undefined) qsParams.push(`ttl=${encodeURIComponent(String(ttlDays))}`);
     if (tags && tags.length) {
       for (const t of tags) qsParams.push(`tags=${encodeURIComponent(t)}`);
@@ -747,7 +798,7 @@ server.tool(
       content: [
         {
           type: "text" as const,
-          text: formatPublishResponse(data as Record<string, unknown>),
+          text: formatPublishResponse(data as Record<string, unknown>, effectiveNamespace),
         },
       ],
     };

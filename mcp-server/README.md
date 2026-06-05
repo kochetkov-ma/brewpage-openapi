@@ -92,7 +92,7 @@ Fourteen tools are available, grouped by resource: **HTML**, **JSON**, **KV**, *
 
 Publish HTML or Markdown content to BrewPage. Returns a public URL and owner token.
 
-Parameters: `content` (string), `format` (`HTML` | `MARKDOWN`, default `HTML`), `namespace` (optional, defaults to `public`), `password` (optional), `ttlDays` (1--30, default 15), `filename` (optional, used as title fallback), `showTopBar` (optional boolean -- adds a toolbar with filename, Download button, and theme toggle).
+Parameters: `content` (string), `format` (`HTML` | `MARKDOWN`, default `HTML`), `namespace` (optional -- **omit to keep the page private/unlisted**: reachable only by its link, not in the gallery, not indexed by search engines; pass `public` only when the user explicitly wants it gallery-listed and search-indexed), `password` (optional), `ttlDays` (1--30, default 15), `filename` (optional, used as title fallback), `showTopBar` (optional boolean -- adds a toolbar with filename, Download button, and theme toggle).
 
 Example prompt that invokes this tool:
 
@@ -142,7 +142,7 @@ get_page(namespace="public", id="aBcDeFgHiJ")
 
 Upload a file to BrewPage by fetching it from a URL. Returns a public URL and owner token. Supports images, PDFs, video, audio, code files, and archives.
 
-Parameters: `url` (string, the source URL to fetch), `namespace` (optional), `filename` (optional custom filename).
+Parameters: `url` (string, the source URL to fetch), `namespace` (optional -- omit to keep the file private/unlisted: reachable only by its link, not in the gallery, not search-indexed; pass `public` only to list and index it), `filename` (optional custom filename).
 
 Example prompt:
 
@@ -160,7 +160,7 @@ publish_file(url="https://example.com/diagram.png")
 
 Publish a single-page or multi-file HTML site. Pass `entryContent` for a single page or `files` (array of `{path, content}`) for a multi-file site. Supports password protection, TTL, and owner token grouping.
 
-Parameters: `entryContent` (string, mutually exclusive with `files`), `files` (array of `{path, content}`, mutually exclusive with `entryContent`), `entry` (optional entry file path, default `index.html`), `namespace` (optional), `password` (optional), `ttlDays` (1--30, default 15), `ownerToken` (optional, groups site under an existing owner).
+Parameters: `entryContent` (string, mutually exclusive with `files`), `files` (array of `{path, content}`, mutually exclusive with `entryContent`), `entry` (optional entry file path, default `index.html`), `namespace` (optional -- omit to keep the site private/unlisted: reachable only by its link, not in the gallery, not search-indexed; pass `public` only to list and index it), `password` (optional), `ttlDays` (1--30, default 15), `ownerToken` (optional, groups site under an existing owner).
 
 Example prompt:
 
@@ -178,7 +178,7 @@ publish_site(files=[{"path": "index.html", "content": "..."}, {"path": "style.cs
 
 Publish a JSON document to BrewPage. Returns a public URL and owner token. The body may be passed as a JSON string or as a structured object.
 
-Parameters: `json` (string or object, the JSON payload), `namespace` (optional, defaults to `public`), `password` (optional), `ttlDays` (optional, 1--30, default 15), `tags` (optional `string[]`).
+Parameters: `json` (string or object, the JSON payload), `namespace` (optional -- omit to keep the document private/unlisted: reachable only by its link, not in the gallery, not search-indexed; pass `public` only to list and index it), `password` (optional), `ttlDays` (optional, 1--30, default 15), `tags` (optional `string[]`).
 
 Example prompt:
 
@@ -228,7 +228,7 @@ update_json(namespace="public", id="aBcDeFgHiJ", json={"mode": "dark", "version"
 
 Create a new KV (key/value) entry. Returns a public URL and owner token. The KV entry is addressed by `(namespace, id, key)`; this tool creates the entry and emits the generated `id` along with the owner token.
 
-Parameters: `key` (string), `value` (string), `namespace` (optional, defaults to `public`), `password` (optional), `ttlDays` (optional, 1--30, default 15), `tags` (optional `string[]`).
+Parameters: `key` (string), `value` (string), `namespace` (optional -- omit to keep the KV store private/unlisted: reachable only by its link, not in the gallery, not search-indexed; pass `public` only to list and index it), `password` (optional), `ttlDays` (optional, 1--30, default 15), `tags` (optional `string[]`).
 
 Example prompt:
 
@@ -328,7 +328,7 @@ get_stats()
 |--------------------|------|-------|
 | "Publish this HTML so I can share it" | `publish_html` | `format=HTML`; save `ownerToken` |
 | "Share these meeting notes as a link" | `publish_html` | `format=MARKDOWN`; readable rendered output |
-| "Host this AI-generated artifact" | `publish_html` | `namespace` optional; public by default |
+| "Host this AI-generated artifact" | `publish_html` | `namespace` optional; **private/unlisted by default** -- pass `public` to gallery-list + index |
 | "Upload this image / PDF / video" | `publish_file` | Fetches from URL; inline preview on short URL |
 | "Deploy this static site" | `publish_site` | Pass `files` array or `entryContent` |
 | "Fix a typo in the page I shared -- same link" | `update_html` | Requires `ownerToken`; URL stays the same |
@@ -370,6 +370,12 @@ Every publish response includes an **owner token** -- the only credential that a
 - [Brewcode Plugin](https://github.com/kochetkov-ma/claude-brewcode) -- Claude Code plugin suite
 
 ## Changelog
+
+## 1.6.0 -- 2026-06-05
+
+- **Private-by-default publishing.** When `namespace` is omitted, all five publish tools (`publish_html`, `publish_file`, `publish_site`, `publish_json`, `publish_kv`) now send an explicit unlisted namespace (`priv-<random>`) instead of letting the backend default to `public`. Omitted namespace = unlisted (reachable only by its link, not gallery-listed, not search-indexed); pass `namespace: "public"` explicitly to list + index. Non-breaking: `namespace` stays optional.
+- Publish responses for non-public namespaces now append an "Unlisted link" notice explaining how to make content public.
+- Tool descriptions and README rewritten to reflect the private-by-default model.
 
 ## 1.5.0 -- 2026-05-21
 
