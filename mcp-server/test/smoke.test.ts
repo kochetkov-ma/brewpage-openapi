@@ -11,6 +11,7 @@ const EXPECTED_TOOL_NAMES = [
   "get_page",
   "get_stats",
   "publish_site",
+  "republish_site",
   "update_html",
   "publish_json",
   "get_json",
@@ -110,7 +111,7 @@ function sendJsonRpc(child: ChildProcessWithoutNullStreams, message: object): vo
   child.stdin.write(`${JSON.stringify(message)}\n`);
 }
 
-test("MCP server registers exactly the expected 14 tools", async (t) => {
+test("MCP server registers exactly the expected 15 tools", async (t) => {
   const serverEntry = locateServerEntry();
   const child = spawn(process.execPath, [serverEntry], {
     stdio: ["pipe", "pipe", "pipe"],

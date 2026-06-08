@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: BrewPage API
-  version: 1.85.7
+  version: 1.86.0
   termsOfService: https://brewpage.app/terms
   description: |
     REST API for BrewPage — HTML/KV/JSON/file hosting platform. Publish and manage web content, key-value data,
@@ -1793,6 +1793,137 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+    put:
+      tags:
+      - Sites
+      summary: Republish site (full replace)
+      description: |
+        Republish a site in place (full replace) at the same URL. The uploaded bundle becomes the complete
+        new file set — files absent from it are removed, new files added, matching files overwritten.
+        Requires the owner token.
+
+        The owner token is REQUIRED: a missing `X-Owner-Token` header returns 403 (same as a wrong token).
+        Upload modes mirror `POST /api/sites`: send a ZIP `archive`, or parallel `files[]` + `paths[]` arrays.
+      operationId: republishSite
+      parameters:
+      - name: ns
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: tags
+        in: query
+        description: Comma-separated tags (replaces existing tags)
+        required: false
+        schema:
+          type: string
+      - name: ttl
+        in: query
+        description: Time to live in days (1-30, default 15, max 30). Site auto-deletes after expiry
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 30
+          default: 15
+      - name: entry
+        in: query
+        description: 'Entry file path override (default: auto-detect index.html)'
+        required: false
+        schema:
+          type: string
+      - name: X-Owner-Token
+        in: header
+        description: Owner token returned at creation. Required for republish
+        required: true
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                archive:
+                  type: string
+                  format: binary
+                  description: ZIP archive containing the complete new site file set
+                files:
+                  type: array
+                  items:
+                    type: string
+                    format: binary
+                  description: Individual files (alternative to archive)
+                paths:
+                  type: array
+                  items:
+                    type: string
+                  description: Relative paths for each file (must match files order)
+      responses:
+        '200':
+          description: Site republished (full replace)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SiteUpdateResponse'
+              examples:
+                site_updated:
+                  summary: Successful site republish response
+                  value:
+                    id: a1b2c3d4e5
+                    namespace: docs
+                    entryFile: index.html
+                    link: https://brewpage.app/docs/a1b2c3d4e5
+                    ownerLink: https://brewpage.app/api/sites/docs/a1b2c3d4e5
+                    fileCount: 5
+                    totalSizeBytes: 30720
+                    expiresAt: '2026-06-23T00:00:00Z'
+                    tags: []
+                    result:
+                      code: success
+                      action: updated
+        '400':
+          description: Empty bundle, no HTML files, limits exceeded, or invalid ttl
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Missing or wrong owner token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Site not found or expired
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '410':
+          description: Site is gone (soft-hidden)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '415':
+          description: Unsupported file type in archive
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
     delete:
       tags:
       - Sites
@@ -2172,17 +2303,28 @@ paths:
     get:
       tags:
       - Admin
-      summary: List owners
+      summary: List or search owners
       description: |
         Lists every owner token (hashed identifier) along with per-resource counts (HTML, KV stores, JSON
-        documents, files, sites) and the first-seen timestamp. Metadata only — no stored content is returned.
-        Requires admin password.
+        documents, files, sites), the first-seen timestamp, and the owner's tier/label. Metadata only — no
+        stored content is returned. Requires admin password.
+
+        Optional `search` narrows the result: a 32-character base62 value is treated as a raw owner token and
+        resolved to its `owner_id`; any other value is matched as an `owner_id` prefix.
       operationId: listOwners
       parameters:
       - name: X-Admin-Password
         in: header
         description: Admin password
         required: true
+        schema:
+          type: string
+      - name: search
+        in: query
+        description: |
+          Optional owner filter. A 32-character base62 string is resolved as a raw owner token to its
+          owner_id; any other value is matched as an owner_id prefix.
+        required: false
         schema:
           type: string
       responses:
@@ -2194,6 +2336,142 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/OwnerInfo'
+        '400':
+          description: Missing admin password header
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Wrong admin password
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/admin/owners/resolve:
+    get:
+      tags:
+      - Admin
+      summary: Resolve owner token to owner ID
+      description: |
+        Resolves a raw owner token to its hashed `ownerId`. Lets an operator look up the owner record that
+        backs a token shared by a user (e.g. for a tier-promotion request) without exposing the hashing.
+        Metadata only. Requires admin password.
+      operationId: resolveOwner
+      parameters:
+      - name: X-Admin-Password
+        in: header
+        description: Admin password
+        required: true
+        schema:
+          type: string
+      - name: token
+        in: query
+        description: Raw owner token to resolve
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Resolved owner ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OwnerResolveResponse'
+        '400':
+          description: Missing admin password header or missing token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Wrong admin password
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/admin/owners/{ownerId}/promote:
+    post:
+      tags:
+      - Admin
+      summary: Promote owner tier
+      description: |
+        Sets an owner's tier. `PRIVILEGED` raises the owner's maximum TTL ceiling (up to 730 days) and may
+        attach an operator label/note; `DEFAULT` keeps standard limits. Metadata only. Requires admin password.
+      operationId: promoteOwner
+      parameters:
+      - name: ownerId
+        in: path
+        description: Hashed owner identifier
+        required: true
+        schema:
+          type: string
+      - name: X-Admin-Password
+        in: header
+        description: Admin password
+        required: true
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OwnerPromoteRequest'
+      responses:
+        '200':
+          description: Owner tier updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OwnerTierResponse'
+        '400':
+          description: Missing admin password header, invalid tier, or maxTtlDays out of range (PRIVILEGED ceiling 730)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Wrong admin password
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Owner not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/admin/owners/{ownerId}/demote:
+    post:
+      tags:
+      - Admin
+      summary: Demote owner to default tier
+      description: |
+        Reverts an owner to the `DEFAULT` tier and standard limits. Idempotent — demoting an already-default
+        owner succeeds with no change. Metadata only. Requires admin password.
+      operationId: demoteOwner
+      parameters:
+      - name: ownerId
+        in: path
+        description: Hashed owner identifier
+        required: true
+        schema:
+          type: string
+      - name: X-Admin-Password
+        in: header
+        description: Admin password
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Owner reverted to DEFAULT tier (or already default)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OwnerTierResponse'
         '400':
           description: Missing admin password header
           content:
@@ -3366,22 +3644,28 @@ components:
           type: string
           description: Secret token required for update and delete operations. Store it safely -- cannot be recovered
         result:
-          type: object
-          description: "Outcome envelope. `code` is success|duplicate|warned|failed; `action` is the specific outcome. When a single HTML page references relative sibling files (e.g. `data.js`) — which 404 because single-file pages have no sibling hosting — the page is still created (201) with `action: created_missing_assets`, a human `reason` (e.g. \"This page is broken: it loads files (data.js) that don't exist on a single page. Publish it as a multi-file site so they work.\"), and `extras.localAssetRefs` listing example paths; publish such content as a multi-file site (`POST /api/sites`) instead."
-          properties:
-            code:
-              type: string
-              enum: [success, duplicate, warned, failed]
-            action:
-              type: string
-              enum: [created, created_missing_assets, updated, merged, created_warned, unavailable, rate_limited, rejected]
-            reason:
-              type: [string, 'null']
-              description: Human-readable note (e.g. the created_missing_assets advisory). Omitted when absent.
-            extras:
-              type: [object, 'null']
-              additionalProperties: true
-              description: 'Outcome-specific extras. created_missing_assets → { "localAssetRefs": ["data.js", ...] }; merged → { "isOwner": boolean }.'
+          allOf:
+          - $ref: '#/components/schemas/AbuseResult'
+          - description: "Outcome envelope. `code` is success|duplicate|warned|failed; `action` is the specific outcome. When a single HTML page references relative sibling files (e.g. `data.js`) — which 404 because single-file pages have no sibling hosting — the page is still created (201) with `action: created_missing_assets`, a human `reason` (e.g. \"This page is broken: it loads files (data.js) that don't exist on a single page. Publish it as a multi-file site so they work.\"), and `extras.localAssetRefs` listing example paths; publish such content as a multi-file site (`POST /api/sites`) instead."
+    AbuseResult:
+      type: object
+      description: |
+        Outcome envelope returned by content-publishing endpoints (HTML create/update, site republish).
+        `code` is the coarse outcome; `action` is the specific outcome. Metadata only.
+      properties:
+        code:
+          type: string
+          enum: [success, duplicate, warned, failed]
+        action:
+          type: string
+          enum: [created, created_missing_assets, updated, merged, created_warned, unavailable, rate_limited, rejected]
+        reason:
+          type: [string, 'null']
+          description: Human-readable note (e.g. the created_missing_assets advisory). Omitted when absent.
+        extras:
+          type: [object, 'null']
+          additionalProperties: true
+          description: 'Outcome-specific extras. created_missing_assets → { "localAssetRefs": ["data.js", ...] }; merged → { "isOwner": boolean }.'
     FileUploadResponse:
       type: object
       properties:
@@ -3784,6 +4068,46 @@ components:
         sizeBytes:
           type: integer
           format: int64
+    SiteUpdateResponse:
+      type: object
+      description: |
+        Result of a full-replace site republish (`PUT /api/sites/{ns}/{id}`). The URL and ID are unchanged.
+        Unlike the create response, no owner token is returned (the caller already holds it).
+      properties:
+        id:
+          type: string
+          description: Unique 10-character alphanumeric site ID (unchanged)
+        namespace:
+          type: string
+        link:
+          type: string
+          description: Public URL to view the site (unchanged)
+        ownerLink:
+          type: string
+          description: API URL for programmatic access (info, delete, republish)
+        entryFile:
+          type: string
+          description: Entry HTML file resolved from the new upload (e.g. index.html)
+        fileCount:
+          type: integer
+          format: int32
+        totalSizeBytes:
+          type: integer
+          format: int64
+        expiresAt:
+          type: string
+          format: date-time
+        tags:
+          type: array
+          items:
+            type: string
+        result:
+          allOf:
+          - $ref: '#/components/schemas/AbuseResult'
+          - description: 'Outcome envelope for the republish (e.g. `{ code: success, action: updated }`).'
+        visibilityNotice:
+          type: string
+          description: Optional notice about the site's public visibility (present for public namespace sites)
     ErrorResponse:
       type: object
       properties:
@@ -4137,6 +4461,69 @@ components:
           type: string
           format: date-time
           description: When this owner token was first observed
+        tier:
+          type: string
+          enum:
+          - DEFAULT
+          - PRIVILEGED
+          description: Owner tier. PRIVILEGED raises the maximum TTL ceiling (up to 730 days)
+        label:
+          type: string
+          description: Optional operator-assigned label for the owner
+    OwnerResolveResponse:
+      type: object
+      description: Resolution of a raw owner token to its hashed owner ID.
+      properties:
+        ownerId:
+          type: string
+          description: Hashed owner identifier resolved from the supplied token
+    OwnerPromoteRequest:
+      type: object
+      required:
+      - tier
+      description: Request to set an owner's tier.
+      properties:
+        tier:
+          type: string
+          enum:
+          - DEFAULT
+          - PRIVILEGED
+          description: Target tier
+        maxTtlDays:
+          type: integer
+          format: int32
+          minimum: 1
+          maximum: 730
+          description: Optional max TTL ceiling in days for PRIVILEGED owners (ceiling 730)
+        label:
+          type: string
+          description: Optional operator-assigned label for the owner
+        note:
+          type: string
+          description: Optional operator note explaining the tier change
+    OwnerTierResponse:
+      type: object
+      description: Current tier state of an owner after a promote/demote operation (metadata only).
+      properties:
+        ownerId:
+          type: string
+          description: Hashed owner identifier
+        tier:
+          type: string
+          enum:
+          - DEFAULT
+          - PRIVILEGED
+          description: Current owner tier
+        maxTtlDays:
+          type: integer
+          format: int32
+          description: Effective maximum TTL ceiling in days for this owner
+        label:
+          type: string
+          description: Operator-assigned label, if any
+        note:
+          type: string
+          description: Operator note, if any
     AdminStatsResponse:
       type: object
       description: Aggregate platform counts and per-owner breakdown (metadata only).

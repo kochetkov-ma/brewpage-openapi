@@ -8,7 +8,7 @@ const BASE_URL = process.env.BREWPAGE_URL || "https://brewpage.app";
 
 const server = new McpServer({
   name: "brewpage-mcp",
-  version: "1.6.0",
+  version: "1.7.0",
 });
 
 const PUBLIC_NAMESPACE = "public";
@@ -500,6 +500,113 @@ server.tool(
     if (ns !== PUBLIC_NAMESPACE) {
       lines.push(``, UNLISTED_NOTICE);
     }
+
+    return {
+      content: [{ type: "text" as const, text: lines.join("\n") }],
+    };
+  }
+);
+
+server.tool(
+  "republish_site",
+  "Republish (full-replace) an existing multi-file BrewPage site in place at the SAME URL/ID. Requires owner token. The uploaded bundle becomes the complete new file set — files absent from it are removed, new files added, matching files overwritten. Single-page: pass `entryContent`. Multi-page: pass `files` (array of `{path, content}`). Optional `entry` overrides the default `index.html`.",
+  {
+    namespace: z.string().describe("Site namespace"),
+    id: z.string().describe("Site ID"),
+    ownerToken: z
+      .string()
+      .describe("Owner token received when the site was created (required for republish)"),
+    entryContent: z
+      .string()
+      .optional()
+      .describe("HTML content for a single-page site (entry file). Mutually exclusive with `files`."),
+    files: z
+      .array(z.object({ path: z.string(), content: z.string() }))
+      .optional()
+      .describe("Multi-file site: array of `{path, content}`. Mutually exclusive with `entryContent`."),
+    entry: z
+      .string()
+      .optional()
+      .describe("Entry file path, default index.html"),
+    ttlDays: z
+      .number()
+      .min(1)
+      .max(30)
+      .optional()
+      .describe("Time to live in days (1-30, default: 15)"),
+    tags: z
+      .array(z.string())
+      .optional()
+      .describe("Optional tags (replaces the site's existing tags)"),
+  },
+  async ({ namespace, id, ownerToken, entryContent, files, entry, ttlDays, tags }) => {
+    const hasEntry = typeof entryContent === "string";
+    const hasFiles = Array.isArray(files) && files.length > 0;
+    if (hasEntry === hasFiles) {
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: "Provide exactly one of `entryContent` (single-page) or `files` (multi-page).",
+          },
+        ],
+        isError: true,
+      };
+    }
+
+    const formData = new FormData();
+    if (hasFiles) {
+      for (const f of files!) {
+        formData.append("files", new Blob([f.content], { type: "text/html" }), f.path);
+        formData.append("paths", f.path);
+      }
+    } else {
+      const entryBlob = new Blob([entryContent!], { type: "text/html" });
+      const entryName = entry || "index.html";
+      formData.append("files", entryBlob, entryName);
+      formData.append("paths", entryName);
+    }
+
+    const headers: Record<string, string> = { "X-Owner-Token": ownerToken };
+
+    const qsParams: string[] = [];
+    if (entry) qsParams.push(`entry=${encodeURIComponent(entry)}`);
+    if (ttlDays) qsParams.push(`ttl=${encodeURIComponent(String(ttlDays))}`);
+    if (tags && tags.length) qsParams.push(`tags=${encodeURIComponent(tags.join(","))}`);
+    const qs = qsParams.length ? `?${qsParams.join("&")}` : "";
+
+    const url = `${BASE_URL}/api/sites/${encodeURIComponent(namespace)}/${encodeURIComponent(id)}${qs}`;
+    const res = await fetch(url, { method: "PUT", headers, body: formData });
+    const data = await res.json().catch(() => null);
+
+    if (!res.ok) {
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: `Failed to republish site (${res.status}): ${JSON.stringify(data)}`,
+          },
+        ],
+        isError: true,
+      };
+    }
+
+    const site = data as Record<string, unknown>;
+    const lines = [
+      `Site republished successfully (full replace)!`,
+      ``,
+      `URL: ${site.link || "N/A"}`,
+      `Namespace: ${site.namespace || namespace}`,
+      `ID: ${site.id || id}`,
+      `Entry file: ${site.entryFile || "index.html"}`,
+      `Files: ${site.fileCount || 1}`,
+    ];
+    if (site.totalSizeBytes !== undefined) lines.push(`Size: ${site.totalSizeBytes} bytes`);
+    if (site.ownerLink) lines.push(`Owner link: ${site.ownerLink}`);
+    if (Array.isArray(site.tags) && site.tags.length) lines.push(`Tags: ${(site.tags as string[]).join(", ")}`);
+    if (site.expiresAt) lines.push(`Expires: ${site.expiresAt}`);
+    if (site.result) lines.push(`Result: ${site.result}`);
+    if (site.visibilityNotice) lines.push(``, String(site.visibilityNotice));
 
     return {
       content: [{ type: "text" as const, text: lines.join("\n") }],

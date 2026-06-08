@@ -1,6 +1,6 @@
 {
   "name": "brewpage-mcp",
-  "version": "1.6.0",
+  "version": "1.7.0",
   "mcpName": "io.github.kochetkov-ma/brewpage-mcp",
   "description": "MCP server for BrewPage — publish and manage HTML, KV, JSON, and file content from AI assistants",
   "type": "module",

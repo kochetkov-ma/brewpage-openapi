@@ -1,5 +1,20 @@
 # Release Notes
 
+## v1.86.0 — 2026-06-08
+
+### Added
+- OpenAPI: `PUT /api/sites/{ns}/{id}` — site republish (full replace). The uploaded bundle becomes the complete new file set at the same URL (files absent are removed, new files added, matching files overwritten). Multipart `archive` (ZIP) or parallel `files[]` + `paths[]`; query params `tags`, `ttl`, `entry`. Requires `X-Owner-Token` (a missing token returns 403). Responses: 200 (`SiteUpdateResponse` — no owner token returned), 400, 403, 404, 410 (soft-hidden), 415, 429.
+- OpenAPI: admin owner-tier endpoints under the `Admin` tag (`X-Admin-Password`):
+  - `GET /api/admin/owners?search=<value>` — search owners; a 32-char base62 value resolves as a raw owner token to its `owner_id`, otherwise matched as an `owner_id` prefix. `OwnerInfo` now carries `tier` + `label`.
+  - `GET /api/admin/owners/resolve?token=<raw>` — resolve a raw owner token to `{ ownerId }`.
+  - `POST /api/admin/owners/{ownerId}/promote` — set tier `DEFAULT|PRIVILEGED` with optional `maxTtlDays` (PRIVILEGED ceiling 730), `label`, `note`.
+  - `POST /api/admin/owners/{ownerId}/demote` — idempotent revert to `DEFAULT`.
+
+### Changed
+- OpenAPI spec version bumped `1.85.7` → `1.86.0` to track the brewpage-app v1.86.0 backend contract.
+
+New schemas: `SiteUpdateResponse`, `OwnerResolveResponse`, `OwnerPromoteRequest`, `OwnerTierResponse`. Spec-only — no MCP version bump, no npm publish in this entry.
+
 ## v1.57.2 — 2026-05-21
 
 ### Added
