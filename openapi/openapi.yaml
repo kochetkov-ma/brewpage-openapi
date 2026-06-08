@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: BrewPage API
-  version: 1.57.2
+  version: 1.85.7
   termsOfService: https://brewpage.app/terms
   description: |
     REST API for BrewPage — HTML/KV/JSON/file hosting platform. Publish and manage web content, key-value data,
@@ -1015,8 +1015,10 @@ paths:
       tags:
       - Files
       summary: Upload file
-      description: Stores a file via multipart upload and returns a download link. Only safe file types accepted. Reuse existing
-        owner token to group entities under one owner
+      description: |
+        Stores a file via multipart upload (part name `file`) and returns a download link. Only safe file types
+        accepted. Size caps: 5 MB generic, video up to 20 MB, audio up to 5 MB. Up to 1000 files per namespace.
+        Reuse existing owner token to group entities under one owner.
       operationId: upload
       parameters:
       - name: ns
@@ -2166,6 +2168,777 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /api/admin/owners:
+    get:
+      tags:
+      - Admin
+      summary: List owners
+      description: |
+        Lists every owner token (hashed identifier) along with per-resource counts (HTML, KV stores, JSON
+        documents, files, sites) and the first-seen timestamp. Metadata only — no stored content is returned.
+        Requires admin password.
+      operationId: listOwners
+      parameters:
+      - name: X-Admin-Password
+        in: header
+        description: Admin password
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Owners list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/OwnerInfo'
+        '400':
+          description: Missing admin password header
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Wrong admin password
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/admin/owners/{ownerId}:
+    delete:
+      tags:
+      - Admin
+      summary: Delete owner
+      description: |
+        Deletes an owner and all resources created under that owner token. Requires admin password.
+      operationId: deleteOwner
+      parameters:
+      - name: ownerId
+        in: path
+        description: Hashed owner identifier
+        required: true
+        schema:
+          type: string
+      - name: X-Admin-Password
+        in: header
+        description: Admin password
+        required: true
+        schema:
+          type: string
+      responses:
+        '204':
+          description: Owner deleted
+        '400':
+          description: Missing admin password header
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Wrong admin password
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Owner not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/admin/stats:
+    get:
+      tags:
+      - Admin
+      summary: Platform admin stats
+      description: |
+        Aggregate platform counts (total HTML pages, KV entries, JSON documents, files, sites, unique owners)
+        plus a per-owner breakdown. Metadata only. Requires admin password.
+      operationId: adminStats
+      parameters:
+      - name: X-Admin-Password
+        in: header
+        description: Admin password
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Aggregate admin stats
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminStatsResponse'
+        '400':
+          description: Missing admin password header
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Wrong admin password
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/admin/blocklist:
+    get:
+      tags:
+      - Admin
+      summary: List blocklist entries
+      description: |
+        Lists IP / User-Agent blocklist entries (abuse mitigation). Metadata only — IPs, UA patterns, reason,
+        timestamps, and active flag. Requires admin password.
+      operationId: listBlocklist
+      parameters:
+      - name: X-Admin-Password
+        in: header
+        description: Admin password
+        required: true
+        schema:
+          type: string
+      - name: active
+        in: query
+        description: Filter by active flag. When omitted, defaults to active-only unless `includeInactive=true`
+        required: false
+        schema:
+          type: boolean
+      - name: type
+        in: query
+        description: Filter by entry type
+        required: false
+        schema:
+          type: string
+      - name: includeInactive
+        in: query
+        description: Include expired/inactive entries when no explicit `active` filter is given
+        required: false
+        schema:
+          type: boolean
+          default: false
+      - name: limit
+        in: query
+        description: Maximum number of entries to return (clamped to 1..1000)
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 100
+      - name: offset
+        in: query
+        description: Offset into the result set for pagination
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 0
+      responses:
+        '200':
+          description: Blocklist entries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/BlocklistEntryResponse'
+        '400':
+          description: Missing admin password header
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Wrong admin password
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    post:
+      tags:
+      - Admin
+      summary: Add blocklist entry
+      description: |
+        Adds an IP and/or User-Agent pattern to the abuse blocklist with an optional ISO-8601 duration
+        (e.g. `PT1H`, `P1D`). At least one of `ip` or `uaPattern` is required. Requires admin password.
+      operationId: addBlocklistEntry
+      parameters:
+      - name: X-Admin-Password
+        in: header
+        description: Admin password
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BlocklistEntryRequest'
+        required: true
+      responses:
+        '201':
+          description: Blocklist entry created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BlocklistEntryResponse'
+        '400':
+          description: Invalid request or missing admin password header
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Wrong admin password
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/admin/blocklist/{id}:
+    delete:
+      tags:
+      - Admin
+      summary: Remove blocklist entry
+      description: Removes a blocklist entry by numeric ID. Requires admin password.
+      operationId: deleteBlocklistEntry
+      parameters:
+      - name: id
+        in: path
+        description: Numeric blocklist entry ID
+        required: true
+        schema:
+          type: integer
+          format: int64
+      - name: X-Admin-Password
+        in: header
+        description: Admin password
+        required: true
+        schema:
+          type: string
+      responses:
+        '204':
+          description: Entry removed
+        '400':
+          description: Missing admin password header
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Wrong admin password
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Entry not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/admin/llm-config:
+    get:
+      tags:
+      - Admin
+      summary: Get content-protection configuration
+      description: |
+        Returns the current content-protection (automated scanner) configuration as a masked snapshot.
+        Sensitive credentials are never returned in clear text. Response shape is intentionally
+        unspecified here as it covers internal protection settings. Requires admin password.
+      operationId: getLlmConfig
+      parameters:
+      - name: X-Admin-Password
+        in: header
+        description: Admin password
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Masked configuration snapshot
+        '400':
+          description: Missing admin password header
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Wrong admin password
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    put:
+      tags:
+      - Admin
+      summary: Update content-protection configuration
+      description: |
+        Applies a partial update to the content-protection configuration and returns the new masked
+        snapshot. Outbound endpoint and timeout are configured via deployment environment only and
+        cannot be changed through this endpoint. Requires admin password.
+      operationId: updateLlmConfig
+      parameters:
+      - name: X-Admin-Password
+        in: header
+        description: Admin password
+        required: true
+        schema:
+          type: string
+      requestBody:
+        description: Partial configuration patch. Internal — shape omitted from the public contract.
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Updated masked configuration snapshot
+        '400':
+          description: Empty patch or missing admin password header
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Wrong admin password
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/admin/llm-config/rollback-prompt:
+    post:
+      tags:
+      - Admin
+      summary: Roll back content-protection prompt
+      description: |
+        Restores the previously stored content-protection prompt and returns the new masked snapshot.
+        Returns 409 when there is no previous prompt to restore. Requires admin password.
+      operationId: rollbackLlmConfigPrompt
+      parameters:
+      - name: X-Admin-Password
+        in: header
+        description: Admin password
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Updated masked configuration snapshot
+        '400':
+          description: Missing admin password header
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Wrong admin password
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: No previous prompt to roll back to
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/admin/publications:
+    get:
+      tags:
+      - Admin
+      summary: List publications (admin)
+      description: |
+        Paged administrative listing of published resources with their review state. Metadata only — type,
+        namespace, ID, timestamps, and review state; no stored content is returned. Internal review fields
+        are omitted from the public contract. Requires admin password.
+      operationId: listPublications
+      parameters:
+      - name: X-Admin-Password
+        in: header
+        description: Admin password
+        required: true
+        schema:
+          type: string
+      - name: type
+        in: query
+        description: Filter by resource type
+        required: false
+        schema:
+          type: string
+      - name: namespace
+        in: query
+        description: Filter by exact namespace
+        required: false
+        schema:
+          type: string
+      - name: id
+        in: query
+        description: Filter by resource ID
+        required: false
+        schema:
+          type: string
+      - name: limit
+        in: query
+        description: Page size (clamped to 1..200)
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 50
+      - name: offset
+        in: query
+        description: Paging offset (clamped to 0..10000)
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 0
+      responses:
+        '200':
+          description: Paged publications list
+        '400':
+          description: Missing admin password header
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Wrong admin password
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/admin/publications/rescan:
+    post:
+      tags:
+      - Admin
+      summary: Re-queue publications for review
+      description: |
+        Re-queues a batch of publications for automated content review. Request/response shapes cover internal
+        review queueing and are omitted from the public contract. Requires admin password.
+      operationId: rescanPublications
+      parameters:
+      - name: X-Admin-Password
+        in: header
+        description: Admin password
+        required: true
+        schema:
+          type: string
+      requestBody:
+        description: Batch of items to re-queue. Internal — shape omitted from the public contract.
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Per-item re-queue outcomes
+        '400':
+          description: Batch out of range or missing admin password header
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Wrong admin password
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Automated review currently unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/admin/publications/queue-depth:
+    get:
+      tags:
+      - Admin
+      summary: Review queue depth
+      description: |
+        Observability hook returning the current review queue size and capacity. Requires admin password.
+      operationId: publicationsQueueDepth
+      parameters:
+      - name: X-Admin-Password
+        in: header
+        description: Admin password
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Queue size and capacity
+        '400':
+          description: Missing admin password header
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Wrong admin password
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/admin/scan-events:
+    get:
+      tags:
+      - Admin
+      summary: List content-review events
+      description: |
+        Lists recent automated content-review events (metadata only). Response shape covers internal review
+        details and is omitted from the public contract. Requires admin password.
+      operationId: listScanEvents
+      parameters:
+      - name: X-Admin-Password
+        in: header
+        description: Admin password
+        required: true
+        schema:
+          type: string
+      - name: limit
+        in: query
+        description: Maximum number of events to return (clamped to 1..200)
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 50
+      responses:
+        '200':
+          description: Recent content-review events
+        '400':
+          description: Missing admin password header
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Wrong admin password
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/admin/spam-events:
+    get:
+      tags:
+      - Admin
+      summary: List abuse-mitigation events
+      description: |
+        Lists recent abuse-mitigation events (metadata only — namespace, related IDs, IP, User-Agent,
+        timestamps). Response shape covers internal mitigation details and is omitted from the public
+        contract. Requires admin password.
+      operationId: listSpamEvents
+      parameters:
+      - name: X-Admin-Password
+        in: header
+        description: Admin password
+        required: true
+        schema:
+          type: string
+      - name: kind
+        in: query
+        description: Filter by event kind
+        required: false
+        schema:
+          type: string
+      - name: days
+        in: query
+        description: Number of days to look back (clamped to 1..365)
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 30
+      - name: limit
+        in: query
+        description: Maximum number of events to return (clamped to 1..500)
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 50
+      - name: offset
+        in: query
+        description: Offset into the result set for pagination
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 0
+      responses:
+        '200':
+          description: Recent abuse-mitigation events
+        '400':
+          description: Missing admin password header
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Wrong admin password
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/admin/spam-sweep/preview:
+    get:
+      tags:
+      - Admin
+      summary: Preview gallery abuse sweep
+      description: |
+        Read-only dry-run preview of the public-gallery abuse-protection sweep. Operates on the public
+        namespace only. Internal preview details are omitted from the public contract. Requires admin password.
+      operationId: spamSweepPreview
+      parameters:
+      - name: X-Admin-Password
+        in: header
+        description: Admin password
+        required: true
+        schema:
+          type: string
+      - name: lookbackHours
+        in: query
+        description: Look-back window in hours (defaults to the configured value when omitted)
+        required: false
+        schema:
+          type: integer
+          format: int32
+      responses:
+        '200':
+          description: Dry-run preview
+        '400':
+          description: Invalid look-back value or missing admin password header
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Wrong admin password
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/admin/spam-sweep/run:
+    post:
+      tags:
+      - Admin
+      summary: Run gallery abuse sweep
+      description: |
+        Runs the public-gallery abuse-protection sweep synchronously and returns a run summary. Operates on
+        the public namespace only. Internal run details are omitted from the public contract. Requires admin
+        password.
+      operationId: spamSweepRun
+      parameters:
+      - name: X-Admin-Password
+        in: header
+        description: Admin password
+        required: true
+        schema:
+          type: string
+      - name: lookbackHours
+        in: query
+        description: Look-back window in hours (defaults to the configured value when omitted)
+        required: false
+        schema:
+          type: integer
+          format: int32
+      - name: force
+        in: query
+        description: Force re-evaluation regardless of prior runs
+        required: false
+        schema:
+          type: boolean
+          default: false
+      responses:
+        '200':
+          description: Run summary
+        '400':
+          description: Invalid look-back value or missing admin password header
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Wrong admin password
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/admin/ttl/auto-extend/preview:
+    get:
+      tags:
+      - Admin
+      summary: Preview TTL auto-extend
+      description: |
+        Read-only dry-run preview of the TTL auto-extend job: returns per-resource candidate counts and the
+        effective threshold for the public namespace. Metadata only. Requires admin password.
+      operationId: ttlAutoExtendPreview
+      parameters:
+      - name: X-Admin-Password
+        in: header
+        description: Admin password
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: TTL auto-extend preview
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AutoExtendPreviewResponse'
+        '400':
+          description: Missing admin password header
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Wrong admin password
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/admin/ttl/auto-extend/run:
+    post:
+      tags:
+      - Admin
+      summary: Run TTL auto-extend
+      description: |
+        Runs the TTL auto-extend job synchronously and returns per-resource extended counts and run duration.
+        Requires admin password.
+      operationId: ttlAutoExtendRun
+      parameters:
+      - name: X-Admin-Password
+        in: header
+        description: Admin password
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: TTL auto-extend run summary
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AutoExtendRunResponse'
+        '400':
+          description: Missing admin password header
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Wrong admin password
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /api/{ns}/{id}/owner-check:
     get:
       tags:
@@ -2603,12 +3376,10 @@ components:
               type: string
               enum: [created, created_missing_assets, updated, merged, created_warned, unavailable, rate_limited, rejected]
             reason:
-              type: string
-              nullable: true
+              type: [string, 'null']
               description: Human-readable note (e.g. the created_missing_assets advisory). Omitted when absent.
             extras:
-              type: object
-              nullable: true
+              type: [object, 'null']
               additionalProperties: true
               description: 'Outcome-specific extras. created_missing_assets → { "localAssetRefs": ["data.js", ...] }; merged → { "isOwner": boolean }.'
     FileUploadResponse:
@@ -3335,3 +4106,165 @@ components:
           additionalProperties:
             type: integer
             format: int32
+    OwnerInfo:
+      type: object
+      description: Per-owner resource counts and first-seen timestamp (metadata only).
+      properties:
+        ownerId:
+          type: string
+          description: Hashed owner identifier
+        htmlCount:
+          type: integer
+          format: int32
+          description: Number of HTML pages owned
+        kvStoreCount:
+          type: integer
+          format: int32
+          description: Number of KV stores owned
+        jsonCount:
+          type: integer
+          format: int32
+          description: Number of JSON documents owned
+        fileCount:
+          type: integer
+          format: int32
+          description: Number of files owned
+        siteCount:
+          type: integer
+          format: int32
+          description: Number of multi-file sites owned
+        firstSeen:
+          type: string
+          format: date-time
+          description: When this owner token was first observed
+    AdminStatsResponse:
+      type: object
+      description: Aggregate platform counts and per-owner breakdown (metadata only).
+      properties:
+        totalHtml:
+          type: integer
+          format: int32
+          description: Total HTML pages across the platform
+        totalKvEntries:
+          type: integer
+          format: int32
+          description: Total KV entries across the platform
+        totalJsonDocs:
+          type: integer
+          format: int32
+          description: Total JSON documents across the platform
+        totalFiles:
+          type: integer
+          format: int32
+          description: Total files across the platform
+        totalSites:
+          type: integer
+          format: int32
+          description: Total multi-file sites across the platform
+        uniqueOwners:
+          type: integer
+          format: int32
+          description: Number of distinct owner tokens
+        ownersWithCounts:
+          type: array
+          description: Per-owner resource breakdown
+          items:
+            $ref: '#/components/schemas/OwnerInfo'
+    BlocklistEntryRequest:
+      type: object
+      required:
+      - reason
+      description: Request to add an IP and/or User-Agent pattern to the abuse blocklist.
+      properties:
+        ip:
+          type: string
+          description: Client IP to block (at least one of ip or uaPattern is required)
+        uaPattern:
+          type: string
+          description: User-Agent pattern to block (at least one of ip or uaPattern is required)
+        reason:
+          type: string
+          description: Human-readable reason for the block
+        duration:
+          type: string
+          description: Optional ISO-8601 duration (e.g. `PT1H`, `P1D`). Omit for a permanent block
+    BlocklistEntryResponse:
+      type: object
+      description: A single abuse blocklist entry (metadata only).
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: Numeric blocklist entry ID
+        ip:
+          type: string
+          description: Blocked client IP, if any
+        uaPattern:
+          type: string
+          description: Blocked User-Agent pattern, if any
+        reason:
+          type: string
+          description: Reason recorded for the block
+        blockedAt:
+          type: string
+          format: date-time
+          description: When the entry was created
+        blockedBy:
+          type: string
+          description: Actor that created the entry (e.g. `admin`)
+        expiresAt:
+          type: string
+          format: date-time
+          description: When the block expires (null = permanent)
+        active:
+          type: boolean
+          description: Whether the entry is currently in effect
+    AutoExtendPreviewResponse:
+      type: object
+      description: Dry-run preview of the TTL auto-extend job (public namespace, metadata only).
+      properties:
+        dynamicThreshold:
+          type: integer
+          format: int64
+          description: Computed view threshold used to select candidates
+        viewFloor:
+          type: integer
+          format: int64
+          description: Configured minimum view floor
+        viewPercentile:
+          type: integer
+          format: int32
+          description: Configured view percentile
+        thresholdDays:
+          type: integer
+          format: int32
+          description: Day threshold below which a resource becomes a candidate
+        candidateCounts:
+          type: object
+          description: Candidate counts keyed by resource type (html, site, file)
+          additionalProperties:
+            type: integer
+            format: int32
+        sampleIds:
+          type: array
+          description: Sample of candidate IDs (public namespace only)
+          items:
+            type: string
+    AutoExtendRunResponse:
+      type: object
+      description: Summary of a TTL auto-extend run.
+      properties:
+        extendedCounts:
+          type: object
+          description: Extended counts keyed by resource type (html, site, file)
+          additionalProperties:
+            type: integer
+            format: int32
+        durationMs:
+          type: integer
+          format: int64
+          description: Wall-clock duration of the run in milliseconds
+        finalThreshold:
+          type: integer
+          format: int64
+          description: Effective view threshold applied during the run
