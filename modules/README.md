@@ -21,6 +21,7 @@ See `../ECOSYSTEM-PLAN.md` for strategy, repo map, naming, workflow, and open qu
 | `cli-homebrew/` | `homebrew-tap` | Homebrew tap | P2 | SCAFFOLD |
 | `docs-user/` | `brewpage-docs` | Pages (route TBD) | P2 | SCAFFOLD |
 | `hf-space/` | `brewpage-hf-space` | HuggingFace Spaces (static SDK) | P3 | SCAFFOLD |
+| `cookbook/` | `brewpage-cookbook` | BrewPage hosting (publish-site via `brewpage-action`) | P1 | SCAFFOLD |
 
 > `mcp-server/` (at repo root, not under `modules/`) is the exception -- already released from this repo.
 

@@ -37,6 +37,7 @@ Every module ships from its own GitHub repo (`kochetkov-ma/brewpage-*`). This re
 | `modules/cli-homebrew/` | `kochetkov-ma/homebrew-tap` | `brew install kochetkov-ma/tap/brewpage` | P2 | #5 |
 | `modules/docs-user/` | `kochetkov-ma/brewpage-docs` | Pages (route TBD) | P2 | #9 |
 | `modules/hf-space/` | `kochetkov-ma/brewpage-hf-space` | HuggingFace Spaces (static SDK) | P3 | #10 |
+| `modules/cookbook/` | `kochetkov-ma/brewpage-cookbook` | BrewPage hosting (publish-site via `brewpage-action`) | P1 | #11 |
 
 ## Workflow
 
@@ -78,6 +79,7 @@ client-ts ---+--- cli-node -----+--- cli-homebrew
 client-python -- cli-python
 docs-user (independent)
 hf-space  (independent -- depends only on mcp-server content; P3 backlink surface)
+cookbook  (independent -- consumes brewpage-action for publish; first production consumer / dogfood)
 ```
 
 Reflected in the TaskList via `blockedBy` edges.
