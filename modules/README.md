@@ -14,7 +14,7 @@ See `../ECOSYSTEM-PLAN.md` for strategy, repo map, naming, workflow, and open qu
 | `client-ts/` | `brewpage-client-ts` | npm | P1 | SCAFFOLD |
 | `cli-node/` | `brewpage-cli` | npm | P1 | SCAFFOLD |
 | `ext-vscode/` | `brewpage-vscode` | VS Marketplace + Open VSX | P1 | SCAFFOLD |
-| `action/` | `brewpage-action` | GH Actions Marketplace | P1 | SCAFFOLD |
+| `action/` | `brewpage-action` | GH Actions Marketplace | P1 | RELEASED (v1.0.2) |
 | `client-python/` | `brewpage-client-python` | PyPI | P2 | SCAFFOLD |
 | `cli-python/` | `brewpage-cli-python` | PyPI | P2 | SCAFFOLD |
 | `ext-chrome/` | `brewpage-chrome` | Chrome + Edge + AMO | P2 | SCAFFOLD |

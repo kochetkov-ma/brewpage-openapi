@@ -21,6 +21,7 @@ Every module ships from its own GitHub repo (`kochetkov-ma/brewpage-*`). This re
 
 **Decision log.**
 - 2026-05-20 -- monorepo proposal rejected. Per-repo wins because the SEO entity-graph + per-marketplace listing + clean `@v1` Action semantics matter more for AI-search discovery than the velocity saved by sharing one CI surface. Source: `.claude/features/deep-research-report.md`.
+- 2026-06-09 -- `brewpage-action` decoupled from `brewpage-cli` -- calls the BrewPage REST API directly (native `fetch`, Node 24), only runtime dep `@actions/core`. CLI dependency dropped; action is self-contained and shipped (v1.0.2, published to the Actions Marketplace, `@v1`). `brewpage-cli` (`modules/cli-node/`) remains its own sibling module.
 
 ## Repo map
 
@@ -30,7 +31,7 @@ Every module ships from its own GitHub repo (`kochetkov-ma/brewpage-*`). This re
 | `modules/client-ts/` | `kochetkov-ma/brewpage-client-ts` | npm `brewpage-client` | P1 | #1 |
 | `modules/cli-node/` | `kochetkov-ma/brewpage-cli` | npm `brewpage` | P1 | #3 |
 | `modules/ext-vscode/` | `kochetkov-ma/brewpage-vscode` | VS Marketplace + Open VSX | P1 | #6 |
-| `modules/action/` | `kochetkov-ma/brewpage-action` | Actions Marketplace | P1 | #8 |
+| `modules/action/` | `kochetkov-ma/brewpage-action` | Actions Marketplace | RELEASED (v1.0.2) | #8 |
 | `modules/client-python/` | `kochetkov-ma/brewpage-client-python` | PyPI `brewpage-client` | P2 | #2 |
 | `modules/cli-python/` | `kochetkov-ma/brewpage-cli-python` | PyPI `brewpage` | P2 | #4 |
 | `modules/ext-chrome/` | `kochetkov-ma/brewpage-chrome` | Chrome Web Store + Edge + AMO | P2 | #7 |
