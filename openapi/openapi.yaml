@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: BrewPage API
-  version: 1.86.0
+  version: 1.87.0
   termsOfService: https://brewpage.app/terms
   description: |
     REST API for BrewPage — HTML/KV/JSON/file hosting platform. Publish and manage web content, key-value data,
@@ -94,6 +94,8 @@ tags:
   description: Administrative endpoints protected by the X-Admin-Password header
 - name: Namespace
   description: Fresh, collision-free namespace suggestions
+- name: Owner
+  description: Owner token minting for claiming and updating your own resources
 paths:
   /api/kv/{ns}/{id}/{key}:
     get:
@@ -3315,6 +3317,32 @@ paths:
           description: Not modified (If-None-Match matched current ETag)
         '429':
           description: Per-IP rate limit exceeded
+  /api/owner-token:
+    get:
+      tags:
+      - Owner
+      summary: Generate owner token
+      description: |
+        Mints a fresh owner token. Free, no authentication required. This endpoint uses a dedicated
+        per-IP token-generation rate limit (default 60/min/IP), separate from the shared read budget.
+
+        Send the returned `token` in the `X-Owner-Token` header on subsequent calls to claim and own the
+        resources you create. The token is REQUIRED to update your own content: `PUT` updates to a site
+        (and other owner-gated mutations) demand a matching `X-Owner-Token` header.
+
+        The companion `ownerId` is the SHA-256 hash (64-char lowercase hex) of the token — the stable,
+        non-secret identifier the platform stores against your resources. Keep the `token` itself secret;
+        anyone holding it can modify resources you own. A lost token cannot be recovered — mint a new one.
+      operationId: generateOwnerToken
+      responses:
+        '200':
+          description: Owner token generated
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/OwnerTokenResponse'
+        '429':
+          description: Per-IP rate limit exceeded
   /api/namespace/random:
     get:
       tags:
@@ -3350,6 +3378,23 @@ components:
         isOwner:
           type: boolean
           description: True when the supplied owner token matches the stored hash
+    OwnerTokenResponse:
+      type: object
+      properties:
+        token:
+          type: string
+          description: |
+            Fresh owner token (32-char base62). Send it as the `X-Owner-Token` header to claim and update
+            your own resources. Keep it secret; required for PUT site updates.
+          pattern: '^[A-Za-z0-9]{32}$'
+          example: 7Qm2KdRn8xVbA1cE5fH9jLpT4sW6yZ0u
+        ownerId:
+          type: string
+          description: |
+            SHA-256 hash (64-char lowercase hex) of the token — the stable, non-secret identifier stored
+            against the resources you own.
+          pattern: '^[0-9a-f]{64}$'
+          example: 9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08
     RandomNamespaceResponse:
       type: object
       properties:
