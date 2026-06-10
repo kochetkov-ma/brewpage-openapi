@@ -3982,7 +3982,7 @@ components:
           type: string
         type:
           type: string
-          description: 'Resource type: html, json, kv, or file'
+          description: 'Resource type: html, json, kv, file, or site'
         title:
           type: string
           description: Display title derived from content or filename

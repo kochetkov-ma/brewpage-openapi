@@ -12,7 +12,9 @@
 
 **Architecture.** A `node24` TypeScript action (`runs.using: node24`, `main: dist/index.js`, committed bundle). NOT a composite action. It calls the BrewPage REST API directly via native `fetch`/`FormData`/`Blob` (Node 24) -- zero HTTP dependencies; the only runtime dependency is `@actions/core`. It does NOT depend on `brewpage-cli` or `npx brewpage`.
 
-**Owner-token flow.** If `owner-token` is not supplied it is auto-minted (`GET /api/owner-token`), masked via `core.setSecret`, and surfaced in the job summary so it can be persisted as a secret. Create uses `POST`; update uses `PUT` when both `owner-token` and `update-id` are set.
+**Owner-token flow.** If `owner-token` is not supplied it is auto-minted (`GET /api/owner-token`), masked via `core.setSecret`, and surfaced in the job summary so it can be persisted as a secret.
+
+**Auto-republish.** With `mode: auto` (default) and a reused `owner-token`, the action discovers the caller's existing resource via `GET /api/gallery?mine=true` -- matching on the deterministic per-repo namespace + kind -- and updates it (`PUT`) instead of creating a duplicate; if none is found it creates (`POST`). An explicit `update-id` takes precedence over discovery. Files are immutable (always create). A freshly minted owner-token skips discovery (always create). `mode: create` always creates; `mode: update` requires an existing resource and fails otherwise.
 
 **Inputs** (mirrors `action.yml` exactly).
 - `path` (required) -- file, directory, or `.zip`.
@@ -22,7 +24,8 @@
 - `ttl-days` (default `15`) -- 1..30.
 - `tags` (default empty) -- comma-separated.
 - `owner-token` (default empty) -- `X-Owner-Token`; empty -> auto-minted + surfaced.
-- `update-id` (default empty) -- with `owner-token` -> updates existing resource (PUT).
+- `mode` (default `auto`) -- `auto` | `create` | `update`. `auto` republishes via owner-token discovery (PUT existing, else create); `create` always creates; `update` requires an existing resource.
+- `update-id` (default empty) -- with `owner-token` -> updates existing resource (PUT); takes precedence over `mode` auto-discovery.
 - `entry` (default empty) -- site entry file override (default `index.html`).
 - `show-top-bar` (default empty) -- html only; toolbar toggle.
 - `brewpage-url` (default empty) -- API base override; empty -> https://brewpage.app.
