@@ -1218,6 +1218,22 @@ paths:
               schema:
                 type: string
                 format: binary
+        '404':
+          description: Page not found or expired (not yet cleaned up)
+          content:
+            '*/*':
+              schema:
+                type: string
+        '410':
+          description: |
+            Gone — the page existed and is now permanently removed (deleted by its owner or
+            expired and cleaned up). Returned for `public/` namespace resources only, so that
+            search engines de-index them faster than a 404. Non-public namespaces always return
+            404 to avoid a private-existence oracle.
+          content:
+            '*/*':
+              schema:
+                type: string
         '409':
           description: Conflict — ns+id already exists. Retry with a different id or omit id to let the server generate one
   /{ns}/{id}/{sub}:
@@ -1309,6 +1325,22 @@ paths:
               schema:
                 type: string
                 format: binary
+        '404':
+          description: Page or sub-path not found or expired (not yet cleaned up)
+          content:
+            '*/*':
+              schema:
+                type: string
+        '410':
+          description: |
+            Gone — the page existed and is now permanently removed (deleted by its owner or
+            expired and cleaned up). Returned for `public/` namespace resources only, so that
+            search engines de-index them faster than a 404. Non-public namespaces always return
+            404 to avoid a private-existence oracle.
+          content:
+            '*/*':
+              schema:
+                type: string
   /{key}.txt:
     get:
       tags:
