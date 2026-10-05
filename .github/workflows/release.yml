@@ -3,6 +3,7 @@ name: Release
 on:
   push:
     tags: ['v*']
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -10,18 +11,48 @@ permissions:
 
 jobs:
   release:
+    if: github.event_name == 'push' || github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          ref: ${{ github.sha }}
 
       - uses: actions/setup-node@v6
         with:
-          node-version: 22
-          registry-url: https://registry.npmjs.org
+          node-version: '22.23.3'
+
+      - name: Validate release identity
+        id: identity
+        env:
+          RELEASE_EVENT: ${{ github.event_name }}
+          RELEASE_REF: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          VERSION=$(node -p "require('./mcp-server/package.json').version")
+          [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          RELEASE_TAG="v${VERSION}"
+          if [[ "$RELEASE_EVENT" == push && "$RELEASE_REF" != "$RELEASE_TAG" ]]; then
+            echo '::error::Release tag does not match the package manifest'
+            exit 1
+          fi
+          git rev-parse --verify "refs/tags/${RELEASE_TAG}^{commit}" >/dev/null
+          git diff --exit-code "$RELEASE_TAG" HEAD -- mcp-server
+          node -e 'const p=require("./mcp-server/package.json"),l=require("./mcp-server/package-lock.json"); if(l.version!==p.version || l.packages[""].version!==p.version) process.exit(1)'
+          echo "tag=$RELEASE_TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Install pinned npm with trusted publishing support
+        run: |
+          set -euo pipefail
+          npm install --global npm@11.14.1
+          [[ "$(npm --version)" == 11.14.1 ]]
 
       - name: Install and build MCP server
         working-directory: mcp-server
         run: |
+          set -euo pipefail
           npm ci
           npm run build
 
@@ -29,13 +60,11 @@ jobs:
         working-directory: mcp-server
         run: npm test
 
-      - name: Sync version from tag
-        working-directory: mcp-server
-        run: npm version ${GITHUB_REF_NAME#v} --no-git-tag-version --allow-same-version
-
       - name: Create GitHub Release
+        if: github.event_name == 'push'
         uses: softprops/action-gh-release@v3
         with:
+          tag_name: ${{ steps.identity.outputs.tag }}
           generate_release_notes: true
           files: |
             openapi/openapi.json
@@ -45,19 +74,22 @@ jobs:
         id: check
         working-directory: mcp-server
         run: |
+          set -euo pipefail
           PKG_NAME=$(node -p "require('./package.json').name")
           PKG_VERSION=$(node -p "require('./package.json').version")
-          if npm view "${PKG_NAME}@${PKG_VERSION}" version 2>/dev/null; then
+          if npm view "${PKG_NAME}@${PKG_VERSION}" version --json > "$RUNNER_TEMP/npm-version.json" 2> "$RUNNER_TEMP/npm-version.err"; then
+            node -e 'const fs=require("fs"); if(JSON.parse(fs.readFileSync(process.argv[1],"utf8"))!==process.argv[2]) process.exit(1)' "$RUNNER_TEMP/npm-version.json" "$PKG_VERSION"
             echo "exists=true" >> "$GITHUB_OUTPUT"
             echo "Version ${PKG_VERSION} already published, skipping"
-          else
+          elif node -e 'const fs=require("fs"); try {if(JSON.parse(fs.readFileSync(process.argv[1],"utf8")).error.code!=="E404") process.exit(1)} catch {process.exit(1)}' "$RUNNER_TEMP/npm-version.json"; then
             echo "exists=false" >> "$GITHUB_OUTPUT"
             echo "Version ${PKG_VERSION} not found, will publish"
+          else
+            echo '::error::npm version lookup failed; publication stopped'
+            exit 1
           fi
 
       - name: Publish to npm
         if: steps.check.outputs.exists != 'true'
         working-directory: mcp-server
         run: npm publish --access public --provenance
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
