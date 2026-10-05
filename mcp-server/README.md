@@ -7,13 +7,15 @@ MCP server for [BrewPage](https://brewpage.app) -- publish and manage HTML, KV, 
 
 ## What is BrewPage
 
-[BrewPage](https://brewpage.app) is a free instant hosting platform designed for AI agents and developers. One `POST` request publishes HTML, Markdown, a multi-file site, a JSON document, or a binary file and returns a stable HTTPS short URL -- no accounts, no API keys, no infrastructure setup. Every resource carries an **owner token** returned at creation time: use it to update content in place (keeping the same URL), delete the resource, or authenticate list operations across sessions. `brewpage-mcp` exposes this API as fourteen typed MCP tools so any compatible agent -- Claude, Codex, Gemini, Cursor, Cline -- can publish, update, fetch, and manage BrewPage HTML, JSON, KV, and file content without leaving the conversation.
+[BrewPage](https://brewpage.app) is a free instant hosting platform designed for AI agents and developers. One `POST` request publishes HTML, Markdown, a multi-file site, a JSON document, or a binary file and returns its primary HTTPS link -- no accounts, no API keys, no infrastructure setup. Every resource carries an **owner token** returned at creation time: use it to update content in place, delete the resource, or authenticate list operations across sessions. `brewpage-mcp` exposes this API as sixteen typed MCP tools so any compatible agent -- Claude, Codex, Gemini, Cursor, Cline -- can publish, update, fetch, and manage BrewPage HTML, JSON, KV, and file content without leaving the conversation.
 
 ## Quick Start
 
 ```bash
-npx brewpage-mcp
+npx -y brewpage-mcp@1.8.0
 ```
+
+Requires Node.js 20 or newer. This starts the stdio server for an MCP client.
 
 ## Installation
 
@@ -26,7 +28,7 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS)
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp"]
+      "args": ["-y", "brewpage-mcp@1.8.0"]
     }
   }
 }
@@ -34,18 +36,13 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS)
 
 ### Claude Code
 
-Add to `~/.claude/settings.json`:
+Register a project-scoped stdio server:
 
-```json
-{
-  "mcpServers": {
-    "brewpage": {
-      "command": "npx",
-      "args": ["-y", "brewpage-mcp"]
-    }
-  }
-}
+```bash
+claude mcp add --transport stdio --scope project brewpage -- npx -y brewpage-mcp@1.8.0
 ```
+
+This writes `.mcp.json` in the project root. Use `--scope user` for user-scoped registration. See the [official Claude Code MCP guide](https://code.claude.com/docs/en/mcp).
 
 ### Cursor
 
@@ -56,7 +53,7 @@ Open **Settings > MCP** and add:
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp"]
+      "args": ["-y", "brewpage-mcp@1.8.0"]
     }
   }
 }
@@ -70,7 +67,7 @@ Open the Cline MCP settings panel and add:
 {
   "brewpage": {
     "command": "npx",
-    "args": ["-y", "brewpage-mcp"]
+    "args": ["-y", "brewpage-mcp@1.8.0"]
   }
 }
 ```
@@ -78,13 +75,52 @@ Open the Cline MCP settings panel and add:
 ### Global Install
 
 ```bash
-npm install -g brewpage-mcp
+npm install -g brewpage-mcp@1.8.0
 brewpage-mcp
 ```
 
 ## Tools
 
-Fourteen tools are available, grouped by resource: **HTML**, **JSON**, **KV**, **Files**, **Sites**, and **Discovery**. All write operations return an owner token; keep it to modify or delete the resource later. Any update (`PUT`) operation requires the original `ownerToken` -- it is the backend's authorization gate. `password` is optional on reads/creates; if set, it is sent as the `X-Password` header.
+Sixteen tools are available. Creation returns an owner token; keep it to modify or delete the resource later. Updates (`PUT`/`PATCH`) require the original `ownerToken`. Supported password inputs use `X-Password`.
+
+| Tool | Purpose |
+|------|---------|
+| `publish_html` | Publish HTML or Markdown |
+| `update_html` | Replace page content; omitted format preserves stored format |
+| `get_page` | Fetch raw page content |
+| `publish_file` | Fetch a source URL and upload the file |
+| `publish_site` | Publish a single page or complete multi-file site bundle |
+| `republish_site` | Replace the complete site bundle at the same ID/link |
+| `publish_json` | Publish a JSON object, array, or JSON-encoded string |
+| `get_json` | Read a JSON document |
+| `update_json` | Replace a JSON document |
+| `publish_kv` | Create a KV store with an initial entry |
+| `set_kv` | Set or replace a key in an owned KV store |
+| `get_kv` | Read a KV value |
+| `update_hosting` | Change eligible delivery mode with owner token and hosting version |
+| `delete_resource` | Delete HTML, JSON, KV, or file content |
+| `search_gallery` | Browse public content or list owned resources |
+| `get_stats` | Read platform-wide statistics |
+
+All five publish tools accept optional `deliveryMode: "path" | "subdomain"`, sent only as `X-Delivery-Mode`; authored JSON and multipart bodies keep their existing format. Visibility and password protection are separate choices. Omitted namespace still generates an unlisted `priv-<random>` namespace; anyone with an unpassworded unlisted link can read it. `public` grants gallery/search eligibility only; password-protected content remains excluded.
+
+For a fresh publication, sites and non-public namespaces require Dedicated subdomain (`subdomain`); explicit `path` is rejected. Other public publications default to Promotion (`path`) and may choose Dedicated subdomain, including password-protected content. Promotion uses a BrewPage path with stricter active-document restrictions. Each NEW site gets one publication-specific host for its complete bundle, preserving relative/root-relative paths; missing assets return 404, with no SPA fallback. Third-party widgets may still need provider configuration.
+
+Responses use the server's primary `link` verbatim, including the root slash, and expose `routingCohort`, actual/requested/effective modes, `deliveryModeMatched`, `modeLocked`, `hostingVersion`, access and the trusted-apex `managementLink` when present. Never reconstruct a host from namespace or ID. NEW password links are clean URLs: do not add `?p=`; browser readers unlock through the trusted gateway. Owner tokens and API calls stay on the configured apex API origin.
+
+An existing deduplication winner keeps its actual URL, cohort and mode, even when another mode was requested. OLD publications display **Existing link**, with null mode metadata; their legacy links and behavior remain unchanged. Ordinary content updates and site republishing preserve hosting. An eligible NEW public non-site may change mode separately with `update_hosting`.
+
+### Hosting
+
+### `update_hosting`
+
+Change an eligible NEW public non-site between Promotion and Dedicated subdomain. Parameters: `type` (`html` | `file` | `json` | `kv`), `namespace`, `id`, `ownerToken`, `deliveryMode` (`path` | `subdomain`), and `expectedVersion` (current server `hostingVersion`, integer ≥1).
+
+The tool sends owner-only `PATCH /api/{html|files|json|kv}/{namespace}/{id}/hosting` with `{deliveryMode, expectedVersion}` and `X-Owner-Token`. OLD links, sites and non-public publications are locked. The server returns 403 for invalid owner authority, 400 for locked hosting, and 409 for a stale version; reload current metadata before retrying. A paused real change returns 503. Selecting the current mode returns 200 without incrementing the version. Use the returned primary link after a successful change; the publication host identity is retained through both directions.
+
+```text
+update_hosting(type="html", namespace="public", id="aBcDeFgHiJ", ownerToken="tok_...", deliveryMode="subdomain", expectedVersion=1)
+```
 
 ### HTML
 
@@ -92,7 +128,7 @@ Fourteen tools are available, grouped by resource: **HTML**, **JSON**, **KV**, *
 
 Publish HTML or Markdown content to BrewPage. Returns a public URL and owner token.
 
-Parameters: `content` (string), `format` (`HTML` | `MARKDOWN`, default `HTML`), `namespace` (optional -- **omit to keep the page private/unlisted**: reachable only by its link, not in the gallery, not indexed by search engines; pass `public` only when the user explicitly wants it gallery-listed and search-indexed), `password` (optional), `ttlDays` (1--30, default 15), `filename` (optional, used as title fallback), `showTopBar` (optional boolean -- adds a toolbar with filename, Download button, and theme toggle).
+Parameters: `content` (string), `format` (`HTML` | `MARKDOWN`, default `HTML`), `namespace` (optional -- **omit for unlisted content**; pass `public` only for gallery/search eligibility, except when password-protected), `password` (optional), `ttlDays` (1--30, default 15), `filename` (optional, used as title fallback), `showTopBar` (optional boolean -- adds a toolbar with filename, Download button, and theme toggle), `deliveryMode` (optional).
 
 Example prompt that invokes this tool:
 
@@ -108,7 +144,7 @@ publish_html(content="<h1>Report</h1>...", format="HTML", ttlDays=15)
 
 Update an existing HTML or Markdown page in place, preserving its short URL. Requires the original `ownerToken` returned at creation.
 
-Parameters: `namespace` (string), `id` (string), `content` (string, the new body), `ownerToken` (string), `format` (optional `HTML` | `MARKDOWN` | `code`, defaults to `HTML`).
+Parameters: `namespace` (string), `id` (string), `content` (string, the new body), `ownerToken` (string), `format` (optional HTML/Markdown alias or supported code language such as `json`, `yaml`, or `typescript`; omitted preserves the stored format).
 
 Example prompt:
 
@@ -123,6 +159,8 @@ update_html(namespace="public", id="aBcDeFgHiJ", content="<h1>Updated</h1>...", 
 ### `get_page`
 
 Fetch the content of a published BrewPage HTML page by namespace and ID.
+
+Returns the actual response body as text, including authored HTML or JSON code. Hosting metadata and the primary link come only from server response headers; JSON fields inside the publication are never treated as platform metadata. The existing apex HTML API route is retained.
 
 Parameters: `namespace` (string), `id` (string), `password` (optional, if the page is password-protected).
 
@@ -142,7 +180,7 @@ get_page(namespace="public", id="aBcDeFgHiJ")
 
 Upload a file to BrewPage by fetching it from a URL. Returns a public URL and owner token. Supports images, PDFs, video, audio, code files, and archives.
 
-Parameters: `url` (string, the source URL to fetch), `namespace` (optional -- omit to keep the file private/unlisted: reachable only by its link, not in the gallery, not search-indexed; pass `public` only to list and index it), `filename` (optional custom filename).
+Parameters: `url` (string, the source URL to fetch), `namespace` (optional -- omit to keep the file private/unlisted: reachable only by its link, not in the gallery, not search-indexed; pass `public` only for gallery/search eligibility), `filename` (optional custom filename), `deliveryMode` (optional). This tool does not expose base64, password, or TTL inputs.
 
 Example prompt:
 
@@ -160,7 +198,7 @@ publish_file(url="https://example.com/diagram.png")
 
 Publish a single-page or multi-file HTML site. Pass `entryContent` for a single page or `files` (array of `{path, content}`) for a multi-file site. Supports password protection, TTL, and owner token grouping.
 
-Parameters: `entryContent` (string, mutually exclusive with `files`), `files` (array of `{path, content}`, mutually exclusive with `entryContent`), `entry` (optional entry file path, default `index.html`), `namespace` (optional -- omit to keep the site private/unlisted: reachable only by its link, not in the gallery, not search-indexed; pass `public` only to list and index it), `password` (optional), `ttlDays` (1--30, default 15), `ownerToken` (optional, groups site under an existing owner).
+Parameters: exactly one of `entryContent` (string) or non-empty `files` (array of `{path, content}`), `entry` (optional entry file path, default `index.html`), `namespace` (optional -- omit for unlisted content; `public` grants gallery eligibility except when password-protected), `password` (optional), `ttlDays` (1--30, default 15), `ownerToken` (optional, groups site under an existing owner), `deliveryMode` (optional; fresh sites require `subdomain`).
 
 Example prompt:
 
@@ -172,13 +210,25 @@ publish_site(files=[{"path": "index.html", "content": "..."}, {"path": "style.cs
 
 ---
 
+### `republish_site`
+
+Replace an owned site's complete file set at the same ID and primary link. Files absent from the new bundle are removed; matching files are overwritten and new files added. Hosting stays unchanged.
+
+Parameters: `namespace`, `id`, `ownerToken`, exactly one of `entryContent` or a non-empty `files` array of `{path, content}`, optional `entry` (default `index.html`), `ttlDays` (1--30, default 15), and `tags`.
+
+```text
+republish_site(namespace="public", id="aBcDeFgHiJ", ownerToken="tok_...", files=[{"path":"index.html","content":"<h1>Updated site</h1>"}])
+```
+
+---
+
 ### JSON
 
 ### `publish_json`
 
 Publish a JSON document to BrewPage. Returns a public URL and owner token. The body may be passed as a JSON string or as a structured object.
 
-Parameters: `json` (string or object, the JSON payload), `namespace` (optional -- omit to keep the document private/unlisted: reachable only by its link, not in the gallery, not search-indexed; pass `public` only to list and index it), `password` (optional), `ttlDays` (optional, 1--30, default 15), `tags` (optional `string[]`).
+Parameters: `json` (string, object, or array), `namespace` (optional -- omit for unlisted content; `public` grants gallery/search eligibility, except when password-protected), `password` (optional), `ttlDays` (1--30, default 15), `tags` (optional `string[]`), `ownerToken` (optional existing owner), `deliveryMode` (optional).
 
 Example prompt:
 
@@ -210,7 +260,7 @@ get_json(namespace="public", id="aBcDeFgHiJ")
 
 Update an existing JSON document in place, preserving its short URL. Requires the original `ownerToken`.
 
-Parameters: `namespace` (string), `id` (string), `json` (string or object, the new payload), `ownerToken` (string).
+Parameters: `namespace` (string), `id` (string), `json` (string, object, or array), `ownerToken` (string).
 
 Example prompt:
 
@@ -228,14 +278,14 @@ update_json(namespace="public", id="aBcDeFgHiJ", json={"mode": "dark", "version"
 
 Create a new KV (key/value) entry. Returns a public URL and owner token. The KV entry is addressed by `(namespace, id, key)`; this tool creates the entry and emits the generated `id` along with the owner token.
 
-Parameters: `key` (string), `value` (string), `namespace` (optional -- omit to keep the KV store private/unlisted: reachable only by its link, not in the gallery, not search-indexed; pass `public` only to list and index it), `password` (optional), `ttlDays` (optional, 1--30, default 15), `tags` (optional `string[]`).
+Parameters: `key` (string), `value` (string), `namespace` (optional -- omit for unlisted content; `public` grants gallery/search eligibility, except when password-protected), `password` (optional), `ttlDays` (1--30, default 15), `tags` (optional `string[]`), `ownerToken` (optional existing owner), `deliveryMode` (optional).
 
 Example prompt:
 
-> "Store the API key under the label 'staging-token' so I can reuse it next session."
+> "Store the selected theme so I can reuse it next session."
 
 ```
-publish_kv(key="staging-token", value="abc123")
+publish_kv(key="theme", value="dark")
 ```
 
 ---
@@ -248,10 +298,10 @@ Parameters: `namespace` (string), `id` (string), `key` (string), `value` (string
 
 Example prompt:
 
-> "Update the staging-token value to the new secret."
+> "Change the selected theme to light."
 
 ```
-set_kv(namespace="public", id="aBcDeFgHiJ", key="staging-token", value="def456", ownerToken="tok_...")
+set_kv(namespace="public", id="aBcDeFgHiJ", key="theme", value="light", ownerToken="tok_...")
 ```
 
 ---
@@ -264,10 +314,10 @@ Parameters: `namespace` (string), `id` (string), `key` (string), `password` (opt
 
 Example prompt:
 
-> "What did I store under staging-token?"
+> "What theme did I store?"
 
 ```
-get_kv(namespace="public", id="aBcDeFgHiJ", key="staging-token")
+get_kv(namespace="public", id="aBcDeFgHiJ", key="theme")
 ```
 
 ---
@@ -297,6 +347,8 @@ search_gallery(mine=true, ownerToken="tok_...", sort="date")
 Delete a BrewPage resource (HTML page, KV store, JSON collection, or file) using the owner token received at creation.
 
 Parameters: `type` (`html` | `kv` | `json` | `file`), `namespace` (string), `id` (string), `ownerToken` (string).
+
+Sites are not supported by this tool; use the REST site deletion endpoint.
 
 Example prompt:
 
@@ -328,9 +380,11 @@ get_stats()
 |--------------------|------|-------|
 | "Publish this HTML so I can share it" | `publish_html` | `format=HTML`; save `ownerToken` |
 | "Share these meeting notes as a link" | `publish_html` | `format=MARKDOWN`; readable rendered output |
-| "Host this AI-generated artifact" | `publish_html` | `namespace` optional; **private/unlisted by default** -- pass `public` to gallery-list + index |
+| "Host this AI-generated artifact" | `publish_html` | `namespace` optional; **private/unlisted by default**; `public` grants gallery/search eligibility except when protected |
 | "Upload this image / PDF / video" | `publish_file` | Fetches from URL; inline preview on short URL |
 | "Deploy this static site" | `publish_site` | Pass `files` array or `entryContent` |
+| "Replace the site I published" | `republish_site` | Owner token; complete bundle replaces all existing files |
+| "Give my public page a dedicated address" | `update_hosting` | NEW public non-site; owner token + current hosting version |
 | "Fix a typo in the page I shared -- same link" | `update_html` | Requires `ownerToken`; URL stays the same |
 | "Remove the page I published" | `delete_resource` | Requires `ownerToken` from creation |
 | "Read back the page I published" | `get_page` | Returns raw content for editing |
@@ -348,15 +402,15 @@ get_stats()
 
 Every publish response includes an **owner token** -- the only credential that allows updating or deleting your content. **Save it. It cannot be recovered.**
 
-- Reuse it via `X-Owner-Token` on subsequent creates to group resources under one owner.
+- Reuse it with `publish_site`, `publish_json`, or `publish_kv` to group new resources under one owner; REST creates accept `X-Owner-Token`.
 - Pass it to `delete_resource` to remove content.
-- Pass it to `get_page` (not needed for reads, but required for listing your own resources via the REST API).
+- Pass it to `search_gallery` with `mine=true` to list owned resources. `get_page` has no owner-token input; protected reads use `password`.
 
 ## Configuration
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `BREWPAGE_URL` | `https://brewpage.app` | API base URL |
+| `BREWPAGE_URL` | `https://brewpage.app` | Authorized apex API base URL; never a publication host |
 
 ## Links
 

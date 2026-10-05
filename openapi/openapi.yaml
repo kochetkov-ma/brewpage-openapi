@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: BrewPage API
-  version: 1.87.0
+  version: 1.101.0
   termsOfService: https://brewpage.app/terms
   description: |
     REST API for BrewPage — HTML/KV/JSON/file hosting platform. Publish and manage web content, key-value data,
@@ -23,8 +23,56 @@ info:
     who knows it, regardless of namespace choice.
 
     - **DEFAULT** (when `ns` is omitted): `public` ← SHARED, LISTED ON HOMEPAGE
-    - **CUSTOM**: any `[a-z0-9-]{3,32}` — auto-created on first use, NOT shown in gallery
+    - **CUSTOM**: any `[a-z0-9-]{1,32}` — auto-created on first use, NOT shown in gallery
     - **Collision** on `ns+id`: server returns `409 Conflict`; retry with a different `id` or omit `id`
+
+    ## Publication delivery
+
+    Publications created in the NEW routing cohort (`new-v1`) support `X-Delivery-Mode: path|subdomain`
+    on HTML/Markdown, site, file, JSON and KV creation. Sites always require `subdomain`; non-public
+    non-sites also require `subdomain`. Explicit `path` for either is rejected with 400. All remaining
+    public non-sites default to `path` and may choose `subdomain`, including password-protected resources.
+    Namespace, password protection and delivery mode are independent. No routing metadata means OLD;
+    existing publications keep their historical URLs, rendering and access behavior.
+
+    Use the returned `link` as the canonical share URL and `ownerLink` for the existing apex API.
+    Dedicated hosts use a separate random lowercase-alphanumeric host identity, not a lowercased resource ID:
+    e.g. resource `AbCdEf1234` may have `https://a1b2c3d4e5.brewpage.app/`. Content-host roots have a trailing
+    slash; public hosts omit `public`. Namespace-bearing hosts disclose the namespace and do not grant access.
+    Clients must use returned URLs, not construct hostnames. NEW native content hosts serve only their bound
+    publication: HTML/site entry at `/`, native site paths, file/JSON root with its original MIME semantics,
+    and KV list at `/` with encoded key paths. Missing site files return 404; there is no SPA fallback.
+
+    Hosting metadata is flattened into create/update responses and HTML settings, never inserted into uploaded
+    JSON or KV payloads. It reports the actual returned resource, including any existing winner reused by HTML,
+    file or site creation. A requested mode does not change a reused winner's cohort, URL or effective mode.
+    `requestedDeliveryMode` is null when omitted; `deliveryModeMatched` is null without a requested or effective
+    mode. OLD effective-mode, management-link and hosting-version values are null when metadata is returned.
+    OLD responses may omit the additive metadata entirely. JSON and KV creation do not deduplicate.
+
+    Mode changes for NEW public non-sites use `PATCH /api/{type}/{ns}/{id}/hosting` with the owner-token header
+    and an integer `expectedVersion`. Ordinary content PUT preserves hosting and rejects a supplied delivery
+    mode for NEW publications. Sites and non-public resources are locked; OLD resources cannot switch modes.
+    Host identity survives updates and mode changes, and is permanently retired on deletion or expiry.
+
+    Share NEW protected publications using the clean returned `link`. Browser password entry occurs through
+    trusted top-level navigation on a separate unlock gateway, followed by an expiring resource-scoped,
+    host-only reader session. Never put passwords or owner tokens in NEW share URLs. Owner authorization
+    remains header-only on the apex. Existing API and OLD query-password/header parsing remain compatible;
+    this does not make query passwords the NEW browser unlock mechanism.
+
+    Owners may revoke reader access to a NEW protected publication through
+    `POST /api/{type}/{ns}/{id}/access/revoke`, authenticated by X-Owner-Token with no request body.
+    This invalidates only that publication's grants and pending unlock handoffs; readers must unlock again.
+    Hosting version, host identity, stable browser sessions and grants for other publications are preserved.
+    Revocation cannot erase copies already delivered to a reader and does not change the password.
+
+    NEW subdomain-mode alternate apex short links redirect to the canonical content host. NEW active-content
+    API reads are inert/download responses: HTML is an attachment in subdomain mode; active SVG/XML/scripts
+    are attachments. NEW path-mode HTML retains opaque-origin sandbox CSP, including API reads. `raw`/`inline`
+    do not bypass these protections. OLD executable apex routes retain historical behavior. NEW content hosts
+    carry `X-Robots-Tag: noindex`, `Origin-Agent-Cluster: ?1`, MIME/nosniff and no-store headers. Native HTML may
+    run author scripts on its dedicated origin; sibling origins do not prevent all Domain-cookie interference.
 
     ## TTL
 
@@ -83,11 +131,11 @@ tags:
 - name: HTML
   description: HTML page hosting with markdown support
 - name: KV
-  description: Key-Value store with up to 1000 keys per namespace
+  description: Key-Value store with up to 1000 keys per store
 - name: Files
   description: File hosting up to 5 MB per file, 1000 files per namespace
 - name: Sites
-  description: Multi-file HTML site hosting via ZIP or folder upload (up to 5 MB per file, 1000 files per site)
+  description: Multi-file HTML site hosting via ZIP or folder upload (up to 5 MB per file, 100 files per site)
 - name: Reports
   description: Abuse reports for published content (public submission endpoint)
 - name: Admin
@@ -96,7 +144,244 @@ tags:
   description: Fresh, collision-free namespace suggestions
 - name: Owner
   description: Owner token minting for claiming and updating your own resources
+- name: Hosting Management
+  description: Owner-only publication hosting settings and reader access revocation
 paths:
+  /api/{type}/{ns}/{id}/access/revoke:
+    post:
+      tags:
+      - Hosting Management
+      summary: Revoke reader access to a NEW protected publication
+      description: |
+        Requires the matching X-Owner-Token header and no request body. Supports all five resource types.
+        OLD and unprotected resources return 400 ACCESS_REVOKE_UNAVAILABLE; missing or wrong owner tokens
+        return 403 OWNER_AUTHORIZATION_FAILED; unavailable or expired resources return 404 PUBLICATION_UNAVAILABLE.
+        Invalidates the target publication's reader grants and pending unlock handoffs atomically; readers
+        must unlock again. Hosting version, host identity, stable browser sessions and other publication grants
+        are unchanged. This operation does not change the password or erase already delivered copies.
+      operationId: revokeReaderAccess
+      parameters:
+      - name: type
+        in: path
+        required: true
+        schema:
+          type: string
+          enum: [html, files, json, kv, sites]
+      - name: ns
+        in: path
+        required: true
+        schema:
+          type: string
+          pattern: '^[a-z0-9-]{1,32}$'
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          pattern: '^[A-Za-z0-9]{10}$'
+      - name: X-Owner-Token
+        in: header
+        required: false
+        description: Matching owner token; absent or wrong token returns 403. Query credentials are not accepted.
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Target publication's reader access revoked
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: private, no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccessRevokeResponse'
+              example:
+                revoked: true
+        '400':
+          description: OLD or unprotected publication (ACCESS_REVOKE_UNAVAILABLE)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Missing or wrong owner-token header (OWNER_AUTHORIZATION_FAILED)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Publication unavailable or expired (PUBLICATION_UNAVAILABLE)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/{type}/{ns}/{id}/hosting:
+    get:
+      tags:
+      - Hosting Management
+      summary: Read owner-only hosting settings
+      description: |
+        Read-only summary for every publication type, including locked sites and OLD resources.
+        OLD effective modes, managementLink and hostingVersion are null; modeLocked is true.
+        Requires the matching X-Owner-Token header; no query credential alternative is accepted.
+      operationId: getHosting
+      parameters:
+      - name: type
+        in: path
+        required: true
+        schema:
+          type: string
+          enum: [html, files, json, kv, sites]
+      - name: ns
+        in: path
+        required: true
+        schema:
+          type: string
+          pattern: '^[a-z0-9-]{1,32}$'
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          pattern: '^[A-Za-z0-9]{10}$'
+      - name: X-Owner-Token
+        in: header
+        required: false
+        description: Matching owner token; absent or wrong token returns 403.
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Hosting projection with explicit null values for OLD
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: private, no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HostingProjection'
+        '403':
+          description: Missing or wrong owner-token header
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Publication unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    patch:
+      tags:
+      - Hosting Management
+      summary: Change delivery mode for a NEW public non-site publication
+      description: |
+        Requires the matching X-Owner-Token header; missing or wrong credentials return 403.
+        OLD and non-public resources are locked (400); sites have no hosting PATCH route.
+        expectedVersion must match hostingVersion, even when the mode is unchanged (409 when stale).
+        Selecting the current mode returns 200 without incrementing hostingVersion; a change increments it once.
+        Password protection does not lock a public non-site. Updates preserve the publication's host identity.
+        During a hosting write pause, actual mode changes return 503; equal-mode no-ops remain available.
+      operationId: updateHosting
+      parameters:
+      - name: type
+        in: path
+        required: true
+        schema:
+          type: string
+          enum: [html, files, json, kv]
+      - name: ns
+        in: path
+        required: true
+        schema:
+          type: string
+          pattern: '^[a-z0-9-]{1,32}$'
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          pattern: '^[A-Za-z0-9]{10}$'
+      - name: X-Owner-Token
+        in: header
+        required: false
+        description: Matching owner token; absent or wrong token returns 403. Query credentials are not accepted.
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/HostingUpdateRequest'
+            example:
+              deliveryMode: subdomain
+              expectedVersion: 1
+      responses:
+        '200':
+          description: Current hosting projection, including no-op updates
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: private, no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HostingProjection'
+              example:
+                link: https://a1b2c3d4e5.brewpage.app/
+                ownerLink: https://brewpage.app/api/html/public/AbCdEf1234
+                managementLink: https://brewpage.app/manage/html/public/AbCdEf1234
+                routingCohort: new-v1
+                deliveryMode: subdomain
+                requestedDeliveryMode: subdomain
+                effectiveDeliveryMode: subdomain
+                deliveryModeMatched: true
+                namespace: public
+                access: public
+                modeLocked: false
+                hostingVersion: 2
+        '400':
+          description: Invalid mode/version, or locked OLD/non-public resource
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Missing or wrong owner-token header
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Publication unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Stale expectedVersion; reload hosting metadata before retrying
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: Hosting mode writes are temporarily paused (HOSTING_CREATION_PAUSED)
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+                minimum: 1
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /api/kv/{ns}/{id}/{key}:
     get:
       tags:
@@ -163,6 +448,7 @@ paths:
         Requires the owner token returned at creation.
       operationId: upsertKey
       parameters:
+      - $ref: '#/components/parameters/ContentUpdateDeliveryMode'
       - name: ns
         in: path
         required: true
@@ -311,6 +597,7 @@ paths:
         Requires the owner token returned at creation.
       operationId: update
       parameters:
+      - $ref: '#/components/parameters/ContentUpdateDeliveryMode'
       - name: ns
         in: path
         required: true
@@ -387,7 +674,10 @@ paths:
       tags:
       - HTML
       summary: Get HTML page
-      description: Returns rendered HTML content; password-protected pages require X-Password header or ?p= query param
+      description: |
+        Returns HTML content; existing password header/query parsing remains supported.
+        NEW subdomain-mode HTML is returned as an attachment with sandbox CSP, never executable apex HTML.
+        NEW path-mode HTML retains opaque-origin sandbox CSP. OLD rendering remains unchanged.
       operationId: getById_1
       parameters:
       - name: ns
@@ -415,6 +705,13 @@ paths:
       responses:
         '200':
           description: HTML content
+          headers:
+            Content-Disposition:
+              description: NEW subdomain-mode HTML is an attachment; OLD serving remains unchanged.
+              schema:
+                type: string
+            Content-Security-Policy:
+              $ref: '#/components/headers/PublicationCsp'
           content:
             '*/*':
               schema:
@@ -444,6 +741,7 @@ paths:
         Also accepts raw text/* bodies — see /llms-full.txt.
       operationId: update_1
       parameters:
+      - $ref: '#/components/parameters/ContentUpdateDeliveryMode'
       - name: ns
         in: path
         required: true
@@ -681,16 +979,17 @@ paths:
         to group entities under one owner
       operationId: createStore
       parameters:
+      - $ref: '#/components/parameters/DeliveryMode'
       - name: ns
         in: query
         description: 'Namespace. Default: public. All namespaces are PUBLIC and indexable. Pages in ''public'' without
-          password appear in gallery. Custom namespace is created automatically. Format: [a-z0-9-]{3,32}. On ns+id
+          password appear in gallery. Custom namespace is created automatically. Format: [a-z0-9-]{1,32}. On ns+id
           collision the server returns 409 Conflict — retry with a different id or omit id to let the server generate one'
         required: false
         schema:
           type: string
           default: public
-          pattern: '^[a-z0-9-]{3,32}$'
+          pattern: '^[a-z0-9-]{1,32}$'
       - name: tags
         in: query
         description: Comma-separated tags
@@ -733,6 +1032,8 @@ paths:
             '*/*':
               schema:
                 $ref: '#/components/schemas/KvCreateStoreResponse'
+        '503':
+          $ref: '#/components/responses/HostingPaused'
         '400':
           description: Invalid request parameters
           content:
@@ -783,16 +1084,17 @@ paths:
         one owner
       operationId: create
       parameters:
+      - $ref: '#/components/parameters/DeliveryMode'
       - name: ns
         in: query
         description: 'Namespace. Default: public. All namespaces are PUBLIC and indexable. Pages in ''public'' without
-          password appear in gallery. Custom namespace is created automatically. Format: [a-z0-9-]{3,32}. On ns+id
+          password appear in gallery. Custom namespace is created automatically. Format: [a-z0-9-]{1,32}. On ns+id
           collision the server returns 409 Conflict — retry with a different id or omit id to let the server generate one'
         required: false
         schema:
           type: string
           default: public
-          pattern: '^[a-z0-9-]{3,32}$'
+          pattern: '^[a-z0-9-]{1,32}$'
       - name: tags
         in: query
         description: Comma-separated tags
@@ -839,6 +1141,8 @@ paths:
             '*/*':
               schema:
                 $ref: '#/components/schemas/JsonCreateResponse'
+        '503':
+          $ref: '#/components/responses/HostingPaused'
         '400':
           description: Invalid JSON or request parameters
           content:
@@ -873,16 +1177,17 @@ paths:
         use `PUT /api/html/{ns}/{id}` (the canonical republish path).
       operationId: create_1
       parameters:
+      - $ref: '#/components/parameters/DeliveryMode'
       - name: ns
         in: query
         description: 'Namespace. Default: public. All namespaces are PUBLIC and indexable. Pages in ''public'' without
-          password appear in gallery. Custom namespace is created automatically. Format: [a-z0-9-]{3,32}. On ns+id
+          password appear in gallery. Custom namespace is created automatically. Format: [a-z0-9-]{1,32}. On ns+id
           collision the server returns 409 Conflict — retry with a different id or omit id to let the server generate one'
         required: false
         schema:
           type: string
           default: public
-          pattern: '^[a-z0-9-]{3,32}$'
+          pattern: '^[a-z0-9-]{1,32}$'
       - name: tags
         in: query
         description: Comma-separated tags
@@ -959,6 +1264,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HtmlUploadResponse'
+        '503':
+          $ref: '#/components/responses/HostingPaused'
         '400':
           description: Invalid request parameters
           content:
@@ -1023,16 +1330,17 @@ paths:
         Reuse existing owner token to group entities under one owner.
       operationId: upload
       parameters:
+      - $ref: '#/components/parameters/DeliveryMode'
       - name: ns
         in: query
         description: 'Namespace. Default: public. All namespaces are PUBLIC and indexable. Pages in ''public'' without
-          password appear in gallery. Custom namespace is created automatically. Format: [a-z0-9-]{3,32}. On ns+id
+          password appear in gallery. Custom namespace is created automatically. Format: [a-z0-9-]{1,32}. On ns+id
           collision the server returns 409 Conflict — retry with a different id or omit id to let the server generate one'
         required: false
         schema:
           type: string
           default: public
-          pattern: '^[a-z0-9-]{3,32}$'
+          pattern: '^[a-z0-9-]{1,32}$'
       - name: tags
         in: query
         description: Comma-separated tags
@@ -1086,6 +1394,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/FileUploadResponse'
+        '503':
+          $ref: '#/components/responses/HostingPaused'
         '400':
           description: Invalid request or file too large
           content:
@@ -1118,14 +1428,19 @@ paths:
       description: |
         Resolves a short URL to the underlying resource (HTML, markdown, JSON, KV, file, or site entry).
 
-        The `?raw=1` query parameter bypasses the SPA shell and streams raw resource bytes directly.
+        For OLD publications, `?raw=1` bypasses the SPA shell and streams raw resource bytes directly.
         Required for browser-native consumers that cannot run the SPA wrapper — `<video src>`, `<audio src>`,
         `<iframe src>` for PDF, and any other embed that must receive the original Content-Type rather
         than the SPA's HTML wrapper.
 
+        NEW subdomain-mode publications redirect to their canonical host with 302, preserving safe query
+        parameters and native subpaths while stripping password/owner/admin credentials. Browser password
+        entry uses a clean link and trusted unlock gateway. NEW path-mode active HTML retains sandbox CSP;
+        raw/inline flags never remove that policy. NEW responses use private, no-store caching.
+
         Response headers:
         - `X-Views: <integer>` — current view counter for this resource.
-        - For file/site responses: `Accept-Ranges: bytes`, `ETag`, and `Cache-Control: public, max-age=3600`.
+        - For OLD file/site responses: `Accept-Ranges: bytes`, `ETag`, and `Cache-Control: public, max-age=3600`.
           Range requests return `206 Partial Content`.
         - For HTML resolves: `X-Show-Top-Bar: true|false` — effective resolved value of `showTopBar`
           (per-page override, else server default `app.ui.show-top-bar-default`).
@@ -1162,7 +1477,8 @@ paths:
       - name: raw
         in: query
         description: |
-          Bypass the SPA wrapper and stream raw resource bytes directly with the original Content-Type.
+          Request native resource bytes with the original Content-Type. OLD routes bypass the SPA wrapper;
+          NEW subdomain routes redirect and NEW path routes retain sandbox/attachment protections.
           Required for `<video src>`, `<audio src>`, `<iframe src>` for PDF, and other browser-native embeds
           that cannot run the SPA shell.
         required: false
@@ -1172,6 +1488,14 @@ paths:
         '200':
           description: OK
           headers:
+            X-Routing-Cohort:
+              $ref: '#/components/headers/RoutingCohort'
+            X-Delivery-Mode:
+              $ref: '#/components/headers/EffectiveDeliveryMode'
+            X-Canonical-Link:
+              $ref: '#/components/headers/CanonicalLink'
+            Content-Security-Policy:
+              $ref: '#/components/headers/PublicationCsp'
             X-Views:
               description: Current view counter for the resolved resource
               schema:
@@ -1186,7 +1510,7 @@ paths:
               schema:
                 type: string
             Cache-Control:
-              description: 'Present for file/site responses: public, max-age=3600'
+              description: 'OLD file/site responses: public, max-age=3600; NEW responses: private, no-store'
               schema:
                 type: string
             X-Show-Top-Bar:
@@ -1201,6 +1525,8 @@ paths:
             '*/*':
               schema:
                 type: object
+        '302':
+          $ref: '#/components/responses/PublicationRedirect'
         '206':
           description: Partial Content (Range requests for files/sites)
           headers:
@@ -1243,10 +1569,12 @@ paths:
       summary: Resolve short URL with sub-path
       description: |
         Resolves a short URL with a sub-path (e.g. entry file within an uploaded site).
+        NEW subdomain-mode sites and KV resources redirect with 302 to the canonical host's encoded subpath.
+        Safe query parameters remain; password/owner/admin credentials are stripped. Missing native files return 404.
 
         Response headers:
         - `X-Views: <integer>` — current view counter for this resource.
-        - For file/site responses: `Accept-Ranges: bytes`, `ETag`, and `Cache-Control: public, max-age=3600`.
+        - For OLD file/site responses: `Accept-Ranges: bytes`, `ETag`, and `Cache-Control: public, max-age=3600`.
           Range requests return `206 Partial Content`.
       operationId: resolveWithSub
       parameters:
@@ -1301,13 +1629,15 @@ paths:
               schema:
                 type: string
             Cache-Control:
-              description: 'Present for file/site responses: public, max-age=3600'
+              description: 'OLD file/site responses: public, max-age=3600; NEW responses: private, no-store'
               schema:
                 type: string
           content:
             '*/*':
               schema:
                 type: object
+        '302':
+          $ref: '#/components/responses/PublicationRedirect'
         '206':
           description: Partial Content (Range requests for files/sites)
           headers:
@@ -1554,7 +1884,10 @@ paths:
       tags:
       - Files
       summary: Download file
-      description: Returns file inline for previewable types (images, PDF, media) or as attachment. Add ?dl=1 to force download.
+      description: |
+        Returns file inline for previewable types (images, PDF, media) or as attachment. Add ?dl=1 to force download.
+        NEW active HTML/SVG/XML/script API reads cannot execute on the apex: subdomain-mode content is an
+        attachment, and path-mode HTML has opaque-origin sandbox CSP. OLD serving remains unchanged.
       operationId: download
       parameters:
       - name: ns
@@ -1588,6 +1921,13 @@ paths:
       responses:
         '200':
           description: File content
+          headers:
+            Content-Disposition:
+              description: NEW subdomain-mode HTML and NEW SVG/XML/script content are attachments; other types retain file semantics.
+              schema:
+                type: string
+            Content-Security-Policy:
+              $ref: '#/components/headers/PublicationCsp'
           content:
             '*/*':
               schema:
@@ -1645,6 +1985,7 @@ paths:
       description: Upload a multi-file HTML site as a ZIP archive or as individual files with paths. Returns a link to the published site
       operationId: uploadSite
       parameters:
+      - $ref: '#/components/parameters/DeliveryMode'
       - name: ns
         in: query
         description: 'Namespace. Default: public'
@@ -1750,16 +2091,27 @@ paths:
                 site_created:
                   summary: Successful site upload response
                   value:
-                    id: a1b2c3d4e5
-                    namespace: docs
+                    id: AbCdEf1234
+                    namespace: public
                     entryFile: index.html
-                    link: https://brewpage.app/docs/a1b2c3d4e5
-                    ownerLink: https://brewpage.app/api/sites/docs/a1b2c3d4e5
+                    link: https://a1b2c3d4e5.brewpage.app/
+                    ownerLink: https://brewpage.app/api/sites/public/AbCdEf1234
                     fileCount: 4
                     totalSizeBytes: 24576
                     expiresAt: '2026-05-16T00:00:00Z'
                     tags: []
                     ownerToken: 9f3a1c7d2e4b8a056f1234567890abcd
+                    managementLink: https://brewpage.app/manage/sites/public/AbCdEf1234
+                    routingCohort: new-v1
+                    deliveryMode: subdomain
+                    requestedDeliveryMode: null
+                    effectiveDeliveryMode: subdomain
+                    deliveryModeMatched: null
+                    access: public
+                    modeLocked: true
+                    hostingVersion: 1
+        '503':
+          $ref: '#/components/responses/HostingPaused'
         '400':
           description: Invalid request, no HTML files, or limits exceeded
           content:
@@ -2001,7 +2353,10 @@ paths:
       tags:
       - Sites
       summary: Serve site file
-      description: Serves an individual file from the site with correct content type
+      description: |
+        Serves an individual file from the site with correct content type.
+        NEW active HTML/SVG/XML/script content is returned as an attachment with sandbox CSP and no-store.
+        Native browser site navigation uses the returned dedicated-host link; OLD serving remains unchanged.
       operationId: serveSiteFile
       parameters:
       - name: ns
@@ -2035,6 +2390,17 @@ paths:
       responses:
         '200':
           description: File content
+          headers:
+            Content-Disposition:
+              description: NEW active site content is an attachment; OLD file serving remains unchanged.
+              schema:
+                type: string
+            Content-Security-Policy:
+              $ref: '#/components/headers/PublicationCsp'
+            Cache-Control:
+              description: NEW active site content uses private, no-store; OLD caching remains unchanged.
+              schema:
+                type: string
           content:
             '*/*':
               schema:
@@ -3400,7 +3766,157 @@ paths:
         '503':
           description: Namespace pool exhausted — retry budget hit consecutive collisions
 components:
+  headers:
+    RoutingCohort:
+      description: Present on NEW apex publication resolution; absent on OLD routes.
+      schema:
+        type: string
+        const: new-v1
+    EffectiveDeliveryMode:
+      description: Present on NEW apex publication resolution; persisted delivery mode.
+      schema:
+        type: string
+        enum: [path, subdomain]
+    CanonicalLink:
+      description: Present on NEW apex publication resolution; canonical clean share URL returned by the server.
+      schema:
+        type: string
+        format: uri
+    PublicationCsp:
+      description: |
+        NEW path-mode HTML and NEW subdomain-mode active-content API responses retain opaque-origin sandbox CSP.
+        Native dedicated-host HTML does not inherit apex sandbox CSP; OLD policy remains unchanged.
+      schema:
+        type: string
+  responses:
+    PublicationRedirect:
+      description: NEW subdomain canonical redirect, or protected-browser navigation to the trusted unlock gateway.
+      headers:
+        Location:
+          description: Trusted server-selected HTTPS destination; passwords and owner/admin credentials are removed.
+          schema:
+            type: string
+            format: uri
+        Cache-Control:
+          schema:
+            type: string
+            const: private, no-store
+        X-Routing-Cohort:
+          $ref: '#/components/headers/RoutingCohort'
+        X-Delivery-Mode:
+          $ref: '#/components/headers/EffectiveDeliveryMode'
+        X-Canonical-Link:
+          $ref: '#/components/headers/CanonicalLink'
+    HostingPaused:
+      description: Fresh creation is temporarily unavailable (HOSTING_CREATION_PAUSED); existing resources are unchanged.
+      headers:
+        Retry-After:
+          schema:
+            type: integer
+            minimum: 1
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+  parameters:
+    ContentUpdateDeliveryMode:
+      name: X-Delivery-Mode
+      in: header
+      required: false
+      description: NEW content updates reject this header with 400; use the owner hosting PATCH to switch modes.
+      schema:
+        type: string
+        enum: [path, subdomain]
+    DeliveryMode:
+      name: X-Delivery-Mode
+      in: header
+      required: false
+      description: |
+        Delivery choice for a NEW publication. Sites and non-public resources require subdomain; explicit path
+        returns 400. Public non-sites default to path, including password-protected resources. For a reused
+        existing resource, returned hosting metadata describes that winner; the request never switches its mode.
+      schema:
+        type: string
+        enum: [path, subdomain]
   schemas:
+    AccessRevokeResponse:
+      type: object
+      required: [revoked]
+      properties:
+        revoked:
+          type: boolean
+          const: true
+          description: Target publication's reader access has been revoked.
+    HostingUpdateRequest:
+      type: object
+      required: [deliveryMode, expectedVersion]
+      properties:
+        deliveryMode:
+          type: string
+          enum: [path, subdomain]
+        expectedVersion:
+          type: integer
+          format: int64
+          minimum: 1
+          description: Current hostingVersion from the publication response; fractional/string values are rejected.
+    HostingMetadata:
+      type: object
+      description: |
+        Additive flattened response fields, not authored content. NEW projections describe the persisted resource.
+        OLD responses may omit these fields; if present, effective mode/version/management link are null.
+      properties:
+        managementLink:
+          type: [string, 'null']
+          format: uri
+          description: Trusted apex management URL for NEW publications; null for OLD. Contains no credentials.
+        routingCohort:
+          type: string
+          enum: [old, new-v1]
+          description: Persisted routing cohort. Missing metadata means OLD, without backfill or timestamp inference.
+        deliveryMode:
+          type: [string, 'null']
+          enum: [path, subdomain, null]
+          description: Current persisted mode; same as effectiveDeliveryMode. Null for OLD.
+        requestedDeliveryMode:
+          type: [string, 'null']
+          enum: [path, subdomain, null]
+          description: Explicit requested mode for this operation, or null when omitted; may be echoed for an OLD winner.
+        effectiveDeliveryMode:
+          type: [string, 'null']
+          enum: [path, subdomain, null]
+          description: Actual returned resource's mode, including reused winners; null for OLD.
+        deliveryModeMatched:
+          type: [boolean, 'null']
+          description: Requested mode equals effective mode; null without a requested mode or for OLD.
+        access:
+          type: string
+          enum: [public, unlisted, protected]
+          description: Password-protected takes precedence, then public namespace, otherwise unlisted.
+        modeLocked:
+          type: boolean
+          description: True for OLD, sites and non-public namespaces. Password alone does not lock a public non-site.
+        hostingVersion:
+          type: [integer, 'null']
+          format: int64
+          minimum: 1
+          description: Optimistic-concurrency version for hosting PATCH; null for OLD.
+    HostingProjection:
+      type: object
+      allOf:
+      - $ref: '#/components/schemas/HostingMetadata'
+      required: [link, ownerLink, managementLink, routingCohort, deliveryMode, requestedDeliveryMode, effectiveDeliveryMode, deliveryModeMatched, namespace, access, modeLocked, hostingVersion]
+      properties:
+        link:
+          type: string
+          format: uri
+          description: Canonical clean share URL; subdomain-mode root ends in a slash.
+        ownerLink:
+          type: string
+          format: uri
+          description: Existing trusted apex resource API URL; owner credentials are sent only in headers.
+        namespace:
+          type: string
+          pattern: '^[a-z0-9-]{1,32}$'
     OwnerCheckResponse:
       type: object
       properties:
@@ -3441,6 +3957,8 @@ components:
           description: New value for the key (max 1 MB)
     KvUpsertKeyResponse:
       type: object
+      allOf:
+      - $ref: '#/components/schemas/HostingMetadata'
       properties:
         id:
           type: string
@@ -3459,6 +3977,8 @@ components:
           description: API URL for programmatic access
     JsonUpdateResponse:
       type: object
+      allOf:
+      - $ref: '#/components/schemas/HostingMetadata'
       properties:
         id:
           type: string
@@ -3484,6 +4004,8 @@ components:
           description: New HTML content to replace existing page
     HtmlUpdateResponse:
       type: object
+      allOf:
+      - $ref: '#/components/schemas/HostingMetadata'
       properties:
         id:
           type: string
@@ -3503,6 +4025,8 @@ components:
           format: int64
     HtmlSettingsResponse:
       type: object
+      allOf:
+      - $ref: '#/components/schemas/HostingMetadata'
       description: |
         Republish-prefill projection returned by `GET /api/html/{ns}/{id}/settings`.
         Settings only, no content body. Owner-token gated.
@@ -3607,6 +4131,8 @@ components:
           description: Value for the initial key (max 1 MB)
     KvCreateStoreResponse:
       type: object
+      allOf:
+      - $ref: '#/components/schemas/HostingMetadata'
       properties:
         id:
           type: string
@@ -3636,6 +4162,8 @@ components:
           description: Secret token required for upsert and delete operations. Store it safely -- cannot be recovered
     JsonCreateResponse:
       type: object
+      allOf:
+      - $ref: '#/components/schemas/HostingMetadata'
       properties:
         id:
           type: string
@@ -3695,6 +4223,8 @@ components:
             Effective resolved value is reflected on GET responses via the X-Show-Top-Bar header.
     HtmlUploadResponse:
       type: object
+      allOf:
+      - $ref: '#/components/schemas/HostingMetadata'
       properties:
         id:
           type: string
@@ -3745,6 +4275,8 @@ components:
           description: 'Outcome-specific extras. created_missing_assets → { "localAssetRefs": ["data.js", ...] }; merged → { "isOwner": boolean }.'
     FileUploadResponse:
       type: object
+      allOf:
+      - $ref: '#/components/schemas/HostingMetadata'
       properties:
         id:
           type: string
@@ -4067,6 +4599,8 @@ components:
           format: date-time
     SiteUploadResponse:
       type: object
+      allOf:
+      - $ref: '#/components/schemas/HostingMetadata'
       properties:
         id:
           type: string
@@ -4147,6 +4681,8 @@ components:
           format: int64
     SiteUpdateResponse:
       type: object
+      allOf:
+      - $ref: '#/components/schemas/HostingMetadata'
       description: |
         Result of a full-replace site republish (`PUT /api/sites/{ns}/{id}`). The URL and ID are unchanged.
         Unlike the create response, no owner token is returned (the caller already holds it).

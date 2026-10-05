@@ -1,219 +1,199 @@
 ---
 title: Examples
-description: Real-world examples of using the BrewPage API
+description: Working shell, JavaScript, and Python examples of the BrewPage API
 order: 4
 ---
 
 # Examples
+
+Last updated: 2026-10-05
+
+These examples deliberately select `ns=public` for gallery/search eligibility. REST defaults to `public`; choose a custom namespace for unlisted content. The MCP wrapper instead defaults to an unlisted namespace. Password-protected content stays excluded from discovery. TTL is 1–30 days, default 15.
+
+Use the returned primary `link` exactly. NEW public non-sites default to Promotion (`path`); NEW sites and non-public content require Dedicated subdomain (`subdomain`). Creation can reuse an existing winner whose OLD/NEW cohort, link, and actual mode stay unchanged. OLD links retain their historical behavior. See [delivery and authentication](/brewpage-openapi/api-reference/#publication-delivery).
 
 ## HTML Publishing
 
 ### Simple HTML Page
 
 ```bash
-curl -X POST https://brewpage.app/api/html \
-  -H "Content-Type: application/json" \
-  -d '{
-    "namespace": "demo",
-    "content": "<html><body><h1>Hello!</h1></body></html>",
-    "format": "HTML"
-  }'
+curl -X POST 'https://brewpage.app/api/html?ns=public&format=html' \
+  -H 'Content-Type: application/json' \
+  -d '{"content":"<html><body><h1>Hello!</h1></body></html>"}'
 ```
 
 ### Markdown with Password Protection
 
 ```bash
-curl -X POST https://brewpage.app/api/html \
-  -H "Content-Type: application/json" \
-  -d '{
-    "namespace": "private",
-    "content": "# Secret Notes\n\nThis page requires a password.",
-    "format": "MARKDOWN",
-    "password": "mysecret"
-  }'
+curl -X POST 'https://brewpage.app/api/html?ns=public&format=markdown' \
+  -H 'Content-Type: application/json' \
+  -H 'X-Password: replace-with-your-password' \
+  -d '{"content":"# Team Notes\n\nThis page requires a password."}'
 ```
 
-### Custom TTL (Time to Live)
+Share a NEW protected publication's clean returned `link`; browser readers unlock through the trusted gateway. API readers use `X-Password`. Never append `?p=` to NEW links.
+
+### Custom TTL and Dedicated Subdomain
 
 ```bash
-curl -X POST https://brewpage.app/api/html \
-  -H "Content-Type: application/json" \
-  -d '{
-    "namespace": "temp",
-    "content": "<p>This expires in 30 days</p>",
-    "format": "HTML",
-    "ttlDays": 30
-  }'
+curl -X POST 'https://brewpage.app/api/html?ns=public&format=html&ttl=30' \
+  -H 'Content-Type: application/json' \
+  -H 'X-Delivery-Mode: subdomain' \
+  -d '{"content":"<p>This expires in 30 days</p>"}'
 ```
+
+Namespace, format, and TTL belong in query parameters; password and delivery mode are headers. They are not fields in the authored content body.
 
 ## Key-Value Store
 
-### Configuration Storage
+### Create, Read, and Update a Store
 
 ```bash
-# Store app configuration
-curl -X PUT https://brewpage.app/api/kv/myapp/config/api_url \
-  -H "Content-Type: application/json" \
-  -d '{"value": "https://api.example.com"}'
+created=$(curl --fail-with-body -sS -X POST 'https://brewpage.app/api/kv?ns=public' \
+  -H 'Content-Type: application/json' \
+  -d '{"key":"theme","value":"dark"}')
+id=$(printf '%s' "$created" | jq -r '.id')
+owner_token=$(printf '%s' "$created" | jq -r '.ownerToken')
+printf '%s' "$created" | jq -r '.link'
 
-curl -X PUT https://brewpage.app/api/kv/myapp/config/debug \
-  -H "Content-Type: application/json" \
-  -d '{"value": "false"}'
+curl --fail-with-body "https://brewpage.app/api/kv/public/$id/theme"
 
-# List all keys
-curl https://brewpage.app/api/kv/myapp/config
-
-# Get specific key
-curl https://brewpage.app/api/kv/myapp/config/api_url
+curl --fail-with-body -X PUT "https://brewpage.app/api/kv/public/$id/theme" \
+  -H 'Content-Type: application/json' \
+  -H "X-Owner-Token: $owner_token" \
+  -d '{"value":"light"}'
 ```
 
-### Feature Flags
-
-```bash
-curl -X PUT https://brewpage.app/api/kv/myapp/flags/dark_mode \
-  -H "Content-Type: application/json" \
-  -d '{"value": "true"}'
-
-# Check flag from your app
-curl -s https://brewpage.app/api/kv/myapp/flags/dark_mode | jq -r '.value'
-```
+Create with `POST /api/kv`; later `PUT` writes require the returned owner token. Keys can be read at `GET /api/kv/{namespace}/{id}`. Owner-scoped store listing uses `GET /api/kv?ns=public` with `X-Owner-Token`.
 
 ## JSON Documents
 
-### Store Structured Data
+Send the JSON document itself, without a `document` wrapper or collection route:
 
 ```bash
-# Create a document
-curl -X POST https://brewpage.app/api/json/myapp/users \
-  -H "Content-Type: application/json" \
-  -d '{
-    "document": {
-      "name": "Alice",
-      "email": "alice@example.com",
-      "role": "admin"
-    }
-  }'
+created=$(curl --fail-with-body -sS -X POST 'https://brewpage.app/api/json?ns=public' \
+  -H 'Content-Type: application/json' \
+  -d '{"name":"Alice","role":"admin"}')
+id=$(printf '%s' "$created" | jq -r '.id')
+owner_token=$(printf '%s' "$created" | jq -r '.ownerToken')
+printf '%s' "$created" | jq -r '.link'
 
-# Query documents
-curl https://brewpage.app/api/json/myapp/users
+curl --fail-with-body "https://brewpage.app/api/json/public/$id"
+
+curl --fail-with-body -X PUT "https://brewpage.app/api/json/public/$id" \
+  -H 'Content-Type: application/json' \
+  -H "X-Owner-Token: $owner_token" \
+  -d '{"name":"Alice","role":"editor"}'
 ```
+
+Owner-scoped document listing uses `GET /api/json?ns=public` with `X-Owner-Token`.
 
 ## File Hosting
 
-### Upload and Share Files
-
 ```bash
-# Upload an image
-curl -X POST https://brewpage.app/api/files/uploads \
-  -F "namespace=assets" \
-  -F "file=@screenshot.png"
-
-# Upload a document
-curl -X POST https://brewpage.app/api/files/uploads \
-  -F "namespace=docs" \
-  -F "file=@report.pdf"
+curl -X POST 'https://brewpage.app/api/files?ns=public' -F 'file=@screenshot.png'
+curl -X POST 'https://brewpage.app/api/files?ns=public' -F 'file=@report.pdf'
 ```
 
 ## Sites (Multi-File HTML)
 
 ### Upload a Site
 
-Upload a multi-file HTML site and get a public URL:
-
 ```bash
-curl -X POST "https://brewpage.app/api/sites" \
-  -F "files=@index.html;type=text/html" \
-  -F "files=@style.css;type=text/css" \
-  -F "paths=index.html" \
-  -F "paths=style.css"
+curl -X POST 'https://brewpage.app/api/sites?ns=public' \
+  -F 'files=@index.html;type=text/html' \
+  -F 'files=@style.css;type=text/css' \
+  -F 'paths=index.html' \
+  -F 'paths=style.css'
 ```
 
-Response:
+Illustrative NEW site response (additional fields omitted):
 
 ```json
 {
   "id": "aBcDeFgHiJ",
   "namespace": "public",
   "entryFile": "index.html",
-  "link": "https://brewpage.app/public/aBcDeFgHiJ",
+  "link": "https://k8m2n6p4q1.brewpage.app/",
   "ownerLink": "https://brewpage.app/api/sites/public/aBcDeFgHiJ",
+  "routingCohort": "new-v1",
+  "deliveryMode": "subdomain",
+  "modeLocked": true,
+  "hostingVersion": 1,
   "fileCount": 2,
-  "totalSizeBytes": 1024,
-  "expiresAt": "2026-04-25T12:00:00Z",
-  "tags": [],
   "ownerToken": "your-secret-token"
 }
 ```
 
-Or upload via ZIP archive:
+The host label above is illustrative and independent of the resource ID. Use the actual returned `link`, not that label. The complete bundle shares one publication-specific host; `/style.css` and relative links resolve natively. Missing files return 404, without an SPA fallback. Existing OLD site links remain in their original form.
+
+Or upload a built ZIP archive:
 
 ```bash
-curl -X POST "https://brewpage.app/api/sites" \
-  -F "archive=@site.zip;type=application/zip"
+curl -X POST 'https://brewpage.app/api/sites?ns=public' \
+  -F 'archive=@site.zip;type=application/zip'
 ```
+
+`PUT /api/sites/{namespace}/{id}` with `X-Owner-Token` and a new bundle replaces the entire file set at the same link; absent files are removed. Content replacement preserves hosting. MCP exposes `publish_site` and `republish_site`; SDK and CLI module specifications do not imply implemented clients.
+
+## Change Hosting
+
+Only eligible NEW public non-sites can switch between Promotion and Dedicated subdomain. Obtain current metadata with the owner-only hosting GET, then supply its `hostingVersion`:
+
+```bash
+curl --fail-with-body 'https://brewpage.app/api/html/public/aBcDeFgHiJ/hosting' \
+  -H 'X-Owner-Token: replace-with-owner-token'
+
+curl --fail-with-body -X PATCH 'https://brewpage.app/api/html/public/aBcDeFgHiJ/hosting' \
+  -H 'Content-Type: application/json' \
+  -H 'X-Owner-Token: replace-with-owner-token' \
+  -d '{"deliveryMode":"subdomain","expectedVersion":1}'
+```
+
+Replace the illustrative ID/token and version with your own current values. OLD links, sites, and non-public resources are locked. Stale versions return 409; reload before retrying. Use the returned primary `link` after success. The reserved host survives both directions; ordinary content updates do not switch modes.
 
 ## JavaScript / Fetch
 
-### Publish from Browser
-
 ```javascript
-const response = await fetch('https://brewpage.app/api/html', {
+const response = await fetch('https://brewpage.app/api/html?ns=public&format=html', {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({
-    namespace: 'webapp',
-    content: '<h1>Published from JS</h1>',
-    format: 'HTML'
-  })
+  body: JSON.stringify({ content: '<h1>Published from JS</h1>' })
 });
-
-const { url, ownerToken } = await response.json();
-console.log('Published at:', url);
-console.log('Owner token:', ownerToken); // Save this!
-```
-
-### Read KV from Browser
-
-```javascript
-const res = await fetch('https://brewpage.app/api/kv/myapp/config/theme');
-const { value } = await res.json();
-document.body.dataset.theme = value;
+if (!response.ok) throw new Error(`Publish failed: ${response.status}`);
+const { link, ownerToken } = await response.json();
+console.log('Published at:', link);
+// Save ownerToken securely for later owner operations.
 ```
 
 ## Python
 
-### Publish HTML
-
 ```python
 import requests
 
-resp = requests.post('https://brewpage.app/api/html', json={
-    'namespace': 'scripts',
-    'content': '# Report\n\nGenerated by Python script.',
-    'format': 'MARKDOWN'
-})
-
-data = resp.json()
-print(f"URL: {data['url']}")
-print(f"Owner token: {data['ownerToken']}")  # Save this!
+response = requests.post(
+    'https://brewpage.app/api/html',
+    params={'ns': 'public', 'format': 'markdown'},
+    json={'content': '# Report\n\nGenerated by Python script.'},
+    timeout=30,
+)
+response.raise_for_status()
+data = response.json()
+print(f"URL: {data['link']}")
+# Save data['ownerToken'] securely for later owner operations.
 ```
 
 ## Platform Statistics
 
 ```bash
-# Get overall stats
-curl -s https://brewpage.app/api/stats | jq .
+curl -sS https://brewpage.app/api/stats | jq .
 ```
 
 ## Gallery (Public Content)
 
 ```bash
-# Browse public pages
-curl https://brewpage.app/api/gallery/pages
-
-# Browse public files
-curl https://brewpage.app/api/gallery/files
-
-# Search gallery
-curl "https://brewpage.app/api/gallery/pages?search=hello"
+curl https://brewpage.app/api/gallery
+curl 'https://brewpage.app/api/gallery?q=hello&sort=date'
 ```
+
+Owner listing uses `GET /api/gallery?mine=true` with `X-Owner-Token`; the MCP equivalent is `search_gallery(mine=true, ownerToken="...")`.

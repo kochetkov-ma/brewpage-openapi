@@ -8,6 +8,8 @@ import Timeline from '../../components/mdx/Timeline.astro';
 
 # Getting Started
 
+Last updated: 2026-10-05
+
 BrewPage is a free hosting platform for HTML pages, key-value data, JSON documents, files, and multi-file sites. No signup required — publish content instantly.
 
 ## What You Can Publish
@@ -16,7 +18,7 @@ BrewPage is a free hosting platform for HTML pages, key-value data, JSON documen
 - **KV** — Key-value store, up to 1,000 keys per namespace, 1 MB per value
 - **JSON** — JSON document store, up to 10,000 docs per collection, 1 MB per doc
 - **Files** — File hosting, up to 5 MB per file, 1,000 files per namespace
-- **Sites** — Multi-file HTML site hosting via ZIP or individual files, up to 1,000 files per site, TTL 1–30 days
+- **Sites** — Multi-file HTML site hosting via ZIP or individual files, TTL 1–30 days
 
 **Base URL:** `https://brewpage.app` (alias: `https://brewdata.app` — same API)
 
@@ -38,10 +40,10 @@ BrewPage is a free hosting platform for HTML pages, key-value data, JSON documen
 ### 2. Claude Skill (`/brewpage`)
 
 <Timeline steps={[
-  { title: "Install brewcode plugin", description: "Run: npx skills add kochetkov-ma/claude-brewcode" },
+  { title: "Install the publishing skill", description: "Follow the linked skill installation guide for your client" },
   { title: "Use the slash command", description: '/brewpage "Hello world" — or say: publish this to brewpage' },
-  { title: "Pick namespace and password", description: "Claude asks interactively, defaults to public / no password" },
-  { title: "Get link + saved token", description: "URL returned, owner token saved to .claude/brewpage-history.md" },
+  { title: "Pick namespace and password", description: "The skill defaults to a suggested unlisted namespace; select public only for gallery/search eligibility" },
+  { title: "Get link + saved token", description: "Use the exact returned link; the skill stores owner authority in its local publication history" },
 ]} />
 
 [Skill docs](https://doc-claude.brewcode.app/brewdoc/brewpage/) · [Source](https://github.com/kochetkov-ma/claude-brewcode/tree/main/skills/brewpage-publish)
@@ -51,8 +53,8 @@ BrewPage is a free hosting platform for HTML pages, key-value data, JSON documen
 ### 3. MCP Server (AI Agent)
 
 <Timeline steps={[
-  { title: "Add brewpage-mcp to config", description: 'Add {"brewpage":{"command":"npx","args":["-y","brewpage-mcp"]}} to Claude Desktop or Claude Code config' },
-  { title: 'Ask Claude: "Publish this to BrewPage"', description: "Claude calls the API automatically, supports HTML, Markdown, files" },
+  { title: "Configure brewpage-mcp@1.8.0", description: "Follow the MCP guide for your client; the pinned stdio command is npx -y brewpage-mcp@1.8.0" },
+  { title: 'Ask your assistant: "Publish this to BrewPage"', description: "Sixteen tools support HTML, Markdown, JSON, KV, files, sites, and hosting updates; namespace defaults to unlisted" },
   { title: "Get link + owner token", description: "Claude returns the URL and reminds you to save the token" },
 ]} />
 
@@ -63,48 +65,54 @@ BrewPage is a free hosting platform for HTML pages, key-value data, JSON documen
 ### 4. REST API
 
 <Timeline steps={[
-  { title: "POST your content", description: "Send JSON to /api/html with content and format" },
-  { title: "Get URL + owner token", description: "Response includes url, shortUrl, ownerToken" },
-  { title: "Share the link", description: "Use the URL or short URL anywhere" },
+  { title: "POST your content", description: "Send content in the JSON body; select namespace, format, and TTL through query parameters" },
+  { title: "Get link + owner token", description: "Response includes link, ownerLink, ownerToken, and hosting metadata" },
+  { title: "Share the link", description: "Copy the returned link exactly; do not construct it from namespace or ID" },
 ]} />
+
+REST creation defaults to `ns=public`, unlike MCP's unlisted default. These examples explicitly select `public`; use a custom namespace for unlisted content. Password-protected content remains excluded from gallery/search. TTL is 1–30 days, default 15.
 
 **Publish HTML:**
 
 ```bash
-curl -X POST https://brewpage.app/api/html \
+curl -X POST 'https://brewpage.app/api/html?ns=public&format=html' \
   -H "Content-Type: application/json" \
-  -d '{"content":"<h1>Hello World</h1>","format":"HTML"}'
+  -d '{"content":"<h1>Hello World</h1>"}'
 ```
 
 **Publish Markdown:**
 
 ```bash
-curl -X POST https://brewpage.app/api/html \
+curl -X POST 'https://brewpage.app/api/html?ns=public&format=markdown' \
   -H "Content-Type: application/json" \
-  -d '{"content":"# My Notes\n\nMarkdown is **auto-rendered**.","format":"MARKDOWN"}'
+  -d '{"content":"# My Notes\n\nMarkdown is **auto-rendered**."}'
 ```
 
 **Upload a file:**
 
 ```bash
-curl -X POST https://brewpage.app/api/files/uploads \
-  -F "namespace=assets" \
+curl -X POST 'https://brewpage.app/api/files?ns=public' \
   -F "file=@image.png"
 ```
 
-**Response:**
+**Illustrative NEW public Promotion response (additional fields omitted):**
 
 ```json
 {
-  "namespace": "demo",
+  "namespace": "public",
   "id": "aBcDeFgHiJ",
-  "url": "https://brewpage.app/demo/aBcDeFgHiJ",
-  "shortUrl": "https://brewpage.app/s/xYz123",
-  "ownerToken": "tok_abc123..."
+  "link": "https://brewpage.app/public/aBcDeFgHiJ",
+  "ownerLink": "https://brewpage.app/api/html/public/aBcDeFgHiJ",
+  "ownerToken": "tok_abc123...",
+  "routingCohort": "new-v1",
+  "deliveryMode": "path",
+  "hostingVersion": 1
 }
 ```
 
 > **Save your `ownerToken`!** You need it to update or delete content later. It cannot be recovered.
+
+NEW public non-sites default to Promotion (`path`) and may choose Dedicated subdomain with `X-Delivery-Mode: subdomain`. NEW sites and non-public content require Dedicated subdomain; each site bundle has one publication-specific host with native paths and 404 responses for missing files. Use returned links including root slashes. NEW protected links stay clean: browser readers unlock through the trusted gateway; API reads use `X-Password`. OLD publications retain their existing links and behavior, including when creation reuses an existing winner. See the [MCP hosting guide](/brewpage-openapi/mcp-server/#visibility-and-delivery) for versioned owner changes.
 
 ---
 
@@ -113,19 +121,19 @@ curl -X POST https://brewpage.app/api/files/uploads \
 **Store key-value data:**
 
 ```bash
-curl -X PUT https://brewpage.app/api/kv/myapp/config/theme \
+curl -X POST 'https://brewpage.app/api/kv?ns=public' \
   -H "Content-Type: application/json" \
-  -d '{"value": "dark"}'
-
-curl https://brewpage.app/api/kv/myapp/config/theme
+  -d '{"key":"theme","value":"dark"}'
 ```
+
+Read with `GET /api/kv/{namespace}/{id}/theme` using the returned identity. Updates use `PUT` on that route with `X-Owner-Token` and `{"value":"light"}`.
 
 **Store JSON document:**
 
 ```bash
-curl -X POST https://brewpage.app/api/json/myapp/users \
+curl -X POST 'https://brewpage.app/api/json?ns=public' \
   -H "Content-Type: application/json" \
-  -d '{"document":{"name":"Alice","role":"admin"}}'
+  -d '{"name":"Alice","role":"admin"}'
 ```
 
 **Platform stats:**
@@ -154,4 +162,3 @@ curl https://brewpage.app/api/stats
 | **Claude Skill** | [brewpage-publish](https://github.com/kochetkov-ma/claude-brewcode/tree/main/skills/brewpage-publish) |
 | **Skill Docs** | [doc-claude.brewcode.app](https://doc-claude.brewcode.app/brewdoc/brewpage/) |
 | **Brewcode Plugin** | [claude-brewcode](https://github.com/kochetkov-ma/claude-brewcode) |
-

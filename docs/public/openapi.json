@@ -2,9 +2,9 @@
   "openapi": "3.1.0",
   "info": {
     "title": "BrewPage API",
-    "version": "1.57.2",
+    "version": "1.101.0",
     "termsOfService": "https://brewpage.app/terms",
-    "description": "REST API for BrewPage — HTML/KV/JSON/file hosting platform. Publish and manage web content, key-value data,\nJSON documents, and files with short URLs, password protection, and real-time statistics.\n\n## Namespaces — READ BEFORE PUBLISHING\n\n**WARNING:** If you DO NOT pass `?ns=...`, your content goes into the namespace LITERALLY NAMED `public`\n— a SHARED, WORLDWIDE-DISCOVERABLE namespace. Anything stored in `public` WITHOUT a password:\n\n- is listed on the **brewpage.app HOMEPAGE GALLERY**\n- is returned by `GET /api/gallery` (paginated, full-text search over title/tags)\n- is indexable by search engines (sitemap + meta tags)\n- can be browsed by anyone — including LLM crawlers\n\n**If you do NOT want your content on the public homepage, you MUST pass a CUSTOM NAMESPACE**\n(e.g. `?ns=myproject-2026`) and/or set a password via `X-Password`. Only then will the item\nbe excluded from `/api/gallery`. The direct short URL `/{ns}/{id}` remains reachable by anyone\nwho knows it, regardless of namespace choice.\n\n- **DEFAULT** (when `ns` is omitted): `public` ← SHARED, LISTED ON HOMEPAGE\n- **CUSTOM**: any `[a-z0-9-]{3,32}` — auto-created on first use, NOT shown in gallery\n- **Collision** on `ns+id`: server returns `409 Conflict`; retry with a different `id` or omit `id`\n\n## TTL\n\n`ttl_days` applies to html, markdown, json, kv, files, and sites. Default `15`, allowed range `1..30`\n(max `30`). Resources auto-delete after expiry.\n\n## Short URL GET resolvers\n\nEvery short-URL GET resolver (HTML, markdown, JSON, KV, file, site) returns the current view counter in the\n`X-Views: <integer>` response header.\n\n## File serving\n\nFile responses support HTTP Range requests (`Accept-Ranges: bytes`, `206 Partial Content`), carry an `ETag`\nheader, and are cached with `Cache-Control: public, max-age=3600`.\n\nAllowed file extensions include (non-exhaustive): html, md, json, txt, css, js, jsx, mjs, ts, tsx,\nplus images, audio, and video types permitted by platform limits.\n\n## Required Headers\n\n`User-Agent` is REQUIRED on every request. Format: `AgentName/version` (e.g. `Claude/4.5`, `Codex/1.0`,\n`MyBot/2.1`). Requests without User-Agent may be rate-limited or rejected. Identify yourself truthfully —\nspoofed or anonymous UAs may be flagged.\n\n## Access Logging\n\nEvery API request (both PUBLISH and READ) is persisted server-side into the `access_events` table:\nclient IP, User-Agent, HTTP method + path + query, response status, request duration (ms), UTC timestamp.\nRetention: 30 days (nightly cleanup). Admin-only endpoints: `GET /api/admin/access` (paginated log with\nfilters) and `GET /api/admin/access/stats` (aggregates). Only static assets are excluded from logging;\nevery API POST/GET/PUT/DELETE is recorded.\n",
+    "description": "REST API for BrewPage — HTML/KV/JSON/file hosting platform. Publish and manage web content, key-value data,\nJSON documents, and files with short URLs, password protection, and real-time statistics.\n\n## Namespaces — READ BEFORE PUBLISHING\n\n**WARNING:** If you DO NOT pass `?ns=...`, your content goes into the namespace LITERALLY NAMED `public`\n— a SHARED, WORLDWIDE-DISCOVERABLE namespace. Anything stored in `public` WITHOUT a password:\n\n- is listed on the **brewpage.app HOMEPAGE GALLERY**\n- is returned by `GET /api/gallery` (paginated, full-text search over title/tags)\n- is indexable by search engines (sitemap + meta tags)\n- can be browsed by anyone — including LLM crawlers\n\n**If you do NOT want your content on the public homepage, you MUST pass a CUSTOM NAMESPACE**\n(e.g. `?ns=myproject-2026`) and/or set a password via `X-Password`. Only then will the item\nbe excluded from `/api/gallery`. The direct short URL `/{ns}/{id}` remains reachable by anyone\nwho knows it, regardless of namespace choice.\n\n- **DEFAULT** (when `ns` is omitted): `public` ← SHARED, LISTED ON HOMEPAGE\n- **CUSTOM**: any `[a-z0-9-]{1,32}` — auto-created on first use, NOT shown in gallery\n- **Collision** on `ns+id`: server returns `409 Conflict`; retry with a different `id` or omit `id`\n\n## Publication delivery\n\nPublications created in the NEW routing cohort (`new-v1`) support `X-Delivery-Mode: path|subdomain`\non HTML/Markdown, site, file, JSON and KV creation. Sites always require `subdomain`; non-public\nnon-sites also require `subdomain`. Explicit `path` for either is rejected with 400. All remaining\npublic non-sites default to `path` and may choose `subdomain`, including password-protected resources.\nNamespace, password protection and delivery mode are independent. No routing metadata means OLD;\nexisting publications keep their historical URLs, rendering and access behavior.\n\nUse the returned `link` as the canonical share URL and `ownerLink` for the existing apex API.\nDedicated hosts use a separate random lowercase-alphanumeric host identity, not a lowercased resource ID:\ne.g. resource `AbCdEf1234` may have `https://a1b2c3d4e5.brewpage.app/`. Content-host roots have a trailing\nslash; public hosts omit `public`. Namespace-bearing hosts disclose the namespace and do not grant access.\nClients must use returned URLs, not construct hostnames. NEW native content hosts serve only their bound\npublication: HTML/site entry at `/`, native site paths, file/JSON root with its original MIME semantics,\nand KV list at `/` with encoded key paths. Missing site files return 404; there is no SPA fallback.\n\nHosting metadata is flattened into create/update responses and HTML settings, never inserted into uploaded\nJSON or KV payloads. It reports the actual returned resource, including any existing winner reused by HTML,\nfile or site creation. A requested mode does not change a reused winner's cohort, URL or effective mode.\n`requestedDeliveryMode` is null when omitted; `deliveryModeMatched` is null without a requested or effective\nmode. OLD effective-mode, management-link and hosting-version values are null when metadata is returned.\nOLD responses may omit the additive metadata entirely. JSON and KV creation do not deduplicate.\n\nMode changes for NEW public non-sites use `PATCH /api/{type}/{ns}/{id}/hosting` with the owner-token header\nand an integer `expectedVersion`. Ordinary content PUT preserves hosting and rejects a supplied delivery\nmode for NEW publications. Sites and non-public resources are locked; OLD resources cannot switch modes.\nHost identity survives updates and mode changes, and is permanently retired on deletion or expiry.\n\nShare NEW protected publications using the clean returned `link`. Browser password entry occurs through\ntrusted top-level navigation on a separate unlock gateway, followed by an expiring resource-scoped,\nhost-only reader session. Never put passwords or owner tokens in NEW share URLs. Owner authorization\nremains header-only on the apex. Existing API and OLD query-password/header parsing remain compatible;\nthis does not make query passwords the NEW browser unlock mechanism.\n\nOwners may revoke reader access to a NEW protected publication through\n`POST /api/{type}/{ns}/{id}/access/revoke`, authenticated by X-Owner-Token with no request body.\nThis invalidates only that publication's grants and pending unlock handoffs; readers must unlock again.\nHosting version, host identity, stable browser sessions and grants for other publications are preserved.\nRevocation cannot erase copies already delivered to a reader and does not change the password.\n\nNEW subdomain-mode alternate apex short links redirect to the canonical content host. NEW active-content\nAPI reads are inert/download responses: HTML is an attachment in subdomain mode; active SVG/XML/scripts\nare attachments. NEW path-mode HTML retains opaque-origin sandbox CSP, including API reads. `raw`/`inline`\ndo not bypass these protections. OLD executable apex routes retain historical behavior. NEW content hosts\ncarry `X-Robots-Tag: noindex`, `Origin-Agent-Cluster: ?1`, MIME/nosniff and no-store headers. Native HTML may\nrun author scripts on its dedicated origin; sibling origins do not prevent all Domain-cookie interference.\n\n## TTL\n\n`ttl_days` applies to html, markdown, json, kv, files, and sites. Default `15`, allowed range `1..30`\n(max `30`). Resources auto-delete after expiry.\n\n## Short URL GET resolvers\n\nEvery short-URL GET resolver (HTML, markdown, JSON, KV, file, site) returns the current view counter in the\n`X-Views: <integer>` response header.\n\n## File serving\n\nFile responses support HTTP Range requests (`Accept-Ranges: bytes`, `206 Partial Content`), carry an `ETag`\nheader, and are cached with `Cache-Control: public, max-age=3600`.\n\nAllowed file extensions include (non-exhaustive): html, md, json, txt, css, js, jsx, mjs, ts, tsx,\nplus images, audio, and video types permitted by platform limits.\n\n## Required Headers\n\n`User-Agent` is REQUIRED on every request. Format: `AgentName/version` (e.g. `Claude/4.5`, `Codex/1.0`,\n`MyBot/2.1`). Requests without User-Agent may be rate-limited or rejected. Identify yourself truthfully —\nspoofed or anonymous UAs may be flagged.\n\n## Access Logging\n\nEvery API request (both PUBLISH and READ) is persisted server-side into the `access_events` table:\nclient IP, User-Agent, HTTP method + path + query, response status, request duration (ms), UTC timestamp.\nRetention: 30 days (nightly cleanup). Admin-only endpoints: `GET /api/admin/access` (paginated log with\nfilters) and `GET /api/admin/access/stats` (aggregates). Only static assets are excluded from logging;\nevery API POST/GET/PUT/DELETE is recorded.\n",
     "contact": {
       "name": "BrewPage",
       "url": "https://brewpage.app"
@@ -51,7 +51,7 @@
     },
     {
       "name": "KV",
-      "description": "Key-Value store with up to 1000 keys per namespace"
+      "description": "Key-Value store with up to 1000 keys per store"
     },
     {
       "name": "Files",
@@ -59,7 +59,7 @@
     },
     {
       "name": "Sites",
-      "description": "Multi-file HTML site hosting via ZIP or folder upload (up to 5 MB per file, 1000 files per site)"
+      "description": "Multi-file HTML site hosting via ZIP or folder upload (up to 5 MB per file, 100 files per site)"
     },
     {
       "name": "Reports",
@@ -72,9 +72,375 @@
     {
       "name": "Namespace",
       "description": "Fresh, collision-free namespace suggestions"
+    },
+    {
+      "name": "Owner",
+      "description": "Owner token minting for claiming and updating your own resources"
+    },
+    {
+      "name": "Hosting Management",
+      "description": "Owner-only publication hosting settings and reader access revocation"
     }
   ],
   "paths": {
+    "/api/{type}/{ns}/{id}/access/revoke": {
+      "post": {
+        "tags": [
+          "Hosting Management"
+        ],
+        "summary": "Revoke reader access to a NEW protected publication",
+        "description": "Requires the matching X-Owner-Token header and no request body. Supports all five resource types.\nOLD and unprotected resources return 400 ACCESS_REVOKE_UNAVAILABLE; missing or wrong owner tokens\nreturn 403 OWNER_AUTHORIZATION_FAILED; unavailable or expired resources return 404 PUBLICATION_UNAVAILABLE.\nInvalidates the target publication's reader grants and pending unlock handoffs atomically; readers\nmust unlock again. Hosting version, host identity, stable browser sessions and other publication grants\nare unchanged. This operation does not change the password or erase already delivered copies.\n",
+        "operationId": "revokeReaderAccess",
+        "parameters": [
+          {
+            "name": "type",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "html",
+                "files",
+                "json",
+                "kv",
+                "sites"
+              ]
+            }
+          },
+          {
+            "name": "ns",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-z0-9-]{1,32}$"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9]{10}$"
+            }
+          },
+          {
+            "name": "X-Owner-Token",
+            "in": "header",
+            "required": false,
+            "description": "Matching owner token; absent or wrong token returns 403. Query credentials are not accepted.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Target publication's reader access revoked",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "private, no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccessRevokeResponse"
+                },
+                "example": {
+                  "revoked": true
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "OLD or unprotected publication (ACCESS_REVOKE_UNAVAILABLE)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing or wrong owner-token header (OWNER_AUTHORIZATION_FAILED)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Publication unavailable or expired (PUBLICATION_UNAVAILABLE)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/{type}/{ns}/{id}/hosting": {
+      "get": {
+        "tags": [
+          "Hosting Management"
+        ],
+        "summary": "Read owner-only hosting settings",
+        "description": "Read-only summary for every publication type, including locked sites and OLD resources.\nOLD effective modes, managementLink and hostingVersion are null; modeLocked is true.\nRequires the matching X-Owner-Token header; no query credential alternative is accepted.\n",
+        "operationId": "getHosting",
+        "parameters": [
+          {
+            "name": "type",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "html",
+                "files",
+                "json",
+                "kv",
+                "sites"
+              ]
+            }
+          },
+          {
+            "name": "ns",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-z0-9-]{1,32}$"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9]{10}$"
+            }
+          },
+          {
+            "name": "X-Owner-Token",
+            "in": "header",
+            "required": false,
+            "description": "Matching owner token; absent or wrong token returns 403.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Hosting projection with explicit null values for OLD",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "private, no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HostingProjection"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing or wrong owner-token header",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Publication unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Hosting Management"
+        ],
+        "summary": "Change delivery mode for a NEW public non-site publication",
+        "description": "Requires the matching X-Owner-Token header; missing or wrong credentials return 403.\nOLD and non-public resources are locked (400); sites have no hosting PATCH route.\nexpectedVersion must match hostingVersion, even when the mode is unchanged (409 when stale).\nSelecting the current mode returns 200 without incrementing hostingVersion; a change increments it once.\nPassword protection does not lock a public non-site. Updates preserve the publication's host identity.\nDuring a hosting write pause, actual mode changes return 503; equal-mode no-ops remain available.\n",
+        "operationId": "updateHosting",
+        "parameters": [
+          {
+            "name": "type",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "html",
+                "files",
+                "json",
+                "kv"
+              ]
+            }
+          },
+          {
+            "name": "ns",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-z0-9-]{1,32}$"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9]{10}$"
+            }
+          },
+          {
+            "name": "X-Owner-Token",
+            "in": "header",
+            "required": false,
+            "description": "Matching owner token; absent or wrong token returns 403. Query credentials are not accepted.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HostingUpdateRequest"
+              },
+              "example": {
+                "deliveryMode": "subdomain",
+                "expectedVersion": 1
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Current hosting projection, including no-op updates",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "private, no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HostingProjection"
+                },
+                "example": {
+                  "link": "https://a1b2c3d4e5.brewpage.app/",
+                  "ownerLink": "https://brewpage.app/api/html/public/AbCdEf1234",
+                  "managementLink": "https://brewpage.app/manage/html/public/AbCdEf1234",
+                  "routingCohort": "new-v1",
+                  "deliveryMode": "subdomain",
+                  "requestedDeliveryMode": "subdomain",
+                  "effectiveDeliveryMode": "subdomain",
+                  "deliveryModeMatched": true,
+                  "namespace": "public",
+                  "access": "public",
+                  "modeLocked": false,
+                  "hostingVersion": 2
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid mode/version, or locked OLD/non-public resource",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing or wrong owner-token header",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Publication unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Stale expectedVersion; reload hosting metadata before retrying",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Hosting mode writes are temporarily paused (HOSTING_CREATION_PAUSED)",
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/kv/{ns}/{id}/{key}": {
       "get": {
         "tags": [
@@ -168,6 +534,9 @@
         "description": "Sets (creates or replaces) a key value while preserving the key short URL `/{ns}/{id}/{key}` —\nagents poll the same URL and see the latest value.\nTypical use: deploy-status counters, AI agent step state, current-config flags.\nMax 1000 keys per store. No version history: previous value is overwritten.\nRequires the owner token returned at creation.\n",
         "operationId": "upsertKey",
         "parameters": [
+          {
+            "$ref": "#/components/parameters/ContentUpdateDeliveryMode"
+          },
           {
             "name": "ns",
             "in": "path",
@@ -396,6 +765,9 @@
         "operationId": "update",
         "parameters": [
           {
+            "$ref": "#/components/parameters/ContentUpdateDeliveryMode"
+          },
+          {
             "name": "ns",
             "in": "path",
             "required": true,
@@ -517,7 +889,7 @@
           "HTML"
         ],
         "summary": "Get HTML page",
-        "description": "Returns rendered HTML content; password-protected pages require X-Password header or ?p= query param",
+        "description": "Returns HTML content; existing password header/query parsing remains supported.\nNEW subdomain-mode HTML is returned as an attachment with sandbox CSP, never executable apex HTML.\nNEW path-mode HTML retains opaque-origin sandbox CSP. OLD rendering remains unchanged.\n",
         "operationId": "getById_1",
         "parameters": [
           {
@@ -558,6 +930,17 @@
         "responses": {
           "200": {
             "description": "HTML content",
+            "headers": {
+              "Content-Disposition": {
+                "description": "NEW subdomain-mode HTML is an attachment; OLD serving remains unchanged.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Content-Security-Policy": {
+                "$ref": "#/components/headers/PublicationCsp"
+              }
+            },
             "content": {
               "*/*": {
                 "schema": {
@@ -596,6 +979,9 @@
         "description": "Replaces page content while preserving the short URL — share once, edit in place.\nThe link already shared stays valid; readers see the new content on next load.\nPrimary use cases: AI agents iterating on output, fixing typos in already-shared pages.\nImmutable on update: tags, password, format, filename, showTopBar — delete and recreate to change those.\nNo version history: previous content is overwritten. Requires the owner token returned at creation.\nAlso accepts raw text/* bodies — see /llms-full.txt.\n",
         "operationId": "update_1",
         "parameters": [
+          {
+            "$ref": "#/components/parameters/ContentUpdateDeliveryMode"
+          },
           {
             "name": "ns",
             "in": "path",
@@ -995,14 +1381,17 @@
         "operationId": "createStore",
         "parameters": [
           {
+            "$ref": "#/components/parameters/DeliveryMode"
+          },
+          {
             "name": "ns",
             "in": "query",
-            "description": "Namespace. Default: public. All namespaces are PUBLIC and indexable. Pages in 'public' without password appear in gallery. Custom namespace is created automatically. Format: [a-z0-9-]{3,32}. On ns+id collision the server returns 409 Conflict — retry with a different id or omit id to let the server generate one",
+            "description": "Namespace. Default: public. All namespaces are PUBLIC and indexable. Pages in 'public' without password appear in gallery. Custom namespace is created automatically. Format: [a-z0-9-]{1,32}. On ns+id collision the server returns 409 Conflict — retry with a different id or omit id to let the server generate one",
             "required": false,
             "schema": {
               "type": "string",
               "default": "public",
-              "pattern": "^[a-z0-9-]{3,32}$"
+              "pattern": "^[a-z0-9-]{1,32}$"
             }
           },
           {
@@ -1086,6 +1475,9 @@
                 }
               }
             }
+          },
+          "503": {
+            "$ref": "#/components/responses/HostingPaused"
           }
         }
       }
@@ -1144,14 +1536,17 @@
         "operationId": "create",
         "parameters": [
           {
+            "$ref": "#/components/parameters/DeliveryMode"
+          },
+          {
             "name": "ns",
             "in": "query",
-            "description": "Namespace. Default: public. All namespaces are PUBLIC and indexable. Pages in 'public' without password appear in gallery. Custom namespace is created automatically. Format: [a-z0-9-]{3,32}. On ns+id collision the server returns 409 Conflict — retry with a different id or omit id to let the server generate one",
+            "description": "Namespace. Default: public. All namespaces are PUBLIC and indexable. Pages in 'public' without password appear in gallery. Custom namespace is created automatically. Format: [a-z0-9-]{1,32}. On ns+id collision the server returns 409 Conflict — retry with a different id or omit id to let the server generate one",
             "required": false,
             "schema": {
               "type": "string",
               "default": "public",
-              "pattern": "^[a-z0-9-]{3,32}$"
+              "pattern": "^[a-z0-9-]{1,32}$"
             }
           },
           {
@@ -1235,6 +1630,9 @@
                 }
               }
             }
+          },
+          "503": {
+            "$ref": "#/components/responses/HostingPaused"
           }
         }
       }
@@ -1249,14 +1647,17 @@
         "operationId": "create_1",
         "parameters": [
           {
+            "$ref": "#/components/parameters/DeliveryMode"
+          },
+          {
             "name": "ns",
             "in": "query",
-            "description": "Namespace. Default: public. All namespaces are PUBLIC and indexable. Pages in 'public' without password appear in gallery. Custom namespace is created automatically. Format: [a-z0-9-]{3,32}. On ns+id collision the server returns 409 Conflict — retry with a different id or omit id to let the server generate one",
+            "description": "Namespace. Default: public. All namespaces are PUBLIC and indexable. Pages in 'public' without password appear in gallery. Custom namespace is created automatically. Format: [a-z0-9-]{1,32}. On ns+id collision the server returns 409 Conflict — retry with a different id or omit id to let the server generate one",
             "required": false,
             "schema": {
               "type": "string",
               "default": "public",
-              "pattern": "^[a-z0-9-]{3,32}$"
+              "pattern": "^[a-z0-9-]{1,32}$"
             }
           },
           {
@@ -1448,6 +1849,9 @@
                 }
               }
             }
+          },
+          "503": {
+            "$ref": "#/components/responses/HostingPaused"
           }
         }
       }
@@ -1502,18 +1906,21 @@
           "Files"
         ],
         "summary": "Upload file",
-        "description": "Stores a file via multipart upload and returns a download link. Only safe file types accepted. Reuse existing owner token to group entities under one owner",
+        "description": "Stores a file via multipart upload (part name `file`) and returns a download link. Only safe file types\naccepted. Size caps: 5 MB generic, video up to 20 MB, audio up to 5 MB. Up to 1000 files per namespace.\nReuse existing owner token to group entities under one owner.\n",
         "operationId": "upload",
         "parameters": [
           {
+            "$ref": "#/components/parameters/DeliveryMode"
+          },
+          {
             "name": "ns",
             "in": "query",
-            "description": "Namespace. Default: public. All namespaces are PUBLIC and indexable. Pages in 'public' without password appear in gallery. Custom namespace is created automatically. Format: [a-z0-9-]{3,32}. On ns+id collision the server returns 409 Conflict — retry with a different id or omit id to let the server generate one",
+            "description": "Namespace. Default: public. All namespaces are PUBLIC and indexable. Pages in 'public' without password appear in gallery. Custom namespace is created automatically. Format: [a-z0-9-]{1,32}. On ns+id collision the server returns 409 Conflict — retry with a different id or omit id to let the server generate one",
             "required": false,
             "schema": {
               "type": "string",
               "default": "public",
-              "pattern": "^[a-z0-9-]{3,32}$"
+              "pattern": "^[a-z0-9-]{1,32}$"
             }
           },
           {
@@ -1627,6 +2034,9 @@
                 }
               }
             }
+          },
+          "503": {
+            "$ref": "#/components/responses/HostingPaused"
           }
         }
       }
@@ -1637,7 +2047,7 @@
           "Short Links"
         ],
         "summary": "Resolve short URL",
-        "description": "Resolves a short URL to the underlying resource (HTML, markdown, JSON, KV, file, or site entry).\n\nThe `?raw=1` query parameter bypasses the SPA shell and streams raw resource bytes directly.\nRequired for browser-native consumers that cannot run the SPA wrapper — `<video src>`, `<audio src>`,\n`<iframe src>` for PDF, and any other embed that must receive the original Content-Type rather\nthan the SPA's HTML wrapper.\n\nResponse headers:\n- `X-Views: <integer>` — current view counter for this resource.\n- For file/site responses: `Accept-Ranges: bytes`, `ETag`, and `Cache-Control: public, max-age=3600`.\n  Range requests return `206 Partial Content`.\n- For HTML resolves: `X-Show-Top-Bar: true|false` — effective resolved value of `showTopBar`\n  (per-page override, else server default `app.ui.show-top-bar-default`).\n",
+        "description": "Resolves a short URL to the underlying resource (HTML, markdown, JSON, KV, file, or site entry).\n\nFor OLD publications, `?raw=1` bypasses the SPA shell and streams raw resource bytes directly.\nRequired for browser-native consumers that cannot run the SPA wrapper — `<video src>`, `<audio src>`,\n`<iframe src>` for PDF, and any other embed that must receive the original Content-Type rather\nthan the SPA's HTML wrapper.\n\nNEW subdomain-mode publications redirect to their canonical host with 302, preserving safe query\nparameters and native subpaths while stripping password/owner/admin credentials. Browser password\nentry uses a clean link and trusted unlock gateway. NEW path-mode active HTML retains sandbox CSP;\nraw/inline flags never remove that policy. NEW responses use private, no-store caching.\n\nResponse headers:\n- `X-Views: <integer>` — current view counter for this resource.\n- For OLD file/site responses: `Accept-Ranges: bytes`, `ETag`, and `Cache-Control: public, max-age=3600`.\n  Range requests return `206 Partial Content`.\n- For HTML resolves: `X-Show-Top-Bar: true|false` — effective resolved value of `showTopBar`\n  (per-page override, else server default `app.ui.show-top-bar-default`).\n",
         "operationId": "resolve",
         "parameters": [
           {
@@ -1686,7 +2096,7 @@
           {
             "name": "raw",
             "in": "query",
-            "description": "Bypass the SPA wrapper and stream raw resource bytes directly with the original Content-Type.\nRequired for `<video src>`, `<audio src>`, `<iframe src>` for PDF, and other browser-native embeds\nthat cannot run the SPA shell.\n",
+            "description": "Request native resource bytes with the original Content-Type. OLD routes bypass the SPA wrapper;\nNEW subdomain routes redirect and NEW path routes retain sandbox/attachment protections.\nRequired for `<video src>`, `<audio src>`, `<iframe src>` for PDF, and other browser-native embeds\nthat cannot run the SPA shell.\n",
             "required": false,
             "schema": {
               "type": "boolean"
@@ -1697,6 +2107,18 @@
           "200": {
             "description": "OK",
             "headers": {
+              "X-Routing-Cohort": {
+                "$ref": "#/components/headers/RoutingCohort"
+              },
+              "X-Delivery-Mode": {
+                "$ref": "#/components/headers/EffectiveDeliveryMode"
+              },
+              "X-Canonical-Link": {
+                "$ref": "#/components/headers/CanonicalLink"
+              },
+              "Content-Security-Policy": {
+                "$ref": "#/components/headers/PublicationCsp"
+              },
               "X-Views": {
                 "description": "Current view counter for the resolved resource",
                 "schema": {
@@ -1717,7 +2139,7 @@
                 }
               },
               "Cache-Control": {
-                "description": "Present for file/site responses: public, max-age=3600",
+                "description": "OLD file/site responses: public, max-age=3600; NEW responses: private, no-store",
                 "schema": {
                   "type": "string"
                 }
@@ -1769,8 +2191,31 @@
               }
             }
           },
+          "302": {
+            "$ref": "#/components/responses/PublicationRedirect"
+          },
+          "404": {
+            "description": "Page not found or expired (not yet cleaned up)",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
           "409": {
             "description": "Conflict — ns+id already exists. Retry with a different id or omit id to let the server generate one"
+          },
+          "410": {
+            "description": "Gone — the page existed and is now permanently removed (deleted by its owner or\nexpired and cleaned up). Returned for `public/` namespace resources only, so that\nsearch engines de-index them faster than a 404. Non-public namespaces always return\n404 to avoid a private-existence oracle.\n",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           }
         }
       }
@@ -1781,7 +2226,7 @@
           "Short Links"
         ],
         "summary": "Resolve short URL with sub-path",
-        "description": "Resolves a short URL with a sub-path (e.g. entry file within an uploaded site).\n\nResponse headers:\n- `X-Views: <integer>` — current view counter for this resource.\n- For file/site responses: `Accept-Ranges: bytes`, `ETag`, and `Cache-Control: public, max-age=3600`.\n  Range requests return `206 Partial Content`.\n",
+        "description": "Resolves a short URL with a sub-path (e.g. entry file within an uploaded site).\nNEW subdomain-mode sites and KV resources redirect with 302 to the canonical host's encoded subpath.\nSafe query parameters remain; password/owner/admin credentials are stripped. Missing native files return 404.\n\nResponse headers:\n- `X-Views: <integer>` — current view counter for this resource.\n- For OLD file/site responses: `Accept-Ranges: bytes`, `ETag`, and `Cache-Control: public, max-age=3600`.\n  Range requests return `206 Partial Content`.\n",
         "operationId": "resolveWithSub",
         "parameters": [
           {
@@ -1860,7 +2305,7 @@
                 }
               },
               "Cache-Control": {
-                "description": "Present for file/site responses: public, max-age=3600",
+                "description": "OLD file/site responses: public, max-age=3600; NEW responses: private, no-store",
                 "schema": {
                   "type": "string"
                 }
@@ -1898,6 +2343,29 @@
                 "schema": {
                   "type": "string",
                   "format": "binary"
+                }
+              }
+            }
+          },
+          "302": {
+            "$ref": "#/components/responses/PublicationRedirect"
+          },
+          "404": {
+            "description": "Page or sub-path not found or expired (not yet cleaned up)",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "Gone — the page existed and is now permanently removed (deleted by its owner or\nexpired and cleaned up). Returned for `public/` namespace resources only, so that\nsearch engines de-index them faster than a 404. Non-public namespaces always return\n404 to avoid a private-existence oracle.\n",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "string"
                 }
               }
             }
@@ -2220,7 +2688,7 @@
           "Files"
         ],
         "summary": "Download file",
-        "description": "Returns file inline for previewable types (images, PDF, media) or as attachment. Add ?dl=1 to force download.",
+        "description": "Returns file inline for previewable types (images, PDF, media) or as attachment. Add ?dl=1 to force download.\nNEW active HTML/SVG/XML/script API reads cannot execute on the apex: subdomain-mode content is an\nattachment, and path-mode HTML has opaque-origin sandbox CSP. OLD serving remains unchanged.\n",
         "operationId": "download",
         "parameters": [
           {
@@ -2270,6 +2738,17 @@
         "responses": {
           "200": {
             "description": "File content",
+            "headers": {
+              "Content-Disposition": {
+                "description": "NEW subdomain-mode HTML and NEW SVG/XML/script content are attachments; other types retain file semantics.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Content-Security-Policy": {
+                "$ref": "#/components/headers/PublicationCsp"
+              }
+            },
             "content": {
               "*/*": {
                 "schema": {
@@ -2359,6 +2838,9 @@
         "description": "Upload a multi-file HTML site as a ZIP archive or as individual files with paths. Returns a link to the published site",
         "operationId": "uploadSite",
         "parameters": [
+          {
+            "$ref": "#/components/parameters/DeliveryMode"
+          },
           {
             "name": "ns",
             "in": "query",
@@ -2489,16 +2971,25 @@
                   "site_created": {
                     "summary": "Successful site upload response",
                     "value": {
-                      "id": "a1b2c3d4e5",
-                      "namespace": "docs",
+                      "id": "AbCdEf1234",
+                      "namespace": "public",
                       "entryFile": "index.html",
-                      "link": "https://brewpage.app/docs/a1b2c3d4e5",
-                      "ownerLink": "https://brewpage.app/api/sites/docs/a1b2c3d4e5",
+                      "link": "https://a1b2c3d4e5.brewpage.app/",
+                      "ownerLink": "https://brewpage.app/api/sites/public/AbCdEf1234",
                       "fileCount": 4,
                       "totalSizeBytes": 24576,
                       "expiresAt": "2026-05-16T00:00:00Z",
                       "tags": [],
-                      "ownerToken": "9f3a1c7d2e4b8a056f1234567890abcd"
+                      "ownerToken": "9f3a1c7d2e4b8a056f1234567890abcd",
+                      "managementLink": "https://brewpage.app/manage/sites/public/AbCdEf1234",
+                      "routingCohort": "new-v1",
+                      "deliveryMode": "subdomain",
+                      "requestedDeliveryMode": null,
+                      "effectiveDeliveryMode": "subdomain",
+                      "deliveryModeMatched": null,
+                      "access": "public",
+                      "modeLocked": true,
+                      "hostingVersion": 1
                     }
                   }
                 }
@@ -2544,6 +3035,9 @@
                 }
               }
             }
+          },
+          "503": {
+            "$ref": "#/components/responses/HostingPaused"
           }
         }
       }
@@ -2606,6 +3100,195 @@
           },
           "404": {
             "description": "Site not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Sites"
+        ],
+        "summary": "Republish site (full replace)",
+        "description": "Republish a site in place (full replace) at the same URL. The uploaded bundle becomes the complete\nnew file set — files absent from it are removed, new files added, matching files overwritten.\nRequires the owner token.\n\nThe owner token is REQUIRED: a missing `X-Owner-Token` header returns 403 (same as a wrong token).\nUpload modes mirror `POST /api/sites`: send a ZIP `archive`, or parallel `files[]` + `paths[]` arrays.\n",
+        "operationId": "republishSite",
+        "parameters": [
+          {
+            "name": "ns",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "tags",
+            "in": "query",
+            "description": "Comma-separated tags (replaces existing tags)",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "ttl",
+            "in": "query",
+            "description": "Time to live in days (1-30, default 15, max 30). Site auto-deletes after expiry",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 30,
+              "default": 15
+            }
+          },
+          {
+            "name": "entry",
+            "in": "query",
+            "description": "Entry file path override (default: auto-detect index.html)",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Owner-Token",
+            "in": "header",
+            "description": "Owner token returned at creation. Required for republish",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "archive": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "ZIP archive containing the complete new site file set"
+                  },
+                  "files": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "format": "binary"
+                    },
+                    "description": "Individual files (alternative to archive)"
+                  },
+                  "paths": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "Relative paths for each file (must match files order)"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Site republished (full replace)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SiteUpdateResponse"
+                },
+                "examples": {
+                  "site_updated": {
+                    "summary": "Successful site republish response",
+                    "value": {
+                      "id": "a1b2c3d4e5",
+                      "namespace": "docs",
+                      "entryFile": "index.html",
+                      "link": "https://brewpage.app/docs/a1b2c3d4e5",
+                      "ownerLink": "https://brewpage.app/api/sites/docs/a1b2c3d4e5",
+                      "fileCount": 5,
+                      "totalSizeBytes": 30720,
+                      "expiresAt": "2026-06-23T00:00:00Z",
+                      "tags": [],
+                      "result": {
+                        "code": "success",
+                        "action": "updated"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Empty bundle, no HTML files, limits exceeded, or invalid ttl",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing or wrong owner token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Site not found or expired",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "Site is gone (soft-hidden)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Unsupported file type in archive",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded",
             "content": {
               "application/json": {
                 "schema": {
@@ -2683,7 +3366,7 @@
           "Sites"
         ],
         "summary": "Serve site file",
-        "description": "Serves an individual file from the site with correct content type",
+        "description": "Serves an individual file from the site with correct content type.\nNEW active HTML/SVG/XML/script content is returned as an attachment with sandbox CSP and no-store.\nNative browser site navigation uses the returned dedicated-host link; OLD serving remains unchanged.\n",
         "operationId": "serveSiteFile",
         "parameters": [
           {
@@ -2733,6 +3416,23 @@
         "responses": {
           "200": {
             "description": "File content",
+            "headers": {
+              "Content-Disposition": {
+                "description": "NEW active site content is an attachment; OLD file serving remains unchanged.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Content-Security-Policy": {
+                "$ref": "#/components/headers/PublicationCsp"
+              },
+              "Cache-Control": {
+                "description": "NEW active site content uses private, no-store; OLD caching remains unchanged.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
             "content": {
               "*/*": {
                 "schema": {
@@ -3184,6 +3884,1366 @@
         }
       }
     },
+    "/api/admin/owners": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "List or search owners",
+        "description": "Lists every owner token (hashed identifier) along with per-resource counts (HTML, KV stores, JSON\ndocuments, files, sites), the first-seen timestamp, and the owner's tier/label. Metadata only — no\nstored content is returned. Requires admin password.\n\nOptional `search` narrows the result: a 32-character base62 value is treated as a raw owner token and\nresolved to its `owner_id`; any other value is matched as an `owner_id` prefix.\n",
+        "operationId": "listOwners",
+        "parameters": [
+          {
+            "name": "X-Admin-Password",
+            "in": "header",
+            "description": "Admin password",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "description": "Optional owner filter. A 32-character base62 string is resolved as a raw owner token to its\nowner_id; any other value is matched as an owner_id prefix.\n",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Owners list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/OwnerInfo"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Missing admin password header",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong admin password",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/owners/resolve": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Resolve owner token to owner ID",
+        "description": "Resolves a raw owner token to its hashed `ownerId`. Lets an operator look up the owner record that\nbacks a token shared by a user (e.g. for a tier-promotion request) without exposing the hashing.\nMetadata only. Requires admin password.\n",
+        "operationId": "resolveOwner",
+        "parameters": [
+          {
+            "name": "X-Admin-Password",
+            "in": "header",
+            "description": "Admin password",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "token",
+            "in": "query",
+            "description": "Raw owner token to resolve",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resolved owner ID",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OwnerResolveResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Missing admin password header or missing token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong admin password",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/owners/{ownerId}/promote": {
+      "post": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Promote owner tier",
+        "description": "Sets an owner's tier. `PRIVILEGED` raises the owner's maximum TTL ceiling (up to 730 days) and may\nattach an operator label/note; `DEFAULT` keeps standard limits. Metadata only. Requires admin password.\n",
+        "operationId": "promoteOwner",
+        "parameters": [
+          {
+            "name": "ownerId",
+            "in": "path",
+            "description": "Hashed owner identifier",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Admin-Password",
+            "in": "header",
+            "description": "Admin password",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OwnerPromoteRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Owner tier updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OwnerTierResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Missing admin password header, invalid tier, or maxTtlDays out of range (PRIVILEGED ceiling 730)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong admin password",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Owner not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/owners/{ownerId}/demote": {
+      "post": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Demote owner to default tier",
+        "description": "Reverts an owner to the `DEFAULT` tier and standard limits. Idempotent — demoting an already-default\nowner succeeds with no change. Metadata only. Requires admin password.\n",
+        "operationId": "demoteOwner",
+        "parameters": [
+          {
+            "name": "ownerId",
+            "in": "path",
+            "description": "Hashed owner identifier",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Admin-Password",
+            "in": "header",
+            "description": "Admin password",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Owner reverted to DEFAULT tier (or already default)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OwnerTierResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Missing admin password header",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong admin password",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/owners/{ownerId}": {
+      "delete": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Delete owner",
+        "description": "Deletes an owner and all resources created under that owner token. Requires admin password.\n",
+        "operationId": "deleteOwner",
+        "parameters": [
+          {
+            "name": "ownerId",
+            "in": "path",
+            "description": "Hashed owner identifier",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Admin-Password",
+            "in": "header",
+            "description": "Admin password",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Owner deleted"
+          },
+          "400": {
+            "description": "Missing admin password header",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong admin password",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Owner not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/stats": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Platform admin stats",
+        "description": "Aggregate platform counts (total HTML pages, KV entries, JSON documents, files, sites, unique owners)\nplus a per-owner breakdown. Metadata only. Requires admin password.\n",
+        "operationId": "adminStats",
+        "parameters": [
+          {
+            "name": "X-Admin-Password",
+            "in": "header",
+            "description": "Admin password",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Aggregate admin stats",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminStatsResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Missing admin password header",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong admin password",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/blocklist": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "List blocklist entries",
+        "description": "Lists IP / User-Agent blocklist entries (abuse mitigation). Metadata only — IPs, UA patterns, reason,\ntimestamps, and active flag. Requires admin password.\n",
+        "operationId": "listBlocklist",
+        "parameters": [
+          {
+            "name": "X-Admin-Password",
+            "in": "header",
+            "description": "Admin password",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "active",
+            "in": "query",
+            "description": "Filter by active flag. When omitted, defaults to active-only unless `includeInactive=true`",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "description": "Filter by entry type",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "includeInactive",
+            "in": "query",
+            "description": "Include expired/inactive entries when no explicit `active` filter is given",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Maximum number of entries to return (clamped to 1..1000)",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 100
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "description": "Offset into the result set for pagination",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Blocklist entries",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/BlocklistEntryResponse"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Missing admin password header",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong admin password",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Add blocklist entry",
+        "description": "Adds an IP and/or User-Agent pattern to the abuse blocklist with an optional ISO-8601 duration\n(e.g. `PT1H`, `P1D`). At least one of `ip` or `uaPattern` is required. Requires admin password.\n",
+        "operationId": "addBlocklistEntry",
+        "parameters": [
+          {
+            "name": "X-Admin-Password",
+            "in": "header",
+            "description": "Admin password",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BlocklistEntryRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Blocklist entry created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BlocklistEntryResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request or missing admin password header",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong admin password",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/blocklist/{id}": {
+      "delete": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Remove blocklist entry",
+        "description": "Removes a blocklist entry by numeric ID. Requires admin password.",
+        "operationId": "deleteBlocklistEntry",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Numeric blocklist entry ID",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "X-Admin-Password",
+            "in": "header",
+            "description": "Admin password",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Entry removed"
+          },
+          "400": {
+            "description": "Missing admin password header",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong admin password",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Entry not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/llm-config": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Get content-protection configuration",
+        "description": "Returns the current content-protection (automated scanner) configuration as a masked snapshot.\nSensitive credentials are never returned in clear text. Response shape is intentionally\nunspecified here as it covers internal protection settings. Requires admin password.\n",
+        "operationId": "getLlmConfig",
+        "parameters": [
+          {
+            "name": "X-Admin-Password",
+            "in": "header",
+            "description": "Admin password",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Masked configuration snapshot"
+          },
+          "400": {
+            "description": "Missing admin password header",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong admin password",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Update content-protection configuration",
+        "description": "Applies a partial update to the content-protection configuration and returns the new masked\nsnapshot. Outbound endpoint and timeout are configured via deployment environment only and\ncannot be changed through this endpoint. Requires admin password.\n",
+        "operationId": "updateLlmConfig",
+        "parameters": [
+          {
+            "name": "X-Admin-Password",
+            "in": "header",
+            "description": "Admin password",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "Partial configuration patch. Internal — shape omitted from the public contract.",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated masked configuration snapshot"
+          },
+          "400": {
+            "description": "Empty patch or missing admin password header",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong admin password",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/llm-config/rollback-prompt": {
+      "post": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Roll back content-protection prompt",
+        "description": "Restores the previously stored content-protection prompt and returns the new masked snapshot.\nReturns 409 when there is no previous prompt to restore. Requires admin password.\n",
+        "operationId": "rollbackLlmConfigPrompt",
+        "parameters": [
+          {
+            "name": "X-Admin-Password",
+            "in": "header",
+            "description": "Admin password",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Updated masked configuration snapshot"
+          },
+          "400": {
+            "description": "Missing admin password header",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong admin password",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "No previous prompt to roll back to",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/publications": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "List publications (admin)",
+        "description": "Paged administrative listing of published resources with their review state. Metadata only — type,\nnamespace, ID, timestamps, and review state; no stored content is returned. Internal review fields\nare omitted from the public contract. Requires admin password.\n",
+        "operationId": "listPublications",
+        "parameters": [
+          {
+            "name": "X-Admin-Password",
+            "in": "header",
+            "description": "Admin password",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "description": "Filter by resource type",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "namespace",
+            "in": "query",
+            "description": "Filter by exact namespace",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "in": "query",
+            "description": "Filter by resource ID",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Page size (clamped to 1..200)",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 50
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "description": "Paging offset (clamped to 0..10000)",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Paged publications list"
+          },
+          "400": {
+            "description": "Missing admin password header",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong admin password",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/publications/rescan": {
+      "post": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Re-queue publications for review",
+        "description": "Re-queues a batch of publications for automated content review. Request/response shapes cover internal\nreview queueing and are omitted from the public contract. Requires admin password.\n",
+        "operationId": "rescanPublications",
+        "parameters": [
+          {
+            "name": "X-Admin-Password",
+            "in": "header",
+            "description": "Admin password",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "Batch of items to re-queue. Internal — shape omitted from the public contract.",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Per-item re-queue outcomes"
+          },
+          "400": {
+            "description": "Batch out of range or missing admin password header",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong admin password",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Automated review currently unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/publications/queue-depth": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Review queue depth",
+        "description": "Observability hook returning the current review queue size and capacity. Requires admin password.\n",
+        "operationId": "publicationsQueueDepth",
+        "parameters": [
+          {
+            "name": "X-Admin-Password",
+            "in": "header",
+            "description": "Admin password",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Queue size and capacity"
+          },
+          "400": {
+            "description": "Missing admin password header",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong admin password",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/scan-events": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "List content-review events",
+        "description": "Lists recent automated content-review events (metadata only). Response shape covers internal review\ndetails and is omitted from the public contract. Requires admin password.\n",
+        "operationId": "listScanEvents",
+        "parameters": [
+          {
+            "name": "X-Admin-Password",
+            "in": "header",
+            "description": "Admin password",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Maximum number of events to return (clamped to 1..200)",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 50
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Recent content-review events"
+          },
+          "400": {
+            "description": "Missing admin password header",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong admin password",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/spam-events": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "List abuse-mitigation events",
+        "description": "Lists recent abuse-mitigation events (metadata only — namespace, related IDs, IP, User-Agent,\ntimestamps). Response shape covers internal mitigation details and is omitted from the public\ncontract. Requires admin password.\n",
+        "operationId": "listSpamEvents",
+        "parameters": [
+          {
+            "name": "X-Admin-Password",
+            "in": "header",
+            "description": "Admin password",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "kind",
+            "in": "query",
+            "description": "Filter by event kind",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "days",
+            "in": "query",
+            "description": "Number of days to look back (clamped to 1..365)",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 30
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Maximum number of events to return (clamped to 1..500)",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 50
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "description": "Offset into the result set for pagination",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Recent abuse-mitigation events"
+          },
+          "400": {
+            "description": "Missing admin password header",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong admin password",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/spam-sweep/preview": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Preview gallery abuse sweep",
+        "description": "Read-only dry-run preview of the public-gallery abuse-protection sweep. Operates on the public\nnamespace only. Internal preview details are omitted from the public contract. Requires admin password.\n",
+        "operationId": "spamSweepPreview",
+        "parameters": [
+          {
+            "name": "X-Admin-Password",
+            "in": "header",
+            "description": "Admin password",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "lookbackHours",
+            "in": "query",
+            "description": "Look-back window in hours (defaults to the configured value when omitted)",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Dry-run preview"
+          },
+          "400": {
+            "description": "Invalid look-back value or missing admin password header",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong admin password",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/spam-sweep/run": {
+      "post": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Run gallery abuse sweep",
+        "description": "Runs the public-gallery abuse-protection sweep synchronously and returns a run summary. Operates on\nthe public namespace only. Internal run details are omitted from the public contract. Requires admin\npassword.\n",
+        "operationId": "spamSweepRun",
+        "parameters": [
+          {
+            "name": "X-Admin-Password",
+            "in": "header",
+            "description": "Admin password",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "lookbackHours",
+            "in": "query",
+            "description": "Look-back window in hours (defaults to the configured value when omitted)",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "force",
+            "in": "query",
+            "description": "Force re-evaluation regardless of prior runs",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Run summary"
+          },
+          "400": {
+            "description": "Invalid look-back value or missing admin password header",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong admin password",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/ttl/auto-extend/preview": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Preview TTL auto-extend",
+        "description": "Read-only dry-run preview of the TTL auto-extend job: returns per-resource candidate counts and the\neffective threshold for the public namespace. Metadata only. Requires admin password.\n",
+        "operationId": "ttlAutoExtendPreview",
+        "parameters": [
+          {
+            "name": "X-Admin-Password",
+            "in": "header",
+            "description": "Admin password",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "TTL auto-extend preview",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AutoExtendPreviewResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Missing admin password header",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong admin password",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/ttl/auto-extend/run": {
+      "post": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Run TTL auto-extend",
+        "description": "Runs the TTL auto-extend job synchronously and returns per-resource extended counts and run duration.\nRequires admin password.\n",
+        "operationId": "ttlAutoExtendRun",
+        "parameters": [
+          {
+            "name": "X-Admin-Password",
+            "in": "header",
+            "description": "Admin password",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "TTL auto-extend run summary",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AutoExtendRunResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Missing admin password header",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong admin password",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/{ns}/{id}/owner-check": {
       "get": {
         "tags": [
@@ -3334,6 +5394,31 @@
         }
       }
     },
+    "/api/owner-token": {
+      "get": {
+        "tags": [
+          "Owner"
+        ],
+        "summary": "Generate owner token",
+        "description": "Mints a fresh owner token. Free, no authentication required. This endpoint uses a dedicated\nper-IP token-generation rate limit (default 60/min/IP), separate from the shared read budget.\n\nSend the returned `token` in the `X-Owner-Token` header on subsequent calls to claim and own the\nresources you create. The token is REQUIRED to update your own content: `PUT` updates to a site\n(and other owner-gated mutations) demand a matching `X-Owner-Token` header.\n\nThe companion `ownerId` is the SHA-256 hash (64-char lowercase hex) of the token — the stable,\nnon-secret identifier the platform stores against your resources. Keep the `token` itself secret;\nanyone holding it can modify resources you own. A lost token cannot be recovered — mint a new one.\n",
+        "operationId": "generateOwnerToken",
+        "responses": {
+          "200": {
+            "description": "Owner token generated",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/OwnerTokenResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Per-IP rate limit exceeded"
+          }
+        }
+      }
+    },
     "/api/namespace/random": {
       "get": {
         "tags": [
@@ -3364,7 +5449,274 @@
     }
   },
   "components": {
+    "headers": {
+      "RoutingCohort": {
+        "description": "Present on NEW apex publication resolution; absent on OLD routes.",
+        "schema": {
+          "type": "string",
+          "const": "new-v1"
+        }
+      },
+      "EffectiveDeliveryMode": {
+        "description": "Present on NEW apex publication resolution; persisted delivery mode.",
+        "schema": {
+          "type": "string",
+          "enum": [
+            "path",
+            "subdomain"
+          ]
+        }
+      },
+      "CanonicalLink": {
+        "description": "Present on NEW apex publication resolution; canonical clean share URL returned by the server.",
+        "schema": {
+          "type": "string",
+          "format": "uri"
+        }
+      },
+      "PublicationCsp": {
+        "description": "NEW path-mode HTML and NEW subdomain-mode active-content API responses retain opaque-origin sandbox CSP.\nNative dedicated-host HTML does not inherit apex sandbox CSP; OLD policy remains unchanged.\n",
+        "schema": {
+          "type": "string"
+        }
+      }
+    },
+    "responses": {
+      "PublicationRedirect": {
+        "description": "NEW subdomain canonical redirect, or protected-browser navigation to the trusted unlock gateway.",
+        "headers": {
+          "Location": {
+            "description": "Trusted server-selected HTTPS destination; passwords and owner/admin credentials are removed.",
+            "schema": {
+              "type": "string",
+              "format": "uri"
+            }
+          },
+          "Cache-Control": {
+            "schema": {
+              "type": "string",
+              "const": "private, no-store"
+            }
+          },
+          "X-Routing-Cohort": {
+            "$ref": "#/components/headers/RoutingCohort"
+          },
+          "X-Delivery-Mode": {
+            "$ref": "#/components/headers/EffectiveDeliveryMode"
+          },
+          "X-Canonical-Link": {
+            "$ref": "#/components/headers/CanonicalLink"
+          }
+        }
+      },
+      "HostingPaused": {
+        "description": "Fresh creation is temporarily unavailable (HOSTING_CREATION_PAUSED); existing resources are unchanged.",
+        "headers": {
+          "Retry-After": {
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        },
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        }
+      }
+    },
+    "parameters": {
+      "ContentUpdateDeliveryMode": {
+        "name": "X-Delivery-Mode",
+        "in": "header",
+        "required": false,
+        "description": "NEW content updates reject this header with 400; use the owner hosting PATCH to switch modes.",
+        "schema": {
+          "type": "string",
+          "enum": [
+            "path",
+            "subdomain"
+          ]
+        }
+      },
+      "DeliveryMode": {
+        "name": "X-Delivery-Mode",
+        "in": "header",
+        "required": false,
+        "description": "Delivery choice for a NEW publication. Sites and non-public resources require subdomain; explicit path\nreturns 400. Public non-sites default to path, including password-protected resources. For a reused\nexisting resource, returned hosting metadata describes that winner; the request never switches its mode.\n",
+        "schema": {
+          "type": "string",
+          "enum": [
+            "path",
+            "subdomain"
+          ]
+        }
+      }
+    },
     "schemas": {
+      "AccessRevokeResponse": {
+        "type": "object",
+        "required": [
+          "revoked"
+        ],
+        "properties": {
+          "revoked": {
+            "type": "boolean",
+            "const": true,
+            "description": "Target publication's reader access has been revoked."
+          }
+        }
+      },
+      "HostingUpdateRequest": {
+        "type": "object",
+        "required": [
+          "deliveryMode",
+          "expectedVersion"
+        ],
+        "properties": {
+          "deliveryMode": {
+            "type": "string",
+            "enum": [
+              "path",
+              "subdomain"
+            ]
+          },
+          "expectedVersion": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 1,
+            "description": "Current hostingVersion from the publication response; fractional/string values are rejected."
+          }
+        }
+      },
+      "HostingMetadata": {
+        "type": "object",
+        "description": "Additive flattened response fields, not authored content. NEW projections describe the persisted resource.\nOLD responses may omit these fields; if present, effective mode/version/management link are null.\n",
+        "properties": {
+          "managementLink": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uri",
+            "description": "Trusted apex management URL for NEW publications; null for OLD. Contains no credentials."
+          },
+          "routingCohort": {
+            "type": "string",
+            "enum": [
+              "old",
+              "new-v1"
+            ],
+            "description": "Persisted routing cohort. Missing metadata means OLD, without backfill or timestamp inference."
+          },
+          "deliveryMode": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "path",
+              "subdomain",
+              null
+            ],
+            "description": "Current persisted mode; same as effectiveDeliveryMode. Null for OLD."
+          },
+          "requestedDeliveryMode": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "path",
+              "subdomain",
+              null
+            ],
+            "description": "Explicit requested mode for this operation, or null when omitted; may be echoed for an OLD winner."
+          },
+          "effectiveDeliveryMode": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "path",
+              "subdomain",
+              null
+            ],
+            "description": "Actual returned resource's mode, including reused winners; null for OLD."
+          },
+          "deliveryModeMatched": {
+            "type": [
+              "boolean",
+              "null"
+            ],
+            "description": "Requested mode equals effective mode; null without a requested mode or for OLD."
+          },
+          "access": {
+            "type": "string",
+            "enum": [
+              "public",
+              "unlisted",
+              "protected"
+            ],
+            "description": "Password-protected takes precedence, then public namespace, otherwise unlisted."
+          },
+          "modeLocked": {
+            "type": "boolean",
+            "description": "True for OLD, sites and non-public namespaces. Password alone does not lock a public non-site."
+          },
+          "hostingVersion": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "minimum": 1,
+            "description": "Optimistic-concurrency version for hosting PATCH; null for OLD."
+          }
+        }
+      },
+      "HostingProjection": {
+        "type": "object",
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/HostingMetadata"
+          }
+        ],
+        "required": [
+          "link",
+          "ownerLink",
+          "managementLink",
+          "routingCohort",
+          "deliveryMode",
+          "requestedDeliveryMode",
+          "effectiveDeliveryMode",
+          "deliveryModeMatched",
+          "namespace",
+          "access",
+          "modeLocked",
+          "hostingVersion"
+        ],
+        "properties": {
+          "link": {
+            "type": "string",
+            "format": "uri",
+            "description": "Canonical clean share URL; subdomain-mode root ends in a slash."
+          },
+          "ownerLink": {
+            "type": "string",
+            "format": "uri",
+            "description": "Existing trusted apex resource API URL; owner credentials are sent only in headers."
+          },
+          "namespace": {
+            "type": "string",
+            "pattern": "^[a-z0-9-]{1,32}$"
+          }
+        }
+      },
       "OwnerCheckResponse": {
         "type": "object",
         "properties": {
@@ -3375,6 +5727,23 @@
           "isOwner": {
             "type": "boolean",
             "description": "True when the supplied owner token matches the stored hash"
+          }
+        }
+      },
+      "OwnerTokenResponse": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string",
+            "description": "Fresh owner token (32-char base62). Send it as the `X-Owner-Token` header to claim and update\nyour own resources. Keep it secret; required for PUT site updates.\n",
+            "pattern": "^[A-Za-z0-9]{32}$",
+            "example": "7Qm2KdRn8xVbA1cE5fH9jLpT4sW6yZ0u"
+          },
+          "ownerId": {
+            "type": "string",
+            "description": "SHA-256 hash (64-char lowercase hex) of the token — the stable, non-secret identifier stored\nagainst the resources you own.\n",
+            "pattern": "^[0-9a-f]{64}$",
+            "example": "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08"
           }
         }
       },
@@ -3398,6 +5767,11 @@
       },
       "KvUpsertKeyResponse": {
         "type": "object",
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/HostingMetadata"
+          }
+        ],
         "properties": {
           "id": {
             "type": "string"
@@ -3424,6 +5798,11 @@
       },
       "JsonUpdateResponse": {
         "type": "object",
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/HostingMetadata"
+          }
+        ],
         "properties": {
           "id": {
             "type": "string"
@@ -3460,6 +5839,11 @@
       },
       "HtmlUpdateResponse": {
         "type": "object",
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/HostingMetadata"
+          }
+        ],
         "properties": {
           "id": {
             "type": "string"
@@ -3487,6 +5871,11 @@
       },
       "HtmlSettingsResponse": {
         "type": "object",
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/HostingMetadata"
+          }
+        ],
         "description": "Republish-prefill projection returned by `GET /api/html/{ns}/{id}/settings`.\nSettings only, no content body. Owner-token gated.\n",
         "properties": {
           "namespace": {
@@ -3616,6 +6005,11 @@
       },
       "KvCreateStoreResponse": {
         "type": "object",
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/HostingMetadata"
+          }
+        ],
         "properties": {
           "id": {
             "type": "string",
@@ -3657,6 +6051,11 @@
       },
       "JsonCreateResponse": {
         "type": "object",
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/HostingMetadata"
+          }
+        ],
         "properties": {
           "id": {
             "type": "string",
@@ -3726,6 +6125,11 @@
       },
       "HtmlUploadResponse": {
         "type": "object",
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/HostingMetadata"
+          }
+        ],
         "properties": {
           "id": {
             "type": "string",
@@ -3759,11 +6163,69 @@
           "ownerToken": {
             "type": "string",
             "description": "Secret token required for update and delete operations. Store it safely -- cannot be recovered"
+          },
+          "result": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AbuseResult"
+              },
+              {
+                "description": "Outcome envelope. `code` is success|duplicate|warned|failed; `action` is the specific outcome. When a single HTML page references relative sibling files (e.g. `data.js`) — which 404 because single-file pages have no sibling hosting — the page is still created (201) with `action: created_missing_assets`, a human `reason` (e.g. \"This page is broken: it loads files (data.js) that don't exist on a single page. Publish it as a multi-file site so they work.\"), and `extras.localAssetRefs` listing example paths; publish such content as a multi-file site (`POST /api/sites`) instead."
+              }
+            ]
+          }
+        }
+      },
+      "AbuseResult": {
+        "type": "object",
+        "description": "Outcome envelope returned by content-publishing endpoints (HTML create/update, site republish).\n`code` is the coarse outcome; `action` is the specific outcome. Metadata only.\n",
+        "properties": {
+          "code": {
+            "type": "string",
+            "enum": [
+              "success",
+              "duplicate",
+              "warned",
+              "failed"
+            ]
+          },
+          "action": {
+            "type": "string",
+            "enum": [
+              "created",
+              "created_missing_assets",
+              "updated",
+              "merged",
+              "created_warned",
+              "unavailable",
+              "rate_limited",
+              "rejected"
+            ]
+          },
+          "reason": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Human-readable note (e.g. the created_missing_assets advisory). Omitted when absent."
+          },
+          "extras": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "additionalProperties": true,
+            "description": "Outcome-specific extras. created_missing_assets → { \"localAssetRefs\": [\"data.js\", ...] }; merged → { \"isOwner\": boolean }."
           }
         }
       },
       "FileUploadResponse": {
         "type": "object",
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/HostingMetadata"
+          }
+        ],
         "properties": {
           "id": {
             "type": "string",
@@ -4128,7 +6590,7 @@
           },
           "type": {
             "type": "string",
-            "description": "Resource type: html, json, kv, or file"
+            "description": "Resource type: html, json, kv, file, or site"
           },
           "title": {
             "type": "string",
@@ -4202,6 +6664,11 @@
       },
       "SiteUploadResponse": {
         "type": "object",
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/HostingMetadata"
+          }
+        ],
         "properties": {
           "id": {
             "type": "string",
@@ -4309,6 +6776,68 @@
           "sizeBytes": {
             "type": "integer",
             "format": "int64"
+          }
+        }
+      },
+      "SiteUpdateResponse": {
+        "type": "object",
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/HostingMetadata"
+          }
+        ],
+        "description": "Result of a full-replace site republish (`PUT /api/sites/{ns}/{id}`). The URL and ID are unchanged.\nUnlike the create response, no owner token is returned (the caller already holds it).\n",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Unique 10-character alphanumeric site ID (unchanged)"
+          },
+          "namespace": {
+            "type": "string"
+          },
+          "link": {
+            "type": "string",
+            "description": "Public URL to view the site (unchanged)"
+          },
+          "ownerLink": {
+            "type": "string",
+            "description": "API URL for programmatic access (info, delete, republish)"
+          },
+          "entryFile": {
+            "type": "string",
+            "description": "Entry HTML file resolved from the new upload (e.g. index.html)"
+          },
+          "fileCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalSizeBytes": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "result": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AbuseResult"
+              },
+              {
+                "description": "Outcome envelope for the republish (e.g. `{ code: success, action: updated }`)."
+              }
+            ]
+          },
+          "visibilityNotice": {
+            "type": "string",
+            "description": "Optional notice about the site's public visibility (present for public namespace sites)"
           }
         }
       },
@@ -4731,6 +7260,305 @@
               "type": "integer",
               "format": "int32"
             }
+          }
+        }
+      },
+      "OwnerInfo": {
+        "type": "object",
+        "description": "Per-owner resource counts and first-seen timestamp (metadata only).",
+        "properties": {
+          "ownerId": {
+            "type": "string",
+            "description": "Hashed owner identifier"
+          },
+          "htmlCount": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Number of HTML pages owned"
+          },
+          "kvStoreCount": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Number of KV stores owned"
+          },
+          "jsonCount": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Number of JSON documents owned"
+          },
+          "fileCount": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Number of files owned"
+          },
+          "siteCount": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Number of multi-file sites owned"
+          },
+          "firstSeen": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When this owner token was first observed"
+          },
+          "tier": {
+            "type": "string",
+            "enum": [
+              "DEFAULT",
+              "PRIVILEGED"
+            ],
+            "description": "Owner tier. PRIVILEGED raises the maximum TTL ceiling (up to 730 days)"
+          },
+          "label": {
+            "type": "string",
+            "description": "Optional operator-assigned label for the owner"
+          }
+        }
+      },
+      "OwnerResolveResponse": {
+        "type": "object",
+        "description": "Resolution of a raw owner token to its hashed owner ID.",
+        "properties": {
+          "ownerId": {
+            "type": "string",
+            "description": "Hashed owner identifier resolved from the supplied token"
+          }
+        }
+      },
+      "OwnerPromoteRequest": {
+        "type": "object",
+        "required": [
+          "tier"
+        ],
+        "description": "Request to set an owner's tier.",
+        "properties": {
+          "tier": {
+            "type": "string",
+            "enum": [
+              "DEFAULT",
+              "PRIVILEGED"
+            ],
+            "description": "Target tier"
+          },
+          "maxTtlDays": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 1,
+            "maximum": 730,
+            "description": "Optional max TTL ceiling in days for PRIVILEGED owners (ceiling 730)"
+          },
+          "label": {
+            "type": "string",
+            "description": "Optional operator-assigned label for the owner"
+          },
+          "note": {
+            "type": "string",
+            "description": "Optional operator note explaining the tier change"
+          }
+        }
+      },
+      "OwnerTierResponse": {
+        "type": "object",
+        "description": "Current tier state of an owner after a promote/demote operation (metadata only).",
+        "properties": {
+          "ownerId": {
+            "type": "string",
+            "description": "Hashed owner identifier"
+          },
+          "tier": {
+            "type": "string",
+            "enum": [
+              "DEFAULT",
+              "PRIVILEGED"
+            ],
+            "description": "Current owner tier"
+          },
+          "maxTtlDays": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Effective maximum TTL ceiling in days for this owner"
+          },
+          "label": {
+            "type": "string",
+            "description": "Operator-assigned label, if any"
+          },
+          "note": {
+            "type": "string",
+            "description": "Operator note, if any"
+          }
+        }
+      },
+      "AdminStatsResponse": {
+        "type": "object",
+        "description": "Aggregate platform counts and per-owner breakdown (metadata only).",
+        "properties": {
+          "totalHtml": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Total HTML pages across the platform"
+          },
+          "totalKvEntries": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Total KV entries across the platform"
+          },
+          "totalJsonDocs": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Total JSON documents across the platform"
+          },
+          "totalFiles": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Total files across the platform"
+          },
+          "totalSites": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Total multi-file sites across the platform"
+          },
+          "uniqueOwners": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Number of distinct owner tokens"
+          },
+          "ownersWithCounts": {
+            "type": "array",
+            "description": "Per-owner resource breakdown",
+            "items": {
+              "$ref": "#/components/schemas/OwnerInfo"
+            }
+          }
+        }
+      },
+      "BlocklistEntryRequest": {
+        "type": "object",
+        "required": [
+          "reason"
+        ],
+        "description": "Request to add an IP and/or User-Agent pattern to the abuse blocklist.",
+        "properties": {
+          "ip": {
+            "type": "string",
+            "description": "Client IP to block (at least one of ip or uaPattern is required)"
+          },
+          "uaPattern": {
+            "type": "string",
+            "description": "User-Agent pattern to block (at least one of ip or uaPattern is required)"
+          },
+          "reason": {
+            "type": "string",
+            "description": "Human-readable reason for the block"
+          },
+          "duration": {
+            "type": "string",
+            "description": "Optional ISO-8601 duration (e.g. `PT1H`, `P1D`). Omit for a permanent block"
+          }
+        }
+      },
+      "BlocklistEntryResponse": {
+        "type": "object",
+        "description": "A single abuse blocklist entry (metadata only).",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Numeric blocklist entry ID"
+          },
+          "ip": {
+            "type": "string",
+            "description": "Blocked client IP, if any"
+          },
+          "uaPattern": {
+            "type": "string",
+            "description": "Blocked User-Agent pattern, if any"
+          },
+          "reason": {
+            "type": "string",
+            "description": "Reason recorded for the block"
+          },
+          "blockedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When the entry was created"
+          },
+          "blockedBy": {
+            "type": "string",
+            "description": "Actor that created the entry (e.g. `admin`)"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When the block expires (null = permanent)"
+          },
+          "active": {
+            "type": "boolean",
+            "description": "Whether the entry is currently in effect"
+          }
+        }
+      },
+      "AutoExtendPreviewResponse": {
+        "type": "object",
+        "description": "Dry-run preview of the TTL auto-extend job (public namespace, metadata only).",
+        "properties": {
+          "dynamicThreshold": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Computed view threshold used to select candidates"
+          },
+          "viewFloor": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Configured minimum view floor"
+          },
+          "viewPercentile": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Configured view percentile"
+          },
+          "thresholdDays": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Day threshold below which a resource becomes a candidate"
+          },
+          "candidateCounts": {
+            "type": "object",
+            "description": "Candidate counts keyed by resource type (html, site, file)",
+            "additionalProperties": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          "sampleIds": {
+            "type": "array",
+            "description": "Sample of candidate IDs (public namespace only)",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "AutoExtendRunResponse": {
+        "type": "object",
+        "description": "Summary of a TTL auto-extend run.",
+        "properties": {
+          "extendedCounts": {
+            "type": "object",
+            "description": "Extended counts keyed by resource type (html, site, file)",
+            "additionalProperties": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          "durationMs": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Wall-clock duration of the run in milliseconds"
+          },
+          "finalThreshold": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Effective view threshold applied during the run"
           }
         }
       }

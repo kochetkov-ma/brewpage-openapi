@@ -8,7 +8,7 @@ const BASE_URL = process.env.BREWPAGE_URL || "https://brewpage.app";
 
 const server = new McpServer({
   name: "brewpage-mcp",
-  version: "1.7.0",
+  version: "1.8.0",
 });
 
 const PUBLIC_NAMESPACE = "public";
@@ -38,20 +38,39 @@ function resolveNamespace(namespace?: string): string {
 
 const UNLISTED_NOTICE =
   "Unlisted link — anyone who has it can open it, but it's not in the gallery or search. " +
-  "Publish with namespace `public` to list it in the gallery and have search engines index it.";
+  "Use namespace `public` for gallery/search eligibility; password-protected content stays excluded.";
+
+const PROTECTED_UNLISTED_NOTICE =
+  "Password-protected unlisted link — readers need the password; excluded from gallery and search.";
 
 const NAMESPACE_DESCRIPTION =
   "Optional. Omit to keep the content PRIVATE/unlisted (reachable only by its link — " +
   "not listed in the gallery and not indexed by search engines). Pass a custom namespace " +
-  "to group private content, or pass `public` ONLY when the user explicitly wants the page " +
-  "listed in the brewpage.app gallery and indexed by search engines.";
+  "to group private content, or pass `public` ONLY when the user explicitly wants gallery/search " +
+  "eligibility. Password-protected content stays excluded from gallery/search.";
+
+const DELIVERY_MODE_SCHEMA = z.enum(["path", "subdomain"]).optional().describe(
+  "Optional delivery choice for a fresh publication, independent of password/namespace. " +
+  "Public non-sites default to path (Promotion); fresh sites and non-public content require subdomain. " +
+  "An existing dedup winner keeps its actual mode and URL."
+);
+
+function hostingResponseLines(data: Record<string, unknown>): string[] {
+  const fields = ["routingCohort", "deliveryMode", "requestedDeliveryMode", "effectiveDeliveryMode",
+    "deliveryModeMatched", "modeLocked", "hostingVersion", "access", "managementLink"];
+  const lines = fields.filter((field) => field in data).map((field) => `${field}: ${JSON.stringify(data[field])}`);
+  if (data.routingCohort === "old") lines.push("Hosting: Existing link");
+  if (data.deliveryModeMatched === false) lines.push("Requested hosting differs from the existing winner; its URL and mode were preserved.");
+  return lines;
+}
 
 async function apiRequest(
   method: string,
   path: string,
   body?: unknown,
-  headers?: Record<string, string>
-): Promise<{ ok: boolean; status: number; data: unknown }> {
+  headers?: Record<string, string>,
+  responseType: "json" | "text" = "json"
+): Promise<{ ok: boolean; status: number; data: unknown; headers: Headers }> {
   const url = `${BASE_URL}${path}`;
   const res = await fetch(url, {
     method,
@@ -61,8 +80,8 @@ async function apiRequest(
     },
     body: body ? JSON.stringify(body) : undefined,
   });
-  const data = await res.json().catch(() => null);
-  return { ok: res.ok, status: res.status, data };
+  const data = responseType === "text" ? await res.text() : await res.json().catch(() => null);
+  return { ok: res.ok, status: res.status, data, headers: res.headers };
 }
 
 function formatPublishResponse(
@@ -72,7 +91,7 @@ function formatPublishResponse(
   const lines = [
     `Published successfully!`,
     ``,
-    `URL: ${data.url || data.link || "N/A"}`,
+    `URL: ${data.link || data.url || "N/A"}`,
   ];
   if (data.shortUrl) lines.push(`Short URL: ${data.shortUrl}`);
   lines.push(
@@ -80,6 +99,7 @@ function formatPublishResponse(
     `ID: ${data.id || "N/A"}`
   );
   if (data.expiresAt) lines.push(`Expires: ${data.expiresAt}`);
+  lines.push(...hostingResponseLines(data));
   lines.push(
     ``,
     `===================================`,
@@ -88,9 +108,9 @@ function formatPublishResponse(
     ``,
     `IMPORTANT: Save your owner token! You need it to update or delete this resource later. It cannot be recovered if lost.`
   );
-  const ns = (effectiveNamespace ?? (data.namespace as string | undefined)) || "";
+  const ns = ((data.namespace as string | undefined) ?? effectiveNamespace) || "";
   if (ns !== PUBLIC_NAMESPACE) {
-    lines.push(``, UNLISTED_NOTICE);
+    lines.push(``, data.access === "protected" ? PROTECTED_UNLISTED_NOTICE : UNLISTED_NOTICE);
   }
   return lines.join("\n");
 }
@@ -99,7 +119,7 @@ function formatUpdateResponse(data: Record<string, unknown>): string {
   const lines = [
     `Updated successfully!`,
     ``,
-    `URL: ${data.url || data.link || "N/A"}`,
+    `URL: ${data.link || data.url || "N/A"}`,
   ];
   if (data.shortUrl) lines.push(`Short URL: ${data.shortUrl}`);
   lines.push(
@@ -108,6 +128,7 @@ function formatUpdateResponse(data: Record<string, unknown>): string {
   );
   if (data.expiresAt) lines.push(`Expires: ${data.expiresAt}`);
   if (data.updatedAt) lines.push(`Updated: ${data.updatedAt}`);
+  lines.push(...hostingResponseLines(data));
   return lines.join("\n");
 }
 
@@ -116,6 +137,7 @@ server.tool(
   "Publish HTML or Markdown content to BrewPage. Returns a public URL and owner token. Supports password protection, custom TTL, optional filename, and an opt-in top toolbar (showTopBar).",
   {
     content: z.string().describe("HTML or Markdown content to publish"),
+    deliveryMode: DELIVERY_MODE_SCHEMA,
     format: z
       .enum(["HTML", "MARKDOWN"])
       .default("HTML")
@@ -145,16 +167,18 @@ server.tool(
       .optional()
       .describe("Add a thin top toolbar (filename + Download button + theme toggle) on the served page. Default: hidden."),
   },
-  async ({ content, format, namespace, password, ttlDays, filename, showTopBar }) => {
+  async ({ content, format, namespace, password, ttlDays, filename, showTopBar, deliveryMode }) => {
     const effectiveNamespace = resolveNamespace(namespace);
-    const body: Record<string, unknown> = { content, format };
-    body.namespace = effectiveNamespace;
-    if (password) body.password = password;
-    if (ttlDays) body.ttlDays = ttlDays;
+    const qsParams = [`ns=${encodeURIComponent(effectiveNamespace)}`, `format=${encodeURIComponent(format.toLowerCase())}`];
+    if (ttlDays !== undefined) qsParams.push(`ttl=${encodeURIComponent(String(ttlDays))}`);
+    const body: Record<string, unknown> = { content };
     if (filename) body.filename = filename;
     if (showTopBar !== undefined) body.showTopBar = showTopBar;
 
-    const { ok, data } = await apiRequest("POST", "/api/html", body);
+    const headers: Record<string, string> = {};
+    if (password) headers["X-Password"] = password;
+    if (deliveryMode) headers["X-Delivery-Mode"] = deliveryMode;
+    const { ok, data } = await apiRequest("POST", `/api/html?${qsParams.join("&")}`, body, headers);
 
     if (!ok) {
       return {
@@ -184,13 +208,14 @@ server.tool(
   "Upload a file to BrewPage via URL. Returns a public URL and owner token.",
   {
     url: z.string().url().describe("URL of the file to upload"),
+    deliveryMode: DELIVERY_MODE_SCHEMA,
     namespace: z
       .string()
       .optional()
       .describe(NAMESPACE_DESCRIPTION),
     filename: z.string().optional().describe("Custom filename (optional)"),
   },
-  async ({ url: fileUrl, namespace, filename }) => {
+  async ({ url: fileUrl, namespace, filename, deliveryMode }) => {
     const effectiveNamespace = resolveNamespace(namespace);
     const fileRes = await fetch(fileUrl);
     if (!fileRes.ok) {
@@ -212,10 +237,9 @@ server.tool(
       blob,
       filename || fileUrl.split("/").pop() || "file"
     );
-    formData.append("namespace", effectiveNamespace);
-
-    const res = await fetch(`${BASE_URL}/api/files`, {
+    const res = await fetch(`${BASE_URL}/api/files?ns=${encodeURIComponent(effectiveNamespace)}`, {
       method: "POST",
+      headers: deliveryMode ? { "X-Delivery-Mode": deliveryMode } : undefined,
       body: formData,
     });
 
@@ -240,6 +264,34 @@ server.tool(
           text: formatPublishResponse(data as Record<string, unknown>, effectiveNamespace),
         },
       ],
+    };
+  }
+);
+
+server.tool(
+  "update_hosting",
+  "Change delivery mode for a NEW public non-site publication. Requires owner token and current hostingVersion. OLD links and forced subdomain modes are locked; reload after a 409 conflict. Content updates never change hosting.",
+  {
+    type: z.enum(["html", "file", "json", "kv"]).describe("Resource type; sites have no hosting-choice endpoint"),
+    namespace: z.string().describe("Resource namespace; only public is eligible"),
+    id: z.string().describe("Resource ID"),
+    ownerToken: z.string().describe("Original resource owner token"),
+    deliveryMode: z.enum(["path", "subdomain"]).describe("path = Promotion; subdomain = Dedicated subdomain"),
+    expectedVersion: z.number().int().min(1).max(Number.MAX_SAFE_INTEGER).describe("Current hostingVersion from the server; required for concurrency control"),
+  },
+  async ({ type, namespace, id, ownerToken, deliveryMode, expectedVersion }) => {
+    const segment = type === "file" ? "files" : type;
+    const path = `/api/${segment}/${encodeURIComponent(namespace)}/${encodeURIComponent(id)}/hosting`;
+    const { ok, status, data } = await apiRequest("PATCH", path, { deliveryMode, expectedVersion },
+      { "X-Owner-Token": ownerToken });
+    if (!ok) {
+      return {
+        content: [{ type: "text" as const, text: `Failed to update hosting (${status}): ${JSON.stringify(data)}` }],
+        isError: true,
+      };
+    }
+    return {
+      content: [{ type: "text" as const, text: formatUpdateResponse(data as Record<string, unknown>) }],
     };
   }
 );
@@ -312,34 +364,40 @@ server.tool(
     const headers: Record<string, string> = {};
     if (password) headers["X-Password"] = password;
 
-    const { ok, status, data } = await apiRequest(
+    const { ok, status, data, headers: responseHeaders } = await apiRequest(
       "GET",
       `/api/html/${namespace}/${id}`,
       undefined,
-      headers
+      headers,
+      "text"
     );
 
     if (!ok) {
+      let errorData: unknown = data;
+      try { errorData = JSON.parse(data as string); } catch {}
       return {
         content: [
           {
             type: "text" as const,
-            text: `Failed to fetch page (${status}): ${JSON.stringify(data)}`,
+            text: `Failed to fetch page (${status}): ${JSON.stringify(errorData)}`,
           },
         ],
         isError: true,
       };
     }
 
-    const page = data as Record<string, unknown>;
+    const routingCohort = responseHeaders.get("X-Routing-Cohort");
+    const deliveryMode = responseHeaders.get("X-Delivery-Mode");
+    const hosting = { ...(routingCohort !== null ? { routingCohort } : {}), ...(deliveryMode !== null ? { deliveryMode } : {}) };
+    const hasNewMarkers = (routingCohort !== null && routingCohort !== "old") || deliveryMode !== null;
     const lines = [
       `Page: ${namespace}/${id}`,
-      `URL: ${page.url || `${BASE_URL}/${namespace}/${id}`}`,
-      `Format: ${page.format || "HTML"}`,
-      `Created: ${page.createdAt || "N/A"}`,
+      `URL: ${responseHeaders.get("X-Canonical-Link") ?? (hasNewMarkers ? "N/A" : `${BASE_URL}/${namespace}/${id}`)}`,
+      `Content-Type: ${responseHeaders.get("Content-Type") || "N/A"}`,
+      ...hostingResponseLines(hosting),
       ``,
       `--- Content ---`,
-      `${page.content || ""}`,
+      data as string,
     ];
 
     return {
@@ -390,6 +448,7 @@ server.tool(
   "publish_site",
   "Publish an HTML site to BrewPage. Single-page: pass `entryContent`. Multi-page: pass `files` (array of `{path, content}`). Optional `entry` overrides default `index.html`.",
   {
+    deliveryMode: DELIVERY_MODE_SCHEMA,
     entryContent: z
       .string()
       .optional()
@@ -421,7 +480,7 @@ server.tool(
       .optional()
       .describe("Existing owner token to group this site under the same owner as previous content"),
   },
-  async ({ entryContent, files, entry, namespace, password, ttlDays, ownerToken }) => {
+  async ({ entryContent, files, entry, namespace, password, ttlDays, ownerToken, deliveryMode }) => {
     const hasEntry = typeof entryContent === "string";
     const hasFiles = Array.isArray(files) && files.length > 0;
     if (hasEntry === hasFiles) {
@@ -451,6 +510,7 @@ server.tool(
     const headers: Record<string, string> = {};
     if (password) headers["X-Password"] = password;
     if (ownerToken) headers["X-Owner-Token"] = ownerToken;
+    if (deliveryMode) headers["X-Delivery-Mode"] = deliveryMode;
 
     const effectiveNamespace = resolveNamespace(namespace);
     const qsParams: string[] = [];
@@ -488,6 +548,7 @@ server.tool(
     if (site.ownerLink) lines.push(`Owner link: ${site.ownerLink}`);
     if (Array.isArray(site.tags) && site.tags.length) lines.push(`Tags: ${(site.tags as string[]).join(", ")}`);
     if (site.expiresAt) lines.push(`Expires: ${site.expiresAt}`);
+    lines.push(...hostingResponseLines(site));
     lines.push(
       ``,
       `===================================`,
@@ -498,7 +559,7 @@ server.tool(
     );
     const ns = ((site.namespace as string | undefined) || effectiveNamespace) || "";
     if (ns !== PUBLIC_NAMESPACE) {
-      lines.push(``, UNLISTED_NOTICE);
+      lines.push(``, site.access === "protected" ? PROTECTED_UNLISTED_NOTICE : UNLISTED_NOTICE);
     }
 
     return {
@@ -606,6 +667,7 @@ server.tool(
     if (Array.isArray(site.tags) && site.tags.length) lines.push(`Tags: ${(site.tags as string[]).join(", ")}`);
     if (site.expiresAt) lines.push(`Expires: ${site.expiresAt}`);
     if (site.result) lines.push(`Result: ${site.result}`);
+    lines.push(...hostingResponseLines(site));
     if (site.visibilityNotice) lines.push(``, String(site.visibilityNotice));
 
     return {
@@ -667,6 +729,7 @@ server.tool(
   "publish_json",
   "Publish a JSON document to BrewPage. Accepts a JSON object, array, or a JSON-encoded string. Returns a public URL and owner token.",
   {
+    deliveryMode: DELIVERY_MODE_SCHEMA,
     json: z
       .union([z.string(), z.record(z.unknown()), z.array(z.unknown())])
       .describe("JSON document to publish (object, array, or JSON-encoded string)"),
@@ -694,7 +757,7 @@ server.tool(
       .optional()
       .describe("Existing owner token to group this document under the same owner as previous content"),
   },
-  async ({ json, namespace, password, ttlDays, tags, ownerToken }) => {
+  async ({ json, namespace, password, ttlDays, tags, ownerToken, deliveryMode }) => {
     const jsonString = typeof json === "string" ? json : JSON.stringify(json);
 
     const effectiveNamespace = resolveNamespace(namespace);
@@ -709,6 +772,7 @@ server.tool(
     const headers: Record<string, string> = { "Content-Type": "application/json" };
     if (password) headers["X-Password"] = password;
     if (ownerToken) headers["X-Owner-Token"] = ownerToken;
+    if (deliveryMode) headers["X-Delivery-Mode"] = deliveryMode;
 
     const res = await fetch(`${BASE_URL}/api/json${qs}`, {
       method: "POST",
@@ -840,6 +904,7 @@ server.tool(
   "publish_kv",
   "Publish a key/value entry to BrewPage. Creates a KV store; the entry is addressed by (namespace, id, key). Returns a public URL and owner token.",
   {
+    deliveryMode: DELIVERY_MODE_SCHEMA,
     key: z.string().describe("KV key (first part of the (namespace, id, key) addressing tuple)"),
     value: z.string().describe("KV value"),
     namespace: z
@@ -866,7 +931,7 @@ server.tool(
       .optional()
       .describe("Existing owner token to group this KV store under the same owner as previous content"),
   },
-  async ({ key, value, namespace, password, ttlDays, tags, ownerToken }) => {
+  async ({ key, value, namespace, password, ttlDays, tags, ownerToken, deliveryMode }) => {
     const body: Record<string, unknown> = { key, value };
 
     const effectiveNamespace = resolveNamespace(namespace);
@@ -881,6 +946,7 @@ server.tool(
     const headers: Record<string, string> = {};
     if (password) headers["X-Password"] = password;
     if (ownerToken) headers["X-Owner-Token"] = ownerToken;
+    if (deliveryMode) headers["X-Delivery-Mode"] = deliveryMode;
 
     const { ok, status, data } = await apiRequest(
       "POST",

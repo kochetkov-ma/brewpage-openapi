@@ -6,20 +6,22 @@ order: 3
 
 # MCP Server
 
-The `brewpage-mcp` server lets you publish and manage BrewPage content directly from AI assistants like Claude Desktop and Claude Code.
+Last updated: 2026-10-05
+
+`brewpage-mcp` 1.8.0 provides sixteen tools to publish and manage HTML, Markdown, JSON, KV, files, and multi-file sites from compatible MCP clients. It runs locally over stdio and calls the BrewPage API. Requires Node.js 20 or newer.
 
 ## Installation
 
 ### Claude Desktop
 
-Add to your `claude_desktop_config.json`:
+Open Claude Desktop's **Settings > Developer > Edit Config** and add to `claude_desktop_config.json` ([official setup](https://github.com/modelcontextprotocol/docs/blob/main/quickstart/user.mdx)):
 
 ```json
 {
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp"]
+      "args": ["-y", "brewpage-mcp@1.8.0"]
     }
   }
 }
@@ -27,62 +29,87 @@ Add to your `claude_desktop_config.json`:
 
 ### Claude Code
 
-Add to your `settings.json`:
+Register a project-scoped stdio server:
 
-```json
-{
-  "mcpServers": {
-    "brewpage": {
-      "command": "npx",
-      "args": ["-y", "brewpage-mcp"]
-    }
-  }
-}
+```bash
+claude mcp add --transport stdio --scope project brewpage -- npx -y brewpage-mcp@1.8.0
 ```
+
+This writes `.mcp.json` in the project root; user-scoped registration uses `--scope user`. See the [official Claude Code MCP guide](https://code.claude.com/docs/en/mcp).
 
 ### One-liner
 
 ```bash
-npx brewpage-mcp
+npx -y brewpage-mcp@1.8.0
 ```
+
+This starts a stdio server for an MCP client, not an interactive publishing shell. Other clients can use the same `npx` command and pinned arguments.
 
 ## Available Tools
 
 | Tool | Description |
 |------|-------------|
-| `publish_html` | Publish HTML or Markdown content. Returns URL + owner token |
-| `publish_file` | Upload a file via URL or base64 content |
-| `publish_site` | Publish a multi-file HTML site from HTML content (`entryContent`, optional `namespace`, `password`, `ttlDays`) |
+| `publish_html` | Publish HTML or Markdown with optional filename and toolbar |
+| `update_html` | Replace HTML/Markdown or code content with the owner token; omitted format preserves the stored format |
+| `get_page` | Fetch raw HTML page content; optional password |
+| `publish_file` | Fetch a file from a URL and upload it; optional filename |
+| `publish_site` | Publish `entryContent` or a `files` bundle; optional entry path |
+| `republish_site` | Replace the complete site bundle at the same ID/link; absent files are removed |
+| `publish_json` | Publish a JSON object, array, or JSON-encoded string |
+| `get_json` | Fetch a JSON document; optional password |
+| `update_json` | Replace a JSON document with the owner token |
+| `publish_kv` | Create a KV store with an initial key/value |
+| `set_kv` | Set or replace a key in an owned KV store |
+| `get_kv` | Fetch a key's value; optional password |
+| `update_hosting` | Change eligible publication delivery mode using owner authority and hosting version |
 | `delete_resource` | Delete a resource by namespace/id with owner token |
-| `get_page` | Fetch published page content by namespace/id |
+| `search_gallery` | Browse public content or list owned resources with `mine` and `ownerToken` |
 | `get_stats` | Get platform-wide usage statistics |
 
-## Usage Examples
+## Visibility and Delivery
 
-### Publish a Page
+All five publish tools accept optional `deliveryMode: "path" | "subdomain"`; it is sent as `X-Delivery-Mode`, without changing content bodies. Omitted namespace generates an unlisted `priv-<random>` namespace. Anyone with its unpassworded link can read it. Use `namespace: "public"` only when the user wants gallery/search eligibility; password-protected content remains excluded.
 
-Ask Claude: *"Publish this HTML to BrewPage"*
+For a fresh publication, public non-sites default to **Promotion** (`path`) and may choose **Dedicated subdomain** (`subdomain`), including when password-protected. Fresh sites and non-public publications require Dedicated subdomain; explicit `path` is rejected. Promotion has stricter active-document restrictions. Each NEW site gets one publication-specific host for its complete bundle, preserving relative/root-relative paths; missing assets return 404 with no SPA fallback. Third-party widgets may need provider configuration.
 
-The `publish_html` tool accepts:
-- `content` — HTML or Markdown string
-- `namespace` — Optional namespace (default: random)
-- `format` — `HTML` or `MARKDOWN`
-- `password` — Optional password protection
-- `ttlDays` — Time to live in days (30-365)
+Use the server's primary `link` exactly, including the root slash. Never reconstruct a host from namespace or ID. Responses expose `routingCohort`, `deliveryMode`, `requestedDeliveryMode`, `effectiveDeliveryMode`, `deliveryModeMatched`, `modeLocked`, `hostingVersion`, `access`, and the trusted-apex `managementLink` when supplied. NEW password links are clean URLs: do not append `?p=`; browser readers unlock through the trusted gateway. API calls and owner tokens stay on the configured apex API origin.
+
+An existing deduplication winner keeps its actual link, cohort, and mode even when another mode was requested. OLD publications show **Existing link** with null mode metadata and retain their legacy links and behavior. Content updates and site republishing preserve hosting.
+
+## Publish and Update
+
+Ask your assistant to publish the content, save the returned owner token, and share the returned primary link. `publish_html`, `publish_site`, `publish_json`, and `publish_kv` accept `password` and `ttlDays` (1–30, default 15). `publish_file` accepts a source `url`, optional `namespace`, `filename`, and `deliveryMode`; it does not expose base64, password, or TTL inputs.
+
+```text
+publish_html(content="<h1>Report</h1>", format="HTML", ttlDays=15)
+publish_site(files=[{"path":"index.html","content":"<link rel='stylesheet' href='/style.css'><h1>Site</h1>"},{"path":"style.css","content":"body{font-family:sans-serif}"}])
+```
+
+For sites, provide exactly one of `entryContent` or a non-empty `files` array of `{path, content}`. `entry` defaults to `index.html`. `republish_site` requires `namespace`, `id`, and `ownerToken`; it replaces the full file set, removing files absent from the new bundle. It also accepts `entry`, `ttlDays`, and `tags`.
+
+### Change Hosting
+
+`update_hosting` changes a NEW public non-site between Promotion and Dedicated subdomain. Required inputs: `type` (`html`, `file`, `json`, or `kv`), `namespace`, `id`, `ownerToken`, `deliveryMode`, and `expectedVersion` (current `hostingVersion`, integer ≥1).
+
+It calls owner-only `PATCH /api/{html|files|json|kv}/{namespace}/{id}/hosting` with `{deliveryMode, expectedVersion}` and `X-Owner-Token`. OLD links, sites, and non-public publications are locked. Wrong owner returns 403, locked hosting 400, and stale version 409; reload current metadata before retrying. A paused real change returns 503. Selecting the current mode returns 200 without incrementing the version. Use the returned primary link; the reserved publication host survives both directions.
+
+```text
+update_hosting(type="html", namespace="public", id="aBcDeFgHiJ", ownerToken="tok_...", deliveryMode="subdomain", expectedVersion=1)
+```
 
 ### Delete a Resource
 
-Ask Claude: *"Delete my BrewPage at demo/aBcDeFgHiJ using token tok_abc123"*
-
-The `delete_resource` tool requires:
-- `namespace` — Resource namespace
-- `id` — Resource ID
-- `ownerToken` — Owner token from publish response
-- `type` — Resource type: `html`, `kv`, `json`, or `file`
+`delete_resource` requires `namespace`, `id`, `ownerToken`, and `type` (`html`, `kv`, `json`, or `file`). It does not support site deletion; use the REST site API for that operation.
 
 ## Owner Token Reminder
 
 Every publish response includes your **owner token**. This is the only way to update or delete your content later. Save it somewhere safe — it cannot be recovered if lost.
+
+Pass it to owner-only tools and to `search_gallery(mine=true, ownerToken="tok_...")` to list your resources. The `publish_site`, `publish_json`, and `publish_kv` tools accept an existing `ownerToken` to group new content under the same owner.
+
+## Configuration
+
+`BREWPAGE_URL` defaults to `https://brewpage.app`. Set it to an authorized BrewPage apex API origin, never a publication host.
 
 ## Source Code
 
