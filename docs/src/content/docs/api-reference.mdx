@@ -36,6 +36,8 @@ Download the full OpenAPI 3.1 spec:
 
 Base URL: [`https://brewpage.app`](https://brewpage.app) (alias: [`https://brewdata.app`](https://brewdata.app))
 
+<div className="overflow-x-auto max-w-full" role="region" aria-label="API endpoints overview" tabIndex={0}>
+
 | Tag | Description | Key Endpoints |
 |-----|-------------|--------------|
 | **HTML** | HTML/Markdown page hosting | [`POST /api/html`](https://brewpage.app/swagger-ui/index.html#/HTML/createHtml), [`GET /api/html/{ns}/{id}`](https://brewpage.app/swagger-ui/index.html#/HTML/getHtml) |
@@ -48,6 +50,8 @@ Base URL: [`https://brewpage.app`](https://brewpage.app) (alias: [`https://brewd
 | **Stats** | Platform statistics | [`GET /api/stats`](https://brewpage.app/swagger-ui/index.html#/Stats) |
 | **Short Links** | URL shortener | `GET /s/{code}` |
 | **SEO** | Search engine support | [`GET /sitemap.xml`](https://brewpage.app/sitemap.xml), [`GET /robots.txt`](https://brewpage.app/robots.txt) |
+
+</div>
 
 Hosting GET supports `html`, `files`, `json`, `kv`, and `sites`; hosting PATCH supports only `html`, `files`, `json`, and `kv`. Reader-access revocation supports all five types.
 
