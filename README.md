@@ -159,6 +159,14 @@ The `brewpage-mcp` package provides a Model Context Protocol server with **16 to
 
 Package releases use `.github/workflows/release.yml` with package-scoped npm Trusted Publisher/OIDC for `kochetkov-ma/brewpage-openapi`, workflow `release.yml`, without an environment. CI needs no `NPM_TOKEN`, manual npm login or static-token rotation. Local `npm whoami` does not validate GitHub Actions OIDC authentication.
 
+To retry publication from a local terminal, dispatch the current `main` workflow:
+
+```bash
+gh workflow run release.yml --repo kochetkov-ma/brewpage-openapi --ref main
+```
+
+Rerunning historical tag workflows that used token authentication is unsupported; use current `main` instead. The retry checks the matching version tag and unchanged MCP source, and skips publication when that version already exists.
+
 | Tool | Description |
 |------|-------------|
 | `publish_html` | Publish HTML or Markdown content with optional password, TTL, filename, and top toolbar |
