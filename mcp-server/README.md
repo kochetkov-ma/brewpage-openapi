@@ -12,7 +12,7 @@ MCP server for [BrewPage](https://brewpage.app) -- publish and manage HTML, KV, 
 ## Quick Start
 
 ```bash
-npx -y brewpage-mcp@1.8.0
+npx -y brewpage-mcp@1.9.0
 ```
 
 Requires Node.js 20 or newer. This starts the stdio server for an MCP client.
@@ -28,7 +28,7 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS)
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@1.8.0"]
+      "args": ["-y", "brewpage-mcp@1.9.0"]
     }
   }
 }
@@ -39,7 +39,7 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS)
 Register a project-scoped stdio server:
 
 ```bash
-claude mcp add --transport stdio --scope project brewpage -- npx -y brewpage-mcp@1.8.0
+claude mcp add --transport stdio --scope project brewpage -- npx -y brewpage-mcp@1.9.0
 ```
 
 This writes `.mcp.json` in the project root. Use `--scope user` for user-scoped registration. See the [official Claude Code MCP guide](https://code.claude.com/docs/en/mcp).
@@ -53,7 +53,7 @@ Open **Settings > MCP** and add:
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@1.8.0"]
+      "args": ["-y", "brewpage-mcp@1.9.0"]
     }
   }
 }
@@ -67,7 +67,7 @@ Open the Cline MCP settings panel and add:
 {
   "brewpage": {
     "command": "npx",
-    "args": ["-y", "brewpage-mcp@1.8.0"]
+    "args": ["-y", "brewpage-mcp@1.9.0"]
   }
 }
 ```
@@ -75,7 +75,7 @@ Open the Cline MCP settings panel and add:
 ### Global Install
 
 ```bash
-npm install -g brewpage-mcp@1.8.0
+npm install -g brewpage-mcp@1.9.0
 brewpage-mcp
 ```
 
@@ -108,6 +108,8 @@ For a fresh publication, sites and non-public namespaces require Dedicated subdo
 
 Responses use the server's primary `link` verbatim, including the root slash, and expose `routingCohort`, actual/requested/effective modes, `deliveryModeMatched`, `modeLocked`, `hostingVersion`, access and the trusted-apex `managementLink` when present. Never reconstruct a host from namespace or ID. NEW password links are clean URLs: do not add `?p=`; browser readers unlock through the trusted gateway. Owner tokens and API calls stay on the configured apex API origin.
 
+When `deliveryMode` is omitted for a `public` HTML or Markdown page, the server may publish it on its own subdomain if the page needs browser features a BrewPage link does not provide. `publish_html` then prints `deliveryModeReason: "auto:<codes>"` and a `Delivery notice:` line with the server's explanation; pass `deliveryMode: "path"` to keep a BrewPage link, or change it later with `update_hosting`. `advisory:<codes>` (from `publish_html` or `update_html`) means the address was not changed but such features were found. Codes are comma-separated, drawn from `storage`, `cookies`, `history`, `downloads`, `top-navigation`, `media-capture`, `pointer-lock`, `embeds`, `fullscreen`. Neither line appears when nothing applies.
+
 An existing deduplication winner keeps its actual URL, cohort and mode, even when another mode was requested. OLD publications display **Existing link**, with null mode metadata; their legacy links and behavior remain unchanged. Ordinary content updates and site republishing preserve hosting. An eligible NEW public non-site may change mode separately with `update_hosting`.
 
 ### Hosting
@@ -130,6 +132,8 @@ Publish HTML or Markdown content to BrewPage. Returns a public URL and owner tok
 
 Parameters: `content` (string), `format` (`HTML` | `MARKDOWN`, default `HTML`), `namespace` (optional -- **omit for unlisted content**; pass `public` only for gallery/search eligibility, except when password-protected), `password` (optional), `ttlDays` (1--30, default 15), `filename` (optional, used as title fallback), `showTopBar` (optional boolean -- adds a toolbar with filename, Download button, and theme toggle), `deliveryMode` (optional).
 
+The result includes `deliveryModeReason` and a `Delivery notice:` line when the server returns them (see above).
+
 Example prompt that invokes this tool:
 
 > "Save this HTML report so I can share the link with my team."
@@ -145,6 +149,8 @@ publish_html(content="<h1>Report</h1>...", format="HTML", ttlDays=15)
 Update an existing HTML or Markdown page in place, preserving its short URL. Requires the original `ownerToken` returned at creation.
 
 Parameters: `namespace` (string), `id` (string), `content` (string, the new body), `ownerToken` (string), `format` (optional HTML/Markdown alias or supported code language such as `json`, `yaml`, or `typescript`; omitted preserves the stored format).
+
+An update never changes the link or delivery mode; an advisory `deliveryModeReason` and `Delivery notice:` line are printed when the server returns them.
 
 Example prompt:
 

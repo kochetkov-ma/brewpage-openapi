@@ -8,7 +8,7 @@ const BASE_URL = process.env.BREWPAGE_URL || "https://brewpage.app";
 
 const server = new McpServer({
   name: "brewpage-mcp",
-  version: "1.8.0",
+  version: "1.9.0",
 });
 
 const PUBLIC_NAMESPACE = "public";
@@ -61,6 +61,16 @@ function hostingResponseLines(data: Record<string, unknown>): string[] {
   const lines = fields.filter((field) => field in data).map((field) => `${field}: ${JSON.stringify(data[field])}`);
   if (data.routingCohort === "old") lines.push("Hosting: Existing link");
   if (data.deliveryModeMatched === false) lines.push("Requested hosting differs from the existing winner; its URL and mode were preserved.");
+  lines.push(...deliveryReasonLines(data));
+  return lines;
+}
+
+/** Optional HTML create/update fields: why the delivery mode was chosen or flagged. */
+function deliveryReasonLines(data: Record<string, unknown>): string[] {
+  const { deliveryModeReason: reason, deliveryNotice: notice } = data;
+  const lines: string[] = [];
+  if (typeof reason === "string" && reason.length > 0) lines.push(`deliveryModeReason: ${JSON.stringify(reason)}`);
+  if (typeof notice === "string" && notice.length > 0) lines.push(`Delivery notice: ${notice}`);
   return lines;
 }
 
@@ -134,7 +144,9 @@ function formatUpdateResponse(data: Record<string, unknown>): string {
 
 server.tool(
   "publish_html",
-  "Publish HTML or Markdown content to BrewPage. Returns a public URL and owner token. Supports password protection, custom TTL, optional filename, and an opt-in top toolbar (showTopBar).",
+  "Publish HTML or Markdown content to BrewPage. Returns a public URL and owner token. Supports password protection, custom TTL, optional filename, and an opt-in top toolbar (showTopBar). " +
+    "When deliveryMode is omitted for a `public` page, the server may publish it on its own subdomain if the page needs browser features a BrewPage link does not provide; " +
+    "the result then includes deliveryModeReason and a delivery notice. Always share the returned URL.",
   {
     content: z.string().describe("HTML or Markdown content to publish"),
     deliveryMode: DELIVERY_MODE_SCHEMA,
@@ -678,7 +690,8 @@ server.tool(
 
 server.tool(
   "update_html",
-  "Update an existing BrewPage HTML/Markdown page. Requires owner token. Returns the updated page metadata.",
+  "Update an existing BrewPage HTML/Markdown page. Requires owner token. Returns the updated page metadata. " +
+    "The link and delivery mode never change on update; an advisory deliveryModeReason and delivery notice are included when the new content uses browser features that may not work fully on a BrewPage link.",
   {
     namespace: z.string().describe("Page namespace"),
     id: z.string().describe("Page ID"),

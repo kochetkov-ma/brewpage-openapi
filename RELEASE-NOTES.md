@@ -1,5 +1,22 @@
 # Release Notes
 
+## v1.104.0 — 2026-10-06
+
+### Added
+- OpenAPI: optional `deliveryModeReason` and `deliveryNotice` on `HtmlUploadResponse` and `HtmlUpdateResponse`. A public HTML or Markdown page created without `X-Delivery-Mode` may be published on its own subdomain when it needs browser features a BrewPage (`path`) link does not provide (`auto:<codes>`); `advisory:<codes>` means the address was not changed. Codes: `storage`, `cookies`, `history`, `downloads`, `top-navigation`, `media-capture`, `pointer-lock`, `embeds`, `fullscreen`. Both fields are omitted when nothing applies.
+- OpenAPI: `visibilityNotice` on both HTML responses and `result` on `HtmlUpdateResponse`.
+- OpenAPI: `POST /api/html` documents the `200` response with header `X-Existing-Resource: 1`, returned when a repost matches a page that is already published (same body shape as 201, `result.code: duplicate`, `result.action: merged`).
+- OpenAPI: `PUT /api/html/{ns}/{id}` documents the optional `format` (body field and query parameter); omitted keeps the stored format.
+
+### Changed
+- OpenAPI spec version bumped `1.101.0` → `1.104.0` to track the brewpage-app v1.104.0 backend contract.
+- Install commands and config snippets pin the exact MCP version everywhere (`llms.txt`, `mcp.json`, wiki).
+
+### MCP 1.9.0
+
+- `publish_html` and `update_html` print `deliveryModeReason` and a `Delivery notice:` line when the server returns them; nothing is printed when the fields are absent.
+- No input changes; same 16 tools.
+
 ## v1.86.0 — 2026-06-08
 
 ### Added

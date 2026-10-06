@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: BrewPage API
-  version: 1.101.0
+  version: 1.104.0
   termsOfService: https://brewpage.app/terms
   description: |
     REST API for BrewPage — HTML/KV/JSON/file hosting platform. Publish and manage web content, key-value data,
@@ -49,6 +49,15 @@ info:
     `requestedDeliveryMode` is null when omitted; `deliveryModeMatched` is null without a requested or effective
     mode. OLD effective-mode, management-link and hosting-version values are null when metadata is returned.
     OLD responses may omit the additive metadata entirely. JSON and KV creation do not deduplicate.
+
+    When a public HTML or Markdown page is created without `X-Delivery-Mode`, the server may publish it on
+    its own subdomain if the page's inline code relies on browser features a BrewPage (`path`) link does not
+    provide. The response then carries `deliveryModeReason: auto:<codes>` and a human-readable
+    `deliveryNotice`; `requestedDeliveryMode` stays null. Send `X-Delivery-Mode: path` to keep a BrewPage
+    link, or move the page back later with the hosting PATCH. `advisory:<codes>` names the same kind of
+    features when the address was not changed (explicit `path`, a content update, or an existing page
+    returned for an identical repost). Both fields are omitted when nothing applies. Always use the
+    returned `link`.
 
     Mode changes for NEW public non-sites use `PATCH /api/{type}/{ns}/{id}/hosting` with the owner-token header
     and an integer `expectedVersion`. Ordinary content PUT preserves hosting and rejects a supplied delivery
@@ -736,7 +745,8 @@ paths:
         Replaces page content while preserving the short URL — share once, edit in place.
         The link already shared stays valid; readers see the new content on next load.
         Primary use cases: AI agents iterating on output, fixing typos in already-shared pages.
-        Immutable on update: tags, password, format, filename, showTopBar — delete and recreate to change those.
+        Immutable on update: tags, password, filename, showTopBar — delete and recreate to change those.
+        The stored format is kept unless a new one is supplied through `format`.
         No version history: previous content is overwritten. Requires the owner token returned at creation.
         Also accepts raw text/* bodies — see /llms-full.txt.
       operationId: update_1
@@ -758,10 +768,16 @@ paths:
         required: true
         schema:
           type: string
+      - name: format
+        in: query
+        description: Optional new content format. Same values as the `format` body field, which takes precedence when both are present. Omit to keep the stored format.
+        required: false
+        schema:
+          type: string
       requestBody:
         description: |
-          Primary path: application/json with HtmlUpdateRequest. Fallback paths accept raw text/* bodies — server
-          records the fallback admission but htmlService.update preserves the stored format. See /llms-full.txt.
+          Primary path: application/json with HtmlUpdateRequest. Fallback paths accept raw text/* bodies; the
+          stored format is kept unless a new one is supplied. See /llms-full.txt.
         content:
           application/json:
             schema:
@@ -1169,12 +1185,17 @@ paths:
         auto-routes to /api/files for png/jpg/gif/webp/mp4/pdf/zip; otherwise
         text-sniffed). See /llms-full.txt.
 
-        Idempotent for the (owner_token, content, public/, 24h) tuple:
-        a byte-identical repost from the same owner to `ns=public` without a
-        password within 24h returns the existing id. Response status stays
-        201 and body shape is unchanged; the silently-merged response carries
-        header `X-Existing-Resource: 1`. To replace content at the same id
-        use `PUT /api/html/{ns}/{id}` (the canonical republish path).
+        Reposting content that is already published may return the existing
+        page instead of creating a new one -- for example a byte-identical,
+        password-free repost with the same owner token, format and namespace.
+        That response is `200 OK` rather than 201, carries header
+        `X-Existing-Resource: 1`, and keeps the 201 body shape with
+        `result.code: duplicate` and `result.action: merged`; its `link` and
+        hosting metadata describe the existing page. `ownerToken` echoes the
+        token the caller sent; without one it is a new token that does not
+        control the existing page (see `result.extras.isOwner`). To replace
+        content at the same id use `PUT /api/html/{ns}/{id}` (the canonical
+        republish path).
       operationId: create_1
       parameters:
       - $ref: '#/components/parameters/DeliveryMode'
@@ -1258,6 +1279,18 @@ paths:
               description: "Binary — auto-routes to /api/files for png/jpg/gif/webp/mp4/pdf/zip; otherwise text-sniffed."
         required: true
       responses:
+        '200':
+          description: Existing page returned instead of creating a new one; same body shape as 201.
+          headers:
+            X-Existing-Resource:
+              description: Always `1` on this response; absent on 201.
+              schema:
+                type: string
+                const: '1'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HtmlUploadResponse'
         '201':
           description: Page created
           content:
@@ -3835,6 +3868,8 @@ components:
         Delivery choice for a NEW publication. Sites and non-public resources require subdomain; explicit path
         returns 400. Public non-sites default to path, including password-protected resources. For a reused
         existing resource, returned hosting metadata describes that winner; the request never switches its mode.
+        When omitted on a public HTML/Markdown page, the server may choose subdomain and explain it in
+        `deliveryModeReason`; an explicit value is always kept.
       schema:
         type: string
         enum: [path, subdomain]
@@ -4002,6 +4037,12 @@ components:
         content:
           type: string
           description: New HTML content to replace existing page
+        format:
+          type: string
+          description: |
+            Optional new content format: `html`, `markdown`/`md`, or a code format (yaml, json, xml, csv, tsv,
+            log, toml, ini, sql, sh, bat, env, javascript, typescript, tsx, jsx, css, properties, docker, txt).
+            Omit to keep the stored format. Takes precedence over the `format` query parameter.
     HtmlUpdateResponse:
       type: object
       allOf:
@@ -4023,6 +4064,26 @@ components:
         sizeBytes:
           type: integer
           format: int64
+        result:
+          allOf:
+          - $ref: '#/components/schemas/AbuseResult'
+          - description: 'Outcome envelope for the update (`{ code: success, action: updated }`).'
+        visibilityNotice:
+          type: string
+          description: Human-readable notice about the page's visibility -- listed in the gallery and search-eligible (public namespace without a password), or reachable by its link only.
+        deliveryModeReason:
+          type: string
+          description: |
+            Optional. `advisory:<codes>` when the updated page stays on a BrewPage (`path`) link but uses
+            browser features that may not work fully there. A content update never changes the delivery
+            mode or the link. Codes are comma-separated in a fixed order, drawn from: storage, cookies,
+            history, downloads, top-navigation, media-capture, pointer-lock, embeds, fullscreen.
+            Omitted when nothing applies.
+        deliveryNotice:
+          type: string
+          description: |
+            Optional human-readable sentence explaining `deliveryModeReason`. Present only together
+            with it.
     HtmlSettingsResponse:
       type: object
       allOf:
@@ -4254,6 +4315,24 @@ components:
           allOf:
           - $ref: '#/components/schemas/AbuseResult'
           - description: "Outcome envelope. `code` is success|duplicate|warned|failed; `action` is the specific outcome. When a single HTML page references relative sibling files (e.g. `data.js`) — which 404 because single-file pages have no sibling hosting — the page is still created (201) with `action: created_missing_assets`, a human `reason` (e.g. \"This page is broken: it loads files (data.js) that don't exist on a single page. Publish it as a multi-file site so they work.\"), and `extras.localAssetRefs` listing example paths; publish such content as a multi-file site (`POST /api/sites`) instead."
+        visibilityNotice:
+          type: string
+          description: Human-readable notice about the page's visibility -- listed in the gallery and search-eligible (public namespace without a password), or reachable by its link only.
+        deliveryModeReason:
+          type: string
+          description: |
+            Optional. Present only when the page uses browser features a BrewPage (`path`) link does not
+            provide. `auto:<codes>` -- a public page created without `X-Delivery-Mode` was published on
+            its own subdomain for that reason. `advisory:<codes>` -- the address was not changed (for
+            example an explicit `path` request, or an existing page returned for an identical repost),
+            but those features may not work fully on a BrewPage link. Codes are comma-separated in a
+            fixed order, drawn from: storage, cookies, history, downloads, top-navigation, media-capture,
+            pointer-lock, embeds, fullscreen. Omitted when nothing applies.
+        deliveryNotice:
+          type: string
+          description: |
+            Optional human-readable sentence explaining `deliveryModeReason`, including how to change the
+            delivery mode when the server chose it. Present only together with `deliveryModeReason`.
     AbuseResult:
       type: object
       description: |

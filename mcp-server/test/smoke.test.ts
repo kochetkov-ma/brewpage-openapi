@@ -203,6 +203,49 @@ for (const winner of [
   });
 }
 
+const DELIVERY_REASON_LINE = /^(?:deliveryModeReason: |Delivery notice: )/;
+const PATH_RESPONSE = { ...NEW_RESPONSE, link: "https://brewpage.app/public/aBcDeFgHiJ", deliveryMode: "path", effectiveDeliveryMode: "path", requestedDeliveryMode: null, deliveryModeMatched: null };
+const HTML_REASON_TOOLS = [
+  { tool: "publish_html", method: "POST", status: 201, args: { content: "<h1>Fixture</h1>", namespace: "public" } },
+  { tool: "update_html", method: "PUT", status: 200, args: { namespace: "public", id: "aBcDeFgHiJ", content: "<h1>Fixture</h1>", ownerToken: "fixture-owner" } },
+];
+
+for (const scenario of [
+  { ...HTML_REASON_TOOLS[0], label: "automatic subdomain", response: { ...NEW_RESPONSE, requestedDeliveryMode: null, deliveryModeMatched: null }, reason: "auto:fixture-a,fixture-b", notice: "Fixture notice: published on its own subdomain." },
+  { ...HTML_REASON_TOOLS[0], label: "advisory", response: PATH_RESPONSE, reason: "advisory:fixture-a", notice: "Fixture notice: may not work fully on a BrewPage link." },
+  { ...HTML_REASON_TOOLS[1], label: "advisory", response: PATH_RESPONSE, reason: "advisory:fixture-a", notice: "Fixture notice: may not work fully on a BrewPage link." },
+]) {
+  test(`${scenario.tool} surfaces the ${scenario.label} delivery reason and notice verbatim`, { timeout: 10_000 }, async (t) => {
+    // GIVEN server response carrying both optional delivery fields.
+    const f = await fixture(t);
+    f.respond(scenario.status, { ...scenario.response, deliveryModeReason: scenario.reason, deliveryNotice: scenario.notice });
+    // WHEN caller names no delivery mode.
+    const result = await f.call(scenario.tool, scenario.args);
+    // THEN both fields are printed once, unchanged, and no mode was invented.
+    assert.deepEqual({ method: f.requests[0].method, deliveryMode: f.requests[0].headers["x-delivery-mode"], isError: result.isError },
+      { method: scenario.method, deliveryMode: undefined, isError: undefined }, "request stays mode-free and succeeds");
+    assert.deepEqual(result.content[0].text.split("\n").filter((line) => DELIVERY_REASON_LINE.test(line)),
+      [`deliveryModeReason: ${JSON.stringify(scenario.reason)}`, `Delivery notice: ${scenario.notice}`], "server reason and notice are surfaced verbatim");
+    assert.equal(result.content[0].text.split("\n")[2], `URL: ${scenario.response.link}`, "server link stays authoritative");
+  });
+}
+
+for (const scenario of HTML_REASON_TOOLS.flatMap((tool) => [
+  { ...tool, label: "absent", extra: {} },
+  { ...tool, label: "null", extra: { deliveryModeReason: null, deliveryNotice: null } },
+])) {
+  test(`${scenario.tool} prints no delivery reason lines for ${scenario.label} fields`, { timeout: 10_000 }, async (t) => {
+    // GIVEN server response without usable delivery reason fields.
+    const f = await fixture(t);
+    f.respond(scenario.status, { ...PATH_RESPONSE, ...scenario.extra });
+    // WHEN the HTML tool runs.
+    const result = await f.call(scenario.tool, scenario.args);
+    // THEN output invents neither a reason nor a notice.
+    assert.equal(result.isError, undefined, "tool call succeeds");
+    assert.deepEqual(result.content[0].text.split("\n").filter((line) => DELIVERY_REASON_LINE.test(line)), [], "no delivery reason output is invented");
+  });
+}
+
 for (const type of ["html", "file", "json", "kv"]) {
   test(`update_hosting maps ${type} to owner-only versioned apex PATCH`, { timeout: 10_000 }, async (t) => {
     // GIVEN successful hosting projection.

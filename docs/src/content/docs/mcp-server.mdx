@@ -8,7 +8,7 @@ order: 3
 
 Last updated: 2026-10-05
 
-`brewpage-mcp` 1.8.0 provides sixteen tools to publish and manage HTML, Markdown, JSON, KV, files, and multi-file sites from compatible MCP clients. It runs locally over stdio and calls the BrewPage API. Requires Node.js 20 or newer.
+`brewpage-mcp` 1.9.0 provides sixteen tools to publish and manage HTML, Markdown, JSON, KV, files, and multi-file sites from compatible MCP clients. It runs locally over stdio and calls the BrewPage API. Requires Node.js 20 or newer.
 
 ## Installation
 
@@ -21,7 +21,7 @@ Open Claude Desktop's **Settings > Developer > Edit Config** and add to `claude_
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@1.8.0"]
+      "args": ["-y", "brewpage-mcp@1.9.0"]
     }
   }
 }
@@ -32,7 +32,7 @@ Open Claude Desktop's **Settings > Developer > Edit Config** and add to `claude_
 Register a project-scoped stdio server:
 
 ```bash
-claude mcp add --transport stdio --scope project brewpage -- npx -y brewpage-mcp@1.8.0
+claude mcp add --transport stdio --scope project brewpage -- npx -y brewpage-mcp@1.9.0
 ```
 
 This writes `.mcp.json` in the project root; user-scoped registration uses `--scope user`. See the [official Claude Code MCP guide](https://code.claude.com/docs/en/mcp).
@@ -40,7 +40,7 @@ This writes `.mcp.json` in the project root; user-scoped registration uses `--sc
 ### One-liner
 
 ```bash
-npx -y brewpage-mcp@1.8.0
+npx -y brewpage-mcp@1.9.0
 ```
 
 This starts a stdio server for an MCP client, not an interactive publishing shell. Other clients can use the same `npx` command and pinned arguments.
@@ -73,6 +73,8 @@ All five publish tools accept optional `deliveryMode: "path" | "subdomain"`; it 
 For a fresh publication, public non-sites default to **Promotion** (`path`) and may choose **Dedicated subdomain** (`subdomain`), including when password-protected. Fresh sites and non-public publications require Dedicated subdomain; explicit `path` is rejected. Promotion has stricter active-document restrictions. Each NEW site gets one publication-specific host for its complete bundle, preserving relative/root-relative paths; missing assets return 404 with no SPA fallback. Third-party widgets may need provider configuration.
 
 Use the server's primary `link` exactly, including the root slash. Never reconstruct a host from namespace or ID. Responses expose `routingCohort`, `deliveryMode`, `requestedDeliveryMode`, `effectiveDeliveryMode`, `deliveryModeMatched`, `modeLocked`, `hostingVersion`, `access`, and the trusted-apex `managementLink` when supplied. NEW password links are clean URLs: do not append `?p=`; browser readers unlock through the trusted gateway. API calls and owner tokens stay on the configured apex API origin.
+
+When `deliveryMode` is omitted for a `public` HTML or Markdown page, the server may publish it on its own subdomain if the page needs browser features a BrewPage link does not provide. `publish_html` then prints `deliveryModeReason: "auto:<codes>"` and a `Delivery notice:` line; pass `deliveryMode: "path"` to keep a BrewPage link, or change it later with `update_hosting`. `advisory:<codes>` (from `publish_html` or `update_html`) means the address was not changed but such features were found. Neither line appears when nothing applies.
 
 An existing deduplication winner keeps its actual link, cohort, and mode even when another mode was requested. OLD publications show **Existing link** with null mode metadata and retain their legacy links and behavior. Content updates and site republishing preserve hosting.
 
