@@ -1,6 +1,6 @@
 {
   "name": "brewpage-mcp",
-  "version": "1.9.1",
+  "version": "1.9.2",
   "mcpName": "io.github.kochetkov-ma/brewpage-mcp",
   "description": "MCP server for BrewPage — publish and manage HTML, KV, JSON, and file content from AI assistants",
   "type": "module",
@@ -53,13 +53,13 @@
     "url": "https://github.com/kochetkov-ma/brewpage-openapi/issues"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.29.0",
-    "zod": "^3.24.0"
+    "@modelcontextprotocol/sdk": "1.29.0",
+    "zod": "3.25.76"
   },
   "devDependencies": {
-    "@types/node": "^22.0.0",
+    "@types/node": "22.19.15",
     "tsx": "4.22.0",
-    "typescript": "^5.8.0"
+    "typescript": "5.9.3"
   },
   "overrides": {
     "@hono/node-server": "1.19.15",

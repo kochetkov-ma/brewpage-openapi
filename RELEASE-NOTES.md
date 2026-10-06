@@ -21,6 +21,10 @@
 
 - Dependency maintenance: refreshed the locked dependency versions used to build and test the server. No functional change; same 16 tools.
 
+### MCP 1.9.2
+
+- Dependencies are declared as exact versions, so an installed server uses the same SDK and `zod` versions it is built and tested with. No functional change; same 16 tools.
+
 ## v1.86.0 — 2026-06-08
 
 ### Added

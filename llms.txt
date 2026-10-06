@@ -6,7 +6,7 @@ Single source of truth for the BrewPage REST API contract and the BrewPage MCP s
 
 - `openapi/openapi.yaml` — hand-written OpenAPI 3.1 spec. Currently `info.version: 1.104.0`.
 - `openapi/openapi.json` — same spec, regenerated via `npx js-yaml`.
-- `mcp-server/` — TypeScript implementation of the BrewPage MCP server. Currently `version: 1.9.1`. Published as `brewpage-mcp` on npm.
+- `mcp-server/` — TypeScript implementation of the BrewPage MCP server. Currently `version: 1.9.2`. Published as `brewpage-mcp` on npm.
 - `docs/` — Astro docs site published at https://kochetkov-ma.github.io/brewpage-openapi/.
 
 ## Where to read the live API
@@ -26,7 +26,7 @@ Single source of truth for the BrewPage REST API contract and the BrewPage MCP s
 ## How to use the MCP server
 
 ```bash
-npx -y brewpage-mcp@1.9.1
+npx -y brewpage-mcp@1.9.2
 ```
 
 Always pin an exact version.

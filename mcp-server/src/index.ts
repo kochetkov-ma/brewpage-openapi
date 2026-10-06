@@ -8,7 +8,7 @@ const BASE_URL = process.env.BREWPAGE_URL || "https://brewpage.app";
 
 const server = new McpServer({
   name: "brewpage-mcp",
-  version: "1.9.1",
+  version: "1.9.2",
 });
 
 const PUBLIC_NAMESPACE = "public";

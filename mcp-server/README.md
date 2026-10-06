@@ -12,7 +12,7 @@ MCP server for [BrewPage](https://brewpage.app) -- publish and manage HTML, KV, 
 ## Quick Start
 
 ```bash
-npx -y brewpage-mcp@1.9.1
+npx -y brewpage-mcp@1.9.2
 ```
 
 Requires Node.js 20 or newer. This starts the stdio server for an MCP client.
@@ -28,7 +28,7 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS)
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@1.9.1"]
+      "args": ["-y", "brewpage-mcp@1.9.2"]
     }
   }
 }
@@ -39,7 +39,7 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS)
 Register a project-scoped stdio server:
 
 ```bash
-claude mcp add --transport stdio --scope project brewpage -- npx -y brewpage-mcp@1.9.1
+claude mcp add --transport stdio --scope project brewpage -- npx -y brewpage-mcp@1.9.2
 ```
 
 This writes `.mcp.json` in the project root. Use `--scope user` for user-scoped registration. See the [official Claude Code MCP guide](https://code.claude.com/docs/en/mcp).
@@ -53,7 +53,7 @@ Open **Settings > MCP** and add:
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@1.9.1"]
+      "args": ["-y", "brewpage-mcp@1.9.2"]
     }
   }
 }
@@ -67,7 +67,7 @@ Open the Cline MCP settings panel and add:
 {
   "brewpage": {
     "command": "npx",
-    "args": ["-y", "brewpage-mcp@1.9.1"]
+    "args": ["-y", "brewpage-mcp@1.9.2"]
   }
 }
 ```
@@ -75,7 +75,7 @@ Open the Cline MCP settings panel and add:
 ### Global Install
 
 ```bash
-npm install -g brewpage-mcp@1.9.1
+npm install -g brewpage-mcp@1.9.2
 brewpage-mcp
 ```
 
@@ -430,6 +430,10 @@ Every publish response includes an **owner token** -- the only credential that a
 - [Brewcode Plugin](https://github.com/kochetkov-ma/claude-brewcode) -- Claude Code plugin suite
 
 ## Changelog
+
+## 1.9.2 -- 2026-10-06
+
+- Dependencies are declared as exact versions, so an installed server uses the same SDK and `zod` versions it is built and tested with. No functional change.
 
 ## 1.9.1 -- 2026-10-06
 
