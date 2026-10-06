@@ -16,7 +16,7 @@ license: apache-2.0
 
 ## Tools
 
-The `brewpage-mcp` server exposes six typed MCP tools. All write operations return an owner token; keep it to modify or delete the resource later.
+The `brewpage-mcp` server exposes sixteen typed MCP tools; six are shown below, see the [package README](https://www.npmjs.com/package/brewpage-mcp) for the complete list. All write operations return an owner token; keep it to modify or delete the resource later.
 
 | Tool | Purpose | Key parameters |
 |------|---------|----------------|
@@ -29,7 +29,7 @@ The `brewpage-mcp` server exposes six typed MCP tools. All write operations retu
 
 ## Install
 
-The MCP server is published to npm as [`brewpage-mcp`](https://www.npmjs.com/package/brewpage-mcp) (pinned to `1.4.0`). All snippets below use `npx` to fetch and execute the pinned version on demand.
+The MCP server is published to npm as [`brewpage-mcp`](https://www.npmjs.com/package/brewpage-mcp) (pinned to `1.9.1`). All snippets below use `npx` to fetch and execute the pinned version on demand.
 
 ### Claude Desktop
 
@@ -40,7 +40,7 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS)
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@1.4.0"]
+      "args": ["-y", "brewpage-mcp@1.9.1"]
     }
   }
 }
@@ -53,7 +53,7 @@ Add to `~/.codex/config.toml`:
 ```toml
 [mcp_servers.brewpage]
 command = "npx"
-args = ["-y", "brewpage-mcp@1.4.0"]
+args = ["-y", "brewpage-mcp@1.9.1"]
 ```
 
 ### Cursor
@@ -65,7 +65,7 @@ Open **Settings > MCP** and add:
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@1.4.0"]
+      "args": ["-y", "brewpage-mcp@1.9.1"]
     }
   }
 }
@@ -79,7 +79,7 @@ Open the Cline MCP settings panel and add:
 {
   "brewpage": {
     "command": "npx",
-    "args": ["-y", "brewpage-mcp@1.4.0"]
+    "args": ["-y", "brewpage-mcp@1.9.1"]
   }
 }
 ```

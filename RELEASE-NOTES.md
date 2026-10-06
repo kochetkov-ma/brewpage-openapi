@@ -17,6 +17,10 @@
 - `publish_html` and `update_html` print `deliveryModeReason` and a `Delivery notice:` line when the server returns them; nothing is printed when the fields are absent.
 - No input changes; same 16 tools.
 
+### MCP 1.9.1
+
+- Dependency maintenance: refreshed the locked dependency versions used to build and test the server. No functional change; same 16 tools.
+
 ## v1.86.0 — 2026-06-08
 
 ### Added

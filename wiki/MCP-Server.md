@@ -31,7 +31,7 @@ Edit `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS):
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@1.9.0"]
+      "args": ["-y", "brewpage-mcp@1.9.1"]
     }
   }
 }
@@ -48,7 +48,7 @@ Edit `~/.claude/settings.json`:
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@1.9.0"]
+      "args": ["-y", "brewpage-mcp@1.9.1"]
     }
   }
 }
@@ -57,7 +57,7 @@ Edit `~/.claude/settings.json`:
 ### Direct run
 
 ```bash
-npx -y brewpage-mcp@1.9.0
+npx -y brewpage-mcp@1.9.1
 ```
 
 ---

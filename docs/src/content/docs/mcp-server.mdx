@@ -8,7 +8,7 @@ order: 3
 
 Last updated: 2026-10-05
 
-`brewpage-mcp` 1.9.0 provides sixteen tools to publish and manage HTML, Markdown, JSON, KV, files, and multi-file sites from compatible MCP clients. It runs locally over stdio and calls the BrewPage API. Requires Node.js 20 or newer.
+`brewpage-mcp` 1.9.1 provides sixteen tools to publish and manage HTML, Markdown, JSON, KV, files, and multi-file sites from compatible MCP clients. It runs locally over stdio and calls the BrewPage API. Requires Node.js 20 or newer.
 
 ## Installation
 
@@ -21,7 +21,7 @@ Open Claude Desktop's **Settings > Developer > Edit Config** and add to `claude_
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@1.9.0"]
+      "args": ["-y", "brewpage-mcp@1.9.1"]
     }
   }
 }
@@ -32,7 +32,7 @@ Open Claude Desktop's **Settings > Developer > Edit Config** and add to `claude_
 Register a project-scoped stdio server:
 
 ```bash
-claude mcp add --transport stdio --scope project brewpage -- npx -y brewpage-mcp@1.9.0
+claude mcp add --transport stdio --scope project brewpage -- npx -y brewpage-mcp@1.9.1
 ```
 
 This writes `.mcp.json` in the project root; user-scoped registration uses `--scope user`. See the [official Claude Code MCP guide](https://code.claude.com/docs/en/mcp).
@@ -40,7 +40,7 @@ This writes `.mcp.json` in the project root; user-scoped registration uses `--sc
 ### One-liner
 
 ```bash
-npx -y brewpage-mcp@1.9.0
+npx -y brewpage-mcp@1.9.1
 ```
 
 This starts a stdio server for an MCP client, not an interactive publishing shell. Other clients can use the same `npx` command and pinned arguments.
