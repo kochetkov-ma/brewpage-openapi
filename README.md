@@ -35,7 +35,7 @@ Both `brewpage.app` and `brewdata.app` serve the same API.
 
 ## Why this matters for LLMs and agents
 
-AI agents frequently need to share structured outputs -- reports, artifacts, generated HTML, intermediate JSON state -- with users or downstream systems via a stable URL. BrewPage provides that as a zero-setup REST API: one `POST` call, one URL back. No OAuth, no S3 bucket configuration, no infrastructure. The MCP server (`brewpage-mcp`) wraps the API into six typed tools that any MCP-compatible agent (Claude, Codex, Gemini, Cursor) can call directly.
+AI agents frequently need to share structured outputs -- reports, artifacts, generated HTML, intermediate JSON state -- with users or downstream systems via a stable URL. BrewPage provides that as a zero-setup REST API: one `POST` call, one URL back. No OAuth, no S3 bucket configuration, no infrastructure. The MCP server (`brewpage-mcp`) wraps the API into sixteen typed tools that any MCP-compatible agent (Claude, Codex, Gemini, Cursor) can call directly.
 
 ## Quick Start
 
@@ -155,7 +155,9 @@ curl https://brewpage.app/api/stats
 
 ## MCP Server
 
-The `brewpage-mcp` package provides a Model Context Protocol server with **6 tools** for AI-assisted content publishing. See [`mcp-server/README.md`](mcp-server/README.md) for full documentation.
+The `brewpage-mcp` package provides a Model Context Protocol server with **16 tools** for AI-assisted content publishing and management. Selected tools appear below; see [`mcp-server/README.md`](mcp-server/README.md) for the complete list and documentation.
+
+Package releases use `.github/workflows/release.yml` with package-scoped npm Trusted Publisher/OIDC for `kochetkov-ma/brewpage-openapi`, workflow `release.yml`, without an environment. CI needs no `NPM_TOKEN`, manual npm login or static-token rotation. Local `npm whoami` does not validate GitHub Actions OIDC authentication.
 
 | Tool | Description |
 |------|-------------|
@@ -175,7 +177,7 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp"]
+      "args": ["-y", "brewpage-mcp@1.8.0"]
     }
   }
 }
@@ -190,7 +192,7 @@ Add to `~/.claude/settings.json`:
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp"]
+      "args": ["-y", "brewpage-mcp@1.8.0"]
     }
   }
 }
@@ -220,7 +222,7 @@ BrewPage is described using [schema.org/SoftwareApplication](https://schema.org/
 |-----------|-------------|
 | OpenAPI 3.1 spec | Complete API contract for all public endpoints (YAML + JSON) |
 | Interactive docs | Astro + Scalar documentation site (GitHub Pages) |
-| MCP server | `brewpage-mcp` -- Claude Desktop/Code integration (6 tools) |
+| MCP server | `brewpage-mcp` -- Claude Desktop/Code integration (16 tools) |
 | Wiki | Code snippets, cheatsheet, tips & tricks |
 | Release notes | Changelog for API and public tooling |
 
