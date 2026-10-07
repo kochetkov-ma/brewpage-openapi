@@ -43,6 +43,14 @@ info:
     publication: HTML/site entry at `/`, native site paths, file/JSON root with its original MIME semantics,
     and KV list at `/` with encoded key paths. Missing site files return 404; there is no SPA fallback.
 
+    On its own host, a Markdown, code-format, JSON, KV or file publication answers a browser document
+    navigation (`Sec-Fetch-Dest: document`, non-bot `User-Agent`) with a small viewer page, the same BrewPage
+    viewer as `brewpage.app/{ns}/{id}`. Every other request to that host (API clients, `curl`, embeds, `fetch`,
+    crawlers) and any request with `?raw=1` receives the native response exactly as before. `?dl=1` on the own
+    host downloads the original of these kinds, answering exactly like `/{ns}/{id}?dl=1` in path mode; a
+    Markdown page downloads its original text when the server holds it. HTML pages and sites on their own
+    host are unchanged.
+
     Hosting metadata is flattened into create/update responses and HTML settings, never inserted into uploaded
     JSON or KV payloads. It reports the actual returned resource, including any existing winner reused by HTML,
     file or site creation. A requested mode does not change a reused winner's cohort, URL or effective mode.
@@ -99,7 +107,8 @@ info:
     header, and are cached with `Cache-Control: public, max-age=3600`.
 
     Allowed file extensions include (non-exhaustive): html, md, json, txt, css, js, jsx, mjs, ts, tsx,
-    plus images, audio, and video types permitted by platform limits.
+    Office documents (docx, xlsx, pptx, doc, xls, ppt, odt, ods, odp), plus images, audio, and video types
+    permitted by platform limits. Macro-enabled and template Office variants are not accepted (422).
 
     ## Required Headers
 
@@ -1362,7 +1371,9 @@ paths:
       summary: Upload file
       description: |
         Stores a file via multipart upload (part name `file`) and returns a download link. Only safe file types
-        accepted. Size caps: 5 MB generic, video up to 20 MB, audio up to 5 MB. Up to 1000 files per namespace.
+        accepted, including Word, Excel, PowerPoint and OpenDocument files (docx, xlsx, pptx, doc, xls, ppt, odt,
+        ods, odp); macro-enabled and template variants are refused with 422.
+        Size caps: 5 MB generic, video up to 20 MB, audio up to 5 MB. Up to 1000 files per namespace.
         Reuse existing owner token to group entities under one owner.
       operationId: upload
       parameters:
@@ -1438,14 +1449,10 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-        '415':
-          description: Unsupported file type
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
         '422':
-          description: File parsed but failed validation (e.g. extension allowed but content sniffed as a disallowed type).
+          description: |
+            Unsupported file type: the extension is not accepted (including macro-enabled and template Office
+            variants), or the file content does not match its declared type.
           content:
             application/json:
               schema:
@@ -1507,9 +1514,11 @@ paths:
       - name: dl
         in: query
         description: |
-          Force download as attachment. A Markdown page answered by this URL (OLD or NEW path mode)
+          Force download as attachment. A Markdown page (OLD, NEW path mode, or a NEW publication's own host)
           downloads its original text as `text/markdown;charset=UTF-8` with a `.md` file name when the
           server holds it; a Markdown page without a stored original downloads the rendered HTML.
+          NEW subdomain routes keep `dl` across the redirect, and the own host honours it for Markdown,
+          code-format, JSON, KV and file publications exactly as this URL does in path mode.
         required: false
         schema:
           type: boolean
@@ -3662,7 +3671,7 @@ paths:
       - Owner Check
       summary: Verify whether the supplied X-Owner-Token owns the resource
       description: |
-        Returns `{isOwner, type}`. Constant-time BCrypt match.
+        Returns `{isOwner, type}`, plus `format` for an `html`-type resource. Constant-time BCrypt match.
         404 when the resource does not exist (or has expired).
         200 with `isOwner:false` when the X-Owner-Token header is absent.
       operationId: ownerCheck
@@ -3967,6 +3976,12 @@ components:
         isOwner:
           type: boolean
           description: True when the supplied owner token matches the stored hash
+        format:
+          type: string
+          enum: [html, other]
+          description: |
+            Present only when `type` is `html`: `html` for an HTML page, `other` for any other stored format
+            (Markdown or a code format). Absent for every other type.
     OwnerTokenResponse:
       type: object
       properties:
