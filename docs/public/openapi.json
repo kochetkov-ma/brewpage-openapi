@@ -1263,7 +1263,7 @@
           "HTML"
         ],
         "summary": "Get HTML page raw source",
-        "description": "Returns the raw user-submitted body (pre-render, pre-sanitize) plus metadata for\nrepublish (format, title, namespace, id, ttlDays, createdAt, expiresAt, filename,\nshowTopBar). Owner-only — requires the X-Owner-Token returned at creation. The\nserved bytes are the verbatim original — markdown is NOT re-rendered, HTML is NOT\nre-sanitized. A blank token returns 400 with `OWNER_TOKEN_REQUIRED` so the SPA can\ndistinguish \"no token pasted yet\" from \"token rejected\".\n",
+        "description": "Returns the raw user-submitted body (pre-render, pre-sanitize) plus metadata for\nrepublish (format, title, namespace, id, ttlDays, createdAt, expiresAt, filename,\nshowTopBar). Owner-only — requires the X-Owner-Token returned at creation. The\nserved bytes are the verbatim original — markdown is NOT re-rendered, HTML is NOT\nre-sanitized. Markdown pages: the original text is kept on each create or PUT; a page\nlast published before the server kept Markdown originals, or whose text contains a NUL\ncharacter or exceeds the HTML size limit, has no stored original and returns its\nrendered HTML instead. A blank token returns 400 with `OWNER_TOKEN_REQUIRED` so the\nSPA can distinguish \"no token pasted yet\" from \"token rejected\".\n",
         "operationId": "getHtmlSource",
         "parameters": [
           {
@@ -2115,7 +2115,7 @@
           {
             "name": "dl",
             "in": "query",
-            "description": "Force download as attachment",
+            "description": "Force download as attachment. A Markdown page answered by this URL (OLD or NEW path mode)\ndownloads its original text as `text/markdown;charset=UTF-8` with a `.md` file name when the\nserver holds it; a Markdown page without a stored original downloads the rendered HTML.\n",
             "required": false,
             "schema": {
               "type": "boolean"
@@ -5988,7 +5988,7 @@
       },
       "HtmlSourceResponse": {
         "type": "object",
-        "description": "Raw user-submitted body returned by `GET /api/html/{ns}/{id}/source`. Owner-only.\nBytes are verbatim — markdown is NOT re-rendered, HTML is NOT re-sanitized.\n",
+        "description": "Raw user-submitted body returned by `GET /api/html/{ns}/{id}/source`. Owner-only.\nBytes are verbatim — markdown is NOT re-rendered, HTML is NOT re-sanitized.\nA Markdown page without a stored original returns its rendered HTML instead.\n",
         "properties": {
           "content": {
             "type": "string",
