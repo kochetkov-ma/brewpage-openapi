@@ -5,7 +5,7 @@
 **Resource types:**
 - **HTML** — Single-page HTML or Markdown publishing
 - **KV** — Key-value store
-- **JSON** — JSON document collections
+- **JSON** — Arbitrary JSON documents
 - **Files** — File uploads and downloads
 - **Sites** — Multi-file HTML site hosting via ZIP or individual files
 
@@ -28,20 +28,22 @@ Open brewpage.app  →  Drop your file  →  Click Publish  →  Get link
 
 ---
 
-### 2. Claude Skill (`/brewpage`)
+### 2. Standalone Claude Skill (`/brewpage-publish`)
 
 ```
-/brewpage "Hello world"  →  Pick namespace  →  Done — here's your link
+/brewpage-publish "Hello world"  →  Pick namespace  →  Get link
 ```
 
 | Step | Action |
 |:----:|--------|
-| **1** | Install: `npx skills add kochetkov-ma/claude-brewcode` |
-| **2** | In any Claude Code prompt: `/brewpage "your text"` or `/brewpage report.md` |
+| **1** | Install with Node 22.20.0+: `npx --yes skills@1.7.2 add kochetkov-ma/claude-brewcode --skill brewpage-publish` |
+| **2** | In Claude Code: `/brewpage-publish "your text"` or `/brewpage-publish report.md` |
 | **3** | Pick a namespace and optional password |
 | **4** | Get link + owner token saved to `.claude/brewpage-history.md` |
 
-Works with text, Markdown, JSON, and files. [Skill docs](https://doc-claude.brewcode.app/brewdoc/brewpage/) · [Source](https://github.com/kochetkov-ma/claude-brewcode/tree/main/skills/brewpage-publish)
+Works with text, Markdown, JSON, and files. [Skill docs](https://doc-claude.brewcode.app/brewdoc/skills/publish/) · [Source](https://github.com/kochetkov-ma/claude-brewcode/tree/main/skills/brewpage-publish)
+
+The linked Brewdoc plugin guide uses `/brewdoc:publish`; the standalone skill above uses `/brewpage-publish`.
 
 ---
 
@@ -95,5 +97,5 @@ See [API Cheatsheet](API-Cheatsheet) · [Code Snippets](Code-Snippets)
 | **OpenAPI Spec** | [openapi.yaml](https://github.com/kochetkov-ma/brewpage-openapi/blob/main/openapi/openapi.yaml) |
 | **MCP Server** | [mcp-server/](https://github.com/kochetkov-ma/brewpage-openapi/tree/main/mcp-server) |
 | **Claude Skill** | [brewpage-publish](https://github.com/kochetkov-ma/claude-brewcode/tree/main/skills/brewpage-publish) |
-| **Skill Docs** | [doc-claude.brewcode.app/brewdoc/brewpage](https://doc-claude.brewcode.app/brewdoc/brewpage/) |
+| **Skill Docs** | [Publishing skill docs](https://doc-claude.brewcode.app/brewdoc/skills/publish/) |
 | **Brewcode Plugin** | [github.com/kochetkov-ma/claude-brewcode](https://github.com/kochetkov-ma/claude-brewcode) |

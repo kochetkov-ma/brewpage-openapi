@@ -2,6 +2,8 @@
 
 Copy-paste examples for working with BrewPage API in 6 languages.
 
+Use returned `link` values exactly. REST omitted `ns` defaults to `public`. KV writes require a previously created store ID and its owner token. Browser viewers, raw API bytes and owner-only original HTML source are distinct representations.
+
 ---
 
 ## cURL
@@ -13,19 +15,21 @@ curl -X POST https://brewpage.app/api/html \
   -d '{"content":"<h1>Hello</h1>","format":"HTML"}'
 
 # Publish Markdown with password
-curl -X POST https://brewpage.app/api/html \
+curl -X POST 'https://brewpage.app/api/html?format=markdown' \
   -H "Content-Type: application/json" \
-  -d '{"content":"# Secret","format":"MARKDOWN","password":"s3cret"}'
+  -H "X-Password: s3cret" \
+  -d '{"content":"# Secret"}'
 
 # Upload file
-curl -X POST https://brewpage.app/api/files/uploads \
-  -F "namespace=assets" -F "file=@image.png"
+curl -X POST 'https://brewpage.app/api/files?ns=assets' \
+  -F "file=@image.png"
 
 # Read KV
 curl https://brewpage.app/api/kv/myapp/config/theme
 
 # Write KV
 curl -X PUT https://brewpage.app/api/kv/myapp/config/theme \
+  -H "X-Owner-Token: your-owner-token" \
   -H "Content-Type: application/json" -d '{"value":"dark"}'
 
 # Delete (with owner token)
@@ -47,7 +51,7 @@ const res = await fetch('https://brewpage.app/api/html', {
   headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({ content: '<h1>Hello</h1>', format: 'HTML' })
 });
-const { url, ownerToken } = await res.json();
+const { link, ownerToken } = await res.json();
 // Save ownerToken!
 
 // Read KV
@@ -56,9 +60,8 @@ const { value } = await kv.json();
 
 // Upload file
 const form = new FormData();
-form.append('namespace', 'uploads');
 form.append('file', fileInput.files[0]);
-await fetch('https://brewpage.app/api/files/uploads', { method: 'POST', body: form });
+await fetch('https://brewpage.app/api/files?ns=uploads', { method: 'POST', body: form });
 ```
 
 ---
@@ -69,15 +72,16 @@ await fetch('https://brewpage.app/api/files/uploads', { method: 'POST', body: fo
 import requests
 
 # Publish
-r = requests.post('https://brewpage.app/api/html', json={
-    'content': '# Hello from Python', 'format': 'MARKDOWN'
+r = requests.post('https://brewpage.app/api/html?format=markdown', json={
+    'content': '# Hello from Python'
 })
 data = r.json()
-print(f"URL: {data['url']}")
+print(f"URL: {data['link']}")
 print(f"Token: {data['ownerToken']}")  # Save this!
 
 # KV write
-requests.put('https://brewpage.app/api/kv/app/config/lang', json={'value': 'en'})
+requests.put('https://brewpage.app/api/kv/app/config/lang', json={'value': 'en'},
+             headers={'X-Owner-Token': 'your-owner-token'})
 
 # KV read
 r = requests.get('https://brewpage.app/api/kv/app/config/lang')
@@ -85,8 +89,7 @@ print(r.json()['value'])
 
 # Upload file
 with open('photo.jpg', 'rb') as f:
-    requests.post('https://brewpage.app/api/files/uploads',
-                  data={'namespace': 'imgs'}, files={'file': f})
+    requests.post('https://brewpage.app/api/files?ns=imgs', files={'file': f})
 ```
 
 ---
@@ -101,7 +104,7 @@ resp, _ := http.Post("https://brewpage.app/api/html",
 defer resp.Body.Close()
 var result map[string]any
 json.NewDecoder(resp.Body).Decode(&result)
-fmt.Println("URL:", result["url"])
+fmt.Println("URL:", result["link"])
 fmt.Println("Token:", result["ownerToken"]) // Save this!
 ```
 
@@ -118,7 +121,7 @@ res = Net::HTTP.post(uri,
   { content: '<h1>Hello</h1>', format: 'HTML' }.to_json,
   'Content-Type' => 'application/json')
 data = JSON.parse(res.body)
-puts "URL: #{data['url']}"
+puts "URL: #{data['link']}"
 puts "Token: #{data['ownerToken']}"  # Save this!
 ```
 
@@ -138,7 +141,7 @@ curl_setopt_array($ch, [
     ])
 ]);
 $result = json_decode(curl_exec($ch), true);
-echo "URL: {$result['url']}\n";
+echo "URL: {$result['link']}\n";
 echo "Token: {$result['ownerToken']}\n"; // Save this!
 ```
 
@@ -157,6 +160,8 @@ curl -X POST "https://brewpage.app/api/sites" \
 ```
 
 ### Upload site (ZIP archive) — curl
+
+`archive` extracts the ZIP as a hosted site; uploading the same ZIP through `/api/files` hosts the archive as a file.
 
 ```bash
 curl -X POST "https://brewpage.app/api/sites?ttl=7" \

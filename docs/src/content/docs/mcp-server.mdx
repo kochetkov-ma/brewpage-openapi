@@ -6,9 +6,9 @@ order: 3
 
 # MCP Server
 
-Last updated: 2026-10-05
+Last updated: 2026-10-11
 
-`brewpage-mcp` 1.9.2 provides sixteen tools to publish and manage HTML, Markdown, JSON, KV, files, and multi-file sites from compatible MCP clients. It runs locally over stdio and calls the BrewPage API. Requires Node.js 20 or newer.
+`brewpage-mcp` 1.9.3 provides sixteen tools to publish and manage HTML, Markdown, JSON, KV, files, and multi-file sites from compatible MCP clients. It runs locally over stdio and calls the BrewPage API. Requires Node.js 20 or newer.
 
 ## Installation
 
@@ -21,7 +21,7 @@ Open Claude Desktop's **Settings > Developer > Edit Config** and add to `claude_
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@1.9.2"]
+      "args": ["-y", "brewpage-mcp@1.9.3"]
     }
   }
 }
@@ -32,7 +32,7 @@ Open Claude Desktop's **Settings > Developer > Edit Config** and add to `claude_
 Register a project-scoped stdio server:
 
 ```bash
-claude mcp add --transport stdio --scope project brewpage -- npx -y brewpage-mcp@1.9.2
+claude mcp add --transport stdio --scope project brewpage -- npx -y brewpage-mcp@1.9.3
 ```
 
 This writes `.mcp.json` in the project root; user-scoped registration uses `--scope user`. See the [official Claude Code MCP guide](https://code.claude.com/docs/en/mcp).
@@ -40,7 +40,7 @@ This writes `.mcp.json` in the project root; user-scoped registration uses `--sc
 ### One-liner
 
 ```bash
-npx -y brewpage-mcp@1.9.2
+npx -y brewpage-mcp@1.9.3
 ```
 
 This starts a stdio server for an MCP client, not an interactive publishing shell. Other clients can use the same `npx` command and pinned arguments.
@@ -68,7 +68,9 @@ This starts a stdio server for an MCP client, not an interactive publishing shel
 
 ## Visibility and Delivery
 
-All five publish tools accept optional `deliveryMode: "path" | "subdomain"`; it is sent as `X-Delivery-Mode`, without changing content bodies. Omitted namespace generates an unlisted `priv-<random>` namespace. Anyone with its unpassworded link can read it. Use `namespace: "public"` only when the user wants gallery/search eligibility; password-protected content remains excluded.
+All five publish tools accept optional `deliveryMode: "path" | "subdomain"`; it is sent as `X-Delivery-Mode`, without changing content bodies. Omitted namespace generates an unlisted `priv-<random>` namespace. Anyone with its unpassworded link can read it. Use `namespace: "public"` only when the user wants gallery/search eligibility; password-protected content remains excluded and unlisted, protected or otherwise ineligible native responses carry `noindex`; eligible public HTML, sites and files may permit indexing.
+
+These tools wrap a subset of the backend-generated public REST contract. MCP TTL inputs retain 1–30 days (default 15); backend owner-specific caps and eligible automatic extensions can affect actual expiry. Use returned `expiresAt`. `get_page` reads stored rendered HTML or format-specific code/text, rather than owner-only original source or a browser viewer.
 
 For a fresh publication, public non-sites default to **Promotion** (`path`) and may choose **Dedicated subdomain** (`subdomain`), including when password-protected. Fresh sites and non-public publications require Dedicated subdomain; explicit `path` is rejected. Promotion has stricter active-document restrictions. Each NEW site gets one publication-specific host for its complete bundle, preserving relative/root-relative paths; missing assets return 404 with no SPA fallback. Third-party widgets may need provider configuration.
 
@@ -87,7 +89,7 @@ publish_html(content="<h1>Report</h1>", format="HTML", ttlDays=15)
 publish_site(files=[{"path":"index.html","content":"<link rel='stylesheet' href='/style.css'><h1>Site</h1>"},{"path":"style.css","content":"body{font-family:sans-serif}"}])
 ```
 
-For sites, provide exactly one of `entryContent` or a non-empty `files` array of `{path, content}`. `entry` defaults to `index.html`. `republish_site` requires `namespace`, `id`, and `ownerToken`; it replaces the full file set, removing files absent from the new bundle. It also accepts `entry`, `ttlDays`, and `tags`.
+For sites, provide exactly one of `entryContent` or a non-empty `files` array of `{path, content}`. `entry` defaults to `index.html`. `republish_site` requires `namespace`, `id`, and `ownerToken`; it replaces the full file set, removing files absent from the new bundle. It also accepts `entry`, `ttlDays`, and `tags`; its compatibility TTL input does not reset the existing expiry.
 
 ### Change Hosting
 

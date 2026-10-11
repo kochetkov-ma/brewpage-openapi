@@ -1,12 +1,12 @@
 # brewpage-openapi
 
-Single source of truth for the BrewPage REST API contract and the BrewPage MCP server.
+Public contract snapshots, documentation and the BrewPage MCP server. The backend-generated public JSON contract is authoritative; this repository distributes deterministic copies.
 
 ## What's here
 
-- `openapi/openapi.yaml` — hand-written OpenAPI 3.1 spec. Currently `info.version: 1.104.0`.
-- `openapi/openapi.json` — same spec, regenerated via `npx js-yaml`.
-- `mcp-server/` — TypeScript implementation of the BrewPage MCP server. Currently `version: 1.9.2`. Published as `brewpage-mcp` on npm.
+- `openapi/openapi.json` — exported backend-generated public OpenAPI 3.1 contract; version and provenance identify the backend source.
+- `openapi/openapi.yaml` — deterministic derived representation; `docs/public/openapi.json` is the identical Scalar copy.
+- `mcp-server/` — TypeScript implementation of the BrewPage MCP server. Prepared `version: 1.9.3`. Published as `brewpage-mcp` on npm.
 - `docs/` — Astro docs site published at https://kochetkov-ma.github.io/brewpage-openapi/.
 
 ## Where to read the live API
@@ -26,12 +26,18 @@ Single source of truth for the BrewPage REST API contract and the BrewPage MCP s
 ## How to use the MCP server
 
 ```bash
-npx -y brewpage-mcp@1.9.2
+npx -y brewpage-mcp@1.9.3
 ```
 
 Always pin an exact version.
 
-The server exposes the same operations the OpenAPI spec describes — read `mcp-server/README.md` for tool list and usage.
+The server wraps a subset of REST operations in sixteen tools — read `mcp-server/README.md` for supported inputs and tool list. Omitted REST namespace defaults to `public`; omitted MCP namespace generates an unlisted `priv-*` namespace. Unlisted is readable by anyone with the link unless password-protected. Use explicit `public` only for gallery/search eligibility; protected publications are excluded and unlisted, protected or otherwise ineligible native responses are search-excluded; eligible public HTML, sites and files may permit indexing.
+
+Use the exact returned primary `link`, including root slashes. Send API passwords as `X-Password` and owner authority as `X-Owner-Token` to the configured apex API origin; never send owner tokens to publication hosts. NEW browser password access uses the trusted unlock gateway, without query-password links. HTML API reads return stored rendered HTML or code/text with format-specific MIME; the owner-only source endpoint returns original authored content. Share URLs may provide a viewer.
+
+Default repository limits: HTML 5 MiB; KV values/JSON documents 1 MiB; files/audio 5 MiB, video 20 MiB; sites 20 MiB total, 100 files, 5 MiB per file. TTL defaults to 15 days; ordinary maximum 30 days, with owner-specific caps and possible eligible automatic extensions. Treat returned expiresAt and API validation as authoritative. SDK/CLI modules are proposals, not released clients.
+
+The repository contract/docs license is Apache-2.0; the independently packaged MCP server is MIT. The backend platform remains proprietary.
 
 ## Source
 

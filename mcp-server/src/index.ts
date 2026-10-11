@@ -8,7 +8,7 @@ const BASE_URL = process.env.BREWPAGE_URL || "https://brewpage.app";
 
 const server = new McpServer({
   name: "brewpage-mcp",
-  version: "1.9.2",
+  version: "1.9.3",
 });
 
 const PUBLIC_NAMESPACE = "public";
@@ -16,7 +16,7 @@ const PUBLIC_NAMESPACE = "public";
 /**
  * Generate a short, unlisted private namespace slug used when the caller omits
  * `namespace`. Sending an explicit non-public ns prevents the backend from
- * applying its `public` default, which would gallery-list + index the content.
+ * applying its `public` default and making the content discovery-eligible.
  * Format: `priv-<6 lowercase-alphanumeric chars>`.
  */
 function defaultPrivateNamespace(): string {
@@ -44,14 +44,15 @@ const PROTECTED_UNLISTED_NOTICE =
   "Password-protected unlisted link — readers need the password; excluded from gallery and search.";
 
 const NAMESPACE_DESCRIPTION =
-  "Optional. Omit to keep the content PRIVATE/unlisted (reachable only by its link — " +
-  "not listed in the gallery and not indexed by search engines). Pass a custom namespace " +
-  "to group private content, or pass `public` ONLY when the user explicitly wants gallery/search " +
-  "eligibility. Password-protected content stays excluded from gallery/search.";
+  "Optional. Omit to generate an unlisted namespace: anyone with its unpassworded link can read it, " +
+  "but it is excluded from gallery/search. Pass a custom namespace to group unlisted content, " +
+  "or pass `public` ONLY when the user explicitly wants gallery/search eligibility. " +
+  "Password-protected content stays excluded; unlisted, protected or otherwise ineligible native responses carry noindex; eligible public HTML, sites and files may permit indexing.";
 
 const DELIVERY_MODE_SCHEMA = z.enum(["path", "subdomain"]).optional().describe(
   "Optional delivery choice for a fresh publication, independent of password/namespace. " +
-  "Public non-sites default to path (Promotion); fresh sites and non-public content require subdomain. " +
+  "Public non-sites normally default to path (Promotion); public HTML may automatically choose subdomain for browser features. " +
+  "Fresh sites and non-public content require subdomain. " +
   "An existing dedup winner keeps its actual mode and URL."
 );
 
@@ -144,7 +145,7 @@ function formatUpdateResponse(data: Record<string, unknown>): string {
 
 server.tool(
   "publish_html",
-  "Publish HTML or Markdown content to BrewPage. Returns a public URL and owner token. Supports password protection, custom TTL, optional filename, and an opt-in top toolbar (showTopBar). " +
+  "Publish HTML or Markdown content to BrewPage (repository default limit 5 MiB). Returns its primary share link and owner token. Supports password protection, custom TTL, optional filename, and an opt-in top toolbar (showTopBar). " +
     "When deliveryMode is omitted for a `public` page, the server may publish it on its own subdomain if the page needs browser features a BrewPage link does not provide; " +
     "the result then includes deliveryModeReason and a delivery notice. Always share the returned URL.",
   {
@@ -168,7 +169,7 @@ server.tool(
       .min(1)
       .max(30)
       .optional()
-      .describe("Time to live in days (1-30, default: 15)"),
+      .describe("Requested TTL in days (1-30, default 15). Backend owner caps and eligible automatic extensions can affect expiry; use returned expiresAt."),
     filename: z
       .string()
       .max(200)
@@ -217,7 +218,7 @@ server.tool(
 
 server.tool(
   "publish_file",
-  "Upload a file to BrewPage via URL. Returns a public URL and owner token.",
+  "Upload a file to BrewPage via URL. Repository defaults: 5 MiB for files/audio, 20 MiB for video. Returns its primary share link and owner token. Does not expose password or TTL inputs.",
   {
     url: z.string().url().describe("URL of the file to upload"),
     deliveryMode: DELIVERY_MODE_SCHEMA,
@@ -363,7 +364,7 @@ server.tool(
 
 server.tool(
   "get_page",
-  "Fetch a published BrewPage HTML page content by namespace and ID.",
+  "Fetch stored rendered HTML or format-specific code/text by namespace and ID. This reads API content, not the owner-only original-source endpoint or browser viewer. Protected reads use the password header.",
   {
     namespace: z.string().describe("Page namespace"),
     id: z.string().describe("Page ID"),
@@ -458,7 +459,7 @@ server.tool(
 
 server.tool(
   "publish_site",
-  "Publish an HTML site to BrewPage. Single-page: pass `entryContent`. Multi-page: pass `files` (array of `{path, content}`). Optional `entry` overrides default `index.html`.",
+  "Publish an HTML site to BrewPage. Single-page: pass `entryContent`. Multi-page: pass `files` (array of `{path, content}`). Optional `entry` overrides default `index.html`. Repository defaults: 20 MiB total, 100 files, 5 MiB per file. Use its returned primary link and retain the owner token.",
   {
     deliveryMode: DELIVERY_MODE_SCHEMA,
     entryContent: z
@@ -486,7 +487,7 @@ server.tool(
       .min(1)
       .max(30)
       .optional()
-      .describe("Time to live in days (1-30, default: 15)"),
+      .describe("Requested TTL in days (1-30, default 15). Backend owner caps and eligible automatic extensions can affect expiry; use returned expiresAt."),
     ownerToken: z
       .string()
       .optional()
@@ -582,7 +583,7 @@ server.tool(
 
 server.tool(
   "republish_site",
-  "Republish (full-replace) an existing multi-file BrewPage site in place at the SAME URL/ID. Requires owner token. The uploaded bundle becomes the complete new file set — files absent from it are removed, new files added, matching files overwritten. Single-page: pass `entryContent`. Multi-page: pass `files` (array of `{path, content}`). Optional `entry` overrides the default `index.html`.",
+  "Republish (full-replace) an existing multi-file BrewPage site in place at the SAME URL/ID. Requires owner token. The uploaded bundle becomes the complete new file set — files absent from it are removed, new files added, matching files overwritten. Single-page: pass `entryContent`. Multi-page: pass `files` (array of `{path, content}`). Optional `entry` overrides the default `index.html`. Site bundles use repository defaults of 20 MiB total, 100 files, 5 MiB per file; republishing preserves existing expiry.",
   {
     namespace: z.string().describe("Site namespace"),
     id: z.string().describe("Site ID"),
@@ -606,7 +607,7 @@ server.tool(
       .min(1)
       .max(30)
       .optional()
-      .describe("Time to live in days (1-30, default: 15)"),
+      .describe("Compatibility input (1-30); site republishing preserves existing expiry. Use returned expiresAt."),
     tags: z
       .array(z.string())
       .optional()
@@ -740,7 +741,7 @@ server.tool(
 
 server.tool(
   "publish_json",
-  "Publish a JSON document to BrewPage. Accepts a JSON object, array, or a JSON-encoded string. Returns a public URL and owner token.",
+  "Publish a JSON document to BrewPage (repository default limit 1 MiB). Accepts a JSON object, array, or a JSON-encoded string containing any valid JSON, including scalars/null. Returns its primary share link and owner token.",
   {
     deliveryMode: DELIVERY_MODE_SCHEMA,
     json: z
@@ -760,7 +761,7 @@ server.tool(
       .min(1)
       .max(30)
       .optional()
-      .describe("Time to live in days (1-30, default: 15)"),
+      .describe("Requested TTL in days (1-30, default 15). Backend owner caps and eligible automatic extensions can affect expiry; use returned expiresAt."),
     tags: z
       .array(z.string())
       .optional()
@@ -915,7 +916,7 @@ server.tool(
 
 server.tool(
   "publish_kv",
-  "Publish a key/value entry to BrewPage. Creates a KV store; the entry is addressed by (namespace, id, key). Returns a public URL and owner token.",
+  "Publish a key/value entry to BrewPage. Creates a KV store; the entry is addressed by (namespace, id, key). Repository defaults: 1 MiB per value, 1,000 keys per store. Returns its primary share link and owner token.",
   {
     deliveryMode: DELIVERY_MODE_SCHEMA,
     key: z.string().describe("KV key (first part of the (namespace, id, key) addressing tuple)"),
@@ -934,7 +935,7 @@ server.tool(
       .min(1)
       .max(30)
       .optional()
-      .describe("Time to live in days (1-30, default: 15)"),
+      .describe("Requested TTL in days (1-30, default 15). Backend owner caps and eligible automatic extensions can affect expiry; use returned expiresAt."),
     tags: z
       .array(z.string())
       .optional()

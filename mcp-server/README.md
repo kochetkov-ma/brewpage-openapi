@@ -12,7 +12,7 @@ MCP server for [BrewPage](https://brewpage.app) -- publish and manage HTML, KV, 
 ## Quick Start
 
 ```bash
-npx -y brewpage-mcp@1.9.2
+npx -y brewpage-mcp@1.9.3
 ```
 
 Requires Node.js 20 or newer. This starts the stdio server for an MCP client.
@@ -28,7 +28,7 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS)
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@1.9.2"]
+      "args": ["-y", "brewpage-mcp@1.9.3"]
     }
   }
 }
@@ -39,7 +39,7 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS)
 Register a project-scoped stdio server:
 
 ```bash
-claude mcp add --transport stdio --scope project brewpage -- npx -y brewpage-mcp@1.9.2
+claude mcp add --transport stdio --scope project brewpage -- npx -y brewpage-mcp@1.9.3
 ```
 
 This writes `.mcp.json` in the project root. Use `--scope user` for user-scoped registration. See the [official Claude Code MCP guide](https://code.claude.com/docs/en/mcp).
@@ -53,7 +53,7 @@ Open **Settings > MCP** and add:
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@1.9.2"]
+      "args": ["-y", "brewpage-mcp@1.9.3"]
     }
   }
 }
@@ -67,7 +67,7 @@ Open the Cline MCP settings panel and add:
 {
   "brewpage": {
     "command": "npx",
-    "args": ["-y", "brewpage-mcp@1.9.2"]
+    "args": ["-y", "brewpage-mcp@1.9.3"]
   }
 }
 ```
@@ -75,7 +75,7 @@ Open the Cline MCP settings panel and add:
 ### Global Install
 
 ```bash
-npm install -g brewpage-mcp@1.9.2
+npm install -g brewpage-mcp@1.9.3
 brewpage-mcp
 ```
 
@@ -102,7 +102,9 @@ Sixteen tools are available. Creation returns an owner token; keep it to modify 
 | `search_gallery` | Browse public content or list owned resources |
 | `get_stats` | Read platform-wide statistics |
 
-All five publish tools accept optional `deliveryMode: "path" | "subdomain"`, sent only as `X-Delivery-Mode`; authored JSON and multipart bodies keep their existing format. Visibility and password protection are separate choices. Omitted namespace still generates an unlisted `priv-<random>` namespace; anyone with an unpassworded unlisted link can read it. `public` grants gallery/search eligibility only; password-protected content remains excluded.
+All five publish tools accept optional `deliveryMode: "path" | "subdomain"`, sent only as `X-Delivery-Mode`; authored JSON and multipart bodies keep their existing format. Visibility and password protection are separate choices. Omitted namespace still generates an unlisted `priv-<random>` namespace; anyone with an unpassworded unlisted link can read it. `public` grants gallery/search eligibility only; password-protected content remains excluded and unlisted, protected or otherwise ineligible native responses carry `noindex`; eligible public HTML, sites and files may permit indexing.
+
+The MCP server wraps a subset of the backend-generated public [REST contract](../openapi/openapi.json). Its inputs retain their published behavior: TTL inputs accept 1–30 days (default 15), while backend owner-specific caps and eligible automatic extensions can affect actual expiry. Use returned `expiresAt`. `get_page` reads stored rendered HTML or format-specific code/text from the API; it does not call the owner-only original-source endpoint or a browser viewer. `publish_file` uploads from a source URL and does not expose password or TTL inputs.
 
 For a fresh publication, sites and non-public namespaces require Dedicated subdomain (`subdomain`); explicit `path` is rejected. Other public publications default to Promotion (`path`) and may choose Dedicated subdomain, including password-protected content. Promotion uses a BrewPage path with stricter active-document restrictions. Each NEW site gets one publication-specific host for its complete bundle, preserving relative/root-relative paths; missing assets return 404, with no SPA fallback. Third-party widgets may still need provider configuration.
 
@@ -220,7 +222,7 @@ publish_site(files=[{"path": "index.html", "content": "..."}, {"path": "style.cs
 
 Replace an owned site's complete file set at the same ID and primary link. Files absent from the new bundle are removed; matching files are overwritten and new files added. Hosting stays unchanged.
 
-Parameters: `namespace`, `id`, `ownerToken`, exactly one of `entryContent` or a non-empty `files` array of `{path, content}`, optional `entry` (default `index.html`), `ttlDays` (1--30, default 15), and `tags`.
+Parameters: `namespace`, `id`, `ownerToken`, exactly one of `entryContent` or a non-empty `files` array of `{path, content}`, optional `entry` (default `index.html`), `ttlDays` (compatibility input 1--30; existing expiry is preserved), and `tags`.
 
 ```text
 republish_site(namespace="public", id="aBcDeFgHiJ", ownerToken="tok_...", files=[{"path":"index.html","content":"<h1>Updated site</h1>"}])
@@ -350,7 +352,7 @@ search_gallery(mine=true, ownerToken="tok_...", sort="date")
 
 ### `delete_resource`
 
-Delete a BrewPage resource (HTML page, KV store, JSON collection, or file) using the owner token received at creation.
+Delete a BrewPage resource (HTML page, KV store, JSON document, or file) using the owner token received at creation.
 
 Parameters: `type` (`html` | `kv` | `json` | `file`), `namespace` (string), `id` (string), `ownerToken` (string).
 
@@ -430,6 +432,11 @@ Every publish response includes an **owner token** -- the only credential that a
 - [Brewcode Plugin](https://github.com/kochetkov-ma/claude-brewcode) -- Claude Code plugin suite
 
 ## Changelog
+
+## 1.9.3 -- 2026-10-11
+
+- Correct tool/discovery descriptions for unlisted access, conditional native indexing, exact share links, current limits, owner/extension TTL exceptions, retained site-republish expiry and API content representations.
+- Keep sixteen tools, all input defaults and HTTP behavior unchanged. This metadata package patch is independently versioned from backend API contract 1.107.2.
 
 ## 1.9.2 -- 2026-10-06
 

@@ -8,7 +8,7 @@ import Timeline from '../../components/mdx/Timeline.astro';
 
 # Getting Started
 
-Last updated: 2026-10-05
+Last updated: 2026-10-11
 
 BrewPage is a free hosting platform for HTML pages, key-value data, JSON documents, files, and multi-file sites. No signup required — publish content instantly.
 
@@ -16,7 +16,7 @@ BrewPage is a free hosting platform for HTML pages, key-value data, JSON documen
 
 - **HTML / Markdown** — Single-page hosting, auto-rendered Markdown, optional password protection
 - **KV** — Key-value store, up to 1,000 keys per store, 1 MB per value
-- **JSON** — JSON document store, up to 10,000 docs per collection, 1 MB per doc
+- **JSON** — JSON document store, up to 10,000 docs per namespace, 1 MiB per doc
 - **Files** — File hosting, up to 5 MB per file, 1,000 files per namespace
 - **Sites** — Multi-file HTML site hosting via ZIP or individual files, TTL 1–30 days
 
@@ -46,14 +46,14 @@ BrewPage is a free hosting platform for HTML pages, key-value data, JSON documen
   { title: "Get link + saved token", description: "Use the exact returned link; the skill stores owner authority in its local publication history" },
 ]} />
 
-[Skill docs](https://doc-claude.brewcode.app/brewdoc/brewpage/) · [Source](https://github.com/kochetkov-ma/claude-brewcode/tree/main/skills/brewpage-publish)
+[Skill docs](https://doc-claude.brewcode.app/brewdoc/skills/publish/) · [Source](https://github.com/kochetkov-ma/claude-brewcode/tree/main/skills/brewpage-publish)
 
 ---
 
 ### 3. MCP Server (AI Agent)
 
 <Timeline steps={[
-  { title: "Configure brewpage-mcp@1.9.2", description: "Follow the MCP guide for your client; the pinned stdio command is npx -y brewpage-mcp@1.9.2" },
+  { title: "Configure brewpage-mcp@1.9.3", description: "Follow the MCP guide for your client; the pinned stdio command is npx -y brewpage-mcp@1.9.3" },
   { title: 'Ask your assistant: "Publish this to BrewPage"', description: "Sixteen tools support HTML, Markdown, JSON, KV, files, sites, and hosting updates; namespace defaults to unlisted" },
   { title: "Get link + owner token", description: "Claude returns the URL and reminds you to save the token" },
 ]} />
@@ -70,7 +70,7 @@ BrewPage is a free hosting platform for HTML pages, key-value data, JSON documen
   { title: "Share the link", description: "Copy the returned link exactly; do not construct it from namespace or ID" },
 ]} />
 
-REST creation defaults to `ns=public`, unlike MCP's unlisted default. These examples explicitly select `public`; use a custom namespace for unlisted content. Password-protected content remains excluded from gallery/search. TTL is 1–30 days, default 15.
+REST creation defaults to `ns=public`, unlike MCP's unlisted default. These examples explicitly select `public`; use a custom namespace for unlisted content, readable by anyone with its unpassworded link. Password-protected content remains excluded from gallery/search and unlisted, protected or otherwise ineligible native responses carry `noindex`; eligible public HTML, sites and files may permit indexing. Ordinary TTL is 1–30 days, default 15; owner-specific caps and eligible automatic extensions can affect expiry. Use returned `expiresAt`.
 
 **Publish HTML:**
 
@@ -160,5 +160,5 @@ curl https://brewpage.app/api/stats
 | **OpenAPI Spec** | [openapi.yaml](https://github.com/kochetkov-ma/brewpage-openapi/blob/main/openapi/openapi.yaml) |
 | **MCP Server (npm)** | [brewpage-mcp](https://www.npmjs.com/package/brewpage-mcp) |
 | **Claude Skill** | [brewpage-publish](https://github.com/kochetkov-ma/claude-brewcode/tree/main/skills/brewpage-publish) |
-| **Skill Docs** | [doc-claude.brewcode.app](https://doc-claude.brewcode.app/brewdoc/brewpage/) |
+| **Skill Docs** | [doc-claude.brewcode.app](https://doc-claude.brewcode.app/brewdoc/skills/publish/) |
 | **Brewcode Plugin** | [claude-brewcode](https://github.com/kochetkov-ma/claude-brewcode) |
