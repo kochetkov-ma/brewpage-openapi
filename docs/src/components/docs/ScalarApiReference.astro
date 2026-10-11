@@ -1,5 +1,5 @@
 ---
-const SPEC_JSON_URL = '/brewpage-openapi/openapi.json';
+const SPEC_JSON_URL = `${import.meta.env.BASE_URL.replace(/\/$/, '')}/openapi.json`;
 const REDOCLY_VIEWER = 'https://redocly.github.io/redoc/?url=https://kochetkov-ma.github.io/brewpage-openapi/openapi.json';
 const SWAGGER_UI_LIVE = 'https://brewpage.app/swagger-ui/index.html';
 const SPEC_YAML_REPO = 'https://github.com/kochetkov-ma/brewpage-openapi/blob/main/openapi/openapi.yaml';
@@ -10,7 +10,7 @@ const SPEC_JSON_REPO = 'https://github.com/kochetkov-ma/brewpage-openapi/blob/ma
   <div class="rounded-xl border border-base-300 bg-base-200/30 p-6">
     <h3 class="text-lg font-semibold text-primary mb-2">Open the API in a viewer</h3>
     <p class="text-base-content/70 text-sm mb-4">
-      Pick a renderer — each one loads our live <code>openapi.json</code> from this site.
+      Redocly loads this site's generated public JSON snapshot; Swagger UI reads the deployed backend contract.
     </p>
 
     <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -27,7 +27,7 @@ const SPEC_JSON_REPO = 'https://github.com/kochetkov-ma/brewpage-openapi/blob/ma
     <div class="mt-5 pt-4 border-t border-base-300/60">
       <p class="text-xs text-base-content/60 mb-2">Or download the spec directly:</p>
       <div class="flex flex-wrap gap-2 text-sm">
-        <a href={SPEC_JSON_URL} target="_blank" rel="noopener" class="link link-primary">openapi.json (live)</a>
+        <a href={SPEC_JSON_URL} target="_blank" rel="noopener" class="link link-primary">openapi.json (snapshot)</a>
         <span class="text-base-content/40">·</span>
         <a href={SPEC_YAML_REPO} target="_blank" rel="noopener" class="link link-primary">openapi.yaml on GitHub</a>
         <span class="text-base-content/40">·</span>

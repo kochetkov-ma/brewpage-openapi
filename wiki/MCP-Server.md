@@ -31,7 +31,7 @@ Edit `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS):
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@1.9.2"]
+      "args": ["-y", "brewpage-mcp@1.9.3"]
     }
   }
 }
@@ -41,14 +41,14 @@ Windows: `%APPDATA%\Claude\claude_desktop_config.json`
 
 ### Claude Code
 
-Edit `~/.claude/settings.json`:
+Run `claude mcp add --transport stdio --scope project brewpage -- npx -y brewpage-mcp@1.9.3`, or add this to project-root `.mcp.json`:
 
 ```json
 {
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@1.9.2"]
+      "args": ["-y", "brewpage-mcp@1.9.3"]
     }
   }
 }
@@ -57,7 +57,7 @@ Edit `~/.claude/settings.json`:
 ### Direct run
 
 ```bash
-npx -y brewpage-mcp@1.9.2
+npx -y brewpage-mcp@1.9.3
 ```
 
 ---
@@ -70,8 +70,20 @@ npx -y brewpage-mcp@1.9.2
 | `publish_file` | Upload file from URL → URL + token |
 | `publish_site` | Publish a multi-file HTML site from HTML content (`entryContent`, `namespace?`, `password?`, `ttlDays?`) |
 | `delete_resource` | Delete with owner token |
-| `get_page` | Fetch page content |
+| `get_page` | Fetch the API's rendered HTML or raw code response; original authored source is owner-only |
 | `get_stats` | Platform statistics |
+| `republish_site` | Replace a site's files with owner authority |
+| `update_html` | Update HTML with owner authority |
+| `publish_json` | Publish a JSON document |
+| `get_json` | Read a JSON document |
+| `update_json` | Update JSON with owner authority |
+| `publish_kv` | Create a KV store |
+| `set_kv` | Upsert a key with owner authority |
+| `get_kv` | Read a key |
+| `search_gallery` | Search eligible public publications |
+| `update_hosting` | Change hosting with owner authority and the expected hosting version |
+
+Omitted `namespace` generates an unlisted namespace. Use `public` explicitly for discovery eligibility; password protection excludes discovery independently. Unlisted links remain readable by anyone who has them unless protected. Keep the exact server-returned `link`, cohort and effective mode. Eligible public native HTML, sites and files may permit indexing; unlisted, protected or otherwise ineligible native responses carry `noindex`.
 
 ---
 

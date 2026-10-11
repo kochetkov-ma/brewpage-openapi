@@ -16,20 +16,19 @@
 
 [BrewPage](https://brewpage.app) is a free instant hosting service for HTML pages, Markdown documents,
 multi-file sites, AI artifacts, JSON documents, key-value stores, and binary files.
-No signup or API key required. Every published resource gets a short HTTPS URL
-(`brewpage.app/{namespace}/{id}`) within seconds.
+No signup or API key required for creation. Use the exact returned primary HTTPS `link`; publications may use a BrewPage path or their own content host.
 
 Key characteristics:
 
 - **HTML and Markdown pages** -- publish raw HTML or Markdown rendered to styled HTML, up to 5 MB, with instant short URLs.
 - **Multi-file sites** -- upload a ZIP archive or individual files (up to 20 MB / 100 files) and get a fully served static site.
-- **Key-value store** -- namespace-scoped KV pairs, up to 1,000 keys per namespace, mutable in place via the owner token.
-- **JSON documents** -- store and retrieve arbitrary JSON, up to 1 MB per document, 10,000 documents per collection.
+- **Key-value store** -- KV pairs addressed by namespace/store ID, up to 1,000 keys per store, mutable in place via the owner token.
+- **JSON documents** -- store and retrieve arbitrary JSON, up to 1 MiB per document, 10,000 documents per namespace.
 - **File hosting** -- upload any safe file type (images, PDFs, video, audio, archives, code), up to 5 MB (video 20 MB), with inline preview.
-- **Public namespace** -- omitting `?ns=` publishes to the shared `public` namespace, which is listed on the homepage gallery and indexed by search engines. Pass a custom namespace or `X-Password` header to keep content private.
+- **Visibility** -- REST omitted `?ns=` selects `public`; MCP omitted namespace generates an unlisted namespace. Public unpassworded content may qualify for gallery discovery; search eligibility additionally depends on delivery. Custom namespaces are unlisted, readable by anyone with the link unless password-protected. Unlisted, protected or otherwise ineligible native responses carry `noindex`; eligible public HTML, sites and files may permit indexing.
 - **Owner tokens** -- every publish response includes an `ownerToken`. Use it to update content in place (stable URL), delete it, or list your own resources. No accounts, no sessions.
-- **TTL** -- content expires automatically. Default 15 days, maximum 30 days, configurable per request via `ttl_days`.
-- **No auth required** for reads. Writes are open (rate-limited to 60 uploads/hr per IP). All requests require a `User-Agent` header.
+- **TTL** -- default 15 days, ordinary maximum 30 days, configured through the REST `ttl` query parameter. Owner-specific caps and eligible automatic extensions can affect expiry; use returned `expiresAt`.
+- **Access** -- unprotected reads and creation require no account. Protected reads use `X-Password`; owner updates, deletion and scoped lists use `X-Owner-Token`. Rate limits depend on operation/visibility; handle `429` and `Retry-After`.
 
 Both `brewpage.app` and `brewdata.app` serve the same API.
 
@@ -42,10 +41,10 @@ AI agents frequently need to share structured outputs -- reports, artifacts, gen
 Publish an HTML page and get a shareable link:
 
 ```bash
-curl -X POST https://brewpage.app/api/html \
+curl -X POST 'https://brewpage.app/api/html?ns=public&format=html&ttl=15' \
   -H "Content-Type: application/json" \
   -H "User-Agent: MyAgent/1.0" \
-  -d '{"content": "<h1>Hello, world!</h1>", "ttlDays": 15}'
+  -d '{"content": "<h1>Hello, world!</h1>"}'
 ```
 
 Response:
@@ -79,12 +78,12 @@ Open `link` in any browser -- no further steps required.
 | Resource | Description | Limits |
 |----------|-------------|--------|
 | **HTML pages** | Raw HTML or Markdown with instant short URLs | 5 MB, TTL 1--30d |
-| **Key-value store** | Named key-value pairs grouped in namespaces | 1,000 keys/namespace |
-| **JSON documents** | Store and retrieve arbitrary JSON with collection management | 1 MB, 10,000 docs/collection |
+| **Key-value store** | Named key-value pairs addressed by namespace/store ID | 1,000 keys/store |
+| **JSON documents** | Store and retrieve arbitrary JSON with owner-scoped listing | 1 MiB, 10,000 docs/namespace |
 | **Files** | Upload files with automatic MIME detection and inline preview | 5 MB (video 20 MB), 1,000 files/namespace |
 | **Sites** | Multi-file HTML sites via ZIP or individual files | 20 MB total, 100 files, 5 MB/file, TTL 1--30d |
 
-Every resource gets a short URL (`brewpage.app/{ns}/{id}`), optional password protection, configurable TTL, and tagging. Public content appears in a browsable gallery with full-text search.
+Creation returns a primary link and owner token. Keep the token for management and share the link exactly. Password protection excludes discovery; public namespace alone does not guarantee indexing. TTL and supported inputs vary by operation.
 
 ## API Examples
 
@@ -137,13 +136,15 @@ curl https://brewpage.app/api/stats
 - **OpenAPI spec (YAML)** -- [`openapi/openapi.yaml`](openapi/openapi.yaml)
 - **OpenAPI spec (JSON)** -- [`openapi/openapi.json`](openapi/openapi.json)
 
+The backend-generated public JSON contract owns schema authority. YAML is derived deterministically; Scalar serves an identical JSON copy. See [`openapi/openapi.provenance.json`](openapi/openapi.provenance.json) for export provenance. Correct backend generation before importing a new snapshot; do not author schemas in YAML.
+
 ### Endpoints
 
 | Tag | Description |
 |-----|-------------|
 | **HTML** | Publish, retrieve, update, delete HTML/Markdown pages |
 | **KV** | Key-value store CRUD (get, set, list, delete keys) |
-| **JSON** | JSON document CRUD with collection listing |
+| **JSON** | JSON document CRUD with owner-scoped listing |
 | **Files** | File upload, download, list, delete |
 | **Sites** | Multi-file site upload (ZIP or files), info, serve, delete |
 | **Gallery** | Browse public content with search and pagination |
@@ -185,7 +186,7 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@1.9.2"]
+      "args": ["-y", "brewpage-mcp@1.9.3"]
     }
   }
 }
@@ -200,7 +201,7 @@ Add to `~/.claude/settings.json`:
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@1.9.2"]
+      "args": ["-y", "brewpage-mcp@1.9.3"]
     }
   }
 }
@@ -250,7 +251,7 @@ brewpage-openapi/
   openapi/
     openapi.json          # OpenAPI 3.1 spec (JSON)
     openapi.yaml          # OpenAPI 3.1 spec (YAML)
-  docs-site/              # Astro documentation site
+  docs/                   # Astro documentation site
     src/
       pages/              # Documentation pages
       components/         # Scalar API reference
@@ -266,5 +267,5 @@ brewpage-openapi/
 
 ## License
 
-[Apache 2.0](LICENSE)
+[Apache 2.0](LICENSE) covers this repository's contract/docs layer. The independently packaged [MCP server](mcp-server/LICENSE) uses MIT. The hosted backend, frontend and infrastructure remain proprietary. SDK/CLI module specifications are proposals; they do not establish released packages.
 

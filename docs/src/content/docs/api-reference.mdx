@@ -8,9 +8,9 @@ import ScalarApiReference from '../../components/docs/ScalarApiReference.astro';
 
 # API Reference
 
-Last updated: 2026-10-05
+Last updated: 2026-10-11
 
-Explore the [BrewPage](https://brewpage.app) REST API. The embedded specification describes public, protected, owner-only, and administrative operations; their access requirements differ.
+Explore the [BrewPage](https://brewpage.app) REST API. This backend-generated public specification includes anonymous, password-protected and owner-only operations with their access requirements. Administrative operations are excluded from public artifacts.
 
 <ScalarApiReference />
 
@@ -24,13 +24,15 @@ Explore the [BrewPage](https://brewpage.app) REST API. The embedded specificatio
 
 ## OpenAPI Specification
 
-Download the full OpenAPI 3.1 spec:
+Download the public OpenAPI 3.1 snapshot. Backend generation owns schema authority; the YAML representation is derived, and the Scalar JSON copy is identical. Export provenance is committed alongside the snapshot.
 
 | Format | Source |
 |--------|--------|
 | **YAML** | [openapi.yaml](https://github.com/kochetkov-ma/brewpage-openapi/blob/main/openapi/openapi.yaml) |
 | **JSON** | [openapi.json](https://github.com/kochetkov-ma/brewpage-openapi/blob/main/openapi/openapi.json) |
 | **Live endpoint** | [brewpage.app/v3/api-docs](https://brewpage.app/v3/api-docs) |
+
+HTML API reads return stored rendered HTML, or raw code/text with format-specific MIME. The owner-only `/api/html/{ns}/{id}/source` endpoint returns original authored source; `/settings` returns publication settings. Browser share links may provide a viewer. JSON reads return the stored JSON value, including objects, arrays, scalars or null; do not assume a metadata envelope. File reads return bytes and accept `dl` to request attachment delivery.
 
 ## API Endpoints Overview
 
@@ -75,7 +77,7 @@ NEW protected browser links use the clean returned `link` and a trusted top-leve
 
 ## Publication Delivery
 
-REST creation defaults to `ns=public`; the MCP wrapper defaults to an unlisted generated namespace. Only unpassworded `public` content is eligible for gallery/search discovery. Dedicated content hosts carry `noindex`.
+REST creation defaults to `ns=public`; the MCP wrapper defaults to an unlisted generated namespace. Only unpassworded `public` content is eligible for gallery/search discovery. Unlisted, protected or otherwise ineligible native responses carry `noindex`; eligible public HTML, sites and files may permit indexing.
 
 For fresh NEW publications, public non-sites default to **Promotion** (`path`) and may select **Dedicated subdomain** with `X-Delivery-Mode: subdomain`. Sites and non-public publications require Dedicated subdomain; explicit `path` is rejected. Every NEW site bundle has a publication-specific host with relative/root-relative paths and native missing-file 404 responses, without an SPA fallback. Promotion has stricter active-document restrictions.
 
@@ -102,7 +104,7 @@ Limits depend on operation and visibility. Handle the running API's 429 response
 | Site | 20 MB total, 5 MB/file | 100 files/site |
 | TTL | 1–30 days (default 15) | — |
 
-These are repository defaults; video uploads allow up to 20 MB. The running deployment may apply stricter limits.
+These are repository defaults (MiB); video uploads allow up to 20 MiB and audio up to 5 MiB. KV key counts apply per store; JSON and file counts apply per namespace. The running deployment may apply different limits or owner-specific TTL caps. Eligible content may receive automatic TTL extensions; returned `expiresAt` describes the current expiry.
 
 ## Try It Now
 

@@ -1,5 +1,13 @@
 # Release Notes
 
+## API contract 1.107.2 / MCP 1.9.3 — 2026-10-11
+
+- Backend-generated public JSON replaces handwritten YAML schema authority. Deterministic YAML and byte-identical Scalar copies carry backend export provenance; verification checks schema references, operation IDs, path parameters, access schemes and parity.
+- Administrative routes are excluded from public artifacts. Authored examples and guidance retain REST/MCP namespace differences, owner/password access and exact returned hosting links; documented limits/TTL describe repository defaults and owner/extension exceptions.
+- API contract version 1.107.2 identifies the backend-generated public snapshot. This synchronization corrects schema/access/serialization metadata; it adds no runtime endpoint feature. Older release attachments retain their historical contracts.
+- Contract corrections include flattened required hosting metadata with nullable values where serialized, optional owner/password security alternatives, owner-only source/settings access, arbitrary JSON values, HTML text/binary representations, named site-file path parameters, actual error DTOs and bodyless redirect/not-modified responses. Export snapshots normalize the production server origin only; runtime Swagger retains the request/local origin.
+- Independently versioned MCP 1.9.3 is a metadata patch: tool/discovery descriptions clarify unlisted link access, exact returned links, conditional native indexing, limits, owner/extension TTL exceptions, site-republish expiry retention and API content representations. Input defaults, HTTP behavior and the sixteen-tool set are preserved. SDK/CLI modules remain proposals.
+
 ## v1.104.0 — 2026-10-06
 
 ### Added

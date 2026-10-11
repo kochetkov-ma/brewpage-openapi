@@ -4,9 +4,9 @@ Power user tips for getting the most out of BrewPage.
 
 ---
 
-## Both domains work the same
+## API alias and publication links
 
-`brewpage.app` and `brewdata.app` serve the exact same API. Content published on one is accessible from both.
+`brewdata.app` is an API alias. Keep the exact returned publication `link`; native publication hosts and legacy links have different routing behavior.
 
 ```bash
 # Publish on brewpage.app
@@ -20,7 +20,7 @@ curl https://brewdata.app/demo/aBcDeFgHiJ  # Same content!
 
 ## Short URLs for sharing
 
-Every published resource gets a short URL:
+Use any `shortUrl` returned by the API, for example:
 
 ```
 https://brewpage.app/s/xYz123
@@ -35,32 +35,35 @@ Use it in emails, chats, docs — much cleaner than the full URL.
 ```bash
 # Publish with password
 curl -X POST https://brewpage.app/api/html \
-  -d '{"content":"Secret stuff","format":"HTML","password":"mypass"}'
+  -H "Content-Type: application/json" -H "X-Password: mypass" \
+  -d '{"content":"Secret stuff"}'
 
 # Access with password
-curl -H "X-Password: mypass" https://brewpage.app/ns/id
-# or
-curl "https://brewpage.app/ns/id?p=mypass"
+curl -H "X-Password: mypass" https://brewpage.app/api/html/public/aBcDeFgHiJ
+# Query passwords apply only to legacy publications; NEW API reads use X-Password.
 ```
 
 ---
 
 ## Auto-expire with TTL
 
-Set TTL to auto-delete content after N days (30-365):
+Set TTL to expire content after 1–30 days (default 15); owner-specific caps and eligible automatic extensions can affect the returned expiry:
 
 ```bash
-curl -X POST https://brewpage.app/api/html \
-  -d '{"content":"Temporary","format":"HTML","ttlDays":30}'
+curl -X POST 'https://brewpage.app/api/html?ttl=30' \
+  -H "Content-Type: application/json" -d '{"content":"Temporary"}'
 ```
 
 ---
 
 ## KV as feature flags
 
+Create the store first with `POST /api/kv`, then use its returned namespace, store ID and owner token for writes.
+
 ```bash
 # Set flags
 curl -X PUT https://brewpage.app/api/kv/myapp/flags/dark_mode \
+  -H "X-Owner-Token: your-owner-token" \
   -H "Content-Type: application/json" -d '{"value":"true"}'
 
 # Check from any language — just a GET request
@@ -72,23 +75,23 @@ curl -s https://brewpage.app/api/kv/myapp/flags/dark_mode | jq -r .value
 ## JSON as a simple database
 
 ```bash
-# Create records
-curl -X POST https://brewpage.app/api/json/myapp/users \
-  -d '{"document":{"name":"Alice","role":"admin"}}'
+# Create a document
+curl -X POST 'https://brewpage.app/api/json?ns=myapp' \
+  -H "Content-Type: application/json" -d '{"name":"Alice","role":"admin"}'
 
 # List all
-curl https://brewpage.app/api/json/myapp/users
+curl 'https://brewpage.app/api/json?ns=myapp' -H "X-Owner-Token: your-owner-token"
 ```
 
 ---
 
 ## Gallery for discovery
 
-All public content (namespace `public`, no password) is browsable:
+Unpassworded `public` publications may qualify for gallery/search discovery. Eligible public native HTML, sites and files may permit indexing; unlisted, protected or otherwise ineligible native responses carry `noindex`:
 
 ```bash
-curl https://brewpage.app/api/gallery/pages
-curl "https://brewpage.app/api/gallery/pages?search=tutorial"
+curl https://brewpage.app/api/gallery
+curl "https://brewpage.app/api/gallery?search=tutorial"
 ```
 
 ---
@@ -97,8 +100,8 @@ curl "https://brewpage.app/api/gallery/pages?search=tutorial"
 
 ```bash
 for f in *.png; do
-  curl -X POST https://brewpage.app/api/files/uploads \
-    -F "namespace=screenshots" -F "file=@$f"
+  curl -X POST 'https://brewpage.app/api/files?ns=screenshots' \
+    -F "file=@$f"
 done
 ```
 
@@ -111,9 +114,9 @@ Publish build reports or test results from GitHub Actions:
 ```yaml
 - name: Publish test report
   run: |
-    curl -X POST https://brewpage.app/api/html \
+    curl -X POST 'https://brewpage.app/api/html?ns=ci&ttl=30' \
       -H "Content-Type: application/json" \
-      -d "{\"namespace\":\"ci\",\"content\":\"$(cat report.html)\",\"format\":\"HTML\",\"ttlDays\":30}"
+      -d "$(jq -Rs '{content: .}' report.html)"
 ```
 
 ---
@@ -121,8 +124,8 @@ Publish build reports or test results from GitHub Actions:
 ## Tags for organization
 
 ```bash
-curl -X POST https://brewpage.app/api/html \
-  -d '{"content":"Tagged","format":"HTML","tags":["tutorial","python"]}'
+curl -X POST 'https://brewpage.app/api/html?tags=tutorial,python' \
+  -H "Content-Type: application/json" -d '{"content":"Tagged"}'
 ```
 
 Tags help organize content and make it searchable in the gallery.

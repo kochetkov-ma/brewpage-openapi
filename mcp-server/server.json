@@ -2,20 +2,20 @@
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.kochetkov-ma/brewpage-mcp",
   "title": "BrewPage MCP",
-  "description": "Publish HTML, Markdown, KV, JSON, and files to brewpage.app from AI assistants. No signup.",
+  "description": "Publish and manage HTML, Markdown, sites, KV, JSON and files on BrewPage. Omitted namespace is unlisted; keep the returned owner token.",
   "repository": {
     "url": "https://github.com/kochetkov-ma/brewpage-openapi",
     "source": "github",
     "subfolder": "mcp-server"
   },
   "websiteUrl": "https://brewpage.app",
-  "version": "1.9.2",
+  "version": "1.9.3",
   "packages": [
     {
       "registryType": "npm",
       "registryBaseUrl": "https://registry.npmjs.org",
       "identifier": "brewpage-mcp",
-      "version": "1.9.2",
+      "version": "1.9.3",
       "transport": {
         "type": "stdio"
       },

@@ -11,29 +11,27 @@ POST   /api/html              → Publish page
 GET    /api/html/{ns}/{id}    → Get page
 PUT    /api/html/{ns}/{id}    → Update page
 DELETE /api/html/{ns}/{id}    → Delete page
-GET    /api/html/{ns}         → List pages in namespace
+GET    /api/html?ns={ns}      → Owner-scoped list (X-Owner-Token)
 ```
 
 **POST body:**
 ```json
 {
-  "namespace": "my-ns",
-  "content": "<h1>Hello</h1>",
-  "format": "HTML | MARKDOWN",
-  "password": "optional",
-  "ttlDays": 365,
-  "tags": ["tag1"]
+  "content": "<h1>Hello</h1>"
 }
 ```
 
 **Headers:** `X-Owner-Token: tok_xxx` (update/delete) · `X-Password: secret` (protected pages)
+
+Creation options use query parameters `ns`, `format`, `ttl`, `tags` and the `X-Password` header. REST omitted `ns` defaults to `public`; MCP omitted `namespace` generates an unlisted namespace. Use exact returned links. Rendered HTML/code, original owner-only `/source`, and browser viewers are distinct representations.
 
 ---
 
 ## Key-Value Store
 
 ```
-PUT    /api/kv/{ns}/{id}/{key}  → Set key
+POST   /api/kv                 → Create store
+PUT    /api/kv/{ns}/{id}/{key}  → Set key (X-Owner-Token)
 GET    /api/kv/{ns}/{id}/{key}  → Get key
 GET    /api/kv/{ns}/{id}        → List keys
 DELETE /api/kv/{ns}/{id}/{key}  → Delete key
@@ -47,23 +45,23 @@ Limits: **1,000 keys/store**, **1 MB/value**
 ## JSON Documents
 
 ```
-POST   /api/json/{ns}/{collection}       → Create doc
-GET    /api/json/{ns}/{collection}/{id}  → Get doc
-GET    /api/json/{ns}/{collection}       → List docs
-DELETE /api/json/{ns}/{collection}/{id}  → Delete doc
-DELETE /api/json/{ns}/{collection}       → Delete collection
+POST   /api/json              → Create arbitrary JSON document
+GET    /api/json/{ns}/{id}     → Get document
+PUT    /api/json/{ns}/{id}     → Update document (X-Owner-Token)
+GET    /api/json?ns={ns}       → Owner-scoped list (X-Owner-Token)
+DELETE /api/json/{ns}/{id}     → Delete document (X-Owner-Token)
 ```
 
-Limits: **10,000 docs/collection**, **1 MB/document**
+Limits: **10,000 docs/namespace**, **1 MB/document**
 
 ---
 
 ## Files
 
 ```
-POST   /api/files/uploads                → Upload (multipart)
-GET    /api/files/{ns}/{id}/{filename}   → Download
-GET    /api/files/{ns}                   → List files
+POST   /api/files                       → Upload (multipart; ns query parameter)
+GET    /api/files/{ns}/{id}              → Read file bytes
+GET    /api/files?ns={ns}                → Owner-scoped list (X-Owner-Token)
 DELETE /api/files/{ns}/{id}              → Delete file
 ```
 
@@ -90,9 +88,8 @@ Limits: **5 MB/file**, **1,000 files/namespace**
 ## Gallery & Stats
 
 ```
-GET /api/gallery/pages              → Browse public pages
-GET /api/gallery/files              → Browse public files
-GET /api/gallery/pages?search=query → Search
+GET /api/gallery                   → Browse eligible public publications
+GET /api/gallery?search=query      → Search
 GET /api/stats                      → Platform statistics
 ```
 
@@ -100,16 +97,13 @@ GET /api/stats                      → Platform statistics
 
 ## Short URLs
 
-Every resource gets: `https://brewpage.app/s/{code}`
+Use the exact primary `link` and any `shortUrl` returned by the API; do not reconstruct publication URLs.
 
 ---
 
 ## Rate Limits
 
-| Operation | Limit |
-|-----------|-------|
-| Uploads (POST) | 60/hour/IP |
-| Reads (GET) | 300/min/IP |
+Limits depend on operation and visibility. Handle `429` and any `Retry-After` header returned by the running API.
 
 ## Size Limits
 
@@ -117,6 +111,11 @@ Every resource gets: `https://brewpage.app/s/{code}`
 |----------|----------|-----------|
 | HTML page | 5 MB | — |
 | KV value | 1 MB | 1,000 keys/store |
-| JSON doc | 1 MB | 10,000 docs/collection |
+| JSON doc | 1 MB | 10,000 docs/namespace |
 | File | 5 MB | 1,000 files/ns |
-| TTL | 30–365 days | — |
+| Site | 20 MB total, 5 MB/file | 100 files/site |
+| TTL | 1–30 days (default 15) | — |
+
+Repository defaults use MiB; video files allow up to 20 MiB. Deployment and owner-specific TTL caps can differ. Eligible content may receive automatic TTL extensions; `expiresAt` is authoritative. Site republishing without a new TTL retains the existing expiry. A ZIP uploaded as `archive` to `/api/sites` is extracted for hosting; a ZIP sent to `/api/files` is hosted as a file.
+
+Unpassworded `public` publications may qualify for gallery/search. Eligible public native HTML/sites/files may permit indexing; unlisted, protected or otherwise ineligible native responses carry `noindex`. Public namespace is not a guarantee of listing or indexing.

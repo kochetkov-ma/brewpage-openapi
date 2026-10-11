@@ -6,9 +6,9 @@ order: 4
 
 # Examples
 
-Last updated: 2026-10-05
+Last updated: 2026-10-11
 
-These examples deliberately select `ns=public` for gallery/search eligibility. REST defaults to `public`; choose a custom namespace for unlisted content. The MCP wrapper instead defaults to an unlisted namespace. Password-protected content stays excluded from discovery. TTL is 1–30 days, default 15.
+These examples deliberately select `ns=public` for gallery/search eligibility. REST defaults to `public`; choose a custom namespace for unlisted content, readable by anyone with its unpassworded link. The MCP wrapper instead defaults to an unlisted namespace. Password-protected content stays excluded from discovery and unlisted, protected or otherwise ineligible native responses carry `noindex`; eligible public HTML, sites and files may permit indexing. Ordinary TTL is 1–30 days, default 15; owner-specific caps and eligible automatic extensions can affect expiry. Use returned `expiresAt`.
 
 Use the returned primary `link` exactly. NEW public non-sites default to Promotion (`path`); NEW sites and non-public content require Dedicated subdomain (`subdomain`). Creation can reuse an existing winner whose OLD/NEW cohort, link, and actual mode stay unchanged. OLD links retain their historical behavior. See [delivery and authentication](/brewpage-openapi/api-reference/#publication-delivery).
 

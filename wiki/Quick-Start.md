@@ -31,15 +31,15 @@ Four ways to publish content on BrewPage. Pick the one that fits your workflow.
 
 ---
 
-## Method 2: Claude Skill (`/brewpage`)
+## Method 2: Standalone Claude Skill (`/brewpage-publish`)
 
 > **Best for:** Claude Code users who want one-command publishing
 
 ```
 ┌─────────────────────────────────────────────────────┐
-│  1. INSTALL      npx skills add claude-brewcode     │
+│  1. INSTALL      Use the pinned installer below     │
 │       ↓                                             │
-│  2. COMMAND      /brewpage "your text"              │
+│  2. COMMAND      /brewpage-publish "your text"        │
 │       ↓                                             │
 │  3. CHOOSE       Namespace + password (interactive) │
 │       ↓                                             │
@@ -50,16 +50,18 @@ Four ways to publish content on BrewPage. Pick the one that fits your workflow.
 ### Install (one-time)
 
 ```bash
-npx skills add kochetkov-ma/claude-brewcode
+npx --yes skills@1.7.2 add kochetkov-ma/claude-brewcode --skill brewpage-publish
 ```
 
 ### Usage
 
+The installer requires Node 22.20.0+. The standalone skill is `/brewpage-publish`; the linked Brewdoc plugin guide uses `/brewdoc:publish`.
+
 ```
-/brewpage "Hello, world!"              # Text → Markdown page
-/brewpage report.md                    # File → upload
-/brewpage '{"status": "ok"}'           # JSON → formatted document
-/brewpage screenshot.png --ttl 1       # File with 1-day expiry
+/brewpage-publish "Hello, world!"         # Text → Markdown page
+/brewpage-publish report.md              # File → upload
+/brewpage-publish '{"status": "ok"}'     # JSON → document
+/brewpage-publish screenshot.png --ttl 1 # File with 1-day expiry
 ```
 
 Or use natural language in any prompt:
@@ -73,10 +75,10 @@ Upload report.md to brewpage.app
 1. Claude detects content type (text/JSON/file)
 2. Asks you for namespace and password
 3. Calls brewpage.app API
-4. Returns public URL
+4. Returns the publication link; an unlisted link remains readable by anyone who has it unless password-protected
 5. Saves owner token to `.claude/brewpage-history.md`
 
-[Skill docs](https://doc-claude.brewcode.app/brewdoc/brewpage/) · [Source](https://github.com/kochetkov-ma/claude-brewcode/tree/main/skills/brewpage-publish)
+[Skill docs](https://doc-claude.brewcode.app/brewdoc/skills/publish/) · [Source](https://github.com/kochetkov-ma/claude-brewcode/tree/main/skills/brewpage-publish)
 
 ---
 
@@ -102,19 +104,19 @@ Upload report.md to brewpage.app
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@1.9.2"]
+      "args": ["-y", "brewpage-mcp@1.9.3"]
     }
   }
 }
 ```
 
-**Claude Code** — `settings.json`:
+**Claude Code** — project-root `.mcp.json`:
 ```json
 {
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@1.9.2"]
+      "args": ["-y", "brewpage-mcp@1.9.3"]
     }
   }
 }
@@ -160,16 +162,16 @@ curl -X POST https://brewpage.app/api/html \
 ### Publish Markdown
 
 ```bash
-curl -X POST https://brewpage.app/api/html \
+curl -X POST 'https://brewpage.app/api/html?format=markdown' \
   -H "Content-Type: application/json" \
-  -d '{"content":"# My Page\n\n**Bold** text","format":"MARKDOWN"}'
+  -d '{"content":"# My Page\n\n**Bold** text"}'
 ```
 
 ### Upload a File
 
 ```bash
-curl -X POST https://brewpage.app/api/files/uploads \
-  -F "namespace=assets" -F "file=@photo.jpg"
+curl -X POST 'https://brewpage.app/api/files?ns=assets' \
+  -F "file=@photo.jpg"
 ```
 
 ### Response
@@ -186,18 +188,16 @@ curl -X POST https://brewpage.app/api/files/uploads \
 
 > **Save your `ownerToken`!** It's the only way to delete or update content later.
 
+Use the exact returned `link` for sharing; the example above is a legacy response. REST omitted `ns` defaults to `public`; MCP omitted `namespace` generates an unlisted namespace. Public discovery and native indexing depend on eligibility and password protection.
+
 ### With Options
 
 ```bash
-curl -X POST https://brewpage.app/api/html \
+curl -X POST 'https://brewpage.app/api/html?ns=myproject&format=markdown&ttl=30&tags=notes' \
   -H "Content-Type: application/json" \
+  -H "X-Password: secret123" \
   -d '{
-    "namespace": "myproject",
-    "content": "# Private Notes",
-    "format": "MARKDOWN",
-    "password": "secret123",
-    "ttlDays": 90,
-    "tags": ["notes"]
+    "content": "# Private Notes"
   }'
 ```
 
