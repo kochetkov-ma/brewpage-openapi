@@ -20,6 +20,7 @@ Public contract snapshots, documentation and the BrewPage MCP server. The backen
 
 ## Recent contract changes
 
+- 1.107.4 (matches backend v1.107.4): contract metadata only. `info.termsOfService`, `info.contact` and top-level `externalDocs` are present again; paths, operations and schemas are the same as in 1.107.2, the first backend-generated snapshot.
 - 1.104.0 (matches backend v1.104.0): `POST /api/html` and `PUT /api/html/{ns}/{id}` responses may carry optional `deliveryModeReason` (`auto:<codes>` or `advisory:<codes>`) and `deliveryNotice`, plus `visibilityNotice`. A public page created without `X-Delivery-Mode` may be published on its own subdomain when it needs browser features a BrewPage link does not provide; always use the returned `link`. A repost of already-published content returns the existing page with `200` and `X-Existing-Resource: 1`. `PUT` accepts an optional `format`.
 - 1.31.0 (matches backend v1.41.0): `POST /api/html` and `PUT /api/html/{ns}/{id}` accept raw `text/*` and (POST only) `application/octet-stream` bodies. Binary payloads route to `/api/files`. New 422 response with `supportedTypes` array; 415 enriched. See `https://brewpage.app/llms-full.txt`.
 

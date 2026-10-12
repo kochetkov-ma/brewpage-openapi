@@ -1,5 +1,14 @@
 # Release Notes
 
+## API contract 1.107.4 — 2026-10-12
+
+- API contract version 1.107.4 identifies the backend-generated public snapshot exported from the clean brewpage-app release source `3e50e80b17b45d15f22eb16b1410647d726989a1`. Deterministic YAML, the byte-identical Scalar copy and export provenance are regenerated with it.
+- Contract metadata restored: `info.termsOfService` (`https://brewpage.app/terms`), `info.contact` (BrewPage, `https://brewpage.app`) and top-level `externalDocs` (`https://kochetkov-ma.github.io/brewpage-openapi/`). The generated 1.107.2 snapshot did not carry them.
+- `info.license` is not restored; it is pending an owner decision.
+- No path, operation, schema or access change: 31 paths and 45 operations, as in 1.107.2.
+
+Contract-only sync — no MCP version bump (MCP stays 1.9.3), no npm publish, no tag. Docs site auto-redeploys via `.github/workflows/docs.yml` on push to `main`.
+
 ## API contract 1.107.2 / MCP 1.9.3 — 2026-10-11
 
 - Backend-generated public JSON replaces handwritten YAML schema authority. Deterministic YAML and byte-identical Scalar copies carry backend export provenance; verification checks schema references, operation IDs, path parameters, access schemes and parity.
