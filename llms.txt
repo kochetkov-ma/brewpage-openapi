@@ -42,5 +42,13 @@ The repository contract/docs license is Apache-2.0; the independently packaged M
 ## Source
 
 GitHub: https://github.com/kochetkov-ma/brewpage-openapi (repo)
-Backend (BrewPage app): https://github.com/kochetkov-ma/brewpage-app
+Backend (BrewPage app): closed source; live service at https://brewpage.app
 Docs: https://kochetkov-ma.github.io/brewpage-openapi/
+
+## Related projects
+
+- BrewPage GitHub Action (publish CI artifacts to BrewPage from a workflow): https://github.com/kochetkov-ma/brewpage-action
+- BrewPage Cookbook (interactive recipes for AI artifact workflows): https://github.com/kochetkov-ma/brewpage-cookbook
+- brewdoc CLI (fast, deterministic document-to-Markdown conversion for agent systems): https://pypi.org/project/brewdoc/
+- brewdoc CLI source: https://github.com/kochetkov-ma/brewdoc
+- brewcode.app (tools, content and methodology for developers who use AI with purpose): https://brewcode.app

@@ -99,3 +99,7 @@ See [API Cheatsheet](API-Cheatsheet) · [Code Snippets](Code-Snippets)
 | **Claude Skill** | [brewpage-publish](https://github.com/kochetkov-ma/claude-brewcode/tree/main/skills/brewpage-publish) |
 | **Skill Docs** | [Publishing skill docs](https://doc-claude.brewcode.app/brewdoc/skills/publish/) |
 | **Brewcode Plugin** | [github.com/kochetkov-ma/claude-brewcode](https://github.com/kochetkov-ma/claude-brewcode) |
+| **Brewcode Site** | [brewcode.app](https://brewcode.app) |
+| **GitHub Action** | [github.com/kochetkov-ma/brewpage-action](https://github.com/kochetkov-ma/brewpage-action) |
+| **Cookbook** | [github.com/kochetkov-ma/brewpage-cookbook](https://github.com/kochetkov-ma/brewpage-cookbook) |
+| **brewdoc CLI** (document-to-Markdown) | [pypi.org/project/brewdoc](https://pypi.org/project/brewdoc/) · [source](https://github.com/kochetkov-ma/brewdoc) |

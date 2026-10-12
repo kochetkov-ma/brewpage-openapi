@@ -220,6 +220,11 @@ Add to `~/.claude/settings.json`:
 | Interactive API docs | https://kochetkov-ma.github.io/brewpage-openapi/ |
 | Claude skill | https://github.com/kochetkov-ma/claude-brewcode/tree/main/skills/brewpage-publish |
 | BrewCode plugin suite | https://github.com/kochetkov-ma/claude-brewcode |
+| BrewCode site | https://brewcode.app |
+| GitHub Action (publish CI artifacts to BrewPage) | https://github.com/kochetkov-ma/brewpage-action |
+| BrewPage Cookbook (interactive recipes) | https://github.com/kochetkov-ma/brewpage-cookbook |
+| brewdoc CLI (document-to-Markdown conversion for agent systems) | https://pypi.org/project/brewdoc/ |
+| brewdoc CLI source | https://github.com/kochetkov-ma/brewdoc |
 | Wiki | https://github.com/kochetkov-ma/brewpage-openapi/wiki |
 | Releases | https://github.com/kochetkov-ma/brewpage-openapi/releases |
 
