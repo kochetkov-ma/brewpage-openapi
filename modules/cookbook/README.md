@@ -17,7 +17,7 @@
 **Precedent.** [`anthropic-cookbook`](https://github.com/anthropics/anthropic-cookbook) (RAG + AI guides as recipes), Stripe Press (standalone editorial brand), Vercel templates.
 
 **Depends on.**
-- `brewpage-action` -- publish step in CI. While the action is pre-release, recipes publish via `brewpage` CLI (`modules/cli-node/`) or direct REST.
+- `brewpage-action` -- publish step in CI (released). Fallbacks: `brewpage` CLI (`modules/cli-node/`) once it ships, then direct REST.
 - BrewPage REST API (this repo's `openapi/openapi.yaml`).
 
 **Planned recipes (initial slate).**

@@ -4,11 +4,11 @@
 > This folder is a reference snapshot, not a git submodule (no-submodules strategy, locked 2026-05-20). Development is coordinated from `brewpage-openapi` via the `action-engineer` subagent (`.claude/agents/action-engineer.md`).
 > Note: separate dev repo keeps `@v1` semantics clean for Actions Marketplace.
 
-**Status:** RELEASED -- the action is not listed on the GitHub Marketplace yet; use it by `uses: kochetkov-ma/brewpage-action@v1`. Current release `v1.1.1`; major ref `@v1` points to it.
+**Status:** RELEASED -- the action is listed on the [GitHub Marketplace](https://github.com/marketplace/actions/publish-to-brewpage); use it by `uses: kochetkov-ma/brewpage-action@v1`. Current release `v1.1.2`; major ref `@v1` points to it.
 
 **Intent.** Publish CI artefacts -- HTML reports, Playwright reports, generated docs, build outputs -- to BrewPage from GitHub Actions. One step, one live URL as a job output.
 
-**Channel.** The dev repo by ref: `uses: kochetkov-ma/brewpage-action@v1`. The action is not listed on the GitHub Marketplace yet.
+**Channel.** GitHub Marketplace + the dev repo by ref: `uses: kochetkov-ma/brewpage-action@v1`. Listing: https://github.com/marketplace/actions/publish-to-brewpage.
 
 **Architecture.** A `node24` TypeScript action (`runs.using: node24`, `main: dist/index.js`, committed bundle). NOT a composite action. It calls the BrewPage REST API directly via native `fetch`/`FormData`/`Blob` (Node 24) -- zero HTTP dependencies; the only runtime dependency is `@actions/core`. It does NOT depend on `brewpage-cli` or `npx brewpage`.
 
@@ -51,7 +51,8 @@
 
 **Links.**
 - BrewPage -- https://brewpage.app
-- Releases -- https://github.com/kochetkov-ma/brewpage-action/releases (the action is not listed on the GitHub Marketplace yet)
+- GitHub Marketplace -- https://github.com/marketplace/actions/publish-to-brewpage
+- Releases -- https://github.com/kochetkov-ma/brewpage-action/releases
 - OpenAPI contract -- https://github.com/kochetkov-ma/brewpage-openapi
 - Master plan -- ../../ECOSYSTEM-PLAN.md
 - Dev repo -- https://github.com/kochetkov-ma/brewpage-action
