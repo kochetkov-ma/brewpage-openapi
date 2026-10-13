@@ -43,7 +43,7 @@ Open brewpage.app  →  Drop your file  →  Click Publish  →  Get link
 
 Works with text, Markdown, JSON, and files. [Skill docs](https://doc-claude.brewcode.app/brewdoc/skills/publish/) · [Source](https://github.com/kochetkov-ma/claude-brewcode/tree/main/skills/brewpage-publish)
 
-The linked Brewdoc plugin guide uses `/brewdoc:publish`; the standalone skill above uses `/brewpage-publish`.
+The linked brewdoc plugin guide uses `/brewdoc:publish`; the standalone skill above uses `/brewpage-publish`.
 
 ---
 
@@ -92,7 +92,7 @@ See [API Cheatsheet](API-Cheatsheet) · [Code Snippets](Code-Snippets)
 | Resource | Link |
 |----------|------|
 | **brewpage.app** | [brewpage.app](https://brewpage.app) |
-| **brewdata.app** (alias) | [brewdata.app](https://brewdata.app) |
+| **brewdata.app** (redirects to brewpage.app) | [brewdata.app](https://brewdata.app) |
 | **API Docs (Scalar)** | [kochetkov-ma.github.io/brewpage-openapi](https://kochetkov-ma.github.io/brewpage-openapi/) |
 | **OpenAPI Spec** | [openapi.yaml](https://github.com/kochetkov-ma/brewpage-openapi/blob/main/openapi/openapi.yaml) |
 | **MCP Server** | [mcp-server/](https://github.com/kochetkov-ma/brewpage-openapi/tree/main/mcp-server) |

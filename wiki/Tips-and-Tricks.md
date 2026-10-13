@@ -4,16 +4,16 @@ Power user tips for getting the most out of BrewPage.
 
 ---
 
-## API alias and publication links
+## Redirect domain and publication links
 
-`brewdata.app` is an API alias. Keep the exact returned publication `link`; native publication hosts and legacy links have different routing behavior.
+`brewdata.app` is a redirect domain: every path answers 301 to `brewpage.app`, POST included. Send API requests to `https://brewpage.app`. Keep the exact returned publication `link`; native publication hosts and legacy links have different routing behavior.
 
 ```bash
 # Publish on brewpage.app
 curl -X POST https://brewpage.app/api/html -d '...'
 
-# Access from brewdata.app
-curl https://brewdata.app/demo/aBcDeFgHiJ  # Same content!
+# A brewdata.app URL answers 301; -L follows it to brewpage.app
+curl -L https://brewdata.app/demo/aBcDeFgHiJ
 ```
 
 ---

@@ -1,6 +1,6 @@
 # API Cheatsheet
 
-Base URL: `https://brewpage.app` (alias: `https://brewdata.app`)
+Base URL: `https://brewpage.app` (`https://brewdata.app` redirects to it with 301)
 
 ---
 

@@ -55,7 +55,7 @@ npx --yes skills@1.7.2 add kochetkov-ma/claude-brewcode --skill brewpage-publish
 
 ### Usage
 
-The installer requires Node 22.20.0+. The standalone skill is `/brewpage-publish`; the linked Brewdoc plugin guide uses `/brewdoc:publish`.
+The installer requires Node 22.20.0+. The standalone skill is `/brewpage-publish`; the linked brewdoc plugin guide uses `/brewdoc:publish`.
 
 ```
 /brewpage-publish "Hello, world!"         # Text → Markdown page
