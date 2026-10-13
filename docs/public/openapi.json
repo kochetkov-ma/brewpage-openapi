@@ -1962,9 +1962,13 @@
       "url": "https://brewpage.app"
     },
     "description": "Free instant hosting for HTML, Markdown, JSON, key-value stores, files and sites. REST omission defaults to the public namespace; MCP omission creates an unlisted namespace. Unlisted URLs are accessible to anyone with the link; use a password for access restrictions. Retain returned links and ownership tokens. Public discovery requires eligibility; protected and non-public publications are excluded.",
+    "license": {
+      "name": "Apache-2.0",
+      "url": "https://www.apache.org/licenses/LICENSE-2.0"
+    },
     "termsOfService": "https://brewpage.app/terms",
     "title": "BrewPage API",
-    "version": "1.107.4"
+    "version": "1.107.6"
   },
   "openapi": "3.1.0",
   "paths": {

@@ -1,10 +1,19 @@
 # Release Notes
 
+## API contract 1.107.6 — 2026-10-13
+
+- API contract version 1.107.6 identifies the backend-generated public snapshot exported from the clean brewpage-app release source `c8671524647f411c4ce2a5e5a1994617b253f965`. Deterministic YAML, the byte-identical Scalar copy and export provenance are regenerated with it.
+- `info.license` is set: `Apache-2.0` (`https://www.apache.org/licenses/LICENSE-2.0`), the licence of this repository's contract and docs layer (`LICENSE`). The last handwritten contract and the docs site footer said MIT; MIT covers only the independently packaged MCP server (`mcp-server/LICENSE`). The footer now states both.
+- No path, operation, schema or access change: 31 paths and 45 operations, as in 1.107.4. The brewpage-app release v1.107.5 was frontend-only and kept backend build 1.107.4, so it has no snapshot.
+- README and getting-started: `brewdata.app` is a redirect domain (every path answers 301 to `brewpage.app`), not a second API host.
+
+Contract-only sync — no MCP version bump (MCP stays 1.9.3), no npm publish, no tag. Docs site auto-redeploys via `.github/workflows/docs.yml` on push to `main`.
+
 ## API contract 1.107.4 — 2026-10-12
 
 - API contract version 1.107.4 identifies the backend-generated public snapshot exported from the clean brewpage-app release source `3e50e80b17b45d15f22eb16b1410647d726989a1`. Deterministic YAML, the byte-identical Scalar copy and export provenance are regenerated with it.
 - Contract metadata restored: `info.termsOfService` (`https://brewpage.app/terms`), `info.contact` (BrewPage, `https://brewpage.app`) and top-level `externalDocs` (`https://kochetkov-ma.github.io/brewpage-openapi/`). The generated 1.107.2 snapshot did not carry them.
-- `info.license` is not restored; it is pending an owner decision.
+- `info.license` is not restored in this version; 1.107.6 sets it.
 - No path, operation, schema or access change: 31 paths and 45 operations, as in 1.107.2.
 
 Contract-only sync — no MCP version bump (MCP stays 1.9.3), no npm publish, no tag. Docs site auto-redeploys via `.github/workflows/docs.yml` on push to `main`.

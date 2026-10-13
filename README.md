@@ -30,7 +30,7 @@ Key characteristics:
 - **TTL** -- default 15 days, ordinary maximum 30 days, configured through the REST `ttl` query parameter. Owner-specific caps and eligible automatic extensions can affect expiry; use returned `expiresAt`.
 - **Access** -- unprotected reads and creation require no account. Protected reads use `X-Password`; owner updates, deletion and scoped lists use `X-Owner-Token`. Rate limits depend on operation/visibility; handle `429` and `Retry-After`.
 
-Both `brewpage.app` and `brewdata.app` serve the same API.
+The API base URL is `https://brewpage.app`. `brewdata.app` is a redirect domain: every path answers 301 to `brewpage.app`.
 
 ## Why this matters for LLMs and agents
 
@@ -219,7 +219,7 @@ Add to `~/.claude/settings.json`:
 | npm package | https://www.npmjs.com/package/brewpage-mcp |
 | Interactive API docs | https://kochetkov-ma.github.io/brewpage-openapi/ |
 | Claude skill | https://github.com/kochetkov-ma/claude-brewcode/tree/main/skills/brewpage-publish |
-| BrewCode plugin suite | https://github.com/kochetkov-ma/claude-brewcode |
+| Brewcode plugin suite | https://github.com/kochetkov-ma/claude-brewcode |
 | Brewcode site | https://brewcode.app |
 | GitHub Action (publish CI artifacts to BrewPage) | https://github.com/kochetkov-ma/brewpage-action |
 | BrewPage Cookbook (interactive recipes) | https://github.com/kochetkov-ma/brewpage-cookbook |
