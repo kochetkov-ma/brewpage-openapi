@@ -1,5 +1,15 @@
 # Release Notes
 
+## API contract 1.108.0 — 2026-10-14
+
+- API contract version 1.108.0 identifies the backend-generated public snapshot exported from the clean brewpage-app release source `7c6cec4145b86fd11bcbbcd11bae8b9f948f7f81`. Deterministic YAML, the byte-identical Scalar copy and export provenance are regenerated with it.
+- Added `GET /preview/{ns}/{id}.jpg` (`previewJpeg`): the canonical social preview image, a 1200×630 JPEG card with `ETag`/`If-None-Match` support. Images for non-public namespaces and protected content carry `X-Robots-Tag: noindex`; any failure answers 302 to the static `/og-image.png?v=3`.
+- `GET /preview/{ns}/{id}.png` (`preview`) stays as the legacy URL for links shared earlier: it serves the same JPEG card with identical bytes, headers and fallbacks, and its 200 response now declares `image/jpeg`. The static fallback moved from `/og-image.png?v=2` to `?v=3`.
+- The preview images and the social-bot meta page (`/preview-html/{ns}/{id}`) share one `preview` tag; 1.107.6 declared that tag twice.
+- 32 paths and 46 operations (1.107.6: 31 and 45). `scripts/verify-openapi.mjs` checks both preview image routes and rejects duplicate tag names.
+
+Contract-only sync — no MCP version bump (MCP stays 1.9.3), no npm publish, no tag. Docs site auto-redeploys via `.github/workflows/docs.yml` on push to `main`.
+
 ## API contract 1.107.6 — 2026-10-13
 
 - API contract version 1.107.6 identifies the backend-generated public snapshot exported from the clean brewpage-app release source `c8671524647f411c4ce2a5e5a1994617b253f965`. Deterministic YAML, the byte-identical Scalar copy and export provenance are regenerated with it.

@@ -58,9 +58,17 @@ assert.ok(schemas.HostingProjection.required.includes('hostingVersion'),
 for (const suffix of ['source', 'settings']) assert.deepEqual(
   spec.paths[`/api/html/{ns}/{id}/${suffix}`].get.security, [{ OwnerToken: [] }],
   `HTML ${suffix} access requires owner authority`);
-for (const status of ['302', '304', '429']) assert.equal(
-  spec.paths['/preview/{ns}/{id}.png'].get.responses[status].content, undefined,
-  `Preview ${status} has no response body`);
+for (const [extension, operationId] of [['jpg', 'previewJpeg'], ['png', 'preview']]) {
+  const preview = spec.paths[`/preview/{ns}/{id}.${extension}`]?.get;
+  assert.ok(preview, `Preview .${extension} image route is published`);
+  assert.equal(preview.operationId, operationId, `Preview .${extension} keeps operation ID ${operationId}`);
+  assert.deepEqual(preview.tags, ['preview'], `Preview .${extension} uses the shared preview tag`);
+  assert.ok(preview.responses['200'].content['image/jpeg'], `Preview .${extension} declares JPEG card bytes`);
+  for (const status of ['302', '304', '429']) assert.equal(preview.responses[status].content, undefined,
+    `Preview .${extension} ${status} has no response body`);
+}
+const tagNames = (spec.tags ?? []).map((tag) => tag.name);
+assert.equal(new Set(tagNames).size, tagNames.length, 'Top-level tag names are unique');
 assert.deepEqual(spec.paths['/api/json'].post.requestBody.content['application/json'].schema, {},
   'JSON creation admits arbitrary JSON values');
 for (const [path, item] of Object.entries(spec.paths)) {
