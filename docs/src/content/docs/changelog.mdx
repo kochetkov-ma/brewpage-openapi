@@ -6,6 +6,10 @@ order: 5
 
 # Changelog
 
+## Spec 1.113.0 / MCP 1.9.4 — Publication outcome schema
+
+The `result` object on HTML and site responses is described by a schema named `PublicationResult`. Its fields and values are unchanged, so responses are identical; code generated from the spec gets a new type name. Action `merged` means an existing publication was returned instead of a new one. File uploads that return an existing upload send `X-Existing-Resource: 1`, like HTML and sites. MCP 1.9.4 rewords its tool text accordingly; same sixteen tools and behavior. The contract still has 32 paths and 46 operations.
+
 ## Spec 1.108.0 — JPEG social preview images
 
 Social preview images have a canonical URL: `GET /preview/{ns}/{id}.jpg` returns a 1200×630 JPEG card. The earlier `.png` URL keeps working for links already shared and serves the same JPEG bytes. Images of non-public or protected publications are marked `noindex`; if a card cannot be produced, the request redirects to the generic `/og-image.png?v=3`. The preview routes share one `preview` tag. The contract now has 32 paths and 46 operations. No MCP release; the server stays at 1.9.3 with the same sixteen tools.

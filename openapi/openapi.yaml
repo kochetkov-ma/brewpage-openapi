@@ -1,35 +1,6 @@
 # Generated from backend public JSON; do not hand-edit.
 components:
   schemas:
-    AbuseResult:
-      properties:
-        action:
-          enum:
-            - created
-            - created_missing_assets
-            - updated
-            - merged
-            - created_warned
-            - unavailable
-            - rate_limited
-            - rejected
-          type: string
-        code:
-          enum:
-            - success
-            - duplicate
-            - warned
-            - failed
-          type: string
-        extras:
-          additionalProperties: {}
-          type: object
-        reason:
-          type: string
-      required:
-        - action
-        - code
-      type: object
     AccessRevokeResponse:
       properties:
         revoked:
@@ -48,7 +19,7 @@ components:
           type: string
         result:
           oneOf:
-            - $ref: '#/components/schemas/AbuseResult'
+            - $ref: '#/components/schemas/PublicationResult'
         retryAfterSeconds:
           format: int64
           type: integer
@@ -401,9 +372,9 @@ components:
             - string
             - 'null'
         result:
-          description: 'Publication outcome envelope: code + action + optional reason.'
+          description: 'Publication outcome: code + action + optional reason.'
           oneOf:
-            - $ref: '#/components/schemas/AbuseResult'
+            - $ref: '#/components/schemas/PublicationResult'
         routingCohort:
           type: string
         sizeBytes:
@@ -505,11 +476,9 @@ components:
             - string
             - 'null'
         result:
-          description: >-
-            Publication outcome envelope: code (success|duplicate|warned|failed) + action
-            (created|updated|merged|created_warned|...) + optional reason. Present on every POST/PUT response.
+          description: 'Publication outcome: code + action + optional reason. Present on every POST/PUT response.'
           oneOf:
-            - $ref: '#/components/schemas/AbuseResult'
+            - $ref: '#/components/schemas/PublicationResult'
         routingCohort:
           type: string
         sizeBytes:
@@ -987,6 +956,38 @@ components:
         token:
           type: string
       type: object
+    PublicationResult:
+      description: >-
+        Publication outcome: code, action and optional reason. Action merged means an existing publication was returned
+        instead of a new one.
+      properties:
+        action:
+          enum:
+            - created
+            - created_missing_assets
+            - updated
+            - merged
+            - created_warned
+            - unavailable
+            - rate_limited
+            - rejected
+          type: string
+        code:
+          enum:
+            - success
+            - duplicate
+            - warned
+            - failed
+          type: string
+        extras:
+          additionalProperties: {}
+          type: object
+        reason:
+          type: string
+      required:
+        - action
+        - code
+      type: object
     RandomNamespaceResponse:
       properties:
         namespace:
@@ -1155,9 +1156,9 @@ components:
             - string
             - 'null'
         result:
-          description: 'Publication outcome envelope: code + action + optional reason.'
+          description: 'Publication outcome: code + action + optional reason.'
           oneOf:
-            - $ref: '#/components/schemas/AbuseResult'
+            - $ref: '#/components/schemas/PublicationResult'
         routingCohort:
           type: string
         tags:
@@ -1248,11 +1249,9 @@ components:
             - string
             - 'null'
         result:
-          description: >-
-            Publication result envelope (code + action + optional reason). Created/Merged/CreatedWarned dispatched per
-            silent-merge dedup decision.
+          description: 'Publication outcome: code + action + optional reason. Present on every POST/PUT response.'
           oneOf:
-            - $ref: '#/components/schemas/AbuseResult'
+            - $ref: '#/components/schemas/PublicationResult'
         routingCohort:
           type: string
         tags:
@@ -1497,7 +1496,7 @@ info:
     url: https://www.apache.org/licenses/LICENSE-2.0
   termsOfService: https://brewpage.app/terms
   title: BrewPage API
-  version: 1.108.0
+  version: 1.113.0
 openapi: 3.1.0
 paths:
   /api/files:

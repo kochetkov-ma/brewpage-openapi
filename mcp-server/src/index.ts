@@ -8,7 +8,7 @@ const BASE_URL = process.env.BREWPAGE_URL || "https://brewpage.app";
 
 const server = new McpServer({
   name: "brewpage-mcp",
-  version: "1.9.3",
+  version: "1.9.4",
 });
 
 const PUBLIC_NAMESPACE = "public";
@@ -53,7 +53,7 @@ const DELIVERY_MODE_SCHEMA = z.enum(["path", "subdomain"]).optional().describe(
   "Optional delivery choice for a fresh publication, independent of password/namespace. " +
   "Public non-sites normally default to path (Promotion); public HTML may automatically choose subdomain for browser features. " +
   "Fresh sites and non-public content require subdomain. " +
-  "An existing dedup winner keeps its actual mode and URL."
+  "When creation returns an existing publication, it keeps its actual mode and URL."
 );
 
 function hostingResponseLines(data: Record<string, unknown>): string[] {
@@ -61,7 +61,7 @@ function hostingResponseLines(data: Record<string, unknown>): string[] {
     "deliveryModeMatched", "modeLocked", "hostingVersion", "access", "managementLink"];
   const lines = fields.filter((field) => field in data).map((field) => `${field}: ${JSON.stringify(data[field])}`);
   if (data.routingCohort === "old") lines.push("Hosting: Existing link");
-  if (data.deliveryModeMatched === false) lines.push("Requested hosting differs from the existing winner; its URL and mode were preserved.");
+  if (data.deliveryModeMatched === false) lines.push("Requested hosting differs from the existing publication; its URL and mode were preserved.");
   lines.push(...deliveryReasonLines(data));
   return lines;
 }

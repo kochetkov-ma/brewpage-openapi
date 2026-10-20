@@ -189,14 +189,14 @@ for (const winner of [
   { cohort: "new-v1", mode: "path", matched: false, label: "requested/effective mismatch", link: "https://brewpage.app/public/aBcDeFgHiJ" },
   { cohort: "old", mode: null, matched: null, label: "OLD nullable mode", link: "https://brewpage.app/public/aBcDeFgHiJ?p=legacy-fixture" },
 ]) {
-  test(`dedup preserves ${winner.label} and actual winner URL`, { timeout: 10_000 }, async (t) => {
+  test(`existing publication preserves ${winner.label} and actual URL`, { timeout: 10_000 }, async (t) => {
     // GIVEN existing winner returned by the server.
     const f = await fixture(t);
     f.respond(200, { ...NEW_RESPONSE, link: winner.link, routingCohort: winner.cohort, deliveryMode: winner.mode, effectiveDeliveryMode: winner.mode, requestedDeliveryMode: "subdomain", deliveryModeMatched: winner.matched });
     // WHEN caller asks for a different create mode.
     const result = await f.call("publish_html", { content: "same fixture", namespace: "public", deliveryMode: "subdomain" });
     // THEN actual winner is reported without implicit mutation.
-    assert.equal(f.requests.length, 1, "dedup triggers no hosting update");
+    assert.equal(f.requests.length, 1, "existing publication triggers no hosting update");
     assert.equal(result.content[0].text.split("\n")[2], `URL: ${winner.link}`, "winner URL is untouched");
     assert.equal(result.content[0].text.includes(`deliveryMode: ${JSON.stringify(winner.mode)}`), true, "actual mode including null is retained");
     assert.equal(result.content[0].text.includes(`deliveryModeMatched: ${JSON.stringify(winner.matched)}`), true, "mismatch including null is retained");
@@ -304,7 +304,7 @@ test("fresh site path rejection comes from the server without client coercion", 
 });
 
 test("existing OLD site winner accepts a valid requested path without local eligibility rejection", { timeout: 10_000 }, async (t) => {
-  // GIVEN OLD dedup winner where fresh-site eligibility does not apply.
+  // GIVEN OLD existing publication where fresh-site eligibility does not apply.
   const f = await fixture(t);
   f.respond(200, { ...NEW_RESPONSE, link: "https://brewpage.app/public/aBcDeFgHiJ/", routingCohort: "old", deliveryMode: null, effectiveDeliveryMode: null, deliveryModeMatched: null, requestedDeliveryMode: "path", hostingVersion: null });
   // WHEN caller requests path hosting while republishing the same site content.
@@ -313,7 +313,7 @@ test("existing OLD site winner accepts a valid requested path without local elig
   assert.equal(result.isError, undefined, "OLD winner is not subjected to fresh-site validation");
   assert.match(result.content[0].text, /^URL: https:\/\/brewpage\.app\/public\/aBcDeFgHiJ\/$/m, "OLD winner root link is unchanged");
   assert.match(result.content[0].text, /Hosting: Existing link/, "OLD site is not mislabeled Promotion");
-  assert.equal(f.requests.length, 1, "dedup outcome causes no extra hosting mutation");
+  assert.equal(f.requests.length, 1, "existing publication outcome causes no extra hosting mutation");
 });
 
 test("invalid enum and fractional hosting version fail before HTTP", { timeout: 10_000 }, async (t) => {

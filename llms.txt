@@ -6,7 +6,7 @@ Public contract snapshots, documentation and the BrewPage MCP server. The backen
 
 - `openapi/openapi.json` — exported backend-generated public OpenAPI 3.1 contract; version and provenance identify the backend source.
 - `openapi/openapi.yaml` — deterministic derived representation; `docs/public/openapi.json` is the identical Scalar copy.
-- `mcp-server/` — TypeScript implementation of the BrewPage MCP server. Prepared `version: 1.9.3`. Published as `brewpage-mcp` on npm.
+- `mcp-server/` — TypeScript implementation of the BrewPage MCP server. Prepared `version: 1.9.4`. Published as `brewpage-mcp` on npm.
 - `docs/` — Astro docs site published at https://kochetkov-ma.github.io/brewpage-openapi/.
 
 ## Where to read the live API
@@ -20,6 +20,7 @@ Public contract snapshots, documentation and the BrewPage MCP server. The backen
 
 ## Recent contract changes
 
+- 1.113.0 (matches backend v1.113.0): the `result` outcome schema is named `PublicationResult`; fields, values and response bodies are unchanged (`merged` = an existing publication was returned). `POST /api/files` answers `X-Existing-Resource: 1` when it returns an existing upload. 32 paths and 46 operations.
 - 1.108.0 (matches backend v1.108.0): `GET /preview/{ns}/{id}.jpg` (`previewJpeg`) is the canonical 1200×630 JPEG social preview image; `GET /preview/{ns}/{id}.png` (`preview`) remains a legacy URL serving the same JPEG bytes. Non-public or protected images carry `X-Robots-Tag: noindex`; failures redirect to `/og-image.png?v=3`. One shared `preview` tag; 32 paths and 46 operations.
 - 1.107.6 (matches backend v1.107.6): contract metadata only. `info.license` is `Apache-2.0` (`https://www.apache.org/licenses/LICENSE-2.0`); paths, operations and schemas are the same as in 1.107.4.
 - 1.107.4 (matches backend v1.107.4): contract metadata only. `info.termsOfService`, `info.contact` and top-level `externalDocs` are present again; paths, operations and schemas are the same as in 1.107.2, the first backend-generated snapshot.
@@ -29,7 +30,7 @@ Public contract snapshots, documentation and the BrewPage MCP server. The backen
 ## How to use the MCP server
 
 ```bash
-npx -y brewpage-mcp@1.9.3
+npx -y brewpage-mcp@1.9.4
 ```
 
 Always pin an exact version.

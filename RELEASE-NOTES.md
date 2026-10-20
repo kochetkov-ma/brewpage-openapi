@@ -1,5 +1,13 @@
 # Release Notes
 
+## API contract 1.113.0 / MCP 1.9.4 — 2026-10-20
+
+- API contract version 1.113.0 identifies the backend-generated public snapshot exported from the clean brewpage-app release source `827943c74bb29eef2082d1e3ffcc972889521659`. Deterministic YAML, the byte-identical Scalar copy and export provenance are regenerated with it.
+- The outcome schema referenced by `result` (HTML and site create/update responses, `ErrorResponse`) is now named `PublicationResult`, with a plain description: action `merged` means an existing publication was returned instead of a new one. Its fields, enum values and required set are unchanged, so response bodies are byte-identical; generated clients see a new type name.
+- `result` property descriptions are reworded neutrally. No path or operation change: 32 paths and 46 operations, as in 1.108.0.
+- `POST /api/files` answers `X-Existing-Resource: 1` when it returns an existing upload, the same value HTML and site creation already send.
+- MCP 1.9.4 is a wording patch: tool text describes a create that returns an existing publication in plain terms. Same sixteen tools, input defaults and HTTP behavior.
+
 ## API contract 1.108.0 — 2026-10-14
 
 - API contract version 1.108.0 identifies the backend-generated public snapshot exported from the clean brewpage-app release source `7c6cec4145b86fd11bcbbcd11bae8b9f948f7f81`. Deterministic YAML, the byte-identical Scalar copy and export provenance are regenerated with it.
