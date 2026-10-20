@@ -6,11 +6,13 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
-  id-token: write
+  contents: read
 
 jobs:
   release:
+    permissions:
+      contents: write
+      id-token: write
     if: github.event_name == 'push' || github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
     runs-on: ubuntu-24.04
     timeout-minutes: 15
@@ -93,3 +95,63 @@ jobs:
         if: steps.check.outputs.exists != 'true'
         working-directory: mcp-server
         run: npm publish --access public --provenance
+
+  registry:
+    needs: release
+    if: github.event_name == 'push' || github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      MCP_PUBLISHER_VERSION: 1.8.1
+      MCP_PUBLISHER_SHA256: a06c9096dcb9727c13555b6be26c7effa707b01f06a4c561ba7a3635443cf2cc
+    steps:
+      - uses: actions/checkout@v6.1.0
+        with:
+          ref: ${{ github.sha }}
+
+      - name: Validate server.json
+        run: |
+          set -euo pipefail
+          PKG_VERSION=$(jq -r .version mcp-server/package.json)
+          LEN=$(jq -r '.description | length' server.json)
+          if [[ "$LEN" -gt 100 ]]; then
+            echo "::error file=server.json::description is ${LEN} chars; the MCP registry limit is 100"
+            exit 1
+          fi
+          jq -e --arg v "$PKG_VERSION" '.version == $v and (.packages | all(.version == $v))' server.json >/dev/null || {
+            echo "::error file=server.json::version stamps do not match mcp-server/package.json ${PKG_VERSION}"
+            exit 1
+          }
+
+      - name: Install pinned mcp-publisher
+        run: |
+          set -euo pipefail
+          ARCHIVE="mcp-publisher_linux_amd64.tar.gz"
+          curl -fsSL -o "$RUNNER_TEMP/$ARCHIVE" "https://github.com/modelcontextprotocol/registry/releases/download/v${MCP_PUBLISHER_VERSION}/${ARCHIVE}"
+          echo "${MCP_PUBLISHER_SHA256}  $RUNNER_TEMP/$ARCHIVE" | sha256sum --check --strict -
+          mkdir "$RUNNER_TEMP/mcp-publisher"
+          tar -xzf "$RUNNER_TEMP/$ARCHIVE" -C "$RUNNER_TEMP/mcp-publisher" mcp-publisher
+          echo "$RUNNER_TEMP/mcp-publisher" >> "$GITHUB_PATH"
+
+      - name: Validate against registry schema
+        run: |
+          set -euo pipefail
+          mcp-publisher validate server.json
+
+      - name: Publish to MCP registry
+        run: |
+          set -euo pipefail
+          mcp-publisher login github-oidc
+          if mcp-publisher publish server.json > "$RUNNER_TEMP/publish.log" 2>&1; then
+            cat "$RUNNER_TEMP/publish.log"
+          elif grep -q 'cannot publish duplicate version' "$RUNNER_TEMP/publish.log"; then
+            cat "$RUNNER_TEMP/publish.log"
+            echo 'Version already in the MCP registry, skipping'
+          else
+            cat "$RUNNER_TEMP/publish.log"
+            echo '::error::MCP registry publish failed'
+            exit 1
+          fi

@@ -158,7 +158,7 @@ The backend-generated public JSON contract owns schema authority. YAML is derive
 
 The `brewpage-mcp` package provides a Model Context Protocol server with **16 tools** for AI-assisted content publishing and management. Selected tools appear below; see [`mcp-server/README.md`](mcp-server/README.md) for the complete list and documentation.
 
-Package releases use `.github/workflows/release.yml` with package-scoped npm Trusted Publisher/OIDC for `kochetkov-ma/brewpage-openapi`, workflow `release.yml`, without an environment. CI needs no `NPM_TOKEN`, manual npm login or static-token rotation. Local `npm whoami` does not validate GitHub Actions OIDC authentication.
+Package releases use `.github/workflows/release.yml` with package-scoped npm Trusted Publisher/OIDC for `kochetkov-ma/brewpage-openapi`, workflow `release.yml`, without an environment. CI needs no `NPM_TOKEN`, manual npm login or static-token rotation. Local `npm whoami` does not validate GitHub Actions OIDC authentication. Publication to the official MCP registry (`io.github.kochetkov-ma/brewpage-mcp`) is automatic via GitHub OIDC in the same workflow; no local `mcp-publisher` token is needed.
 
 To retry publication from a local terminal, dispatch the current `main` workflow:
 
