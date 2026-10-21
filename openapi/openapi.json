@@ -1969,7 +1969,7 @@
     },
     "termsOfService": "https://brewpage.app/terms",
     "title": "BrewPage API",
-    "version": "1.113.0"
+    "version": "1.117.0"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -2513,7 +2513,7 @@
             }
           },
           {
-            "description": "NEW delivery preference: path or subdomain. Non-public namespaces require subdomain; omission allows smart selection.",
+            "description": "NEW delivery preference: path or subdomain. Sites and non-public HTML pages require subdomain; omission allows smart selection.",
             "in": "header",
             "name": "X-Delivery-Mode",
             "required": false,
@@ -3284,7 +3284,7 @@
             }
           },
           {
-            "description": "Delivery mode: path or subdomain; non-public namespaces require subdomain",
+            "description": "Delivery mode for a new document: path or subdomain. Sites and non-public HTML pages require subdomain",
             "in": "header",
             "name": "X-Delivery-Mode",
             "required": false,
@@ -5441,7 +5441,7 @@
             "OwnerToken": []
           }
         ],
-        "summary": "Change delivery mode for a new public publication",
+        "summary": "Change delivery mode for a new publication. Sites and non-public HTML pages require subdomain",
         "tags": [
           "Hosting Management"
         ]

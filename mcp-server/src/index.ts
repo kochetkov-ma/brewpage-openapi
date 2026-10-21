@@ -8,7 +8,7 @@ const BASE_URL = process.env.BREWPAGE_URL || "https://brewpage.app";
 
 const server = new McpServer({
   name: "brewpage-mcp",
-  version: "1.9.4",
+  version: "1.9.5",
 });
 
 const PUBLIC_NAMESPACE = "public";
@@ -51,8 +51,8 @@ const NAMESPACE_DESCRIPTION =
 
 const DELIVERY_MODE_SCHEMA = z.enum(["path", "subdomain"]).optional().describe(
   "Optional delivery choice for a fresh publication, independent of password/namespace. " +
-  "Public non-sites normally default to path (Promotion); public HTML may automatically choose subdomain for browser features. " +
-  "Fresh sites and non-public content require subdomain. " +
+  "Fresh sites and HTML-format pages outside public (including the default unlisted namespace) require subdomain; explicit path there is rejected. " +
+  "Everything else in any namespace (Markdown, code/text, files, JSON, KV, public HTML) defaults to path (Promotion); public HTML may automatically choose subdomain for browser features. " +
   "When creation returns an existing publication, it keeps its actual mode and URL."
 );
 
@@ -147,7 +147,7 @@ server.tool(
   "publish_html",
   "Publish HTML or Markdown content to BrewPage (repository default limit 5 MiB). Returns its primary share link and owner token. Supports password protection, custom TTL, optional filename, and an opt-in top toolbar (showTopBar). " +
     "When deliveryMode is omitted for a `public` page, the server may publish it on its own subdomain if the page needs browser features a BrewPage link does not provide; " +
-    "the result then includes deliveryModeReason and a delivery notice. Always share the returned URL.",
+    "the result then includes deliveryModeReason and a delivery notice. Markdown raw HTML is allowlisted: scripts, styles, event handlers, forms and embeds are removed. Always share the returned URL.",
   {
     content: z.string().describe("HTML or Markdown content to publish"),
     deliveryMode: DELIVERY_MODE_SCHEMA,
@@ -283,10 +283,10 @@ server.tool(
 
 server.tool(
   "update_hosting",
-  "Change delivery mode for a NEW public non-site publication. Requires owner token and current hostingVersion. OLD links and forced subdomain modes are locked; reload after a 409 conflict. Content updates never change hosting.",
+  "Change delivery mode for a NEW publication (not a site, not a non-public HTML-format page). Requires owner token and current hostingVersion. OLD links and forced subdomain modes are locked; reload after a 409 conflict. Content updates never change hosting.",
   {
     type: z.enum(["html", "file", "json", "kv"]).describe("Resource type; sites have no hosting-choice endpoint"),
-    namespace: z.string().describe("Resource namespace; only public is eligible"),
+    namespace: z.string().describe("Resource namespace; non-public HTML-format pages are locked"),
     id: z.string().describe("Resource ID"),
     ownerToken: z.string().describe("Original resource owner token"),
     deliveryMode: z.enum(["path", "subdomain"]).describe("path = Promotion; subdomain = Dedicated subdomain"),

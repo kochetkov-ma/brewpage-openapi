@@ -6,6 +6,10 @@ order: 5
 
 # Changelog
 
+## Spec 1.117.0 / MCP 1.9.5 — Delivery rules and safe Markdown
+
+NEW sites and non-public HTML pages of format `html` require Dedicated subdomain; explicit `path` there answers `400 DELIVERY_MODE_REQUIRED`. Everything else in any namespace (Markdown, code/text, files, JSON, KV) now defaults to Promotion (`path`) and may choose `subdomain`; existing publications keep their mode. Markdown raw HTML is rendered through an allowlist: scripts, styles, event handlers, forms, frames/embeds and `meta`/`base`/`link` are removed, while media, `details`/`summary` and links (`http`, `https`, `mailto`, `tel`, relative) stay. Only `X-Delivery-Mode` descriptions and the hosting `PATCH` summary change in the spec: 32 paths and 46 operations. MCP 1.9.5 rewords its tool text accordingly; same sixteen tools and behavior.
+
 ## Spec 1.113.0 / MCP 1.9.4 — Publication outcome schema
 
 The `result` object on HTML and site responses is described by a schema named `PublicationResult`. Its fields and values are unchanged, so responses are identical; code generated from the spec gets a new type name. Action `merged` means an existing publication was returned instead of a new one. File uploads that return an existing upload send `X-Existing-Resource: 1`, like HTML and sites. MCP 1.9.4 rewords its tool text accordingly; same sixteen tools and behavior. The contract still has 32 paths and 46 operations.

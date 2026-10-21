@@ -1,5 +1,13 @@
 # Release Notes
 
+## API contract 1.117.0 / MCP 1.9.5 — 2026-10-21
+
+- API contract version 1.117.0 identifies the backend-generated public snapshot exported from the clean brewpage-app release source `e2350cd5317c2460de4cd8650db7bcbb5728e357`. Deterministic YAML, the byte-identical Scalar copy and export provenance are regenerated with it.
+- Owner ruling 2026-10-21: `subdomain` is required only for NEW sites (any namespace) and NEW HTML pages of format `html` outside `public`; explicit `path` there answers `400 DELIVERY_MODE_REQUIRED`, as does a content update turning a non-public `path` page into format `html`. Everything else in non-public namespaces (Markdown, code/text, files, JSON, KV) now defaults to `path` and may choose `subdomain`, like public. Previously every non-public publication required `subdomain`. Existing publications keep their mode.
+- Markdown rendering: raw HTML passes an allowlist (formatting, images, video/audio, `details`/`summary`, tables kept; scripts, styles, event handlers, forms, frames/embeds, `meta`/`base`/`link` removed; links `http`/`https`/`mailto`/`tel`/relative/`#anchor`, images also `data:`); a lone unknown tag shows as text. Earlier pages change only when republished. No API shape change.
+- `X-Delivery-Mode` parameter descriptions and the hosting `PATCH` summary change in the backend-generated snapshot; no path, operation or schema change.
+- MCP 1.9.5 is a wording patch: `deliveryMode` and `update_hosting` describe the new rule; in the default unlisted `priv-*` namespace `publish_html` with format `HTML` still gets `subdomain`, while Markdown, files, JSON and KV now get `path` unless `subdomain` is chosen. Same sixteen tools and HTTP behavior.
+
 ## API contract 1.113.0 / MCP 1.9.4 — 2026-10-20
 
 - API contract version 1.113.0 identifies the backend-generated public snapshot exported from the clean brewpage-app release source `827943c74bb29eef2082d1e3ffcc972889521659`. Deterministic YAML, the byte-identical Scalar copy and export provenance are regenerated with it.
