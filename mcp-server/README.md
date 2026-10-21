@@ -12,7 +12,7 @@ MCP server for [BrewPage](https://brewpage.app) -- publish and manage HTML, KV, 
 ## Quick Start
 
 ```bash
-npx -y brewpage-mcp@1.10.0
+npx -y brewpage-mcp@1.11.0
 ```
 
 Requires Node.js 20 or newer. This starts the stdio server for an MCP client.
@@ -28,7 +28,7 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS)
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@1.10.0"]
+      "args": ["-y", "brewpage-mcp@1.11.0"]
     }
   }
 }
@@ -39,7 +39,7 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS)
 Register a project-scoped stdio server:
 
 ```bash
-claude mcp add --transport stdio --scope project brewpage -- npx -y brewpage-mcp@1.10.0
+claude mcp add --transport stdio --scope project brewpage -- npx -y brewpage-mcp@1.11.0
 ```
 
 This writes `.mcp.json` in the project root. Use `--scope user` for user-scoped registration. See the [official Claude Code MCP guide](https://code.claude.com/docs/en/mcp).
@@ -53,7 +53,7 @@ Open **Settings > MCP** and add:
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@1.10.0"]
+      "args": ["-y", "brewpage-mcp@1.11.0"]
     }
   }
 }
@@ -67,7 +67,7 @@ Open the Cline MCP settings panel and add:
 {
   "brewpage": {
     "command": "npx",
-    "args": ["-y", "brewpage-mcp@1.10.0"]
+    "args": ["-y", "brewpage-mcp@1.11.0"]
   }
 }
 ```
@@ -75,7 +75,7 @@ Open the Cline MCP settings panel and add:
 ### Global Install
 
 ```bash
-npm install -g brewpage-mcp@1.10.0
+npm install -g brewpage-mcp@1.11.0
 brewpage-mcp
 ```
 
@@ -104,7 +104,7 @@ Sixteen tools are available. Creation returns an owner token; keep it to modify 
 
 All five publish tools accept optional `deliveryMode: "path" | "subdomain"`, sent only as `X-Delivery-Mode`; authored JSON and multipart bodies keep their existing format. Visibility and password protection are separate choices. Omitted namespace still generates an unlisted `priv-<random>` namespace; anyone with an unpassworded unlisted link can read it. `public` grants gallery/search eligibility only; password-protected content remains excluded and unlisted, protected or otherwise ineligible native responses carry `noindex`; eligible public HTML, sites and files may permit indexing.
 
-The MCP server wraps a subset of the backend-generated public [REST contract](../openapi/openapi.json). Its inputs retain their published behavior: TTL inputs accept 1–30 days (default 15), while backend owner-specific caps and eligible automatic extensions can affect actual expiry. Use returned `expiresAt`. `get_page` reads stored rendered HTML or format-specific code/text from the API; it does not call the owner-only original-source endpoint or a browser viewer. `publish_file` uploads from a source URL and does not expose password or TTL inputs.
+The MCP server wraps a subset of the backend-generated public [REST contract](../openapi/openapi.json). TTL inputs take days or a string such as `2w`/`36h` (default 15); the server rounds to whole days and clamps to 1–30 (owner-specific caps and eligible automatic extensions can differ). Use returned `expiresAt`. Every tolerated-input adjustment (TTL clamp, format alias, skipped site member, normalised namespace) comes back in the response `notices` array and is printed as `Notice (code): message`. `get_page` reads stored rendered HTML or format-specific code/text from the API; it does not call the owner-only original-source endpoint or a browser viewer. `publish_file` uploads from a source URL and does not expose password or TTL inputs.
 
 For a fresh publication, sites and HTML pages of format `HTML` outside `public` (including the generated unlisted namespace) always use Dedicated subdomain (`subdomain`); omit `deliveryMode` there. An explicit `path` there is not rejected: the publication is created on its subdomain and the result reports `deliveryModeMatched: false`, `deliveryModeReason: "policy:subdomain-required"` and a `Delivery notice:` line. Everything else in any namespace (Markdown, code/text, files, JSON, KV, public HTML) defaults to Promotion (`path`) and may choose Dedicated subdomain, including password-protected content. Promotion uses a BrewPage path with stricter active-document restrictions. Each NEW site gets one publication-specific host for its complete bundle, preserving relative/root-relative paths; missing assets return 404, with no SPA fallback. Third-party widgets may still need provider configuration.
 
@@ -132,7 +132,7 @@ update_hosting(type="html", namespace="public", id="aBcDeFgHiJ", ownerToken="tok
 
 Publish HTML or Markdown content to BrewPage. Returns a public URL and owner token. Markdown raw HTML is rendered through an allowlist: scripts, styles, event handlers, forms, frames/embeds and `meta`/`base`/`link` are removed; links allow `http`, `https`, `mailto`, `tel` and relative URLs, images also `data:`; a lone unknown tag such as `<author>` shows as text.
 
-Parameters: `content` (string), `format` (`HTML` | `MARKDOWN`, default `HTML`), `namespace` (optional -- **omit for unlisted content**; pass `public` only for gallery/search eligibility, except when password-protected), `password` (optional), `ttlDays` (1--30, default 15), `filename` (optional, used as title fallback), `showTopBar` (optional boolean -- adds a toolbar with filename, Download button, and theme toggle), `deliveryMode` (optional).
+Parameters: `content` (string), `format` (default `HTML`; `HTML`, `MARKDOWN` or an alias the server maps, e.g. `md`), `namespace` (optional -- **omit for unlisted content**; pass `public` only for gallery/search eligibility, except when password-protected), `password` (optional), `ttlDays` (days or a string such as `2w`; default 15; the server clamps to 1--30), `filename` (optional, used as title fallback), `showTopBar` (optional boolean -- adds a toolbar with filename, Download button, and theme toggle), `deliveryMode` (optional).
 
 The result includes `deliveryModeReason` and a `Delivery notice:` line when the server returns them (see above).
 
@@ -206,7 +206,7 @@ publish_file(url="https://example.com/diagram.png")
 
 Publish a single-page or multi-file HTML site. Pass `entryContent` for a single page or `files` (array of `{path, content}`) for a multi-file site. Supports password protection, TTL, and owner token grouping.
 
-Parameters: exactly one of `entryContent` (string) or non-empty `files` (array of `{path, content}`), `entry` (optional entry file path, default `index.html`), `namespace` (optional -- omit for unlisted content; `public` grants gallery eligibility except when password-protected), `password` (optional), `ttlDays` (1--30, default 15), `ownerToken` (optional, groups site under an existing owner), `deliveryMode` (optional; fresh sites require `subdomain`).
+Parameters: exactly one of `entryContent` (string) or non-empty `files` (array of `{path, content}`), `entry` (optional entry file path, default `index.html`), `namespace` (optional -- omit for unlisted content; `public` grants gallery eligibility except when password-protected), `password` (optional), `ttlDays` (days or a string such as `2w`; default 15; the server clamps to 1--30), `ownerToken` (optional, groups site under an existing owner), `deliveryMode` (optional; fresh sites require `subdomain`).
 
 Example prompt:
 
@@ -222,7 +222,7 @@ publish_site(files=[{"path": "index.html", "content": "..."}, {"path": "style.cs
 
 Replace an owned site's complete file set at the same ID and primary link. Files absent from the new bundle are removed; matching files are overwritten and new files added. Hosting stays unchanged.
 
-Parameters: `namespace`, `id`, `ownerToken`, exactly one of `entryContent` or a non-empty `files` array of `{path, content}`, optional `entry` (default `index.html`), `ttlDays` (compatibility input 1--30; existing expiry is preserved), and `tags`.
+Parameters: `namespace`, `id`, `ownerToken`, exactly one of `entryContent` or a non-empty `files` array of `{path, content}`, optional `entry` (default `index.html`), `ttlDays` (ignored; existing expiry is preserved and a `ttl-ignored` notice is returned), and `tags`.
 
 ```text
 republish_site(namespace="public", id="aBcDeFgHiJ", ownerToken="tok_...", files=[{"path":"index.html","content":"<h1>Updated site</h1>"}])
@@ -236,7 +236,7 @@ republish_site(namespace="public", id="aBcDeFgHiJ", ownerToken="tok_...", files=
 
 Publish a JSON document to BrewPage. Returns a public URL and owner token. The body may be passed as a JSON string or as a structured object.
 
-Parameters: `json` (string, object, or array), `namespace` (optional -- omit for unlisted content; `public` grants gallery/search eligibility, except when password-protected), `password` (optional), `ttlDays` (1--30, default 15), `tags` (optional `string[]`), `ownerToken` (optional existing owner), `deliveryMode` (optional).
+Parameters: `json` (string, object, or array), `namespace` (optional -- omit for unlisted content; `public` grants gallery/search eligibility, except when password-protected), `password` (optional), `ttlDays` (days or a string such as `2w`; default 15; the server clamps to 1--30), `tags` (optional `string[]`), `ownerToken` (optional existing owner), `deliveryMode` (optional).
 
 Example prompt:
 
@@ -286,7 +286,7 @@ update_json(namespace="public", id="aBcDeFgHiJ", json={"mode": "dark", "version"
 
 Create a new KV (key/value) entry. Returns a public URL and owner token. The KV entry is addressed by `(namespace, id, key)`; this tool creates the entry and emits the generated `id` along with the owner token.
 
-Parameters: `key` (string), `value` (string), `namespace` (optional -- omit for unlisted content; `public` grants gallery/search eligibility, except when password-protected), `password` (optional), `ttlDays` (1--30, default 15), `tags` (optional `string[]`), `ownerToken` (optional existing owner), `deliveryMode` (optional).
+Parameters: `key` (string), `value` (string), `namespace` (optional -- omit for unlisted content; `public` grants gallery/search eligibility, except when password-protected), `password` (optional), `ttlDays` (days or a string such as `2w`; default 15; the server clamps to 1--30), `tags` (optional `string[]`), `ownerToken` (optional existing owner), `deliveryMode` (optional).
 
 Example prompt:
 
@@ -432,6 +432,10 @@ Every publish response includes an **owner token** -- the only credential that a
 - [Brewcode Plugin](https://github.com/kochetkov-ma/claude-brewcode) -- Claude Code plugin suite
 
 ## Changelog
+
+## 1.11.0 -- 2026-10-21
+
+- Every publish/update tool prints server `notices` as `Notice (code): message` lines. `ttlDays` takes a positive number or a string such as `2w`; the server rounds and clamps instead of the client rejecting values above 30. `publish_html` `format` accepts any string; the server maps aliases. `republish_site` TTL is ignored with a `ttl-ignored` notice. Same sixteen tools.
 
 ## 1.10.0 -- 2026-10-21
 

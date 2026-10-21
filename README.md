@@ -186,7 +186,7 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@1.10.0"]
+      "args": ["-y", "brewpage-mcp@1.11.0"]
     }
   }
 }
@@ -201,7 +201,7 @@ Add to `~/.claude/settings.json`:
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@1.10.0"]
+      "args": ["-y", "brewpage-mcp@1.11.0"]
     }
   }
 }

@@ -1,5 +1,11 @@
 # Release Notes
 
+## API contract 1.119.0 / MCP 1.11.0 — 2026-10-21
+
+- API contract version 1.119.0 identifies the backend-generated public snapshot exported from the clean brewpage-app release source `f09d781a0d309232f614a2a61bee6f4caa835e07`. Deterministic YAML, the byte-identical Scalar copy and export provenance are regenerated with it. 32 paths and 46 operations.
+- Owner ruling 2026-10-21: publish endpoints accept fixable inputs and report each adjustment in an advisory `notices` array of `{code, message}` (`PublishNotice`) on successful create/update responses, omitted when empty. Covered: TTL parsing (`2w`, `36h`, fractions) and clamping (`ttl-converted`, `ttl-clamped`, `ttl-invalid`, `ttl-ignored` on updates), format aliases and content detection, site members skipped instead of rejecting the bundle (422 only without an HTML entry), file type sniffing with an inert `text/plain` fallback, namespace normalisation, empty `X-Password` and blank `X-Owner-Token`.
+- MCP 1.11.0: every publish/update tool prints server notices as `Notice (code): message`; `ttlDays` takes a positive number or a string such as `2w` (the client-side 1-30 limit is gone, the server clamps); `publish_html` `format` is a free string mapped by the server; `republish_site` TTL is documented as ignored. Same sixteen tools.
+
 ## API contract 1.118.0 / MCP 1.10.0 — 2026-10-21
 
 - API contract version 1.118.0 identifies the backend-generated public snapshot exported from the clean brewpage-app release source `132899c6693019f4b3996a108e01b816bcdba54b`. Deterministic YAML, the byte-identical Scalar copy and export provenance are regenerated with it.

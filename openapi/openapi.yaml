@@ -119,6 +119,11 @@ components:
           type: boolean
         namespace:
           type: string
+        notices:
+          description: Tolerated-input adjustments (e.g. ttl-clamped); omitted when the request was used as sent.
+          items:
+            $ref: '#/components/schemas/PublishNotice'
+          type: array
         ownerLink:
           description: API URL for programmatic access (delete)
           type: string
@@ -383,6 +388,11 @@ components:
           type: boolean
         namespace:
           type: string
+        notices:
+          description: Tolerated-input adjustments (e.g. ttl-clamped); omitted when the request was used as sent.
+          items:
+            $ref: '#/components/schemas/PublishNotice'
+          type: array
         ownerLink:
           description: API URL for programmatic access
           type: string
@@ -486,6 +496,11 @@ components:
           type: boolean
         namespace:
           type: string
+        notices:
+          description: Tolerated-input adjustments (e.g. ttl-clamped); omitted when the request was used as sent.
+          items:
+            $ref: '#/components/schemas/PublishNotice'
+          type: array
         ownerLink:
           description: API URL for programmatic access (update/delete)
           type: string
@@ -584,6 +599,11 @@ components:
           type: boolean
         namespace:
           type: string
+        notices:
+          description: Tolerated-input adjustments (e.g. ttl-clamped); omitted when the request was used as sent.
+          items:
+            $ref: '#/components/schemas/PublishNotice'
+          type: array
         ownerLink:
           description: API URL for programmatic access (update/delete)
           type: string
@@ -691,6 +711,11 @@ components:
           type: boolean
         namespace:
           type: string
+        notices:
+          description: Tolerated-input adjustments (e.g. ttl-clamped); omitted when the request was used as sent.
+          items:
+            $ref: '#/components/schemas/PublishNotice'
+          type: array
         ownerLink:
           description: API URL for programmatic access
           type: string
@@ -790,6 +815,11 @@ components:
           type: boolean
         namespace:
           type: string
+        notices:
+          description: Tolerated-input adjustments (e.g. ttl-clamped); omitted when the request was used as sent.
+          items:
+            $ref: '#/components/schemas/PublishNotice'
+          type: array
         ownerLink:
           description: API URL for programmatic access (upsert/delete)
           type: string
@@ -953,6 +983,11 @@ components:
           type: boolean
         namespace:
           type: string
+        notices:
+          description: Tolerated-input adjustments (e.g. ttl-clamped); omitted when the request was used as sent.
+          items:
+            $ref: '#/components/schemas/PublishNotice'
+          type: array
         ownerLink:
           description: API URL for programmatic access
           type: string
@@ -1044,6 +1079,16 @@ components:
       required:
         - action
         - code
+      type: object
+    PublishNotice:
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+      required:
+        - code
+        - message
       type: object
     RandomNamespaceResponse:
       properties:
@@ -1214,6 +1259,11 @@ components:
           type: boolean
         namespace:
           type: string
+        notices:
+          description: Tolerated-input adjustments (e.g. ttl-clamped); omitted when the request was used as sent.
+          items:
+            $ref: '#/components/schemas/PublishNotice'
+          type: array
         ownerLink:
           description: API URL for programmatic access (info, update, delete)
           type: string
@@ -1313,6 +1363,11 @@ components:
           type: boolean
         namespace:
           type: string
+        notices:
+          description: Tolerated-input adjustments (e.g. ttl-clamped); omitted when the request was used as sent.
+          items:
+            $ref: '#/components/schemas/PublishNotice'
+          type: array
         ownerLink:
           description: API URL for programmatic access (info, delete)
           type: string
@@ -1571,7 +1626,7 @@ info:
     url: https://www.apache.org/licenses/LICENSE-2.0
   termsOfService: https://brewpage.app/terms
   title: BrewPage API
-  version: 1.118.0
+  version: 1.119.0
 openapi: 3.1.0
 paths:
   /api/files:
@@ -1612,8 +1667,9 @@ paths:
         - Files
     post:
       description: >-
-        Stores a file via multipart upload and returns a download link. Only safe file types accepted. Reuse existing
-        owner token to group entities under one owner
+        Stores a file via multipart upload and returns a download link. Only safe file types accepted; a missing or
+        wrong extension is corrected from the content and reported in notices. Reuse existing owner token to group
+        entities under one owner
       operationId: upload
       parameters:
         - description: >-
@@ -1634,13 +1690,13 @@ paths:
           schema:
             type: string
         - description: >-
-            TTL in integer days (1-30); accepts 15, 15d, 15 day or 15 days, case-insensitive. Omitted or blank uses 15
-            days.
+            TTL in days (1-30); omitted or blank uses 15 days. Accepts 15, 15d, 15 days; h/w/mo/y units round up to
+            whole days. Out-of-range values are clamped and unparseable ones use the default; each adjustment is
+            reported in notices.
           in: query
           name: ttl
           required: false
           schema:
-            pattern: ^\s*(?:\d+\s*(?:[dD]|[dD][aA][yY][sS]?)?)?\s*$
             type: string
         - description: >-
             Access password. Empty = public file visible in gallery. With password = hidden from gallery; readers unlock
@@ -1685,12 +1741,12 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
           description: Invalid request or file too large
-        '415':
+        '422':
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-          description: Unsupported file type
+          description: Unsupported file type or content of no supported type
         '429':
           content:
             application/json:
@@ -1912,13 +1968,13 @@ paths:
           schema:
             type: string
         - description: >-
-            TTL in integer days (1-30); accepts 15, 15d, 15 day or 15 days, case-insensitive. Omitted or blank uses 15
-            days.
+            TTL in days (1-30); omitted or blank uses 15 days. Accepts 15, 15d, 15 days; h/w/mo/y units round up to
+            whole days. Out-of-range values are clamped and unparseable ones use the default; each adjustment is
+            reported in notices.
           in: query
           name: ttl
           required: false
           schema:
-            pattern: ^\s*(?:\d+\s*(?:[dD]|[dD][aA][yY][sS]?)?)?\s*$
             type: string
         - description: >-
             Content format. 'html' (default) — stored verbatim. 'markdown' / 'md' — rendered to styled HTML via
@@ -2436,13 +2492,13 @@ paths:
           schema:
             type: string
         - description: >-
-            TTL in integer days (1-30); accepts 15, 15d, 15 day or 15 days, case-insensitive. Omitted or blank uses 15
-            days.
+            TTL in days (1-30); omitted or blank uses 15 days. Accepts 15, 15d, 15 days; h/w/mo/y units round up to
+            whole days. Out-of-range values are clamped and unparseable ones use the default; each adjustment is
+            reported in notices.
           in: query
           name: ttl
           required: false
           schema:
-            pattern: ^\s*(?:\d+\s*(?:[dD]|[dD][aA][yY][sS]?)?)?\s*$
             type: string
         - description: >-
             Access password; protected documents are unlisted. NEW browser links use trusted unlock; programmatic reads
@@ -2719,13 +2775,13 @@ paths:
           schema:
             type: string
         - description: >-
-            TTL in integer days (1-30); accepts 15, 15d, 15 day or 15 days, case-insensitive. Omitted or blank uses 15
-            days.
+            TTL in days (1-30); omitted or blank uses 15 days. Accepts 15, 15d, 15 days; h/w/mo/y units round up to
+            whole days. Out-of-range values are clamped and unparseable ones use the default; each adjustment is
+            reported in notices.
           in: query
           name: ttl
           required: false
           schema:
-            pattern: ^\s*(?:\d+\s*(?:[dD]|[dD][aA][yY][sS]?)?)?\s*$
             type: string
         - description: >-
             Access password; protected stores are unlisted. NEW browser links use trusted unlock; programmatic reads use
@@ -3222,13 +3278,13 @@ paths:
           schema:
             type: string
         - description: >-
-            TTL in integer days (1-30); accepts 15, 15d, 15 day or 15 days, case-insensitive. Omitted or blank uses 15
-            days.
+            TTL in days (1-30); omitted or blank uses 15 days. Accepts 15, 15d, 15 days; h/w/mo/y units round up to
+            whole days. Out-of-range values are clamped and unparseable ones use the default; each adjustment is
+            reported in notices.
           in: query
           name: ttl
           required: false
           schema:
-            pattern: ^\s*(?:\d+\s*(?:[dD]|[dD][aA][yY][sS]?)?)?\s*$
             type: string
         - description: 'Entry file path override (default: auto-detect index.html)'
           in: query
@@ -3429,14 +3485,11 @@ paths:
           required: false
           schema:
             type: string
-        - description: >-
-            TTL in integer days (1-30); accepts 15, 15d, 15 day or 15 days, case-insensitive. Omission preserves the
-            original expiry; updates do not renew it.
+        - description: 'Ignored: updates keep the original expiry; a supplied value is reported in notices (ttl-ignored).'
           in: query
           name: ttl
           required: false
           schema:
-            pattern: ^\s*(?:\d+\s*(?:[dD]|[dD][aA][yY][sS]?)?)?\s*$
             type: string
         - description: 'Entry file path override (default: auto-detect index.html)'
           in: query
@@ -3504,7 +3557,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-          description: Invalid request, empty bundle, limits exceeded, or bad TTL
+          description: Invalid request, empty bundle or limits exceeded
         '403':
           content:
             application/json:

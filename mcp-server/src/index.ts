@@ -8,7 +8,7 @@ const BASE_URL = process.env.BREWPAGE_URL || "https://brewpage.app";
 
 const server = new McpServer({
   name: "brewpage-mcp",
-  version: "1.10.0",
+  version: "1.11.0",
 });
 
 const PUBLIC_NAMESPACE = "public";
@@ -49,6 +49,11 @@ const NAMESPACE_DESCRIPTION =
   "or pass `public` ONLY when the user explicitly wants gallery/search eligibility. " +
   "Password-protected content stays excluded; unlisted, protected or otherwise ineligible native responses carry noindex; eligible public HTML, sites and files may permit indexing.";
 
+const TTL_SCHEMA = z.union([z.number().positive(), z.string().min(1).max(32)]).optional().describe(
+  "Requested TTL: days as a number, or a string such as '2w', '36h' or '1 month' (default 15 days). " +
+  "The server rounds to whole days and clamps to the allowed range (1-30 by default; owner caps differ), reporting each adjustment in notices; use returned expiresAt."
+);
+
 const DELIVERY_MODE_SCHEMA = z.enum(["path", "subdomain"]).optional().describe(
   "Optional delivery choice for a fresh publication, independent of password/namespace. " +
   "Fresh sites and HTML-format pages outside public (including the default unlisted namespace) always use subdomain; an explicit path there still publishes, on subdomain, with a delivery notice. " +
@@ -63,7 +68,17 @@ function hostingResponseLines(data: Record<string, unknown>): string[] {
   if (data.routingCohort === "old") lines.push("Hosting: Existing link");
   if (data.deliveryModeMatched === false) lines.push("Requested hosting differs from the effective mode; use the returned URL.");
   lines.push(...deliveryReasonLines(data));
+  lines.push(...noticeLines(data));
   return lines;
+}
+
+/** Server `notices` ({code, message}) on publish/update responses: each tolerated-input adjustment, verbatim. */
+function noticeLines(data: Record<string, unknown>): string[] {
+  if (!Array.isArray(data.notices)) return [];
+  return data.notices
+    .filter((n): n is { code: string; message: string } =>
+      typeof n === "object" && n !== null && typeof n.code === "string" && typeof n.message === "string")
+    .map((n) => `Notice (${n.code}): ${n.message}`);
 }
 
 /** Optional delivery fields on HTML and hosting responses: why the mode was chosen, flagged or not applied. */
@@ -152,9 +167,10 @@ server.tool(
     content: z.string().describe("HTML or Markdown content to publish"),
     deliveryMode: DELIVERY_MODE_SCHEMA,
     format: z
-      .enum(["HTML", "MARKDOWN"])
+      .string()
+      .min(1)
       .default("HTML")
-      .describe("Content format: HTML or MARKDOWN"),
+      .describe("Content format, default HTML. HTML or MARKDOWN; the server also maps aliases (md, text/markdown, file extensions, code languages) and detects unknown values from content, reporting the change in notices."),
     namespace: z
       .string()
       .optional()
@@ -163,13 +179,7 @@ server.tool(
       .string()
       .optional()
       .describe("Optional password to protect the page"),
-    ttlDays: z
-      .number()
-      .int()
-      .min(1)
-      .max(30)
-      .optional()
-      .describe("Requested TTL in days (1-30, default 15). Backend owner caps and eligible automatic extensions can affect expiry; use returned expiresAt."),
+    ttlDays: TTL_SCHEMA,
     filename: z
       .string()
       .max(200)
@@ -482,12 +492,7 @@ server.tool(
       .string()
       .optional()
       .describe("Optional password to protect the site"),
-    ttlDays: z
-      .number()
-      .min(1)
-      .max(30)
-      .optional()
-      .describe("Requested TTL in days (1-30, default 15). Backend owner caps and eligible automatic extensions can affect expiry; use returned expiresAt."),
+    ttlDays: TTL_SCHEMA,
     ownerToken: z
       .string()
       .optional()
@@ -602,12 +607,7 @@ server.tool(
       .string()
       .optional()
       .describe("Entry file path, default index.html"),
-    ttlDays: z
-      .number()
-      .min(1)
-      .max(30)
-      .optional()
-      .describe("Compatibility input (1-30); site republishing preserves existing expiry. Use returned expiresAt."),
+    ttlDays: TTL_SCHEMA.describe("Ignored: republishing keeps the existing expiry; a supplied value comes back as a ttl-ignored notice."),
     tags: z
       .array(z.string())
       .optional()
@@ -755,13 +755,7 @@ server.tool(
       .string()
       .optional()
       .describe("Optional password to protect the document"),
-    ttlDays: z
-      .number()
-      .int()
-      .min(1)
-      .max(30)
-      .optional()
-      .describe("Requested TTL in days (1-30, default 15). Backend owner caps and eligible automatic extensions can affect expiry; use returned expiresAt."),
+    ttlDays: TTL_SCHEMA,
     tags: z
       .array(z.string())
       .optional()
@@ -929,13 +923,7 @@ server.tool(
       .string()
       .optional()
       .describe("Optional password to protect the KV store"),
-    ttlDays: z
-      .number()
-      .int()
-      .min(1)
-      .max(30)
-      .optional()
-      .describe("Requested TTL in days (1-30, default 15). Backend owner caps and eligible automatic extensions can affect expiry; use returned expiresAt."),
+    ttlDays: TTL_SCHEMA,
     tags: z
       .array(z.string())
       .optional()

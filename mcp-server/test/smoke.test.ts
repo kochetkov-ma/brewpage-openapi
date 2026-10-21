@@ -171,6 +171,30 @@ for (const scenario of [
   });
 }
 
+const NOTICES = [
+  { code: "ttl-clamped", message: "TTL 90 days is above the 30-day maximum; set to 30 days." },
+  { code: "format-adjusted", message: "Format 'md' was published as markdown." },
+];
+
+for (const scenario of [
+  { tool: "publish_html", args: { content: "# Fixture", namespace: "public", format: "md", ttlDays: 90 }, query: "ns=public&format=md&ttl=90" },
+  { tool: "publish_html", args: { content: "<h1>Fixture</h1>", namespace: "public", format: "text/html", ttlDays: "2w" }, query: "ns=public&format=text%2Fhtml&ttl=2w" },
+  { tool: "publish_kv", args: { key: "k", value: "v", namespace: "public", ttlDays: 0.5 }, query: "ns=public&ttl=0.5" },
+]) {
+  test(`${scenario.tool} passes tolerant input ${scenario.query} to the server and surfaces its notices verbatim`, { timeout: 10_000 }, async (t) => {
+    // GIVEN a server answer carrying advisory notices next to a malformed one.
+    const f = await fixture(t);
+    f.respond(201, { ...NEW_RESPONSE, notices: [...NOTICES, { code: 7 }] });
+    // WHEN caller sends values outside the old client-side limits.
+    const result = await f.call(scenario.tool, scenario.args);
+    // THEN the input reaches the server unchanged and each well-formed notice is printed once.
+    assert.deepEqual({ isError: result.isError, query: f.requests[0].url.split("?")[1],
+      notices: result.content[0].text.split("\n").filter((line) => line.startsWith("Notice ("))
+    }, { isError: undefined, query: scenario.query, notices: NOTICES.map((n) => `Notice (${n.code}): ${n.message}`) },
+    "tolerant input is forwarded and server notices are surfaced verbatim");
+  });
+}
+
 test("public password and path choice remain independent with a clean NEW link", { timeout: 10_000 }, async (t) => {
   // GIVEN protected public Promotion result.
   const f = await fixture(t);
