@@ -1,5 +1,13 @@
 # Release Notes
 
+## API contract 1.121.0 — 2026-10-22
+
+- API contract version 1.121.0 identifies the backend-generated public snapshot exported from the clean brewpage-app release source `78491e73e815e4f8d44e90985698a8654536c1ad`. Deterministic YAML, the byte-identical Scalar copy and export provenance are regenerated with it.
+- `GET /galleries` (`galleries`) is paginated with `rel=prev/next`: optional query parameter `page` (1-based, omitted = page 1). An invalid page number or one past the last page answers `404` with a `noindex` HTML page; the contract declares that response without a body schema.
+- No other path, operation or schema change since 1.119.0 (backend releases 1.119.1, 1.119.2 and 1.120.0 carried no public contract change): 32 paths and 46 operations.
+
+Contract-only sync — no MCP version bump (MCP stays 1.11.0), no npm publish, no tag. Docs site auto-redeploys via `.github/workflows/docs.yml` on push to `main`.
+
 ## API contract 1.119.0 / MCP 1.11.0 — 2026-10-21
 
 - API contract version 1.119.0 identifies the backend-generated public snapshot exported from the clean brewpage-app release source `f09d781a0d309232f614a2a61bee6f4caa835e07`. Deterministic YAML, the byte-identical Scalar copy and export provenance are regenerated with it. 32 paths and 46 operations.

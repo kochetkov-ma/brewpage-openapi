@@ -6,6 +6,10 @@ order: 5
 
 # Changelog
 
+## Spec 1.121.0 — Paginated galleries index
+
+The bot-friendly `GET /galleries` index is split into pages linked with `rel=prev/next`. The optional `page` query parameter is 1-based and defaults to the first page; an invalid number or a page past the last one answers `404`. Nothing else changes: 32 paths and 46 operations. No MCP release; the server stays at 1.11.0 with the same sixteen tools.
+
 ## Spec 1.119.0 / MCP 1.11.0 — Fixable inputs accepted with notices
 
 Publish endpoints accept recoverable input mistakes and report each adjustment in an advisory `notices` array of `{code, message}` (`PublishNotice`) on successful create and update responses, omitted when empty. TTL accepts units and fractions (`2w`, `36h`) and is clamped to the allowed range; format aliases are mapped and unknown formats detected from content; site bundles skip unsupported members (422 only without an HTML entry); file types are sniffed with an inert `text/plain` fallback; namespaces are normalised; an empty `X-Password` means no password and a blank `X-Owner-Token` mints a new token. 32 paths and 46 operations. MCP 1.11.0 prints the notices, accepts string TTLs and free-form `format`; same sixteen tools.

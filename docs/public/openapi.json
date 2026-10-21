@@ -2110,7 +2110,7 @@
     },
     "termsOfService": "https://brewpage.app/terms",
     "title": "BrewPage API",
-    "version": "1.119.0"
+    "version": "1.121.0"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -5582,8 +5582,19 @@
     },
     "/galleries": {
       "get": {
-        "description": "Renders a minimal, bot-friendly anchor index of every current public site, page, image and video. Sorted by popularity (top 50 by views) then by recency. Underlying data is cached for ~2h.",
+        "description": "Renders a minimal, bot-friendly anchor index of every current public site, page, image and video, paginated with rel=prev/next. Sorted by popularity (top 50 by views) then by recency. Underlying data is cached for ~2h.",
         "operationId": "galleries",
+        "parameters": [
+          {
+            "description": "1-based page number; omitted = page 1",
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
@@ -5594,6 +5605,9 @@
               }
             },
             "description": "HTML index page"
+          },
+          "404": {
+            "description": "Page number invalid or past the last page"
           }
         },
         "summary": "Flat HTML index of all current public publications",
