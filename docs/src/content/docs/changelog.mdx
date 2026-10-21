@@ -6,6 +6,10 @@ order: 5
 
 # Changelog
 
+## Spec 1.119.0 / MCP 1.11.0 — Fixable inputs accepted with notices
+
+Publish endpoints accept recoverable input mistakes and report each adjustment in an advisory `notices` array of `{code, message}` (`PublishNotice`) on successful create and update responses, omitted when empty. TTL accepts units and fractions (`2w`, `36h`) and is clamped to the allowed range; format aliases are mapped and unknown formats detected from content; site bundles skip unsupported members (422 only without an HTML entry); file types are sniffed with an inert `text/plain` fallback; namespaces are normalised; an empty `X-Password` means no password and a blank `X-Owner-Token` mints a new token. 32 paths and 46 operations. MCP 1.11.0 prints the notices, accepts string TTLs and free-form `format`; same sixteen tools.
+
 ## Spec 1.118.0 / MCP 1.10.0 — Mismatches reported, not rejected
 
 Publishing and hosting requests no longer fail on delivery-mode or hosting-version bookkeeping. An explicit `path` where Dedicated subdomain is required publishes on the subdomain; a content update that turns a non-public `path` page into format `html` moves it to its subdomain and the old path redirects; `X-Delivery-Mode` on a content update is ignored; the hosting `PATCH` applies a stale `expectedVersion` (now optional) and answers locked modes and OLD links with `200` unchanged. Each such response carries `deliveryModeMatched: false`, `deliveryModeReason` (`policy:<code>`) and a human-readable `deliveryNotice`, now also on the hosting projection. The `PATCH` route also accepts sites and no longer declares `409`. `POST /api/files` no longer requires the multipart part to be named `file`; any single file part is accepted. 32 paths and 46 operations. MCP 1.10.0 `update_hosting` takes an optional `expectedVersion` and prints the notice; same sixteen tools.
