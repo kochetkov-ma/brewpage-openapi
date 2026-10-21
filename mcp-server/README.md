@@ -12,7 +12,7 @@ MCP server for [BrewPage](https://brewpage.app) -- publish and manage HTML, KV, 
 ## Quick Start
 
 ```bash
-npx -y brewpage-mcp@1.9.5
+npx -y brewpage-mcp@1.10.0
 ```
 
 Requires Node.js 20 or newer. This starts the stdio server for an MCP client.
@@ -28,7 +28,7 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS)
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@1.9.5"]
+      "args": ["-y", "brewpage-mcp@1.10.0"]
     }
   }
 }
@@ -39,7 +39,7 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS)
 Register a project-scoped stdio server:
 
 ```bash
-claude mcp add --transport stdio --scope project brewpage -- npx -y brewpage-mcp@1.9.5
+claude mcp add --transport stdio --scope project brewpage -- npx -y brewpage-mcp@1.10.0
 ```
 
 This writes `.mcp.json` in the project root. Use `--scope user` for user-scoped registration. See the [official Claude Code MCP guide](https://code.claude.com/docs/en/mcp).
@@ -53,7 +53,7 @@ Open **Settings > MCP** and add:
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@1.9.5"]
+      "args": ["-y", "brewpage-mcp@1.10.0"]
     }
   }
 }
@@ -67,7 +67,7 @@ Open the Cline MCP settings panel and add:
 {
   "brewpage": {
     "command": "npx",
-    "args": ["-y", "brewpage-mcp@1.9.5"]
+    "args": ["-y", "brewpage-mcp@1.10.0"]
   }
 }
 ```
@@ -75,7 +75,7 @@ Open the Cline MCP settings panel and add:
 ### Global Install
 
 ```bash
-npm install -g brewpage-mcp@1.9.5
+npm install -g brewpage-mcp@1.10.0
 brewpage-mcp
 ```
 
@@ -106,7 +106,7 @@ All five publish tools accept optional `deliveryMode: "path" | "subdomain"`, sen
 
 The MCP server wraps a subset of the backend-generated public [REST contract](../openapi/openapi.json). Its inputs retain their published behavior: TTL inputs accept 1–30 days (default 15), while backend owner-specific caps and eligible automatic extensions can affect actual expiry. Use returned `expiresAt`. `get_page` reads stored rendered HTML or format-specific code/text from the API; it does not call the owner-only original-source endpoint or a browser viewer. `publish_file` uploads from a source URL and does not expose password or TTL inputs.
 
-For a fresh publication, sites and HTML pages of format `HTML` outside `public` (including the generated unlisted namespace) require Dedicated subdomain (`subdomain`); explicit `path` is rejected. Everything else in any namespace (Markdown, code/text, files, JSON, KV, public HTML) defaults to Promotion (`path`) and may choose Dedicated subdomain, including password-protected content. Promotion uses a BrewPage path with stricter active-document restrictions. Each NEW site gets one publication-specific host for its complete bundle, preserving relative/root-relative paths; missing assets return 404, with no SPA fallback. Third-party widgets may still need provider configuration.
+For a fresh publication, sites and HTML pages of format `HTML` outside `public` (including the generated unlisted namespace) always use Dedicated subdomain (`subdomain`); omit `deliveryMode` there. An explicit `path` there is not rejected: the publication is created on its subdomain and the result reports `deliveryModeMatched: false`, `deliveryModeReason: "policy:subdomain-required"` and a `Delivery notice:` line. Everything else in any namespace (Markdown, code/text, files, JSON, KV, public HTML) defaults to Promotion (`path`) and may choose Dedicated subdomain, including password-protected content. Promotion uses a BrewPage path with stricter active-document restrictions. Each NEW site gets one publication-specific host for its complete bundle, preserving relative/root-relative paths; missing assets return 404, with no SPA fallback. Third-party widgets may still need provider configuration.
 
 Responses use the server's primary `link` verbatim, including the root slash, and expose `routingCohort`, actual/requested/effective modes, `deliveryModeMatched`, `modeLocked`, `hostingVersion`, access and the trusted-apex `managementLink` when present. Never reconstruct a host from namespace or ID. NEW password links are clean URLs: do not add `?p=`; browser readers unlock through the trusted gateway. Owner tokens and API calls stay on the configured apex API origin.
 
@@ -118,9 +118,9 @@ When creation returns an existing publication, it keeps its actual URL, cohort a
 
 ### `update_hosting`
 
-Change an eligible NEW publication (not a site, not a non-public `html`-format HTML page) between Promotion and Dedicated subdomain. Parameters: `type` (`html` | `file` | `json` | `kv`), `namespace`, `id`, `ownerToken`, `deliveryMode` (`path` | `subdomain`), and `expectedVersion` (current server `hostingVersion`, integer ≥1).
+Change an eligible NEW publication (not a site, not a non-public `html`-format HTML page) between Promotion and Dedicated subdomain. Parameters: `type` (`html` | `file` | `json` | `kv`), `namespace`, `id`, `ownerToken`, `deliveryMode` (`path` | `subdomain`), and optional `expectedVersion` (current server `hostingVersion`, integer ≥1; pass it when known).
 
-The tool sends owner-only `PATCH /api/{html|files|json|kv}/{namespace}/{id}/hosting` with `{deliveryMode, expectedVersion}` and `X-Owner-Token`. OLD links, sites and non-public `html`-format HTML pages are locked. The server returns 403 for invalid owner authority, 400 for locked hosting, and 409 for a stale version; reload current metadata before retrying. A paused real change returns 503. Selecting the current mode returns 200 without incrementing the version. Use the returned primary link after a successful change; the publication host identity is retained through both directions.
+The tool sends owner-only `PATCH /api/{html|files|json|kv}/{namespace}/{id}/hosting` with `{deliveryMode}` plus `expectedVersion` when given, and `X-Owner-Token`. Mismatches are reported, not rejected: a stale or omitted version still applies the choice (a stale one adds `deliveryModeReason: "policy:version-stale"`); sites and non-public `html`-format HTML pages stay on their subdomain (`policy:mode-locked`) and OLD links stay unchanged (`policy:classic-link`), each answered 200 with `deliveryModeMatched: false` and a `Delivery notice:` line. Wrong owner returns 403, a malformed version (not a positive integer) 400, and a paused real change 503. Selecting the current mode returns 200 without incrementing the version. Always use the returned primary link; the publication host identity is retained through both directions.
 
 ```text
 update_hosting(type="html", namespace="public", id="aBcDeFgHiJ", ownerToken="tok_...", deliveryMode="subdomain", expectedVersion=1)
@@ -432,6 +432,10 @@ Every publish response includes an **owner token** -- the only credential that a
 - [Brewcode Plugin](https://github.com/kochetkov-ma/claude-brewcode) -- Claude Code plugin suite
 
 ## Changelog
+
+## 1.10.0 -- 2026-10-21
+
+- `update_hosting`: `expectedVersion` is optional; a stale version, a locked mode or an OLD link answers with a successful result plus `deliveryModeReason` and a `Delivery notice:` line instead of an error. A publish request for `path` where `subdomain` is required succeeds on the subdomain and prints the notice. Same sixteen tools.
 
 ## 1.9.5 -- 2026-10-21
 

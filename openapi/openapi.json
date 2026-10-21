@@ -115,6 +115,14 @@
               "null"
             ]
           },
+          "deliveryModeReason": {
+            "description": "Why the request was served differently than asked: 'policy:subdomain-required', 'policy:mode-locked', 'policy:classic-link', 'policy:version-stale' or 'policy:republish-keeps-mode'. Mismatches are reported, not rejected. Absent when nothing applies.",
+            "type": "string"
+          },
+          "deliveryNotice": {
+            "description": "Human-readable explanation of deliveryModeReason. Absent whenever deliveryModeReason is absent.",
+            "type": "string"
+          },
           "effectiveDeliveryMode": {
             "type": [
               "string",
@@ -326,6 +334,14 @@
               "null"
             ]
           },
+          "deliveryModeReason": {
+            "description": "Why the request was served differently than asked: 'policy:subdomain-required', 'policy:mode-locked', 'policy:classic-link', 'policy:version-stale' or 'policy:republish-keeps-mode'. Mismatches are reported, not rejected. Absent when nothing applies.",
+            "type": "string"
+          },
+          "deliveryNotice": {
+            "description": "Human-readable explanation of deliveryModeReason. Absent whenever deliveryModeReason is absent.",
+            "type": "string"
+          },
           "effectiveDeliveryMode": {
             "type": [
               "string",
@@ -400,8 +416,7 @@
           }
         },
         "required": [
-          "deliveryMode",
-          "expectedVersion"
+          "deliveryMode"
         ],
         "type": "object"
       },
@@ -443,7 +458,7 @@
             ]
           },
           "deliveryModeReason": {
-            "description": "Set as 'advisory:<codes>' when the updated page stays on a BrewPage link but uses browser features that may not work fully there. An update never changes the delivery mode. Codes are comma-separated in a fixed order: storage, cookies, history, downloads, top-navigation, media-capture, pointer-lock, embeds, fullscreen. Absent when nothing applies.",
+            "description": "Why the delivery mode changed or was flagged. 'policy:subdomain-required' -- the update turned a private-namespace page into HTML, so it moved to its own subdomain (link is the new address; the old link redirects). 'policy:republish-keeps-mode' -- X-Delivery-Mode was ignored; change the mode with the hosting operation. 'advisory:<codes>' -- the page stays on a BrewPage link but uses browser features that may not work fully there. Codes are comma-separated in a fixed order: storage, cookies, history, downloads, top-navigation, media-capture, pointer-lock, embeds, fullscreen. Absent when nothing applies.",
             "type": "string"
           },
           "deliveryNotice": {
@@ -570,7 +585,7 @@
             ]
           },
           "deliveryModeReason": {
-            "description": "Why the delivery mode was chosen or flagged. 'auto:<codes>' -- the page was published in subdomain mode automatically because it uses browser features a BrewPage link does not provide. 'advisory:<codes>' -- the mode was kept, but those features may not work fully on a BrewPage link. Codes are comma-separated in a fixed order: storage, cookies, history, downloads, top-navigation, media-capture, pointer-lock, embeds, fullscreen. Absent when nothing applies.",
+            "description": "Why the delivery mode was chosen or flagged. 'policy:subdomain-required' -- a requested path mode was replaced by subdomain because HTML pages in a private namespace always get their own subdomain; mismatches are reported, not rejected. 'auto:<codes>' -- the page was published in subdomain mode automatically because it uses browser features a BrewPage link does not provide. 'advisory:<codes>' -- the mode was kept, but those features may not work fully on a BrewPage link. Codes are comma-separated in a fixed order: storage, cookies, history, downloads, top-navigation, media-capture, pointer-lock, embeds, fullscreen. Absent when nothing applies.",
             "type": "string"
           },
           "deliveryNotice": {
@@ -695,6 +710,14 @@
               "boolean",
               "null"
             ]
+          },
+          "deliveryModeReason": {
+            "description": "Why the request was served differently than asked: 'policy:subdomain-required', 'policy:mode-locked', 'policy:classic-link', 'policy:version-stale' or 'policy:republish-keeps-mode'. Mismatches are reported, not rejected. Absent when nothing applies.",
+            "type": "string"
+          },
+          "deliveryNotice": {
+            "description": "Human-readable explanation of deliveryModeReason. Absent whenever deliveryModeReason is absent.",
+            "type": "string"
           },
           "effectiveDeliveryMode": {
             "type": [
@@ -830,6 +853,14 @@
               "null"
             ]
           },
+          "deliveryModeReason": {
+            "description": "Why the request was served differently than asked: 'policy:subdomain-required', 'policy:mode-locked', 'policy:classic-link', 'policy:version-stale' or 'policy:republish-keeps-mode'. Mismatches are reported, not rejected. Absent when nothing applies.",
+            "type": "string"
+          },
+          "deliveryNotice": {
+            "description": "Human-readable explanation of deliveryModeReason. Absent whenever deliveryModeReason is absent.",
+            "type": "string"
+          },
           "effectiveDeliveryMode": {
             "type": [
               "string",
@@ -940,6 +971,14 @@
               "boolean",
               "null"
             ]
+          },
+          "deliveryModeReason": {
+            "description": "Why the request was served differently than asked: 'policy:subdomain-required', 'policy:mode-locked', 'policy:classic-link', 'policy:version-stale' or 'policy:republish-keeps-mode'. Mismatches are reported, not rejected. Absent when nothing applies.",
+            "type": "string"
+          },
+          "deliveryNotice": {
+            "description": "Human-readable explanation of deliveryModeReason. Absent whenever deliveryModeReason is absent.",
+            "type": "string"
           },
           "effectiveDeliveryMode": {
             "type": [
@@ -1149,6 +1188,14 @@
               "boolean",
               "null"
             ]
+          },
+          "deliveryModeReason": {
+            "description": "Why the request was served differently than asked: 'policy:subdomain-required', 'policy:mode-locked', 'policy:classic-link', 'policy:version-stale' or 'policy:republish-keeps-mode'. Mismatches are reported, not rejected. Absent when nothing applies.",
+            "type": "string"
+          },
+          "deliveryNotice": {
+            "description": "Human-readable explanation of deliveryModeReason. Absent whenever deliveryModeReason is absent.",
+            "type": "string"
           },
           "effectiveDeliveryMode": {
             "type": [
@@ -1468,6 +1515,14 @@
               "null"
             ]
           },
+          "deliveryModeReason": {
+            "description": "Why the request was served differently than asked: 'policy:subdomain-required', 'policy:mode-locked', 'policy:classic-link', 'policy:version-stale' or 'policy:republish-keeps-mode'. Mismatches are reported, not rejected. Absent when nothing applies.",
+            "type": "string"
+          },
+          "deliveryNotice": {
+            "description": "Human-readable explanation of deliveryModeReason. Absent whenever deliveryModeReason is absent.",
+            "type": "string"
+          },
           "effectiveDeliveryMode": {
             "type": [
               "string",
@@ -1587,6 +1642,14 @@
               "boolean",
               "null"
             ]
+          },
+          "deliveryModeReason": {
+            "description": "Why the request was served differently than asked: 'policy:subdomain-required', 'policy:mode-locked', 'policy:classic-link', 'policy:version-stale' or 'policy:republish-keeps-mode'. Mismatches are reported, not rejected. Absent when nothing applies.",
+            "type": "string"
+          },
+          "deliveryNotice": {
+            "description": "Human-readable explanation of deliveryModeReason. Absent whenever deliveryModeReason is absent.",
+            "type": "string"
           },
           "effectiveDeliveryMode": {
             "type": [
@@ -1969,7 +2032,7 @@
     },
     "termsOfService": "https://brewpage.app/terms",
     "title": "BrewPage API",
-    "version": "1.117.0"
+    "version": "1.118.0"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -2093,13 +2156,11 @@
               "schema": {
                 "properties": {
                   "file": {
+                    "description": "File part; any single file part is accepted when 'file' is absent",
                     "format": "binary",
                     "type": "string"
                   }
                 },
-                "required": [
-                  "file"
-                ],
                 "type": "object"
               }
             }
@@ -2513,7 +2574,7 @@
             }
           },
           {
-            "description": "NEW delivery preference: path or subdomain. Sites and non-public HTML pages require subdomain; omission allows smart selection.",
+            "description": "NEW delivery preference: path or subdomain. Sites and non-public HTML pages get subdomain; a mismatch is reported in deliveryModeReason, not rejected. Omission allows smart selection.",
             "in": "header",
             "name": "X-Delivery-Mode",
             "required": false,
@@ -3284,7 +3345,7 @@
             }
           },
           {
-            "description": "Delivery mode for a new document: path or subdomain. Sites and non-public HTML pages require subdomain",
+            "description": "Delivery mode for a new document: path or subdomain",
             "in": "header",
             "name": "X-Delivery-Mode",
             "required": false,
@@ -3544,7 +3605,7 @@
             }
           },
           {
-            "description": "NEW publications require the hosting operation for mode changes",
+            "description": "Ignored on update: republishing keeps the address mode (reported in deliveryNotice); change it with the hosting operation",
             "in": "header",
             "name": "X-Delivery-Mode",
             "required": false,
@@ -4808,6 +4869,15 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "description": "Ignored on update: republishing keeps the address mode (reported in deliveryNotice); sites always stay on their own subdomain",
+            "in": "header",
+            "name": "X-Delivery-Mode",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "requestBody": {
@@ -5334,7 +5404,8 @@
                 "html",
                 "files",
                 "json",
-                "kv"
+                "kv",
+                "sites"
               ],
               "type": "string"
             }
@@ -5393,7 +5464,7 @@
                 }
               }
             },
-            "description": "Invalid mode/version or locked delivery mode"
+            "description": "Unknown delivery mode or malformed expectedVersion"
           },
           "403": {
             "content": {
@@ -5415,16 +5486,6 @@
             },
             "description": "Publication unavailable"
           },
-          "409": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "Hosting version conflict"
-          },
           "503": {
             "content": {
               "application/json": {
@@ -5441,7 +5502,7 @@
             "OwnerToken": []
           }
         ],
-        "summary": "Change delivery mode for a new publication. Sites and non-public HTML pages require subdomain",
+        "summary": "Change delivery mode for a new publication. Sites and non-public HTML pages stay on subdomain; mismatches are reported, not rejected",
         "tags": [
           "Hosting Management"
         ]

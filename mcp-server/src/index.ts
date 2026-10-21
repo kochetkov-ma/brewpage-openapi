@@ -8,7 +8,7 @@ const BASE_URL = process.env.BREWPAGE_URL || "https://brewpage.app";
 
 const server = new McpServer({
   name: "brewpage-mcp",
-  version: "1.9.5",
+  version: "1.10.0",
 });
 
 const PUBLIC_NAMESPACE = "public";
@@ -51,7 +51,7 @@ const NAMESPACE_DESCRIPTION =
 
 const DELIVERY_MODE_SCHEMA = z.enum(["path", "subdomain"]).optional().describe(
   "Optional delivery choice for a fresh publication, independent of password/namespace. " +
-  "Fresh sites and HTML-format pages outside public (including the default unlisted namespace) require subdomain; explicit path there is rejected. " +
+  "Fresh sites and HTML-format pages outside public (including the default unlisted namespace) always use subdomain; an explicit path there still publishes, on subdomain, with a delivery notice. " +
   "Everything else in any namespace (Markdown, code/text, files, JSON, KV, public HTML) defaults to path (Promotion); public HTML may automatically choose subdomain for browser features. " +
   "When creation returns an existing publication, it keeps its actual mode and URL."
 );
@@ -61,12 +61,12 @@ function hostingResponseLines(data: Record<string, unknown>): string[] {
     "deliveryModeMatched", "modeLocked", "hostingVersion", "access", "managementLink"];
   const lines = fields.filter((field) => field in data).map((field) => `${field}: ${JSON.stringify(data[field])}`);
   if (data.routingCohort === "old") lines.push("Hosting: Existing link");
-  if (data.deliveryModeMatched === false) lines.push("Requested hosting differs from the existing publication; its URL and mode were preserved.");
+  if (data.deliveryModeMatched === false) lines.push("Requested hosting differs from the effective mode; use the returned URL.");
   lines.push(...deliveryReasonLines(data));
   return lines;
 }
 
-/** Optional HTML create/update fields: why the delivery mode was chosen or flagged. */
+/** Optional delivery fields on HTML and hosting responses: why the mode was chosen, flagged or not applied. */
 function deliveryReasonLines(data: Record<string, unknown>): string[] {
   const { deliveryModeReason: reason, deliveryNotice: notice } = data;
   const lines: string[] = [];
@@ -283,14 +283,14 @@ server.tool(
 
 server.tool(
   "update_hosting",
-  "Change delivery mode for a NEW publication (not a site, not a non-public HTML-format page). Requires owner token and current hostingVersion. OLD links and forced subdomain modes are locked; reload after a 409 conflict. Content updates never change hosting.",
+  "Change delivery mode for a NEW publication (not a site, not a non-public HTML-format page). Requires owner token; pass the current hostingVersion when known. Mismatches are reported, not rejected: a stale version still applies, and OLD links or forced subdomain modes stay unchanged; the result then carries a delivery notice. Content updates never change hosting.",
   {
-    type: z.enum(["html", "file", "json", "kv"]).describe("Resource type; sites have no hosting-choice endpoint"),
-    namespace: z.string().describe("Resource namespace; non-public HTML-format pages are locked"),
+    type: z.enum(["html", "file", "json", "kv"]).describe("Resource type; sites always stay on their own subdomain"),
+    namespace: z.string().describe("Resource namespace; non-public HTML-format pages stay on subdomain"),
     id: z.string().describe("Resource ID"),
     ownerToken: z.string().describe("Original resource owner token"),
     deliveryMode: z.enum(["path", "subdomain"]).describe("path = Promotion; subdomain = Dedicated subdomain"),
-    expectedVersion: z.number().int().min(1).max(Number.MAX_SAFE_INTEGER).describe("Current hostingVersion from the server; required for concurrency control"),
+    expectedVersion: z.number().int().min(1).max(Number.MAX_SAFE_INTEGER).optional().describe("Optional current hostingVersion from the server; a stale value still applies and the result says so"),
   },
   async ({ type, namespace, id, ownerToken, deliveryMode, expectedVersion }) => {
     const segment = type === "file" ? "files" : type;

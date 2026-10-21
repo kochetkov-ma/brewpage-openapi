@@ -1,5 +1,14 @@
 # Release Notes
 
+## API contract 1.118.0 / MCP 1.10.0 — 2026-10-21
+
+- API contract version 1.118.0 identifies the backend-generated public snapshot exported from the clean brewpage-app release source `132899c6693019f4b3996a108e01b816bcdba54b`. Deterministic YAML, the byte-identical Scalar copy and export provenance are regenerated with it.
+- Owner ruling 2026-10-21: delivery-mode and hosting-version mismatches are reported, not rejected. Responses carry the real `link`, `requestedDeliveryMode`/`effectiveDeliveryMode`, `deliveryModeMatched: false`, a `deliveryModeReason` code and a human-readable `deliveryNotice`.
+- Removed rejections: `400 DELIVERY_MODE_REQUIRED` (explicit `path` on a fresh site or non-public `html` page now publishes on its subdomain, `policy:subdomain-required`; a content update turning a non-public `path` page into `html` moves it to its subdomain and the old path redirects), `400 HOSTING_OPERATION_REQUIRED`/`HOSTING_UPDATE_REQUIRED` (`X-Delivery-Mode` on a content update or site republish is ignored, `policy:republish-keeps-mode`), `400 HOSTING_MODE_LOCKED` (`policy:mode-locked`, OLD links `policy:classic-link`) and `409 HOSTING_VERSION_CONFLICT` (applied, `policy:version-stale`).
+- `HostingUpdateRequest.expectedVersion` is optional; a malformed value (not a positive integer) still answers `400 INVALID_HOSTING_VERSION`. `PATCH /api/{type}/{ns}/{id}/hosting` also routes `sites` (always the mode-locked answer) and no longer declares `409`. `HostingProjection` gains optional `deliveryModeReason` and `deliveryNotice`, omitted when null. `INVALID_DELIVERY_MODE` and `503` outages are unchanged.
+- `POST /api/files`: the multipart `file` part is no longer required; when it is absent, any single file part is accepted. Sending `file` stays the documented form. 32 paths and 46 operations.
+- MCP 1.10.0: `update_hosting` takes an optional `expectedVersion` and prints the server's `deliveryModeReason` and `Delivery notice:` line; same sixteen tools. `scripts/verify-openapi.mjs` asserts the optional version, the projection fields, the sites route and the absent `409`.
+
 ## API contract 1.117.0 / MCP 1.9.5 — 2026-10-21
 
 - API contract version 1.117.0 identifies the backend-generated public snapshot exported from the clean brewpage-app release source `e2350cd5317c2460de4cd8650db7bcbb5728e357`. Deterministic YAML, the byte-identical Scalar copy and export provenance are regenerated with it.
