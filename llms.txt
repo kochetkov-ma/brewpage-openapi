@@ -6,7 +6,7 @@ Public contract snapshots, documentation and the BrewPage MCP server. The backen
 
 - `openapi/openapi.json` — exported backend-generated public OpenAPI 3.1 contract; version and provenance identify the backend source.
 - `openapi/openapi.yaml` — deterministic derived representation; `docs/public/openapi.json` is the identical Scalar copy.
-- `mcp-server/` — TypeScript implementation of the BrewPage MCP server. Prepared `version: 1.9.5`. Published as `brewpage-mcp` on npm.
+- `mcp-server/` — TypeScript implementation of the BrewPage MCP server. Prepared `version: 1.10.0`. Published as `brewpage-mcp` on npm.
 - `docs/` — Astro docs site published at https://kochetkov-ma.github.io/brewpage-openapi/.
 
 ## Where to read the live API
@@ -20,6 +20,7 @@ Public contract snapshots, documentation and the BrewPage MCP server. The backen
 
 ## Recent contract changes
 
+- 1.118.0 (matches backend v1.118.0): delivery-mode and hosting-version mismatches are reported, not rejected. An explicit `path` where `subdomain` is required publishes on the subdomain; a stale `expectedVersion` still applies; locked modes and OLD links answer 200 unchanged; `X-Delivery-Mode` on content updates is ignored. Such responses carry `deliveryModeMatched: false`, `deliveryModeReason` (`policy:<code>`) and `deliveryNotice`, now also on `HostingProjection`. `expectedVersion` is optional; `409 HOSTING_VERSION_CONFLICT`, `HOSTING_MODE_LOCKED`, `DELIVERY_MODE_REQUIRED` and `HOSTING_OPERATION_REQUIRED`/`HOSTING_UPDATE_REQUIRED` are gone. `POST /api/files` accepts any single file part when `file` is absent. 32 paths and 46 operations; always use the returned `link`.
 - 1.117.0 (matches backend v1.117.0): NEW sites and non-public HTML pages of format `html` require `subdomain` (explicit `path` answers 400 `DELIVERY_MODE_REQUIRED`); everything else in non-public namespaces (Markdown, code/text, files, JSON, KV) defaults to `path` like public and may choose `subdomain` via `X-Delivery-Mode`. Markdown raw HTML is rendered through an allowlist (no scripts, styles, event handlers, forms or embeds; links `http`/`https`/`mailto`/`tel`/relative). Earlier pages change only when republished. 32 paths and 46 operations; always use the returned `link`.
 - 1.113.0 (matches backend v1.113.0): the `result` outcome schema is named `PublicationResult`; fields, values and response bodies are unchanged (`merged` = an existing publication was returned). `POST /api/files` answers `X-Existing-Resource: 1` when it returns an existing upload. 32 paths and 46 operations.
 - 1.108.0 (matches backend v1.108.0): `GET /preview/{ns}/{id}.jpg` (`previewJpeg`) is the canonical 1200×630 JPEG social preview image; `GET /preview/{ns}/{id}.png` (`preview`) remains a legacy URL serving the same JPEG bytes. Non-public or protected images carry `X-Robots-Tag: noindex`; failures redirect to `/og-image.png?v=3`. One shared `preview` tag; 32 paths and 46 operations.
@@ -31,7 +32,7 @@ Public contract snapshots, documentation and the BrewPage MCP server. The backen
 ## How to use the MCP server
 
 ```bash
-npx -y brewpage-mcp@1.9.5
+npx -y brewpage-mcp@1.10.0
 ```
 
 Always pin an exact version.

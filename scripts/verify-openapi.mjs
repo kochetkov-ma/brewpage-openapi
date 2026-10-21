@@ -45,8 +45,8 @@ for (const name of hostingMetadata) {
   assert.ok(schemas.HtmlUploadResponse.required.includes(name),
     `NEW HTML creation requires hosting metadata: ${name}`);
 }
-assert.deepEqual(schemas.HostingUpdateRequest.required, ['deliveryMode', 'expectedVersion'],
-  'Hosting changes require delivery mode and optimistic concurrency version');
+assert.deepEqual(schemas.HostingUpdateRequest.required, ['deliveryMode'],
+  'Hosting changes require only delivery mode; expectedVersion is optional and a stale one is reported, not rejected');
 assert.equal(schemas.HostingUpdateRequest.properties.expectedVersion.type, 'integer',
   'Hosting expectedVersion must be an integer');
 assert.equal(schemas.HostingUpdateRequest.properties.expectedVersion.minimum, 1,
@@ -55,6 +55,15 @@ assert.deepEqual(schemas.HostingProjection.properties.hostingVersion.type, ['int
   'Hosting version is nullable for legacy publications');
 assert.ok(schemas.HostingProjection.required.includes('hostingVersion'),
   'Serialized hosting version is required even when null');
+for (const name of ['deliveryModeReason', 'deliveryNotice']) {
+  assert.equal(schemas.HostingProjection.properties[name]?.type, 'string', `Hosting projection exposes optional ${name}`);
+  assert.ok(!schemas.HostingProjection.required.includes(name), `Hosting ${name} is omitted when nothing applies`);
+}
+const hostingPatch = spec.paths['/api/{type}/{ns}/{id}/hosting'].patch;
+assert.deepEqual(Object.keys(hostingPatch.responses).sort(), ['200', '400', '403', '404', '503'],
+  'Hosting PATCH reports mismatches in 200, never as a version conflict');
+assert.ok(hostingPatch.parameters.find((parameter) => parameter.name === 'type').schema.enum.includes('sites'),
+  'Hosting PATCH routes sites to the tolerant mode-locked answer');
 for (const suffix of ['source', 'settings']) assert.deepEqual(
   spec.paths[`/api/html/{ns}/{id}/${suffix}`].get.security, [{ OwnerToken: [] }],
   `HTML ${suffix} access requires owner authority`);

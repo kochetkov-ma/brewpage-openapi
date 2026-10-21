@@ -246,16 +246,19 @@ for (const scenario of HTML_REASON_TOOLS.flatMap((tool) => [
   });
 }
 
-for (const type of ["html", "file", "json", "kv"]) {
-  test(`update_hosting maps ${type} to owner-only versioned apex PATCH`, { timeout: 10_000 }, async (t) => {
+for (const { type, version } of [
+  { type: "html", version: { expectedVersion: 1 } }, { type: "file", version: { expectedVersion: 1 } },
+  { type: "json", version: { expectedVersion: 1 } }, { type: "kv", version: { expectedVersion: 1 } }, { type: "html", version: {} },
+]) {
+  test(`update_hosting maps ${type} to owner-only apex PATCH with ${JSON.stringify(version)}`, { timeout: 10_000 }, async (t) => {
     // GIVEN successful hosting projection.
     const f = await fixture(t);
     f.respond(200, { ...NEW_RESPONSE, hostingVersion: 2 });
-    // WHEN owner changes mode with current version.
-    const result = await f.call("update_hosting", { type, namespace: "public", id: "aBcDeFgHiJ", ownerToken: "fixture-owner", deliveryMode: "subdomain", expectedVersion: 1 });
-    // THEN correct API segment, owner header and CAS body are used.
+    // WHEN owner changes mode with or without a known version.
+    const result = await f.call("update_hosting", { type, namespace: "public", id: "aBcDeFgHiJ", ownerToken: "fixture-owner", deliveryMode: "subdomain", ...version });
+    // THEN correct API segment, owner header and body are used; an omitted version is not invented.
     assert.deepEqual(f.requests.map(({ method, url, headers, body }) => ({ method, url, owner: headers["x-owner-token"], body: JSON.parse(body) })), [
-      { method: "PATCH", url: `/api/${type === "file" ? "files" : type}/public/aBcDeFgHiJ/hosting`, owner: "fixture-owner", body: { deliveryMode: "subdomain", expectedVersion: 1 } },
+      { method: "PATCH", url: `/api/${type === "file" ? "files" : type}/public/aBcDeFgHiJ/hosting`, owner: "fixture-owner", body: { deliveryMode: "subdomain", ...version } },
     ], "hosting mutation targets the configured API origin");
     assert.equal(result.isError, undefined, "hosting change succeeds");
     assert.match(result.content[0].text, /hostingVersion: 2/, "next version is returned");
@@ -264,8 +267,8 @@ for (const type of ["html", "file", "json", "kv"]) {
 
 for (const error of [
   { status: 403, code: "OWNER_AUTHORIZATION_FAILED" },
-  { status: 400, code: "HOSTING_MODE_LOCKED" },
-  { status: 409, code: "HOSTING_VERSION_CONFLICT" },
+  { status: 400, code: "INVALID_HOSTING_VERSION" },
+  { status: 503, code: "HOSTING_CREATION_PAUSED" },
 ]) {
   test(`update_hosting preserves ${error.status} ${error.code} without retry`, { timeout: 10_000 }, async (t) => {
     // GIVEN rejected server hosting mutation.
@@ -273,10 +276,28 @@ for (const error of [
     f.respond(error.status, { code: error.code });
     // WHEN owner requests a mode change.
     const result = await f.call("update_hosting", { type: "html", namespace: "public", id: "aBcDeFgHiJ", ownerToken: "fixture-owner", deliveryMode: "path", expectedVersion: 1 });
-    // THEN status/code remain visible and concurrency is not bypassed.
+    // THEN status/code remain visible and the call is not retried.
     assert.equal(result.isError, true, "server failure becomes a tool error");
     assert.equal(result.content[0].text, `Failed to update hosting (${error.status}): ${JSON.stringify({ code: error.code })}`, "status and code are retained exactly");
     assert.equal(f.requests.length, 1, "failed mutation is not retried");
+  });
+}
+
+for (const scenario of [
+  { reason: "policy:version-stale", response: { ...NEW_RESPONSE, hostingVersion: 4 } },
+  { reason: "policy:mode-locked", response: { ...NEW_RESPONSE, requestedDeliveryMode: "path", deliveryModeMatched: false, modeLocked: true } },
+  { reason: "policy:classic-link", response: { ...NEW_RESPONSE, routingCohort: "old", deliveryMode: null, effectiveDeliveryMode: null, requestedDeliveryMode: "path", deliveryModeMatched: false, hostingVersion: null } },
+]) {
+  test(`update_hosting reports ${scenario.reason} as a successful result with its notice`, { timeout: 10_000 }, async (t) => {
+    // GIVEN tolerant server answer for a stale or inapplicable hosting request.
+    const f = await fixture(t);
+    f.respond(200, { ...scenario.response, deliveryModeReason: scenario.reason, deliveryNotice: `Fixture notice for ${scenario.reason}.` });
+    // WHEN owner requests a mode change with an old version.
+    const result = await f.call("update_hosting", { type: "html", namespace: "public", id: "aBcDeFgHiJ", ownerToken: "fixture-owner", deliveryMode: "path", expectedVersion: 1 });
+    // THEN the call succeeds once and the server reason and notice reach the caller verbatim.
+    assert.deepEqual({ isError: result.isError, requests: f.requests.length, lines: result.content[0].text.split("\n").filter((line) => DELIVERY_REASON_LINE.test(line)) },
+      { isError: undefined, requests: 1, lines: [`deliveryModeReason: ${JSON.stringify(scenario.reason)}`, `Delivery notice: Fixture notice for ${scenario.reason}.`] },
+      "tolerant answer is a success carrying reason and notice");
   });
 }
 
@@ -291,16 +312,18 @@ test("same-mode hosting result keeps server version unchanged", { timeout: 10_00
   assert.match(result.content[0].text, /^URL: https:\/\/public-z9y8x7w6v5\.brewpage\.app\/$/m, "no-op link remains verbatim");
 });
 
-test("fresh site path rejection comes from the server without client coercion", { timeout: 10_000 }, async (t) => {
-  // GIVEN server forced-mode policy for fresh sites.
+test("fresh site path request is published on subdomain and reported, without client coercion", { timeout: 10_000 }, async (t) => {
+  // GIVEN server forced-mode policy answering with the effective subdomain publication.
   const f = await fixture(t);
-  f.respond(400, { code: "HOSTING_MODE_LOCKED" });
+  f.respond(201, { ...NEW_RESPONSE, requestedDeliveryMode: "path", deliveryModeMatched: false, deliveryModeReason: "policy:subdomain-required", deliveryNotice: "Fixture notice: published on its own subdomain." });
   // WHEN caller explicitly requests path hosting for a site.
   const result = await f.call("publish_site", { entryContent: "<h1>Fixture</h1>", namespace: "public", deliveryMode: "path" });
-  // THEN valid enum reaches backend and its policy rejection is retained.
+  // THEN valid enum reaches backend and the mismatch is reported with the server link.
   assert.equal(f.requests[0].headers["x-delivery-mode"], "path", "client does not silently coerce the explicit mode");
-  assert.equal(result.isError, true, "fresh forced-mode rejection remains a tool error");
-  assert.match(result.content[0].text, /HOSTING_MODE_LOCKED/, "backend policy code is retained");
+  assert.equal(result.isError, undefined, "forced-mode mismatch is not a tool error");
+  assert.deepEqual(result.content[0].text.split("\n").filter((line) => DELIVERY_REASON_LINE.test(line) || line.startsWith("URL: ")),
+    [`URL: ${NEW_RESPONSE.link}`, `deliveryModeReason: "policy:subdomain-required"`, "Delivery notice: Fixture notice: published on its own subdomain."],
+    "subdomain link, reason and notice are surfaced verbatim");
 });
 
 test("existing OLD site winner accepts a valid requested path without local eligibility rejection", { timeout: 10_000 }, async (t) => {

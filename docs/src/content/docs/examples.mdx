@@ -138,7 +138,7 @@ curl -X POST 'https://brewpage.app/api/sites?ns=public' \
 
 ## Change Hosting
 
-Only eligible NEW publications (not sites, not non-public `html`-format HTML) can switch between Promotion and Dedicated subdomain. Obtain current metadata with the owner-only hosting GET, then supply its `hostingVersion`:
+Only eligible NEW publications (not sites, not non-public `html`-format HTML) can switch between Promotion and Dedicated subdomain. Obtain current metadata with the owner-only hosting GET, then supply its `hostingVersion` (optional, recommended):
 
 ```bash
 curl --fail-with-body 'https://brewpage.app/api/html/public/aBcDeFgHiJ/hosting' \
@@ -150,7 +150,7 @@ curl --fail-with-body -X PATCH 'https://brewpage.app/api/html/public/aBcDeFgHiJ/
   -d '{"deliveryMode":"subdomain","expectedVersion":1}'
 ```
 
-Replace the illustrative ID/token and version with your own current values. OLD links, sites, and non-public `html`-format HTML pages are locked. Stale versions return 409; reload before retrying. Use the returned primary `link` after success. The reserved host survives both directions; ordinary content updates do not switch modes.
+Replace the illustrative ID/token and version with your own current values. Mismatches are reported, not rejected: a stale version still applies, while OLD links, sites, and non-public `html`-format HTML pages stay unchanged; the 200 response then carries `deliveryModeMatched: false`, `deliveryModeReason` and `deliveryNotice`. Use the returned primary `link`. The reserved host survives both directions; ordinary content updates do not switch modes.
 
 ## JavaScript / Fetch
 
