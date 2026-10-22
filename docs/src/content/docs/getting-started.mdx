@@ -18,7 +18,9 @@ BrewPage is a free hosting platform for HTML pages, key-value data, JSON documen
 - **KV** — Key-value store, up to 1,000 keys per store, 1 MB per value
 - **JSON** — JSON document store, up to 10,000 docs per namespace, 1 MiB per doc
 - **Files** — File hosting, up to 5 MB per file, 1,000 files per namespace
-- **Sites** — Multi-file HTML site hosting via ZIP or individual files, TTL 1–30 days
+- **Sites** — Multi-file HTML site hosting via ZIP or individual files, up to 200 files, 5 MB per file, 20 MB total, TTL 1–30 days
+
+Current upload limits are published as JSON at [`GET /api/limits`](https://brewpage.app/api/limits); read them before uploading a large or multi-file site.
 
 **Base URL:** `https://brewpage.app` (`https://brewdata.app` redirects to it with 301)
 
@@ -53,8 +55,8 @@ BrewPage is a free hosting platform for HTML pages, key-value data, JSON documen
 ### 3. MCP Server (AI Agent)
 
 <Timeline steps={[
-  { title: "Configure brewpage-mcp@1.11.0", description: "Follow the MCP guide for your client; the pinned stdio command is npx -y brewpage-mcp@1.11.0" },
-  { title: 'Ask your assistant: "Publish this to BrewPage"', description: "Sixteen tools support HTML, Markdown, JSON, KV, files, sites, and hosting updates; namespace defaults to unlisted" },
+  { title: "Configure brewpage-mcp@1.12.0", description: "Follow the MCP guide for your client; the pinned stdio command is npx -y brewpage-mcp@1.12.0" },
+  { title: 'Ask your assistant: "Publish this to BrewPage"', description: "Seventeen tools support HTML, Markdown, JSON, KV, files, sites, hosting updates and upload limits; namespace defaults to unlisted" },
   { title: "Get link + owner token", description: "Claude returns the URL and reminds you to save the token" },
 ]} />
 

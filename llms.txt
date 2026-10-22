@@ -6,7 +6,7 @@ Public contract snapshots, documentation and the BrewPage MCP server. The backen
 
 - `openapi/openapi.json` — exported backend-generated public OpenAPI 3.1 contract; version and provenance identify the backend source.
 - `openapi/openapi.yaml` — deterministic derived representation; `docs/public/openapi.json` is the identical Scalar copy.
-- `mcp-server/` — TypeScript implementation of the BrewPage MCP server. Prepared `version: 1.11.0`. Published as `brewpage-mcp` on npm.
+- `mcp-server/` — TypeScript implementation of the BrewPage MCP server. Prepared `version: 1.12.0`. Published as `brewpage-mcp` on npm.
 - `docs/` — Astro docs site published at https://kochetkov-ma.github.io/brewpage-openapi/.
 
 ## Where to read the live API
@@ -20,6 +20,7 @@ Public contract snapshots, documentation and the BrewPage MCP server. The backen
 
 ## Recent contract changes
 
+- 1.123.0 (matches backend v1.123.0): new `GET /api/limits` (`getLimits`) returns user-facing upload limits in bytes (`requestMaxBytes`; `sites.maxFiles`, `maxFileBytes`, `maxTotalBytes`, `maxArchiveExpansionBytes`, `maxPathChars`, `maxPathBytes`, `maxNameBytes`, `defaultTtlDays`, `maxTtlDays`, `allowedExtensions`, `skippedFileNames`, `skippedRootFolders`). Sites hold 200 files (was 100). Site uploads: 400 for a site limit hit (message names it), a bad ZIP or a `..` path; 413 for a request over 25 MB, too many parts or an overlong file name/path; 422 (was 415) when no servable file is left. Unstorable metadata answers 400 instead of 409. 33 paths and 47 operations. MCP 1.12.0 adds `get_limits`.
 - 1.121.0 (matches backend v1.121.0): `GET /galleries` is paginated with `rel=prev/next` via an optional 1-based `page` query parameter (omitted = page 1); an invalid or past-the-end page answers 404. 32 paths and 46 operations.
 - 1.119.0 (matches backend v1.119.0): publish endpoints accept fixable inputs and return an advisory `notices` array of `{code, message}` on successful create/update responses (TTL units and clamping, format aliases, skipped site members, file type sniffing, namespace normalisation, empty password, blank owner token). 32 paths and 46 operations; always use the returned `link`.
 - 1.118.0 (matches backend v1.118.0): delivery-mode and hosting-version mismatches are reported, not rejected. An explicit `path` where `subdomain` is required publishes on the subdomain; a stale `expectedVersion` still applies; locked modes and OLD links answer 200 unchanged; `X-Delivery-Mode` on content updates is ignored. Such responses carry `deliveryModeMatched: false`, `deliveryModeReason` (`policy:<code>`) and `deliveryNotice`, now also on `HostingProjection`. `expectedVersion` is optional; `409 HOSTING_VERSION_CONFLICT`, `HOSTING_MODE_LOCKED`, `DELIVERY_MODE_REQUIRED` and `HOSTING_OPERATION_REQUIRED`/`HOSTING_UPDATE_REQUIRED` are gone. `POST /api/files` accepts any single file part when `file` is absent. 32 paths and 46 operations; always use the returned `link`.
@@ -34,16 +35,16 @@ Public contract snapshots, documentation and the BrewPage MCP server. The backen
 ## How to use the MCP server
 
 ```bash
-npx -y brewpage-mcp@1.11.0
+npx -y brewpage-mcp@1.12.0
 ```
 
 Always pin an exact version.
 
-The server wraps a subset of REST operations in sixteen tools — read `mcp-server/README.md` for supported inputs and tool list. Omitted REST namespace defaults to `public`; omitted MCP namespace generates an unlisted `priv-*` namespace. Unlisted is readable by anyone with the link unless password-protected. Use explicit `public` only for gallery/search eligibility; protected publications are excluded and unlisted, protected or otherwise ineligible native responses are search-excluded; eligible public HTML, sites and files may permit indexing.
+The server wraps a subset of REST operations in seventeen tools — read `mcp-server/README.md` for supported inputs and tool list. Omitted REST namespace defaults to `public`; omitted MCP namespace generates an unlisted `priv-*` namespace. Unlisted is readable by anyone with the link unless password-protected. Use explicit `public` only for gallery/search eligibility; protected publications are excluded and unlisted, protected or otherwise ineligible native responses are search-excluded; eligible public HTML, sites and files may permit indexing.
 
 Use the exact returned primary `link`, including root slashes. Send API passwords as `X-Password` and owner authority as `X-Owner-Token` to the configured apex API origin; never send owner tokens to publication hosts. NEW browser password access uses the trusted unlock gateway, without query-password links. HTML API reads return stored rendered HTML or code/text with format-specific MIME; the owner-only source endpoint returns original authored content. Share URLs may provide a viewer.
 
-Default repository limits: HTML 5 MiB; KV values/JSON documents 1 MiB; files/audio 5 MiB, video 20 MiB; sites 20 MiB total, 100 files, 5 MiB per file. TTL defaults to 15 days; ordinary maximum 30 days, with owner-specific caps and possible eligible automatic extensions. Treat returned expiresAt and API validation as authoritative. SDK/CLI modules are proposals, not released clients.
+Default repository limits: HTML 5 MiB; KV values/JSON documents 1 MiB; files/audio 5 MiB, video 20 MiB; sites 20 MiB total, 200 files, 5 MiB per file; requests 25 MiB. Read current values from `GET https://brewpage.app/api/limits` (MCP `get_limits`). TTL defaults to 15 days; ordinary maximum 30 days, with owner-specific caps and possible eligible automatic extensions. Treat returned expiresAt and API validation as authoritative. SDK/CLI modules are proposals, not released clients.
 
 The repository contract/docs license is Apache-2.0; the independently packaged MCP server is MIT. The backend platform remains proprietary.
 

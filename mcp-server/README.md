@@ -7,12 +7,12 @@ MCP server for [BrewPage](https://brewpage.app) -- publish and manage HTML, KV, 
 
 ## What is BrewPage
 
-[BrewPage](https://brewpage.app) is a free instant hosting platform designed for AI agents and developers. One `POST` request publishes HTML, Markdown, a multi-file site, a JSON document, or a binary file and returns its primary HTTPS link -- no accounts, no API keys, no infrastructure setup. Every resource carries an **owner token** returned at creation time: use it to update content in place, delete the resource, or authenticate list operations across sessions. `brewpage-mcp` exposes this API as sixteen typed MCP tools so any compatible agent -- Claude, Codex, Gemini, Cursor, Cline -- can publish, update, fetch, and manage BrewPage HTML, JSON, KV, and file content without leaving the conversation.
+[BrewPage](https://brewpage.app) is a free instant hosting platform designed for AI agents and developers. One `POST` request publishes HTML, Markdown, a multi-file site, a JSON document, or a binary file and returns its primary HTTPS link -- no accounts, no API keys, no infrastructure setup. Every resource carries an **owner token** returned at creation time: use it to update content in place, delete the resource, or authenticate list operations across sessions. `brewpage-mcp` exposes this API as seventeen typed MCP tools so any compatible agent -- Claude, Codex, Gemini, Cursor, Cline -- can publish, update, fetch, and manage BrewPage HTML, JSON, KV, and file content without leaving the conversation.
 
 ## Quick Start
 
 ```bash
-npx -y brewpage-mcp@1.11.0
+npx -y brewpage-mcp@1.12.0
 ```
 
 Requires Node.js 20 or newer. This starts the stdio server for an MCP client.
@@ -28,7 +28,7 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS)
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@1.11.0"]
+      "args": ["-y", "brewpage-mcp@1.12.0"]
     }
   }
 }
@@ -39,7 +39,7 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS)
 Register a project-scoped stdio server:
 
 ```bash
-claude mcp add --transport stdio --scope project brewpage -- npx -y brewpage-mcp@1.11.0
+claude mcp add --transport stdio --scope project brewpage -- npx -y brewpage-mcp@1.12.0
 ```
 
 This writes `.mcp.json` in the project root. Use `--scope user` for user-scoped registration. See the [official Claude Code MCP guide](https://code.claude.com/docs/en/mcp).
@@ -53,7 +53,7 @@ Open **Settings > MCP** and add:
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@1.11.0"]
+      "args": ["-y", "brewpage-mcp@1.12.0"]
     }
   }
 }
@@ -67,7 +67,7 @@ Open the Cline MCP settings panel and add:
 {
   "brewpage": {
     "command": "npx",
-    "args": ["-y", "brewpage-mcp@1.11.0"]
+    "args": ["-y", "brewpage-mcp@1.12.0"]
   }
 }
 ```
@@ -75,13 +75,13 @@ Open the Cline MCP settings panel and add:
 ### Global Install
 
 ```bash
-npm install -g brewpage-mcp@1.11.0
+npm install -g brewpage-mcp@1.12.0
 brewpage-mcp
 ```
 
 ## Tools
 
-Sixteen tools are available. Creation returns an owner token; keep it to modify or delete the resource later. Updates (`PUT`/`PATCH`) require the original `ownerToken`. Supported password inputs use `X-Password`.
+Seventeen tools are available. Creation returns an owner token; keep it to modify or delete the resource later. Updates (`PUT`/`PATCH`) require the original `ownerToken`. Supported password inputs use `X-Password`.
 
 | Tool | Purpose |
 |------|---------|
@@ -101,6 +101,7 @@ Sixteen tools are available. Creation returns an owner token; keep it to modify 
 | `delete_resource` | Delete HTML, JSON, KV, or file content |
 | `search_gallery` | Browse public content or list owned resources |
 | `get_stats` | Read platform-wide statistics |
+| `get_limits` | Read the current upload limits (`GET /api/limits`) |
 
 All five publish tools accept optional `deliveryMode: "path" | "subdomain"`, sent only as `X-Delivery-Mode`; authored JSON and multipart bodies keep their existing format. Visibility and password protection are separate choices. Omitted namespace still generates an unlisted `priv-<random>` namespace; anyone with an unpassworded unlisted link can read it. `public` grants gallery/search eligibility only; password-protected content remains excluded and unlisted, protected or otherwise ineligible native responses carry `noindex`; eligible public HTML, sites and files may permit indexing.
 
@@ -206,6 +207,8 @@ publish_file(url="https://example.com/diagram.png")
 
 Publish a single-page or multi-file HTML site. Pass `entryContent` for a single page or `files` (array of `{path, content}`) for a multi-file site. Supports password protection, TTL, and owner token grouping.
 
+Limits (current values from `get_limits`): a request is at most 25 MB; a site at most 200 files, 5 MB per file and 20 MB in total; each path at most 380 characters. System files such as `.DS_Store` and `__MACOSX/` are skipped and never count; files with an unsupported extension or a too-long path are skipped and reported in notices. Entry: `entry`, else root `index.html`, else the shallowest HTML file. A site limit hit answers 400 with a message naming the limit; 413 means the request is over 25 MB, has too many files and form fields, or a file name/path is too long; 422 means no servable file is left.
+
 Parameters: exactly one of `entryContent` (string) or non-empty `files` (array of `{path, content}`), `entry` (optional entry file path, default `index.html`), `namespace` (optional -- omit for unlisted content; `public` grants gallery eligibility except when password-protected), `password` (optional), `ttlDays` (days or a string such as `2w`; default 15; the server clamps to 1--30), `ownerToken` (optional, groups site under an existing owner), `deliveryMode` (optional; fresh sites require `subdomain`).
 
 Example prompt:
@@ -220,7 +223,7 @@ publish_site(files=[{"path": "index.html", "content": "..."}, {"path": "style.cs
 
 ### `republish_site`
 
-Replace an owned site's complete file set at the same ID and primary link. Files absent from the new bundle are removed; matching files are overwritten and new files added. Hosting stays unchanged.
+Replace an owned site's complete file set at the same ID and primary link. Files absent from the new bundle are removed; matching files are overwritten and new files added. Hosting stays unchanged. The `publish_site` limits and status codes apply.
 
 Parameters: `namespace`, `id`, `ownerToken`, exactly one of `entryContent` or a non-empty `files` array of `{path, content}`, optional `entry` (default `index.html`), `ttlDays` (ignored; existing expiry is preserved and a `ttl-ignored` notice is returned), and `tags`.
 
@@ -382,6 +385,22 @@ Example prompt:
 get_stats()
 ```
 
+---
+
+### `get_limits`
+
+Read the current upload limits from `GET /api/limits` (no auth). Sizes are bytes: `requestMaxBytes` plus `sites.maxFiles`, `maxFileBytes`, `maxTotalBytes` (uncompressed), `maxArchiveExpansionBytes`, `maxPathChars`, `maxPathBytes`, `maxNameBytes`, `defaultTtlDays`, `maxTtlDays`, `allowedExtensions`, `skippedFileNames` and `skippedRootFolders`. Call it before publishing a large or multi-file site.
+
+Parameters: none.
+
+Example prompt:
+
+> "How many files can a BrewPage site have?"
+
+```
+get_limits()
+```
+
 ## Common LLM Query to BrewPage Tool Mapping
 
 | LLM query / intent | Tool | Notes |
@@ -397,6 +416,7 @@ get_stats()
 | "Remove the page I published" | `delete_resource` | Requires `ownerToken` from creation |
 | "Read back the page I published" | `get_page` | Returns raw content for editing |
 | "How many pages are on BrewPage?" | `get_stats` | Returns platform totals |
+| "How big can my site be?" | `get_limits` | Current request and site limits in bytes |
 | "Store JSON state between turns" | `publish_json` | Returns short URL + owner token |
 | "Read that JSON document back" | `get_json` | By `namespace` + `id` |
 | "Update the JSON I stored" | `update_json` | Requires `ownerToken`; preserves URL |
@@ -432,6 +452,11 @@ Every publish response includes an **owner token** -- the only credential that a
 - [Brewcode Plugin](https://github.com/kochetkov-ma/claude-brewcode) -- Claude Code plugin suite
 
 ## Changelog
+
+## 1.12.0 -- 2026-10-22
+
+- New `get_limits` tool reads `GET /api/limits`: request size, site file count, per-file and total size, ZIP expansion, path and name lengths, TTL default/maximum, allowed extensions and skipped system files.
+- `publish_site` and `republish_site` describe the backend 1.123.0 site rules: 200 files (was 100), 5 MB per file, 20 MB total, 25 MB per request; 400 for a site limit hit, 413 for an oversized request, too many parts or an overlong file name/path, 422 when no servable file is left; entry resolution and skipped system files. Seventeen tools.
 
 ## 1.11.0 -- 2026-10-21
 

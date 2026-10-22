@@ -1,5 +1,14 @@
 # Release Notes
 
+## API contract 1.123.0 / MCP 1.12.0 — 2026-10-22
+
+- API contract version 1.123.0 identifies the backend-generated public snapshot exported from the clean brewpage-app release source `6acc7512c8a6beaed2b52afb4df16a609af3d5d8` (tag `v1.123.0`). Deterministic YAML, the byte-identical Scalar copy and export provenance are regenerated with it.
+- Added `GET /api/limits` (`getLimits`, tag `Limits`): user-facing upload limits only, as `LimitsResponse` `{requestMaxBytes, sites}` with `SiteLimitsResponse` `{maxFiles, maxFileBytes, maxTotalBytes, maxArchiveExpansionBytes, maxPathChars, maxPathBytes, maxNameBytes, defaultTtlDays, maxTtlDays, allowedExtensions, skippedFileNames, skippedRootFolders}`; `429` on rate limit. Production defaults: 25 MiB per request, 200 files (was 100), 5 MiB per file, 20 MiB total, 40 MiB ZIP expansion, 380 characters / 900 bytes per path, 200 bytes per name, TTL 15/30 days.
+- `POST /api/sites` and `PUT /api/sites/{ns}/{id}`: `400` descriptions point to `GET /api/limits`; new `413` (request over the per-request size, too many files and form fields, or a file path too long); `422` (no servable file left) replaces `415`. Damaged, non-UTF-8 or password-protected ZIPs and `..` path segments answer `400`; system files (`skippedFileNames`, `skippedRootFolders`) are dropped before any limit.
+- Behaviour without a schema change since 1.121.0: unstorable metadata is stored as the closest valid value with notices (`tags-truncated`, `*-control-chars-removed`, `content-nul-replaced`), other data errors answer `400` instead of `409`; an aborted upload gets a `408` JSON error from the edge instead of `503`.
+- 33 paths and 47 operations (1.121.0: 32 and 46). `scripts/verify-openapi.mjs` asserts the limits route, its exact field sets and the site `400`/`413`/`422` responses without `415`.
+- MCP 1.12.0: new `get_limits` tool (`GET /api/limits`); `publish_site` and `republish_site` describe the limits, entry rule, skipped files and status codes. Seventeen tools.
+
 ## API contract 1.121.0 — 2026-10-22
 
 - API contract version 1.121.0 identifies the backend-generated public snapshot exported from the clean brewpage-app release source `78491e73e815e4f8d44e90985698a8654536c1ad`. Deterministic YAML, the byte-identical Scalar copy and export provenance are regenerated with it.

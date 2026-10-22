@@ -21,7 +21,7 @@ No signup or API key required for creation. Use the exact returned primary HTTPS
 Key characteristics:
 
 - **HTML and Markdown pages** -- publish raw HTML or Markdown rendered to styled HTML, up to 5 MB, with instant short URLs.
-- **Multi-file sites** -- upload a ZIP archive or individual files (up to 20 MB / 100 files) and get a fully served static site.
+- **Multi-file sites** -- upload a ZIP archive or individual files (up to 200 files, 5 MB per file, 20 MB total; current values at `GET /api/limits`) and get a fully served static site.
 - **Key-value store** -- KV pairs addressed by namespace/store ID, up to 1,000 keys per store, mutable in place via the owner token.
 - **JSON documents** -- store and retrieve arbitrary JSON, up to 1 MiB per document, 10,000 documents per namespace.
 - **File hosting** -- upload any safe file type (images, PDFs, video, audio, archives, code), up to 5 MB (video 20 MB), with inline preview.
@@ -81,7 +81,7 @@ Open `link` in any browser -- no further steps required.
 | **Key-value store** | Named key-value pairs addressed by namespace/store ID | 1,000 keys/store |
 | **JSON documents** | Store and retrieve arbitrary JSON with owner-scoped listing | 1 MiB, 10,000 docs/namespace |
 | **Files** | Upload files with automatic MIME detection and inline preview | 5 MB (video 20 MB), 1,000 files/namespace |
-| **Sites** | Multi-file HTML sites via ZIP or individual files | 20 MB total, 100 files, 5 MB/file, TTL 1--30d |
+| **Sites** | Multi-file HTML sites via ZIP or individual files | 20 MB total, 200 files, 5 MB/file, TTL 1--30d |
 
 Creation returns a primary link and owner token. Keep the token for management and share the link exactly. Password protection excludes discovery; public namespace alone does not guarantee indexing. TTL and supported inputs vary by operation.
 
@@ -156,7 +156,7 @@ The backend-generated public JSON contract owns schema authority. YAML is derive
 
 ## MCP Server
 
-The `brewpage-mcp` package provides a Model Context Protocol server with **16 tools** for AI-assisted content publishing and management. Selected tools appear below; see [`mcp-server/README.md`](mcp-server/README.md) for the complete list and documentation.
+The `brewpage-mcp` package provides a Model Context Protocol server with **17 tools** for AI-assisted content publishing and management. Selected tools appear below; see [`mcp-server/README.md`](mcp-server/README.md) for the complete list and documentation.
 
 Package releases use `.github/workflows/release.yml` with package-scoped npm Trusted Publisher/OIDC for `kochetkov-ma/brewpage-openapi`, workflow `release.yml`, without an environment. CI needs no `NPM_TOKEN`, manual npm login or static-token rotation. Local `npm whoami` does not validate GitHub Actions OIDC authentication. Publication to the official MCP registry (`io.github.kochetkov-ma/brewpage-mcp`) is automatic via GitHub OIDC in the same workflow; no local `mcp-publisher` token is needed.
 
@@ -186,7 +186,7 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@1.11.0"]
+      "args": ["-y", "brewpage-mcp@1.12.0"]
     }
   }
 }
@@ -201,7 +201,7 @@ Add to `~/.claude/settings.json`:
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@1.11.0"]
+      "args": ["-y", "brewpage-mcp@1.12.0"]
     }
   }
 }
@@ -236,7 +236,7 @@ BrewPage is described using [schema.org/SoftwareApplication](https://schema.org/
 |-----------|-------------|
 | OpenAPI 3.1 spec | Complete API contract for all public endpoints (YAML + JSON) |
 | Interactive docs | Astro + Scalar documentation site (GitHub Pages) |
-| MCP server | `brewpage-mcp` -- Claude Desktop/Code integration (16 tools) |
+| MCP server | `brewpage-mcp` -- Claude Desktop/Code integration (17 tools) |
 | Wiki | Code snippets, cheatsheet, tips & tricks |
 | Release notes | Changelog for API and public tooling |
 

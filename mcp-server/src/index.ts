@@ -8,7 +8,7 @@ const BASE_URL = process.env.BREWPAGE_URL || "https://brewpage.app";
 
 const server = new McpServer({
   name: "brewpage-mcp",
-  version: "1.11.0",
+  version: "1.12.0",
 });
 
 const PUBLIC_NAMESPACE = "public";
@@ -60,6 +60,14 @@ const DELIVERY_MODE_SCHEMA = z.enum(["path", "subdomain"]).optional().describe(
   "Everything else in any namespace (Markdown, code/text, files, JSON, KV, public HTML) defaults to path (Promotion); public HTML may automatically choose subdomain for browser features. " +
   "When creation returns an existing publication, it keeps its actual mode and URL."
 );
+
+/** Site upload rules shared by publish_site and republish_site; current values come from get_limits. */
+const SITE_LIMITS_TEXT =
+  "Limits (call get_limits for current values): a request is at most 25 MB; a site at most 200 files, 5 MB per file and 20 MB in total; " +
+  "each path at most 380 characters. System files (.DS_Store, __MACOSX/ and similar) are skipped and never count; files with an unsupported extension " +
+  "or a too-long path are skipped and listed in notices. Entry: `entry`, else root index.html, else the shallowest HTML file. " +
+  "Errors: 400 = a site limit exceeded (the message names it and what to do), invalid path or no HTML file; 413 = request over 25 MB, " +
+  "too many files and form fields, or a file name/path too long; 422 = no servable file left.";
 
 function hostingResponseLines(data: Record<string, unknown>): string[] {
   const fields = ["routingCohort", "deliveryMode", "requestedDeliveryMode", "effectiveDeliveryMode",
@@ -469,7 +477,7 @@ server.tool(
 
 server.tool(
   "publish_site",
-  "Publish an HTML site to BrewPage. Single-page: pass `entryContent`. Multi-page: pass `files` (array of `{path, content}`). Optional `entry` overrides default `index.html`. Repository defaults: 20 MiB total, 100 files, 5 MiB per file. Use its returned primary link and retain the owner token.",
+  "Publish an HTML site to BrewPage. Single-page: pass `entryContent`. Multi-page: pass `files` (array of `{path, content}`). Optional `entry` overrides default `index.html`. Use its returned primary link and retain the owner token. " + SITE_LIMITS_TEXT,
   {
     deliveryMode: DELIVERY_MODE_SCHEMA,
     entryContent: z
@@ -588,7 +596,7 @@ server.tool(
 
 server.tool(
   "republish_site",
-  "Republish (full-replace) an existing multi-file BrewPage site in place at the SAME URL/ID. Requires owner token. The uploaded bundle becomes the complete new file set — files absent from it are removed, new files added, matching files overwritten. Single-page: pass `entryContent`. Multi-page: pass `files` (array of `{path, content}`). Optional `entry` overrides the default `index.html`. Site bundles use repository defaults of 20 MiB total, 100 files, 5 MiB per file; republishing preserves existing expiry.",
+  "Republish (full-replace) an existing multi-file BrewPage site in place at the SAME URL/ID. Requires owner token. The uploaded bundle becomes the complete new file set — files absent from it are removed, new files added, matching files overwritten. Single-page: pass `entryContent`. Multi-page: pass `files` (array of `{path, content}`). Optional `entry` overrides the default `index.html`. Republishing preserves existing expiry. " + SITE_LIMITS_TEXT,
   {
     namespace: z.string().describe("Site namespace"),
     id: z.string().describe("Site ID"),
@@ -1064,6 +1072,38 @@ server.tool(
         {
           type: "text" as const,
           text: JSON.stringify(data, null, 2),
+        },
+      ],
+    };
+  }
+);
+
+server.tool(
+  "get_limits",
+  "Get the current BrewPage upload limits (GET /api/limits, no auth): request size, site file count, per-file and total size, " +
+    "ZIP expansion, path and name lengths, TTL default/maximum, allowed file extensions and skipped system files. Sizes are bytes. " +
+    "Call it before publishing a large or multi-file site.",
+  {},
+  async () => {
+    const { ok, status, data } = await apiRequest("GET", "/api/limits");
+
+    if (!ok) {
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: `Failed to fetch limits (${status}): ${JSON.stringify(data)}`,
+          },
+        ],
+        isError: true,
+      };
+    }
+
+    return {
+      content: [
+        {
+          type: "text" as const,
+          text: `BrewPage upload limits (bytes):\n\n${JSON.stringify(data, null, 2)}`,
         },
       ],
     };

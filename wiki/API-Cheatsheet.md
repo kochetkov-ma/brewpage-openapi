@@ -82,6 +82,8 @@ Limits: **5 MB/file**, **1,000 files/namespace**
 **Query params (upload):** `ns` (default: public), `tags` (comma-separated), `ttl` (1-30 days), `entry` (override entry file)
 **Headers:** `X-Password` (protection), `X-Owner-Token` (owner grouping / info / delete)
 **Response (201):** `id`, `namespace`, `entryFile`, `link`, `ownerLink`, `fileCount`, `totalSizeBytes`, `expiresAt`, `tags`, `ownerToken`
+**Limits:** `GET /api/limits` (bytes). Entry: `entry`, else root `index.html`, else the shallowest HTML file. System files (`.DS_Store`, `__MACOSX/`, ...) are skipped and never count.
+**Errors:** `400` site limit hit (message names it), bad ZIP or `..` path; `413` request over 25 MB, too many parts or an overlong file name/path; `422` no servable file left
 
 ---
 
@@ -91,6 +93,7 @@ Limits: **5 MB/file**, **1,000 files/namespace**
 GET /api/gallery                   → Browse eligible public publications
 GET /api/gallery?search=query      → Search
 GET /api/stats                      → Platform statistics
+GET /api/limits                     → Current upload limits (bytes)
 ```
 
 ---
@@ -113,7 +116,8 @@ Limits depend on operation and visibility. Handle `429` and any `Retry-After` he
 | KV value | 1 MB | 1,000 keys/store |
 | JSON doc | 1 MB | 10,000 docs/namespace |
 | File | 5 MB | 1,000 files/ns |
-| Site | 20 MB total, 5 MB/file | 100 files/site |
+| Site | 20 MB total, 5 MB/file | 200 files/site |
+| Request | 25 MB per request | — |
 | TTL | 1–30 days (default 15) | — |
 
 Repository defaults use MiB; video files allow up to 20 MiB. Deployment and owner-specific TTL caps can differ. Eligible content may receive automatic TTL extensions; `expiresAt` is authoritative. Site republishing without a new TTL retains the existing expiry. A ZIP uploaded as `archive` to `/api/sites` is extracted for hosting; a ZIP sent to `/api/files` is hosted as a file.

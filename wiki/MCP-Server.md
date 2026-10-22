@@ -31,7 +31,7 @@ Edit `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS):
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@1.11.0"]
+      "args": ["-y", "brewpage-mcp@1.12.0"]
     }
   }
 }
@@ -41,14 +41,14 @@ Windows: `%APPDATA%\Claude\claude_desktop_config.json`
 
 ### Claude Code
 
-Run `claude mcp add --transport stdio --scope project brewpage -- npx -y brewpage-mcp@1.11.0`, or add this to project-root `.mcp.json`:
+Run `claude mcp add --transport stdio --scope project brewpage -- npx -y brewpage-mcp@1.12.0`, or add this to project-root `.mcp.json`:
 
 ```json
 {
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@1.11.0"]
+      "args": ["-y", "brewpage-mcp@1.12.0"]
     }
   }
 }
@@ -57,7 +57,7 @@ Run `claude mcp add --transport stdio --scope project brewpage -- npx -y brewpag
 ### Direct run
 
 ```bash
-npx -y brewpage-mcp@1.11.0
+npx -y brewpage-mcp@1.12.0
 ```
 
 ---
@@ -72,6 +72,7 @@ npx -y brewpage-mcp@1.11.0
 | `delete_resource` | Delete with owner token |
 | `get_page` | Fetch the API's rendered HTML or raw code response; original authored source is owner-only |
 | `get_stats` | Platform statistics |
+| `get_limits` | Current upload limits (`GET /api/limits`) |
 | `republish_site` | Replace a site's files with owner authority |
 | `update_html` | Update HTML with owner authority |
 | `publish_json` | Publish a JSON document |
@@ -119,6 +120,7 @@ Omitted `namespace` generates an unlisted namespace. Use `public` explicitly for
 | "Set it to expire in 30 days" | `publish_html` (ttlDays) |
 | "Delete my page demo/abc123, token tok_xyz" | `delete_resource` |
 | "Show BrewPage stats" | `get_stats` |
+| "How many files can a BrewPage site have?" | `get_limits` |
 
 ---
 

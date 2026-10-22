@@ -76,6 +76,20 @@ for (const [extension, operationId] of [['jpg', 'previewJpeg'], ['png', 'preview
   for (const status of ['302', '304', '429']) assert.equal(preview.responses[status].content, undefined,
     `Preview .${extension} ${status} has no response body`);
 }
+const limits = spec.paths['/api/limits']?.get;
+assert.equal(limits?.operationId, 'getLimits', 'Upload limits are published as GET /api/limits');
+assert.equal(limits.responses['200'].content['application/json'].schema.$ref, '#/components/schemas/LimitsResponse',
+  'Limits answer with the LimitsResponse DTO');
+assert.deepEqual(Object.keys(schemas.LimitsResponse.properties).sort(), ['requestMaxBytes', 'sites'],
+  'Limits expose only the request size and site limits');
+assert.deepEqual(Object.keys(schemas.SiteLimitsResponse.properties).sort(), ['allowedExtensions', 'defaultTtlDays',
+  'maxArchiveExpansionBytes', 'maxFileBytes', 'maxFiles', 'maxNameBytes', 'maxPathBytes', 'maxPathChars', 'maxTotalBytes',
+  'maxTtlDays', 'skippedFileNames', 'skippedRootFolders'], 'Site limits expose exactly the user-facing fields');
+for (const [path, method] of [['/api/sites', 'post'], ['/api/sites/{ns}/{id}', 'put']]) {
+  const statuses = Object.keys(spec.paths[path][method].responses);
+  for (const status of ['400', '413', '422']) assert.ok(statuses.includes(status), `Site ${method} declares ${status}`);
+  assert.ok(!statuses.includes('415'), `Site ${method} answers 422, not 415, when no servable file is left`);
+}
 const tagNames = (spec.tags ?? []).map((tag) => tag.name);
 assert.equal(new Set(tagNames).size, tagNames.length, 'Top-level tag names are unique');
 assert.deepEqual(spec.paths['/api/json'].post.requestBody.content['application/json'].schema, {},

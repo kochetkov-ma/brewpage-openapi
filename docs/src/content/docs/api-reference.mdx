@@ -8,7 +8,7 @@ import ScalarApiReference from '../../components/docs/ScalarApiReference.astro';
 
 # API Reference
 
-Last updated: 2026-10-11
+Last updated: 2026-10-22
 
 Explore the [BrewPage](https://brewpage.app) REST API. This backend-generated public specification includes anonymous, password-protected and owner-only operations with their access requirements. Administrative operations are excluded from public artifacts.
 
@@ -50,6 +50,7 @@ Base URL: [`https://brewpage.app`](https://brewpage.app) (alias: [`https://brewd
 | **Gallery** | Public discovery or owner-scoped listing | [`GET /api/gallery`](https://brewpage.app/swagger-ui/index.html#/Gallery) |
 | **Hosting Management** | Owner-only NEW delivery and access management | `GET/PATCH /api/{type}/{ns}/{id}/hosting`, `POST /api/{type}/{ns}/{id}/access/revoke` |
 | **Stats** | Platform statistics | [`GET /api/stats`](https://brewpage.app/swagger-ui/index.html#/Stats) |
+| **Limits** | Current upload limits | [`GET /api/limits`](https://brewpage.app/api/limits) |
 | **Short Links** | URL shortener | `GET /s/{code}` |
 | **SEO** | Search engine support | [`GET /sitemap.xml`](https://brewpage.app/sitemap.xml), [`GET /robots.txt`](https://brewpage.app/robots.txt) |
 
@@ -103,10 +104,31 @@ Limits depend on operation and visibility. Handle the running API's 429 response
 | KV value | 1 MB | 1,000 keys/store |
 | JSON doc | 1 MB | 10,000 docs/namespace |
 | File | 5 MB | 1,000 files/ns |
-| Site | 20 MB total, 5 MB/file | 100 files/site |
+| Site | 20 MB total uncompressed, 5 MB/file | 200 files/site |
+| Request | 25 MB per request | — |
 | TTL | 1–30 days (default 15) | — |
 
-These are repository defaults (MiB); video uploads allow up to 20 MiB and audio up to 5 MiB. KV key counts apply per store; JSON and file counts apply per namespace. The running deployment may apply different limits or owner-specific TTL caps. Eligible content may receive automatic TTL extensions; returned `expiresAt` describes the current expiry.
+These are repository defaults (MiB); video uploads allow up to 20 MiB and audio up to 5 MiB. Content over a resource limit answers `400` with a message naming the limit. KV key counts apply per store; JSON and file counts apply per namespace. The running deployment may apply different limits or owner-specific TTL caps. Eligible content may receive automatic TTL extensions; returned `expiresAt` describes the current expiry.
+
+### Site Uploads
+
+`GET /api/limits` returns the current request and site limits in bytes; read it before uploading a large or multi-file site:
+
+```json
+{"requestMaxBytes": 26214400,
+ "sites": {"maxFiles": 200, "maxFileBytes": 5242880, "maxTotalBytes": 20971520,
+           "maxArchiveExpansionBytes": 41943040, "maxPathChars": 380, "maxPathBytes": 900,
+           "maxNameBytes": 200, "defaultTtlDays": 15, "maxTtlDays": 30,
+           "allowedExtensions": ["jpg", "png", "html", "css", "js", "..."],
+           "skippedFileNames": [".DS_Store", "Thumbs.db", "..."],
+           "skippedRootFolders": ["__MACOSX/", ".Spotlight-V100/", ".Trashes/", ".fseventsd/"]}}
+```
+
+`maxTotalBytes` counts uncompressed files; `maxArchiveExpansionBytes` bounds every inflated ZIP byte, skipped system files included. Files named in `skippedFileNames` or under `skippedRootFolders` are dropped and never count. Files with an unsupported extension or a too-long path are skipped and listed in the response `notices`. The entry is the `entry` parameter, else the root `index.html`, else the shallowest HTML file; without any HTML file the upload answers `400`.
+
+A site limit hit answers `400` with a message naming the limit and what to do. `413` means the request is over 25 MB, has too many multipart parts (upload a ZIP instead) or a part header (file name/path) that is too long. `422` means no servable file is left (every file has an unsupported or missing extension). A truncated or unreadable ZIP, a ZIP with non-UTF-8 file names, a password-protected ZIP or a path with a `..` segment answers `400`.
+
+Unstorable metadata is stored as the closest valid value and reported in `notices`: control characters are removed from titles, tags and file names, over-long tags are cut to fit, and NUL characters in page content are saved as U+FFFD. A value that still cannot be stored answers `400`, not `409`; `409` remains for conflicting concurrent changes and count limits. If a client aborts an upload before the body is complete, the edge answers `408` with a JSON error body; retry the upload.
 
 ## Try It Now
 

@@ -1322,6 +1322,18 @@
         ],
         "type": "object"
       },
+      "LimitsResponse": {
+        "properties": {
+          "requestMaxBytes": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "sites": {
+            "$ref": "#/components/schemas/SiteLimitsResponse"
+          }
+        },
+        "type": "object"
+      },
       "OwnerCheckResponse": {
         "properties": {
           "format": {
@@ -1560,6 +1572,65 @@
           "totalSizeBytes",
           "views"
         ],
+        "type": "object"
+      },
+      "SiteLimitsResponse": {
+        "properties": {
+          "allowedExtensions": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "defaultTtlDays": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "maxArchiveExpansionBytes": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "maxFileBytes": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "maxFiles": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "maxNameBytes": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "maxPathBytes": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "maxPathChars": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "maxTotalBytes": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "maxTtlDays": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "skippedFileNames": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "skippedRootFolders": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
         "type": "object"
       },
       "SiteUpdateResponse": {
@@ -2110,7 +2181,7 @@
     },
     "termsOfService": "https://brewpage.app/terms",
     "title": "BrewPage API",
-    "version": "1.121.0"
+    "version": "1.123.0"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -4375,6 +4446,38 @@
         ]
       }
     },
+    "/api/limits": {
+      "get": {
+        "description": "Returns the size, count, path, TTL and file-type limits a site upload must fit. Sizes are bytes; `maxTotalBytes` counts uncompressed files, `maxArchiveExpansionBytes` every inflated ZIP byte including skipped system files (`skippedFileNames`, `skippedRootFolders`), which never count toward the limits.",
+        "operationId": "getLimits",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LimitsResponse"
+                }
+              }
+            },
+            "description": "Current upload limits"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Rate limit exceeded for this IP"
+          }
+        },
+        "summary": "Upload limits for sites and requests",
+        "tags": [
+          "Limits"
+        ]
+      }
+    },
     "/api/namespace/random": {
       "get": {
         "description": "Returns a fresh `<word>-<word>-NN` namespace from the EFF Short Wordlist that does not collide with any existing resource. Pure read; no resource is allocated.",
@@ -4701,9 +4804,9 @@
                 }
               }
             },
-            "description": "Invalid request, no HTML files, or limits exceeded"
+            "description": "Invalid request, no HTML files, or limits exceeded; see GET /api/limits"
           },
-          "415": {
+          "413": {
             "content": {
               "application/json": {
                 "schema": {
@@ -4711,7 +4814,17 @@
                 }
               }
             },
-            "description": "Unsupported file type in archive"
+            "description": "Request over the per-request size, too many files and form fields, or a file path too long; see GET /api/limits"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "No servable file left: every file has an unsupported or missing extension"
           },
           "429": {
             "content": {
@@ -5017,7 +5130,7 @@
                 }
               }
             },
-            "description": "Invalid request, empty bundle or limits exceeded"
+            "description": "Invalid request, empty bundle or limits exceeded; see GET /api/limits"
           },
           "403": {
             "content": {
@@ -5049,7 +5162,7 @@
             },
             "description": "Site is no longer available"
           },
-          "415": {
+          "413": {
             "content": {
               "application/json": {
                 "schema": {
@@ -5057,7 +5170,17 @@
                 }
               }
             },
-            "description": "Unsupported file type in archive"
+            "description": "Request over the per-request size, too many files and form fields, or a file path too long; see GET /api/limits"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "No servable file left: every file has an unsupported or missing extension"
           }
         },
         "security": [
@@ -6089,6 +6212,10 @@
     {
       "description": "HTML page hosting with markdown support",
       "name": "HTML"
+    },
+    {
+      "description": "User-facing upload limits: one source for the UI, agents and docs",
+      "name": "Limits"
     },
     {
       "description": "Multi-file HTML site hosting via ZIP or folder upload",

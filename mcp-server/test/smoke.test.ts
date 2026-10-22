@@ -9,7 +9,7 @@ import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js"
 const EXPECTED_TOOL_NAMES = [
   "publish_html", "publish_file", "delete_resource", "get_page", "get_stats", "publish_site",
   "republish_site", "update_html", "publish_json", "get_json", "update_json", "publish_kv",
-  "set_kv", "get_kv", "search_gallery", "update_hosting",
+  "set_kv", "get_kv", "search_gallery", "update_hosting", "get_limits",
 ];
 
 const NEW_RESPONSE = {
@@ -61,7 +61,7 @@ async function fixture(t: TestContext) {
   };
 }
 
-test("MCP exposes exactly 16 tools and optional create-only delivery choice", { timeout: 10_000 }, async (t) => {
+test("MCP exposes exactly 17 tools and optional create-only delivery choice", { timeout: 10_000 }, async (t) => {
   // GIVEN local MCP connected to a synthetic API.
   const f = await fixture(t);
   // WHEN client discovers tools.
@@ -431,3 +431,21 @@ test("get_page keeps JSON HTTP errors and password headers without returning con
   assert.deepEqual(result, { content: [{ type: "text", text: 'Failed to fetch page (403): {"code":"PASSWORD_REQUIRED","message":"Password required"}' }], isError: true }, "HTTP failure remains an exact MCP tool error");
   assert.equal(f.requests[0].headers["x-password"], "fixture-password", "password stays in its existing request header");
 });
+
+for (const scenario of [
+  { status: 200, body: { requestMaxBytes: 26214400, sites: { maxFiles: 200 } }, isError: undefined,
+    text: `BrewPage upload limits (bytes):\n\n${JSON.stringify({ requestMaxBytes: 26214400, sites: { maxFiles: 200 } }, null, 2)}` },
+  { status: 429, body: { status: 429 }, isError: true, text: `Failed to fetch limits (429): ${JSON.stringify({ status: 429 })}` },
+]) {
+  test(`get_limits reads GET /api/limits and relays a ${scenario.status} answer verbatim`, { timeout: 10_000 }, async (t) => {
+    // GIVEN synthetic limits endpoint answering with the scenario status.
+    const f = await fixture(t);
+    f.respond(scenario.status, scenario.body);
+    // WHEN the agent asks for the upload limits.
+    const result = await f.call("get_limits", {});
+    // THEN one unauthenticated GET reaches /api/limits and the body is relayed unchanged.
+    assert.deepEqual({ requests: f.requests.map(({ method, url, headers }) => ({ method, url, owner: headers["x-owner-token"] })), isError: result.isError, text: result.content[0].text },
+      { requests: [{ method: "GET", url: "/api/limits", owner: undefined }], isError: scenario.isError, text: scenario.text },
+      "limits request and relayed text match exactly");
+  });
+}

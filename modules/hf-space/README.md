@@ -16,7 +16,7 @@ license: apache-2.0
 
 ## Tools
 
-The `brewpage-mcp` server exposes sixteen typed MCP tools; six are shown below, see the [package README](https://www.npmjs.com/package/brewpage-mcp) for the complete list. All write operations return an owner token; keep it to modify or delete the resource later.
+The `brewpage-mcp` server exposes seventeen typed MCP tools; six are shown below, see the [package README](https://www.npmjs.com/package/brewpage-mcp) for the complete list. All write operations return an owner token; keep it to modify or delete the resource later.
 
 | Tool | Purpose | Key parameters |
 |------|---------|----------------|

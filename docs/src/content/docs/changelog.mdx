@@ -6,6 +6,10 @@ order: 5
 
 # Changelog
 
+## Spec 1.123.0 / MCP 1.12.0 — Upload limits endpoint and clearer site errors
+
+New `GET /api/limits` (`getLimits`, tag `Limits`) returns the user-facing upload limits in bytes: `requestMaxBytes` and `sites` (`maxFiles`, `maxFileBytes`, `maxTotalBytes`, `maxArchiveExpansionBytes`, `maxPathChars`, `maxPathBytes`, `maxNameBytes`, `defaultTtlDays`, `maxTtlDays`, `allowedExtensions`, `skippedFileNames`, `skippedRootFolders`). A site now holds up to 200 files (was 100), 5 MB per file and 20 MB in total. Site uploads declare `413` (request over 25 MB, too many multipart parts or an overlong file name/path) and `422` when no servable file is left, which replaces `415`; a site limit hit answers `400` with a message naming the limit, as do a damaged, non-UTF-8 or password-protected ZIP and a `..` path. Unstorable metadata (control characters, over-long tags, NUL in content) is stored as the closest valid value with notices; data that still cannot be stored answers `400` instead of `409`. An upload the client aborts mid-body gets `408` with a JSON body from the edge instead of `503`. 33 paths and 47 operations. MCP 1.12.0 adds the `get_limits` tool and states the site limits and status codes in `publish_site` and `republish_site`; seventeen tools.
+
 ## Spec 1.121.0 — Paginated galleries index
 
 The bot-friendly `GET /galleries` index is split into pages linked with `rel=prev/next`. The optional `page` query parameter is 1-based and defaults to the first page; an invalid number or a page past the last one answers `404`. Nothing else changes: 32 paths and 46 operations. No MCP release; the server stays at 1.11.0 with the same sixteen tools.
