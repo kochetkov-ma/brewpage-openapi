@@ -2188,7 +2188,7 @@
     },
     "termsOfService": "https://brewpage.app/terms",
     "title": "BrewPage API",
-    "version": "1.130.0"
+    "version": "1.132.0"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -4593,6 +4593,16 @@
               }
             },
             "description": "Invalid request parameters"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Too many reports from this address today"
           }
         },
         "summary": "Submit abuse report",

@@ -6,6 +6,10 @@ order: 5
 
 # Changelog
 
+## Spec 1.132.0 — Report rate limit
+
+`POST /api/reports` now documents `429` with the standard `ErrorResponse` when an address sends too many reports in a day; the response carries `Retry-After`. No other contract change: 33 paths and 47 operations. No MCP release.
+
 ## Spec 1.130.0 / MCP 1.12.1 — Comparison hub link
 
 The contract description now links [brewpage.app/compare](https://brewpage.app/compare), which compares BrewPage with GitHub Pages, GitHub Gist, Netlify Drop, Cloudflare Drop, Tiiny Host and Static.app. Paths, operations and schemas are unchanged: 33 paths and 47 operations. MCP 1.12.1 links the comparison page from its README; same seventeen tools and behavior.

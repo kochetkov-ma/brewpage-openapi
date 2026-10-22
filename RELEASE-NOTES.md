@@ -1,5 +1,10 @@
 # Release Notes
 
+## API contract 1.132.0 — 2026-10-22
+
+- API contract version 1.132.0 identifies the backend-generated public snapshot exported from the clean brewpage-app release source `4f019a448e3e9d50b1d0be110b922191212c3795` (tag `v1.132.0`). Deterministic YAML, the byte-identical Scalar copy and export provenance are regenerated with it.
+- `POST /api/reports` (`submitReport`) documents `429` (`ErrorResponse`, "Too many reports from this address today"); the response carries `Retry-After`. No other path, operation or schema change since 1.130.0: 33 paths and 47 operations. No MCP release.
+
 ## API contract 1.130.0 / MCP 1.12.1 — 2026-10-22
 
 - API contract version 1.130.0 identifies the backend-generated public snapshot exported from the clean brewpage-app release source `47cb4b776560591ebf134dc3c8bea2251fcdc023` (tag `v1.130.0`). Deterministic YAML, the byte-identical Scalar copy and export provenance are regenerated with it.
