@@ -9,10 +9,12 @@ MCP server for [BrewPage](https://brewpage.app) -- publish and manage HTML, KV, 
 
 [BrewPage](https://brewpage.app) is a free instant hosting platform designed for AI agents and developers. One `POST` request publishes HTML, Markdown, a multi-file site, a JSON document, or a binary file and returns its primary HTTPS link -- no accounts, no API keys, no infrastructure setup. Every resource carries an **owner token** returned at creation time: use it to update content in place, delete the resource, or authenticate list operations across sessions. `brewpage-mcp` exposes this API as seventeen typed MCP tools so any compatible agent -- Claude, Codex, Gemini, Cursor, Cline -- can publish, update, fetch, and manage BrewPage HTML, JSON, KV, and file content without leaving the conversation.
 
+Choosing a host? See how BrewPage compares with GitHub Pages, Netlify Drop, Tiiny Host and other tools: [brewpage.app/compare](https://brewpage.app/compare).
+
 ## Quick Start
 
 ```bash
-npx -y brewpage-mcp@1.12.0
+npx -y brewpage-mcp@1.12.1
 ```
 
 Requires Node.js 20 or newer. This starts the stdio server for an MCP client.
@@ -28,7 +30,7 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS)
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@1.12.0"]
+      "args": ["-y", "brewpage-mcp@1.12.1"]
     }
   }
 }
@@ -39,7 +41,7 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS)
 Register a project-scoped stdio server:
 
 ```bash
-claude mcp add --transport stdio --scope project brewpage -- npx -y brewpage-mcp@1.12.0
+claude mcp add --transport stdio --scope project brewpage -- npx -y brewpage-mcp@1.12.1
 ```
 
 This writes `.mcp.json` in the project root. Use `--scope user` for user-scoped registration. See the [official Claude Code MCP guide](https://code.claude.com/docs/en/mcp).
@@ -53,7 +55,7 @@ Open **Settings > MCP** and add:
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@1.12.0"]
+      "args": ["-y", "brewpage-mcp@1.12.1"]
     }
   }
 }
@@ -67,7 +69,7 @@ Open the Cline MCP settings panel and add:
 {
   "brewpage": {
     "command": "npx",
-    "args": ["-y", "brewpage-mcp@1.12.0"]
+    "args": ["-y", "brewpage-mcp@1.12.1"]
   }
 }
 ```
@@ -75,7 +77,7 @@ Open the Cline MCP settings panel and add:
 ### Global Install
 
 ```bash
-npm install -g brewpage-mcp@1.12.0
+npm install -g brewpage-mcp@1.12.1
 brewpage-mcp
 ```
 
@@ -452,6 +454,10 @@ Every publish response includes an **owner token** -- the only credential that a
 - [Brewcode Plugin](https://github.com/kochetkov-ma/claude-brewcode) -- Claude Code plugin suite
 
 ## Changelog
+
+## 1.12.1 -- 2026-10-22
+
+- Package README links the BrewPage comparison page (https://brewpage.app/compare). Same seventeen tools, inputs and HTTP behavior.
 
 ## 1.12.0 -- 2026-10-22
 

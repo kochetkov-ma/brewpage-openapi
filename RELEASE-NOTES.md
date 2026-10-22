@@ -1,5 +1,11 @@
 # Release Notes
 
+## API contract 1.130.0 / MCP 1.12.1 — 2026-10-22
+
+- API contract version 1.130.0 identifies the backend-generated public snapshot exported from the clean brewpage-app release source `47cb4b776560591ebf134dc3c8bea2251fcdc023` (tag `v1.130.0`). Deterministic YAML, the byte-identical Scalar copy and export provenance are regenerated with it.
+- `info.description` ends with a link to the comparison hub: how BrewPage compares with GitHub Pages, GitHub Gist, Netlify Drop, Cloudflare Drop, Tiiny Host and Static.app (https://brewpage.app/compare). No path, operation or schema change since 1.125.1: 33 paths and 47 operations.
+- MCP 1.12.1: the root and package READMEs link the comparison page; the root README states the current seventeen tools. Same tools, tool descriptions, inputs and HTTP behavior.
+
 ## API contract 1.125.1 — 2026-10-22
 
 - API contract version 1.125.1 identifies the backend-generated public snapshot exported from the clean brewpage-app release source `e507d2854c7b48a982983045e9e5b6bd4df3f752` (tag `v1.125.1`). Deterministic YAML, the byte-identical Scalar copy and export provenance are regenerated with it.
