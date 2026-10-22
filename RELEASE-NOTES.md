@@ -1,5 +1,13 @@
 # Release Notes
 
+## API contract 1.125.1 — 2026-10-22
+
+- API contract version 1.125.1 identifies the backend-generated public snapshot exported from the clean brewpage-app release source `e507d2854c7b48a982983045e9e5b6bd4df3f752` (tag `v1.125.1`). Deterministic YAML, the byte-identical Scalar copy and export provenance are regenerated with it.
+- `HtmlUploadRequest` gains optional nullable `format` (same values as the `format` query parameter; the body value takes precedence). The only schema change since 1.123.0; backend releases 1.124.x and 1.125.0 carried no public contract change. 33 paths and 47 operations.
+- Behaviour without a schema change: `PUT /api/html/{ns}/{id}` ignores a blank body `format`; a JSON object body without `content` (and no non-null content alias) is published as the content itself with the `body-as-content` notice instead of `400`.
+
+Contract-only sync — no MCP version bump (MCP stays 1.12.0; `publish_html` sends `format` as a query parameter, `update_html` omits an empty one), no npm publish, no tag. Docs site auto-redeploys via `.github/workflows/docs.yml` on push to `main`.
+
 ## API contract 1.123.0 / MCP 1.12.0 — 2026-10-22
 
 - API contract version 1.123.0 identifies the backend-generated public snapshot exported from the clean brewpage-app release source `6acc7512c8a6beaed2b52afb4df16a609af3d5d8` (tag `v1.123.0`). Deterministic YAML, the byte-identical Scalar copy and export provenance are regenerated with it.

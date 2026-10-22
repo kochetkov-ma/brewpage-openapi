@@ -435,6 +435,13 @@ components:
           type:
             - string
             - 'null'
+        format:
+          description: >-
+            Optional content format, same values as the 'format' query param. Takes precedence over the query param when
+            both are present.
+          type:
+            - string
+            - 'null'
         showTopBar:
           description: Per-content toggle for the frontend top toolbar. null = use global default (app.ui.show-top-bar-default)
           type:
@@ -1676,7 +1683,7 @@ info:
     url: https://www.apache.org/licenses/LICENSE-2.0
   termsOfService: https://brewpage.app/terms
   title: BrewPage API
-  version: 1.123.0
+  version: 1.125.1
 openapi: 3.1.0
 paths:
   /api/files:

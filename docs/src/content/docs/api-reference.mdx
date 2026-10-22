@@ -32,6 +32,8 @@ Download the public OpenAPI 3.1 snapshot. Backend generation owns schema authori
 | **JSON** | [openapi.json](https://github.com/kochetkov-ma/brewpage-openapi/blob/main/openapi/openapi.json) |
 | **Live endpoint** | [brewpage.app/v3/api-docs](https://brewpage.app/v3/api-docs) |
 
+`POST /api/html` takes a JSON wrapper `{content, filename?, showTopBar?, format?}`; a body `format` wins over the `?format=` query parameter, and `PUT` ignores a blank body `format`. A JSON object without `content` is published as the content itself, with a `body-as-content` notice.
+
 HTML API reads return stored rendered HTML, or raw code/text with format-specific MIME. The owner-only `/api/html/{ns}/{id}/source` endpoint returns original authored source; `/settings` returns publication settings. Browser share links may provide a viewer. JSON reads return the stored JSON value, including objects, arrays, scalars or null; do not assume a metadata envelope. File reads return bytes and accept `dl` to request attachment delivery.
 
 ## API Endpoints Overview
