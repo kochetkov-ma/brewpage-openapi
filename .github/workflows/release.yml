@@ -141,6 +141,27 @@ jobs:
           set -euo pipefail
           mcp-publisher validate server.json
 
+      - name: Wait for npm to serve the version
+        run: |
+          set -euo pipefail
+          PKG_NAME=$(jq -r .name mcp-server/package.json)
+          PKG_VERSION=$(jq -r .version mcp-server/package.json)
+          URL="https://registry.npmjs.org/${PKG_NAME}/${PKG_VERSION}"
+          DEADLINE=$((SECONDS + 600))
+          while true; do
+            CODE=$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 "$URL" || true)
+            if [[ "$CODE" == 200 ]]; then
+              echo "npm serves ${PKG_NAME}@${PKG_VERSION}"
+              break
+            fi
+            if (( SECONDS >= DEADLINE )); then
+              echo "::error::npm did not serve ${PKG_NAME}@${PKG_VERSION} within 10 minutes (last HTTP ${CODE})"
+              exit 1
+            fi
+            echo "HTTP ${CODE} for ${URL}; retrying in 15 s"
+            sleep 15
+          done
+
       - name: Publish to MCP registry
         run: |
           set -euo pipefail
