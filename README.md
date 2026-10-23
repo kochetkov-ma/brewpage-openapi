@@ -5,6 +5,7 @@
 [![OpenAPI](https://img.shields.io/badge/OpenAPI-3.1-green?logo=openapiinitiative)](openapi/openapi.yaml)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue)](LICENSE)
 [![MCP Server](https://img.shields.io/badge/MCP-brewpage--mcp-gold)](mcp-server/)
+[![Brewpage MCP server](https://mcprush.com/badge/brewpage-mcp/card.svg)](https://mcprush.com/to/brewpage-mcp?ref=badge)
 
 > This repository is the **open-source public layer** of [BrewPage](https://brewpage.app) --
 > a proprietary HTML/KV/JSON/file hosting platform.

@@ -2,6 +2,7 @@
 
 [![npm version](https://img.shields.io/npm/v/brewpage-mcp.svg)](https://www.npmjs.com/package/brewpage-mcp)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Brewpage MCP server](https://mcprush.com/badge/brewpage-mcp/card.svg)](https://mcprush.com/to/brewpage-mcp?ref=badge)
 
 MCP server for [BrewPage](https://brewpage.app) -- publish and manage HTML, KV, JSON, and file content directly from AI assistants.
 
