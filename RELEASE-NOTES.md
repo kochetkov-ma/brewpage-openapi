@@ -1,5 +1,12 @@
 # Release Notes
 
+## API contract 1.134.0 — 2026-10-23
+
+- API contract version 1.134.0 identifies the backend-generated public snapshot exported from the clean brewpage-app release source `62daf7989d142f2a0a950d7c5179554731d5646c` (tag `v1.134.0`). Deterministic YAML, the byte-identical Scalar copy and export provenance are regenerated with it.
+- `POST /api/files` (`upload`): a UTF-8 `.html`/`.htm` file sent to namespace `public` without a password is published as an HTML page with the same rules and limits as `POST /api/html`; `id`, `link` and `ownerLink` then belong to that page (manage it via `/api/html`), `contentType` is `text/html`, `sizeBytes` is the page size (UTF-8 BOM removed) and the notice `html-file-as-page` names the page link. Any other HTML file is stored as a file and shown as source with the notice `html-file-as-source`. When the same content is already published under another owner, the response returns that page with `X-Existing-Resource: 1` and the notice `existing-page-not-owned`: the returned owner token cannot edit or delete it. `GET /api/files/{ns}/{id}` (`download`) of such a page answers `308` to `/api/html/public/{id}` (query string kept); `DELETE /api/files/{ns}/{id}` deletes the page with the same owner token.
+- `POST /api/files`, `POST /api/html` and `POST /api/sites` document `403` with `ErrorResponse` (`Upload refused`); `PUT /api/html/{ns}/{id}` and `PUT /api/sites/{ns}/{id}` describe their `403` as "Missing or wrong owner token, or upload refused".
+- `format` on `POST /api/html`: raw reads of `xml` pages answer `text/plain`; downloads keep `text/xml`. Site `entry` (create and republish) takes an `.html`/`.htm` path; a missing or non-HTML entry falls back to `index.html`, else the shallowest HTML file, and is reported in notices. 33 paths and 47 operations. No MCP release.
+
 ## API contract 1.133.0 — 2026-10-23
 
 - API contract version 1.133.0 identifies the backend-generated public snapshot exported from the clean brewpage-app release source `1dcfb6e2911a76df1da11e0d06691bd76ae3319f` (tag `v1.133.0`). Deterministic YAML, the byte-identical Scalar copy and export provenance are regenerated with it.

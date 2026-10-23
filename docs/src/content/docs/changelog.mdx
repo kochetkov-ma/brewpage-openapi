@@ -6,6 +6,10 @@ order: 5
 
 # Changelog
 
+## Spec 1.134.0 — HTML files publish as pages
+
+`POST /api/files` publishes a UTF-8 `.html`/`.htm` file sent to `public` without a password as an HTML page (same rules and limits as `POST /api/html`): `id`, `link` and `ownerLink` point to the page, notice `html-file-as-page`; `GET /api/files/{ns}/{id}` answers `308` to `/api/html/public/{id}` and `DELETE` removes the page. Other HTML files are stored and shown as source (notice `html-file-as-source`). If the same content is already published by someone else, that page is returned with notice `existing-page-not-owned` and the returned token cannot manage it. `POST /api/files`, `POST /api/html` and `POST /api/sites` document `403` "Upload refused"; the `PUT` 403 on HTML and sites reads "Missing or wrong owner token, or upload refused". Raw reads of `xml` pages answer `text/plain` (downloads keep `text/xml`); a site `entry` must be an HTML path, else the default entry is used and reported in notices. 33 paths and 47 operations. No MCP release.
+
 ## Spec 1.133.0 — Accurate gallery descriptions
 
 `GET /api/gallery` descriptions now match behavior: public results cover live pages, files and sites; `q` searches titles (filename for files, id when untitled), not tags; `mine=true` with `X-Owner-Token` lists all of the caller's own pages, files and sites in any namespace, including password-protected ones, each with its `namespace` and `visibility`. `GalleryItem.type` is a page's stored format, `file` or `site`; KV and JSON stores are never listed. Description-only: 33 paths and 47 operations. No MCP release.
