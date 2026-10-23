@@ -6,6 +6,10 @@ order: 5
 
 # Changelog
 
+## Spec 1.135.0 — Chat-pasted pages repaired, verbatim opt-out
+
+`POST /api/html`, `PUT /api/html/{ns}/{id}` and public `.html` files published as pages via `POST /api/files` repair an HTML page copied from a chat: a wrapping ```` ```html ```` fence or chat text around the page is removed (notice `chat-text-removed`), an entity-escaped page is restored (notice `escaped-html-restored`). The new optional query parameter `verbatim=true` stores the content exactly as sent; `GET /api/html/{ns}/{id}/source` returns what was stored. 33 paths and 47 operations. No MCP release.
+
 ## Spec 1.134.0 — HTML files publish as pages
 
 `POST /api/files` publishes a UTF-8 `.html`/`.htm` file sent to `public` without a password as an HTML page (same rules and limits as `POST /api/html`): `id`, `link` and `ownerLink` point to the page, notice `html-file-as-page`; `GET /api/files/{ns}/{id}` answers `308` to `/api/html/public/{id}` and `DELETE` removes the page. Other HTML files are stored and shown as source (notice `html-file-as-source`). If the same content is already published by someone else, that page is returned with notice `existing-page-not-owned` and the returned token cannot manage it. `POST /api/files`, `POST /api/html` and `POST /api/sites` document `403` "Upload refused"; the `PUT` 403 on HTML and sites reads "Missing or wrong owner token, or upload refused". Raw reads of `xml` pages answer `text/plain` (downloads keep `text/xml`); a site `entry` must be an HTML path, else the default entry is used and reported in notices. 33 paths and 47 operations. No MCP release.

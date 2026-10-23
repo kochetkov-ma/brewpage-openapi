@@ -2190,7 +2190,7 @@
     },
     "termsOfService": "https://brewpage.app/terms",
     "title": "BrewPage API",
-    "version": "1.134.0"
+    "version": "1.135.0"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -2304,6 +2304,14 @@
             "required": false,
             "schema": {
               "type": "string"
+            }
+          },
+          {
+            "description": "For an HTML file published as a page: store it exactly as sent. By default a whole HTML page pasted from a chat (wrapped in a code block, surrounded by chat text, or entity-escaped) is restored and a notice is returned; 'true' keeps the text as is.",
+            "in": "query",
+            "name": "verbatim",
+            "schema": {
+              "type": "boolean"
             }
           }
         ],
@@ -2714,7 +2722,7 @@
             }
           },
           {
-            "description": "Content format. 'html' (default) — stored verbatim. 'markdown' / 'md' — rendered to styled HTML via github-markdown-css. Code/text languages stored and served raw with format-specific MIME (text/csv, application/json, text/plain) plus X-Content-Type-Options: nosniff; raw reads of xml answer text/plain, downloads keep text/xml: yaml, json, xml, csv, tsv, log, toml, ini, sql, sh, bat, env, javascript, typescript, tsx, jsx, css, properties, docker, txt",
+            "description": "Content format. 'html' (default) — stored as sent, except a whole page pasted from a chat is repaired (see 'verbatim'). 'markdown' / 'md' — rendered to styled HTML via github-markdown-css. Code/text languages stored and served raw with format-specific MIME (text/csv, application/json, text/plain) plus X-Content-Type-Options: nosniff; raw reads of xml answer text/plain, downloads keep text/xml: yaml, json, xml, csv, tsv, log, toml, ini, sql, sh, bat, env, javascript, typescript, tsx, jsx, css, properties, docker, txt",
             "in": "query",
             "name": "format",
             "required": false,
@@ -2747,6 +2755,14 @@
             "required": false,
             "schema": {
               "type": "string"
+            }
+          },
+          {
+            "description": "Store the content exactly as sent. By default a whole HTML page pasted from a chat (wrapped in a code block, surrounded by chat text, or entity-escaped) is restored and a notice is returned; 'true' keeps the text as is.",
+            "in": "query",
+            "name": "verbatim",
+            "schema": {
+              "type": "boolean"
             }
           },
           {
@@ -3144,6 +3160,14 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "description": "Store the content exactly as sent. By default a whole HTML page pasted from a chat (wrapped in a code block, surrounded by chat text, or entity-escaped) is restored and a notice is returned; 'true' keeps the text as is.",
+            "in": "query",
+            "name": "verbatim",
+            "schema": {
+              "type": "boolean"
+            }
           }
         ],
         "requestBody": {
@@ -3349,7 +3373,7 @@
     },
     "/api/html/{ns}/{id}/source": {
       "get": {
-        "description": "Returns the raw user-submitted content (pre-render, pre-sanitize) plus metadata for republish. Owner-only — requires the owner token returned at creation.",
+        "description": "Returns the stored source content (pre-render, pre-sanitize; a chat-pasted page as repaired at publish unless sent with verbatim=true) plus metadata for republish. Owner-only — requires the owner token returned at creation.",
         "operationId": "getHtmlSource",
         "parameters": [
           {

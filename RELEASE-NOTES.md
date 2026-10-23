@@ -1,5 +1,11 @@
 # Release Notes
 
+## API contract 1.135.0 — 2026-10-23
+
+- API contract version 1.135.0 identifies the backend-generated public snapshot exported from the clean brewpage-app release source `1538d1a448ea44679c79aa06942e4176cd6e9d7a` (tag `v1.135.0`). Deterministic YAML, the byte-identical Scalar copy and export provenance are regenerated with it.
+- `POST /api/html` (`create_1`), `PUT /api/html/{ns}/{id}` (`update_1`) and a public HTML file published as a page via `POST /api/files` (`upload`): an `html` page pasted from a chat is repaired. A wrapping ```` ```html ```` fence or chat text around the page is removed (notice `chat-text-removed`); an entity-escaped page is restored to HTML (notice `escaped-html-restored`). Anything else is stored unchanged.
+- New optional boolean query parameter `verbatim` on those three operations: `true` stores the bytes exactly as sent, without repair. `GET /api/html/{ns}/{id}/source` returns the page as stored (repaired unless sent with `verbatim=true`). 33 paths and 47 operations. No MCP release.
+
 ## API contract 1.134.0 — 2026-10-23
 
 - API contract version 1.134.0 identifies the backend-generated public snapshot exported from the clean brewpage-app release source `62daf7989d142f2a0a950d7c5179554731d5646c` (tag `v1.134.0`). Deterministic YAML, the byte-identical Scalar copy and export provenance are regenerated with it.
