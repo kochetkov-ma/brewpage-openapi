@@ -341,7 +341,7 @@ get_kv(namespace="public", id="aBcDeFgHiJ", key="theme")
 
 Browse the public gallery of BrewPage pages, or list resources you own. Returns a paged result with metadata (id, title, view count, created date). All parameters are optional; with no parameters this returns the most recent public pages.
 
-Parameters: `q` (optional search query), `page` (optional, 0-indexed), `size` (optional page size), `sort` (optional `date` | `views`), `mine` (optional boolean -- list only resources owned by `ownerToken`), `ownerToken` (required only when `mine=true`).
+Parameters: `q` (optional search query), `page` (optional, 1-based), `size` (optional page size), `sort` (optional `date` | `views`), `mine` (optional boolean -- list only resources owned by `ownerToken`), `ownerToken` (required only when `mine=true`).
 
 Example prompt:
 

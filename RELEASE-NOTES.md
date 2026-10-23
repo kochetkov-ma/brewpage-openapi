@@ -1,5 +1,10 @@
 # Release Notes
 
+## API contract 1.133.0 — 2026-10-23
+
+- API contract version 1.133.0 identifies the backend-generated public snapshot exported from the clean brewpage-app release source `1dcfb6e2911a76df1da11e0d06691bd76ae3319f` (tag `v1.133.0`). Deterministic YAML, the byte-identical Scalar copy and export provenance are regenerated with it.
+- `GET /api/gallery` (`getGallery`) descriptions now match behavior: the public listing covers live pages, files and sites; `q` is a case-insensitive substring search by title (filename for files, id when untitled; no tag search); `mine=true` with `X-Owner-Token` lists all of the caller's live pages, files and sites in any namespace, including password-protected ones, each with its real `namespace` and a `visibility` of my_public, my_public_password or my_private; without the token it returns an empty page. `GalleryItem.type` is a page's stored format (`html`, `markdown` or a code format), `file` or `site`; KV and JSON stores are never listed. Description-only: no path, operation or schema change, 33 paths and 47 operations. No MCP release.
+
 ## API contract 1.132.0 — 2026-10-22
 
 - API contract version 1.132.0 identifies the backend-generated public snapshot exported from the clean brewpage-app release source `4f019a448e3e9d50b1d0be110b922191212c3795` (tag `v1.132.0`). Deterministic YAML, the byte-identical Scalar copy and export provenance are regenerated with it.

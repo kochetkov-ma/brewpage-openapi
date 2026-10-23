@@ -6,6 +6,10 @@ order: 5
 
 # Changelog
 
+## Spec 1.133.0 — Accurate gallery descriptions
+
+`GET /api/gallery` descriptions now match behavior: public results cover live pages, files and sites; `q` searches titles (filename for files, id when untitled), not tags; `mine=true` with `X-Owner-Token` lists all of the caller's own pages, files and sites in any namespace, including password-protected ones, each with its `namespace` and `visibility`. `GalleryItem.type` is a page's stored format, `file` or `site`; KV and JSON stores are never listed. Description-only: 33 paths and 47 operations. No MCP release.
+
 ## Spec 1.132.0 — Report rate limit
 
 `POST /api/reports` now documents `429` with the standard `ErrorResponse` when an address sends too many reports in a day; the response carries `Retry-After`. No other contract change: 33 paths and 47 operations. No MCP release.
