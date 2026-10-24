@@ -160,7 +160,7 @@ components:
         to that page; manage it via /api/html
       properties:
         access:
-          description: 'public: gallery & search eligible. unlisted: link only, not listed. protected: link + password.'
+          description: 'public: gallery & search eligible. unlisted: private, not listed. protected: link + password.'
           enum:
             - public
             - unlisted
@@ -391,7 +391,7 @@ components:
     HostingProjection:
       properties:
         access:
-          description: 'public: gallery & search eligible. unlisted: link only, not listed. protected: link + password.'
+          description: 'public: gallery & search eligible. unlisted: private, not listed. protected: link + password.'
           enum:
             - public
             - unlisted
@@ -458,7 +458,7 @@ components:
     HostingReadResponse:
       properties:
         access:
-          description: 'public: gallery & search eligible. unlisted: link only, not listed. protected: link + password.'
+          description: 'public: gallery & search eligible. unlisted: private, not listed. protected: link + password.'
           enum:
             - public
             - unlisted
@@ -569,7 +569,7 @@ components:
       description: HTML update result. NEW publications include hosting metadata; OLD publications omit it.
       properties:
         access:
-          description: 'public: gallery & search eligible. unlisted: link only, not listed. protected: link + password.'
+          description: 'public: gallery & search eligible. unlisted: private, not listed. protected: link + password.'
           enum:
             - public
             - unlisted
@@ -688,7 +688,7 @@ components:
     HtmlUploadResponse:
       properties:
         access:
-          description: 'public: gallery & search eligible. unlisted: link only, not listed. protected: link + password.'
+          description: 'public: gallery & search eligible. unlisted: private, not listed. protected: link + password.'
           enum:
             - public
             - unlisted
@@ -810,7 +810,7 @@ components:
     JsonCreateResponse:
       properties:
         access:
-          description: 'public: gallery & search eligible. unlisted: link only, not listed. protected: link + password.'
+          description: 'public: gallery & search eligible. unlisted: private, not listed. protected: link + password.'
           enum:
             - public
             - unlisted
@@ -945,7 +945,7 @@ components:
     JsonUpdateResponse:
       properties:
         access:
-          description: 'public: gallery & search eligible. unlisted: link only, not listed. protected: link + password.'
+          description: 'public: gallery & search eligible. unlisted: private, not listed. protected: link + password.'
           enum:
             - public
             - unlisted
@@ -1051,7 +1051,7 @@ components:
     KvCreateStoreResponse:
       properties:
         access:
-          description: 'public: gallery & search eligible. unlisted: link only, not listed. protected: link + password.'
+          description: 'public: gallery & search eligible. unlisted: private, not listed. protected: link + password.'
           enum:
             - public
             - unlisted
@@ -1239,7 +1239,7 @@ components:
     KvUpsertKeyResponse:
       properties:
         access:
-          description: 'public: gallery & search eligible. unlisted: link only, not listed. protected: link + password.'
+          description: 'public: gallery & search eligible. unlisted: private, not listed. protected: link + password.'
           enum:
             - public
             - unlisted
@@ -1444,7 +1444,7 @@ components:
     PasswordResponse:
       properties:
         access:
-          description: 'public: gallery & search eligible. unlisted: link only, not listed. protected: link + password.'
+          description: 'public: gallery & search eligible. unlisted: private, not listed. protected: link + password.'
           enum:
             - public
             - unlisted
@@ -1892,7 +1892,7 @@ components:
     SiteUpdateResponse:
       properties:
         access:
-          description: 'public: gallery & search eligible. unlisted: link only, not listed. protected: link + password.'
+          description: 'public: gallery & search eligible. unlisted: private, not listed. protected: link + password.'
           enum:
             - public
             - unlisted
@@ -2004,7 +2004,7 @@ components:
     SiteUploadResponse:
       properties:
         access:
-          description: 'public: gallery & search eligible. unlisted: link only, not listed. protected: link + password.'
+          description: 'public: gallery & search eligible. unlisted: private, not listed. protected: link + password.'
           enum:
             - public
             - unlisted
@@ -2366,7 +2366,7 @@ components:
     VisibilityResponse:
       properties:
         access:
-          description: 'public: gallery & search eligible. unlisted: link only, not listed. protected: link + password.'
+          description: 'public: gallery & search eligible. unlisted: private, not listed. protected: link + password.'
           enum:
             - public
             - unlisted
@@ -2408,13 +2408,12 @@ info:
     name: BrewPage
     url: https://brewpage.app
   description: >-
-    Free instant hosting for HTML, Markdown, JSON, key-value stores, files and sites. Omitted ns: private (link only).
-    MCP omission: a generated private namespace. Send ns=public for gallery & search; password, hidden and private
-    publications are excluded. Link only is not secret: anyone with the link can open it; add a password to restrict.
-    Secrets allowed; likely ones are flagged in notices. For a secret: private namespace + password. Retain returned
-    links and owner tokens. manageUrl is private: give it only to the owner, never publish it. How BrewPage compares
-    with GitHub Pages, GitHub Gist, Netlify Drop, Cloudflare Drop, Tiiny Host and Static.app:
-    https://brewpage.app/compare.
+    Free instant hosting for HTML, Markdown, JSON, key-value stores, files and sites. Omitted ns: private. MCP omission:
+    a generated private namespace. Send ns=public for gallery & search; password, hidden and private publications are
+    excluded. A private link is not a lock: anyone with it can open it; add a password to restrict. Secrets allowed;
+    likely ones are flagged in notices. For a secret: private namespace + password. Retain returned links and owner
+    tokens. manageUrl is private: give it only to the owner, never publish it. How BrewPage compares with GitHub Pages,
+    GitHub Gist, Netlify Drop, Cloudflare Drop, Tiiny Host and Static.app: https://brewpage.app/compare.
   license:
     name: Apache-2.0
     url: https://www.apache.org/licenses/LICENSE-2.0

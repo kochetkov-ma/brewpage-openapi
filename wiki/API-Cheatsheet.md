@@ -23,7 +23,7 @@ GET    /api/html?ns={ns}      → Owner-scoped list (X-Owner-Token)
 
 **Headers:** `X-Owner-Token: tok_xxx` (update/delete) · `X-Password: secret` (protected pages)
 
-Creation options use query parameters `ns`, `format`, `ttl`, `tags` and the `X-Password` header. REST omitted `ns` publishes privately (link only); MCP omitted `namespace` generates a private namespace. Use exact returned links. Rendered HTML/code, original owner-only `/source`, and browser viewers are distinct representations.
+Creation options use query parameters `ns`, `format`, `ttl`, `tags` and the `X-Password` header. REST omitted `ns` publishes privately; MCP omitted `namespace` generates a private namespace. Use exact returned links. Rendered HTML/code, original owner-only `/source`, and browser viewers are distinct representations.
 
 ---
 

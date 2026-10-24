@@ -92,7 +92,7 @@ function resolveNamespace(namespace?: string): string {
 }
 
 const UNLISTED_NOTICE =
-  "Link only: not listed. Anyone with the link can open it. Use namespace public for gallery & search.";
+  "Private: not listed. Anyone with the link can open it. Use namespace public for gallery & search.";
 
 const PROTECTED_UNLISTED_NOTICE = "Password: link + password. Not listed.";
 

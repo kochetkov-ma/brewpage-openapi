@@ -121,7 +121,7 @@ test("omitted namespace stays generated private and omitted delivery stays absen
   assert.deepEqual(JSON.parse(f.requests[0].body), { content: "<p>Unlisted fixture</p>" }, "JSON contains only the supported content field");
   assert.equal(f.requests[0].headers["x-password"], undefined, "omitted password remains absent");
   assert.equal(f.requests[0].headers["x-delivery-mode"], undefined, "omission invents no requested mode");
-  assert.match(result.content[0].text, /Link only: not listed\./, "private result retains its link-only notice");
+  assert.match(result.content[0].text, /Private: not listed\./, "private result retains its private notice");
 });
 
 for (const scenario of [

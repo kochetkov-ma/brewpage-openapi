@@ -3,7 +3,7 @@
 ## API contract 1.136.0 / MCP 1.13.0 — unreleased
 
 - Pre-release snapshot from the brewpage-app owner-features branch (provenance `backendDirty: true`); re-export from the release tag before publishing.
-- REST create and list without `ns`: private (link only), notice `namespace-defaulted`. `ns` description: "Namespace. Omitted: private. `public` = gallery & search." Create operations state: "Secrets allowed; likely ones are flagged in notices. For a secret: private namespace + password."
+- REST create and list without `ns`: private, notice `namespace-defaulted`. `ns` description: "Namespace. Omitted: private. `public` = gallery & search." Create operations state: "Secrets allowed; likely ones are flagged in notices. For a secret: private namespace + password."
 - Create responses add `manageUrl` (private; present only when minted), `listed` and `visibilityUrl`; `access` is the enum `public`, `unlisted`, `protected`; `notices` are advisories about the request or its result.
 - New security scheme `ManageKey` (`X-Manage-Key`): owner operations accept the owner token or the management key.
 - New operations: `setVisibility`, `setPassword`, `resetManageKey`, `extendPublication`, `rotatePublicationLink`, `replaceFile` (`PUT /api/files/{ns}/{id}`), `hostOwnerCheck`, `bindOwnerToken`, `mintOwnerToken`, `revokeOwnerToken`, `revokeOtherOwnerTokens`, `listPublications`, `getPublicationStats`, `previewWebp` and `ownerPreviewWebp`.
