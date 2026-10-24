@@ -50,7 +50,8 @@ Base URL: [`https://brewpage.app`](https://brewpage.app) (alias: [`https://brewd
 | **Files** | File hosting (5 MB/file) | [`POST /api/files`](https://brewpage.app/swagger-ui/index.html#/Files), [`GET /api/files/{ns}/{id}`](https://brewpage.app/swagger-ui/index.html#/Files), [`DELETE /api/files/{ns}/{id}`](https://brewpage.app/swagger-ui/index.html#/Files) |
 | **Sites** | Multi-file HTML site hosting | [`POST /api/sites`](https://brewpage.app/swagger-ui/index.html#/Sites), [`GET /api/sites/{ns}/{id}`](https://brewpage.app/swagger-ui/index.html#/Sites), [`GET /api/sites/{ns}/{id}/files/{filePath}`](https://brewpage.app/swagger-ui/index.html#/Sites), [`DELETE /api/sites/{ns}/{id}`](https://brewpage.app/swagger-ui/index.html#/Sites) |
 | **Gallery** | Public discovery or owner-scoped listing | [`GET /api/gallery`](https://brewpage.app/swagger-ui/index.html#/Gallery) |
-| **Hosting Management** | Owner-only NEW delivery and access management | `GET/PATCH /api/{type}/{ns}/{id}/hosting`, `POST /api/{type}/{ns}/{id}/access/revoke` |
+| **Hosting Management** | Owner-only delivery, access and publication actions | `GET/PATCH /api/{type}/{ns}/{id}/hosting`, `POST /api/{type}/{ns}/{id}/access/revoke`, `POST /api/{type}/{ns}/{id}/{visibility,password,manage-key,extend,rotate}` |
+| **Owner Token** | New token; profile tokens with an admin token | `GET /api/owner-token`, `POST /api/owner-token/{bind,mint,revoke,revoke-others}` |
 | **Stats** | Platform statistics | [`GET /api/stats`](https://brewpage.app/swagger-ui/index.html#/Stats) |
 | **Limits** | Current upload limits | [`GET /api/limits`](https://brewpage.app/api/limits) |
 | **Short Links** | URL shortener | `GET /s/{code}` |
@@ -64,11 +65,14 @@ Hosting GET supports `html`, `files`, `json`, `kv`, and `sites`; hosting PATCH s
 
 Unprotected publication reads need no credential, including unlisted content whose link is known. Password-protected reads require access; owner listing and mutations require owner authority. Admin endpoints require separate administrative authentication.
 
-Owner mutations use the original token returned at creation:
+Owner mutations use the original token returned at creation, or the management key of that one publication:
 
 | Method | Example |
 |--------|---------|
 | Header | `X-Owner-Token: tok_xxx` |
+| Header | `X-Manage-Key: bpm_xxx` (key from `manageUrl`, after `#k=`) |
+
+`manageUrl` is private: give it only to the owner, never publish it. A token active in a profile also manages the profile's publications. Old publications are read-only: content writes answer `409 OLD_PUBLICATION_READ_ONLY` with `republishUrl`; delete and Hide still work.
 
 Programmatic protected reads:
 
@@ -80,7 +84,7 @@ NEW protected browser links use the clean returned `link` and a trusted top-leve
 
 ## Publication Delivery
 
-REST creation defaults to `ns=public`; the MCP wrapper defaults to an unlisted generated namespace. Only unpassworded `public` content is eligible for gallery/search discovery. Unlisted, protected or otherwise ineligible native responses carry `noindex`; eligible public HTML, sites and files may permit indexing.
+REST creation without `ns` publishes privately (link only); the MCP wrapper defaults to a generated private namespace. Send `ns=public` for gallery & search; `POST {visibilityUrl} {"listed":false}` hides a public publication, link unchanged. Secrets allowed; likely ones are flagged in notices. For a secret: private namespace + password. Only unpassworded `public` content is eligible for gallery/search discovery. Unlisted, protected or otherwise ineligible native responses carry `noindex`; eligible public HTML, sites and files may permit indexing.
 
 For fresh NEW publications, sites (any namespace) and HTML pages of format `html` outside `public` always use **Dedicated subdomain**; send no `X-Delivery-Mode` there. Mismatches are reported, not rejected: an explicit `path` creates the publication on its subdomain with `deliveryModeMatched: false` and `deliveryModeReason: "policy:subdomain-required"`, and a content update that turns a non-public `path` page into format `html` moves it to its subdomain (the returned `link`; the old path redirects there). `X-Delivery-Mode` sent with a content update or site republish is ignored and reported as `policy:republish-keeps-mode`. Each of these responses carries a human-readable `deliveryNotice`. Everything else in any namespace (Markdown, code/text, files, JSON, KV, public HTML) defaults to **Promotion** (`path`) and may select **Dedicated subdomain** with `X-Delivery-Mode: subdomain`. Existing publications keep their mode. Every NEW site bundle has a publication-specific host with relative/root-relative paths and native missing-file 404 responses, without an SPA fallback. Promotion has stricter active-document restrictions.
 

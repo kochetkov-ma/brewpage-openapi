@@ -65,8 +65,10 @@ assert.deepEqual(Object.keys(hostingPatch.responses).sort(), ['200', '400', '403
 assert.ok(hostingPatch.parameters.find((parameter) => parameter.name === 'type').schema.enum.includes('sites'),
   'Hosting PATCH routes sites to the tolerant mode-locked answer');
 for (const suffix of ['source', 'settings']) assert.deepEqual(
-  spec.paths[`/api/html/{ns}/{id}/${suffix}`].get.security, [{ OwnerToken: [] }],
-  `HTML ${suffix} access requires owner authority`);
+  spec.paths[`/api/html/{ns}/{id}/${suffix}`].get.security, [{ OwnerToken: [] }, { ManageKey: [] }],
+  `HTML ${suffix} access requires owner authority: owner token or management key`);
+assert.deepEqual(spec.components.securitySchemes.ManageKey, { type: 'apiKey', description: spec.components.securitySchemes.ManageKey.description,
+  name: 'X-Manage-Key', in: 'header' }, 'Management key is a header apiKey scheme');
 for (const [extension, operationId] of [['jpg', 'previewJpeg'], ['png', 'preview']]) {
   const preview = spec.paths[`/preview/{ns}/{id}.${extension}`]?.get;
   assert.ok(preview, `Preview .${extension} image route is published`);
@@ -80,8 +82,8 @@ const limits = spec.paths['/api/limits']?.get;
 assert.equal(limits?.operationId, 'getLimits', 'Upload limits are published as GET /api/limits');
 assert.equal(limits.responses['200'].content['application/json'].schema.$ref, '#/components/schemas/LimitsResponse',
   'Limits answer with the LimitsResponse DTO');
-assert.deepEqual(Object.keys(schemas.LimitsResponse.properties).sort(), ['requestMaxBytes', 'sites'],
-  'Limits expose only the request size and site limits');
+assert.deepEqual(Object.keys(schemas.LimitsResponse.properties).sort(), ['ownerMaxTtlDays', 'reach', 'requestMaxBytes', 'sites'],
+  'Limits expose the request size, site limits and the optional owner reach and TTL cap');
 assert.deepEqual(Object.keys(schemas.SiteLimitsResponse.properties).sort(), ['allowedExtensions', 'defaultTtlDays',
   'maxArchiveExpansionBytes', 'maxFileBytes', 'maxFiles', 'maxNameBytes', 'maxPathBytes', 'maxPathChars', 'maxTotalBytes',
   'maxTtlDays', 'skippedFileNames', 'skippedRootFolders'], 'Site limits expose exactly the user-facing fields');

@@ -8,14 +8,14 @@ MCP server for [BrewPage](https://brewpage.app) -- publish and manage HTML, KV, 
 
 ## What is BrewPage
 
-[BrewPage](https://brewpage.app) is a free instant hosting platform designed for AI agents and developers. One `POST` request publishes HTML, Markdown, a multi-file site, a JSON document, or a binary file and returns its primary HTTPS link -- no accounts, no API keys, no infrastructure setup. Every resource carries an **owner token** returned at creation time: use it to update content in place, delete the resource, or authenticate list operations across sessions. `brewpage-mcp` exposes this API as seventeen typed MCP tools so any compatible agent -- Claude, Codex, Gemini, Cursor, Cline -- can publish, update, fetch, and manage BrewPage HTML, JSON, KV, and file content without leaving the conversation.
+[BrewPage](https://brewpage.app) is a free instant hosting platform designed for AI agents and developers. One `POST` request publishes HTML, Markdown, a multi-file site, a JSON document, or a binary file and returns its primary HTTPS link -- no accounts, no API keys, no infrastructure setup. Every resource carries an **owner token** returned at creation time: use it to update content in place, delete the resource, or authenticate list operations across sessions. `brewpage-mcp` exposes this API as twenty typed MCP tools so any compatible agent -- Claude, Codex, Gemini, Cursor, Cline -- can publish, update, fetch, and manage BrewPage HTML, JSON, KV, and file content without leaving the conversation.
 
 Choosing a host? See how BrewPage compares with GitHub Pages, Netlify Drop, Tiiny Host and other tools: [brewpage.app/compare](https://brewpage.app/compare).
 
 ## Quick Start
 
 ```bash
-npx -y brewpage-mcp@1.12.1
+npx -y brewpage-mcp@1.13.0
 ```
 
 Requires Node.js 20 or newer. This starts the stdio server for an MCP client.
@@ -31,7 +31,7 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS)
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@1.12.1"]
+      "args": ["-y", "brewpage-mcp@1.13.0"]
     }
   }
 }
@@ -42,7 +42,7 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS)
 Register a project-scoped stdio server:
 
 ```bash
-claude mcp add --transport stdio --scope project brewpage -- npx -y brewpage-mcp@1.12.1
+claude mcp add --transport stdio --scope project brewpage -- npx -y brewpage-mcp@1.13.0
 ```
 
 This writes `.mcp.json` in the project root. Use `--scope user` for user-scoped registration. See the [official Claude Code MCP guide](https://code.claude.com/docs/en/mcp).
@@ -56,7 +56,7 @@ Open **Settings > MCP** and add:
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@1.12.1"]
+      "args": ["-y", "brewpage-mcp@1.13.0"]
     }
   }
 }
@@ -70,7 +70,7 @@ Open the Cline MCP settings panel and add:
 {
   "brewpage": {
     "command": "npx",
-    "args": ["-y", "brewpage-mcp@1.12.1"]
+    "args": ["-y", "brewpage-mcp@1.13.0"]
   }
 }
 ```
@@ -78,13 +78,13 @@ Open the Cline MCP settings panel and add:
 ### Global Install
 
 ```bash
-npm install -g brewpage-mcp@1.12.1
+npm install -g brewpage-mcp@1.13.0
 brewpage-mcp
 ```
 
 ## Tools
 
-Seventeen tools are available. Creation returns an owner token; keep it to modify or delete the resource later. Updates (`PUT`/`PATCH`) require the original `ownerToken`. Supported password inputs use `X-Password`.
+Twenty tools are available. Creation returns an owner token; keep it to modify or delete the resource later. Owner tools take `ownerToken`, else `BREWPAGE_OWNER_TOKEN`. Supported password inputs use `X-Password`. Secrets allowed; likely ones are flagged in notices. For a secret: private namespace + password.
 
 | Tool | Purpose |
 |------|---------|
@@ -101,14 +101,17 @@ Seventeen tools are available. Creation returns an owner token; keep it to modif
 | `set_kv` | Set or replace a key in an owned KV store |
 | `get_kv` | Read a KV value |
 | `update_hosting` | Change eligible delivery mode with owner token and hosting version |
-| `delete_resource` | Delete HTML, JSON, KV, or file content |
+| `delete_resource` | Delete an HTML page, site, JSON document, KV store or file |
+| `set_visibility` | Hide or show a public publication in gallery & search; link unchanged |
+| `bind_token` | Add an owner token to your profile (admin token) |
+| `mint_token` | Mint a profile token, shown once (admin token) |
 | `search_gallery` | Browse public content or list owned resources |
 | `get_stats` | Read platform-wide statistics |
 | `get_limits` | Read the current upload limits (`GET /api/limits`) |
 
 All five publish tools accept optional `deliveryMode: "path" | "subdomain"`, sent only as `X-Delivery-Mode`; authored JSON and multipart bodies keep their existing format. Visibility and password protection are separate choices. Omitted namespace still generates an unlisted `priv-<random>` namespace; anyone with an unpassworded unlisted link can read it. `public` grants gallery/search eligibility only; password-protected content remains excluded and unlisted, protected or otherwise ineligible native responses carry `noindex`; eligible public HTML, sites and files may permit indexing.
 
-The MCP server wraps a subset of the backend-generated public [REST contract](../openapi/openapi.json). TTL inputs take days or a string such as `2w`/`36h` (default 15); the server rounds to whole days and clamps to 1–30 (owner-specific caps and eligible automatic extensions can differ). Use returned `expiresAt`. Every tolerated-input adjustment (TTL clamp, format alias, skipped site member, normalised namespace) comes back in the response `notices` array and is printed as `Notice (code): message`. `get_page` reads stored rendered HTML or format-specific code/text from the API; it does not call the owner-only original-source endpoint or a browser viewer. `publish_file` uploads from a source URL and does not expose password or TTL inputs.
+The MCP server wraps a subset of the backend-generated public [REST contract](../openapi/openapi.json). TTL inputs take days or a string such as `2w`/`36h` (default 15); the server rounds to whole days and clamps to 1–30 (owner-specific caps and eligible automatic extensions can differ). Use returned `expiresAt`. Every tolerated-input adjustment (TTL clamp, format alias, skipped site member, normalised namespace) comes back in the response `notices` array and is printed as `Notice (code): message`; `secret-detected` and `manage-link-disabled` print as `WARNING (code): message`: relay them to the user. A minted `manageUrl` prints as `MANAGE LINK (private): …`: give it to the user privately, never publish it. A listed public result prints `VISIBILITY: public, listed. Hide: set_visibility listed=false`. `get_page` reads stored rendered HTML or format-specific code/text from the API; it does not call the owner-only original-source endpoint or a browser viewer. `publish_file` uploads from a source URL and does not expose password or TTL inputs.
 
 For a fresh publication, sites and HTML pages of format `HTML` outside `public` (including the generated unlisted namespace) always use Dedicated subdomain (`subdomain`); omit `deliveryMode` there. An explicit `path` there is not rejected: the publication is created on its subdomain and the result reports `deliveryModeMatched: false`, `deliveryModeReason: "policy:subdomain-required"` and a `Delivery notice:` line. Everything else in any namespace (Markdown, code/text, files, JSON, KV, public HTML) defaults to Promotion (`path`) and may choose Dedicated subdomain, including password-protected content. Promotion uses a BrewPage path with stricter active-document restrictions. Each NEW site gets one publication-specific host for its complete bundle, preserving relative/root-relative paths; missing assets return 404, with no SPA fallback. Third-party widgets may still need provider configuration.
 
@@ -358,11 +361,9 @@ search_gallery(mine=true, ownerToken="tok_...", sort="date")
 
 ### `delete_resource`
 
-Delete a BrewPage resource (HTML page, KV store, JSON document, or file) using the owner token received at creation.
+Delete a BrewPage resource (HTML page, site, KV store, JSON document, or file) using the owner token received at creation.
 
-Parameters: `type` (`html` | `kv` | `json` | `file`), `namespace` (string), `id` (string), `ownerToken` (string).
-
-Sites are not supported by this tool; use the REST site deletion endpoint.
+Parameters: `type` (`html` | `site` | `kv` | `json` | `file`), `namespace` (string), `id` (string), `ownerToken` (optional; default `BREWPAGE_OWNER_TOKEN`). Path segments are URL-encoded.
 
 Example prompt:
 
@@ -371,6 +372,36 @@ Example prompt:
 ```
 delete_resource(type="html", namespace="public", id="aBcDeFgHiJ", ownerToken="tok_...")
 ```
+
+---
+
+### `set_visibility`
+
+Hide or show a public publication in gallery & search; the link stays the same. Only public, password-free HTML, sites and files can be listed; others answer with a `visibility-not-listable` notice.
+
+Parameters: `type` (`html` | `site` | `file` | `json` | `kv`), `namespace`, `id`, `listed` (boolean), `ownerToken` (optional).
+
+```
+set_visibility(type="html", namespace="public", id="aBcDeFgHiJ", listed=false)
+```
+
+Output: `LISTED: false · link unchanged`.
+
+---
+
+### `bind_token`
+
+Add an owner token to your BrewPage profile (as `publish`) with an `admin` token of that profile (`POST /api/owner-token/bind`). Output: `BOUND …ab12 · 3/10 active`; tokens are never printed in full.
+
+Parameters: `token`, `ownerToken` (admin token; optional, default `BREWPAGE_OWNER_TOKEN`).
+
+---
+
+### `mint_token`
+
+Mint a new profile token with an `admin` token (`POST /api/owner-token/mint`). The new token is shown once; the admin token is never printed.
+
+Parameters: `label` (optional), `scope` (`publish` default | `admin`), `expiresIn` (`30d` | `90d` | `1y` | `never`; default admin 90d, publish never), `ownerToken` (admin token; optional).
 
 ---
 
@@ -392,7 +423,7 @@ get_stats()
 
 ### `get_limits`
 
-Read the current upload limits from `GET /api/limits` (no auth). Sizes are bytes: `requestMaxBytes` plus `sites.maxFiles`, `maxFileBytes`, `maxTotalBytes` (uncompressed), `maxArchiveExpansionBytes`, `maxPathChars`, `maxPathBytes`, `maxNameBytes`, `defaultTtlDays`, `maxTtlDays`, `allowedExtensions`, `skippedFileNames` and `skippedRootFolders`. Call it before publishing a large or multi-file site.
+Read the current upload limits from `GET /api/limits` (no auth; with `BREWPAGE_OWNER_TOKEN` also `reach` and `ownerMaxTtlDays`). Sizes are bytes: `requestMaxBytes` plus `sites.maxFiles`, `maxFileBytes`, `maxTotalBytes` (uncompressed), `maxArchiveExpansionBytes`, `maxPathChars`, `maxPathBytes`, `maxNameBytes`, `defaultTtlDays`, `maxTtlDays`, `allowedExtensions`, `skippedFileNames` and `skippedRootFolders`. Call it before publishing a large or multi-file site.
 
 Parameters: none.
 
@@ -433,7 +464,8 @@ get_limits()
 
 Every publish response includes an **owner token** -- the only credential that allows updating or deleting your content. **Save it. It cannot be recovered.**
 
-- Reuse it with `publish_site`, `publish_json`, or `publish_kv` to group new resources under one owner; REST creates accept `X-Owner-Token`.
+- Reuse it with any publish tool (`ownerToken`) to group new resources under one owner; REST creates accept `X-Owner-Token`.
+- Set `BREWPAGE_OWNER_TOKEN` to use one token for every call; the output then names it instead of printing it.
 - Pass it to `delete_resource` to remove content.
 - Pass it to `search_gallery` with `mine=true` to list owned resources. `get_page` has no owner-token input; protected reads use `password`.
 
@@ -442,6 +474,7 @@ Every publish response includes an **owner token** -- the only credential that a
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `BREWPAGE_URL` | `https://brewpage.app` | Authorized apex API base URL; never a publication host |
+| `BREWPAGE_OWNER_TOKEN` | unset | Optional default owner token (32 letters/digits) for every call; unset = new token per create |
 
 ## Links
 
@@ -455,6 +488,14 @@ Every publish response includes an **owner token** -- the only credential that a
 - [Brewcode Plugin](https://github.com/kochetkov-ma/claude-brewcode) -- Claude Code plugin suite
 
 ## Changelog
+
+## 1.13.0 -- unreleased
+
+- Identifying `User-Agent: brewpage-mcp/1.13.0` on every BrewPage call.
+- Optional `BREWPAGE_OWNER_TOKEN` default; `ownerToken` on `publish_html` and `publish_file`; owner tools fail before HTTP without a token.
+- New tools: `set_visibility`, `bind_token`, `mint_token` (twenty tools).
+- `delete_resource` deletes sites and URL-encodes path segments.
+- Prints `MANAGE LINK (private)`, `VISIBILITY` and `WARNING (code)` lines; a wrong-token 403 adds a hint.
 
 ## 1.12.1 -- 2026-10-22
 

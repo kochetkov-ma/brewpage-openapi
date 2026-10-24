@@ -26,8 +26,8 @@ Key characteristics:
 - **Key-value store** -- KV pairs addressed by namespace/store ID, up to 1,000 keys per store, mutable in place via the owner token.
 - **JSON documents** -- store and retrieve arbitrary JSON, up to 1 MiB per document, 10,000 documents per namespace.
 - **File hosting** -- upload any safe file type (images, PDFs, video, audio, archives, code), up to 5 MB (video 20 MB), with inline preview.
-- **Visibility** -- REST omitted `?ns=` selects `public`; MCP omitted namespace generates an unlisted namespace. Public unpassworded content may qualify for gallery discovery; search eligibility additionally depends on delivery. Custom namespaces are unlisted, readable by anyone with the link unless password-protected. Unlisted, protected or otherwise ineligible native responses carry `noindex`; eligible public HTML, sites and files may permit indexing.
-- **Owner tokens** -- every publish response includes an `ownerToken`. Use it to update content in place (stable URL), delete it, or list your own resources. No accounts, no sessions.
+- **Visibility** -- REST omitted `?ns=` publishes privately (link only); MCP omitted namespace generates a private namespace. Send `public` for gallery & search; `POST …/visibility {"listed":false}` hides a public publication, link unchanged. Public unpassworded content may qualify for gallery discovery; search eligibility additionally depends on delivery. Custom namespaces are unlisted, readable by anyone with the link unless password-protected. Unlisted, protected or otherwise ineligible native responses carry `noindex`; eligible public HTML, sites and files may permit indexing.
+- **Owner tokens** -- every publish response includes an `ownerToken`. Use it to update content in place (stable URL), delete it, or list your own resources. No account needed. Creates also return a private `manageUrl` for that one publication: give it only to the owner.
 - **TTL** -- default 15 days, ordinary maximum 30 days, configured through the REST `ttl` query parameter. Owner-specific caps and eligible automatic extensions can affect expiry; use returned `expiresAt`.
 - **Access** -- unprotected reads and creation require no account. Protected reads use `X-Password`; owner updates, deletion and scoped lists use `X-Owner-Token`. Rate limits depend on operation/visibility; handle `429` and `Retry-After`.
 
@@ -37,7 +37,7 @@ Choosing a host? See how BrewPage compares with GitHub Pages, Netlify Drop, Tiin
 
 ## Why this matters for LLMs and agents
 
-AI agents frequently need to share structured outputs -- reports, artifacts, generated HTML, intermediate JSON state -- with users or downstream systems via a stable URL. BrewPage provides that as a zero-setup REST API: one `POST` call, one URL back. No OAuth, no S3 bucket configuration, no infrastructure. The MCP server (`brewpage-mcp`) wraps the API into seventeen typed tools that any MCP-compatible agent (Claude, Codex, Gemini, Cursor) can call directly.
+AI agents frequently need to share structured outputs -- reports, artifacts, generated HTML, intermediate JSON state -- with users or downstream systems via a stable URL. BrewPage provides that as a zero-setup REST API: one `POST` call, one URL back. No OAuth, no S3 bucket configuration, no infrastructure. The MCP server (`brewpage-mcp`) wraps the API into twenty typed tools that any MCP-compatible agent (Claude, Codex, Gemini, Cursor) can call directly.
 
 ## Quick Start
 
@@ -159,7 +159,7 @@ The backend-generated public JSON contract owns schema authority. YAML is derive
 
 ## MCP Server
 
-The `brewpage-mcp` package provides a Model Context Protocol server with **17 tools** for AI-assisted content publishing and management. Selected tools appear below; see [`mcp-server/README.md`](mcp-server/README.md) for the complete list and documentation.
+The `brewpage-mcp` package provides a Model Context Protocol server with **20 tools** for AI-assisted content publishing and management. Selected tools appear below; see [`mcp-server/README.md`](mcp-server/README.md) for the complete list and documentation.
 
 Package releases use `.github/workflows/release.yml` with package-scoped npm Trusted Publisher/OIDC for `kochetkov-ma/brewpage-openapi`, workflow `release.yml`, without an environment. CI needs no `NPM_TOKEN`, manual npm login or static-token rotation. Local `npm whoami` does not validate GitHub Actions OIDC authentication. Publication to the official MCP registry (`io.github.kochetkov-ma/brewpage-mcp`) is automatic via GitHub OIDC in the same workflow; no local `mcp-publisher` token is needed.
 
@@ -176,7 +176,8 @@ Rerunning historical tag workflows that used token authentication is unsupported
 | `publish_html` | Publish HTML or Markdown content with optional password, TTL, filename, and top toolbar |
 | `publish_file` | Upload a file from a URL |
 | `publish_site` | Publish a single-page or multi-file HTML site |
-| `delete_resource` | Delete any resource (HTML, KV, JSON, file) by owner token |
+| `delete_resource` | Delete any resource (HTML, site, KV, JSON, file) by owner token |
+| `set_visibility` | Hide or show a public publication in gallery & search |
 | `get_page` | Fetch a published HTML page and its content |
 | `get_stats` | Get platform-wide usage statistics |
 
@@ -189,7 +190,7 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@1.12.1"]
+      "args": ["-y", "brewpage-mcp@1.13.0"]
     }
   }
 }
@@ -204,7 +205,7 @@ Add to `~/.claude/settings.json`:
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@1.12.1"]
+      "args": ["-y", "brewpage-mcp@1.13.0"]
     }
   }
 }
@@ -239,7 +240,7 @@ BrewPage is described using [schema.org/SoftwareApplication](https://schema.org/
 |-----------|-------------|
 | OpenAPI 3.1 spec | Complete API contract for all public endpoints (YAML + JSON) |
 | Interactive docs | Astro + Scalar documentation site (GitHub Pages) |
-| MCP server | `brewpage-mcp` -- Claude Desktop/Code integration (17 tools) |
+| MCP server | `brewpage-mcp` -- Claude Desktop/Code integration (20 tools) |
 | Wiki | Code snippets, cheatsheet, tips & tricks |
 | Release notes | Changelog for API and public tooling |
 

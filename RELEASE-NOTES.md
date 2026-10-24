@@ -1,5 +1,15 @@
 # Release Notes
 
+## API contract 1.136.0 / MCP 1.13.0 — unreleased
+
+- Pre-release snapshot from the brewpage-app owner-features branch (provenance `backendDirty: true`); re-export from the release tag before publishing.
+- REST create and list without `ns`: private (link only), notice `namespace-defaulted`. `ns` description: "Namespace. Omitted: private. `public` = gallery & search." Create operations state: "Secrets allowed; likely ones are flagged in notices. For a secret: private namespace + password."
+- Create responses add `manageUrl` (private; present only when minted), `listed` and `visibilityUrl`; `access` is the enum `public`, `unlisted`, `protected`; `notices` are advisories about the request or its result.
+- New security scheme `ManageKey` (`X-Manage-Key`): owner operations accept the owner token or the management key.
+- New operations: `setVisibility`, `setPassword`, `resetManageKey`, `extendPublication`, `rotatePublicationLink`, `replaceFile` (`PUT /api/files/{ns}/{id}`), `hostOwnerCheck`, `bindOwnerToken`, `mintOwnerToken`, `revokeOwnerToken`, `revokeOtherOwnerTokens`, `listPublications`, `getPublicationStats`, `previewWebp` and `ownerPreviewWebp`.
+- Old publications are read-only: content writes answer `409 OLD_PUBLICATION_READ_ONLY` with `republishUrl`. KV key name `hosting` is reserved (400). `GET /api/limits` with optional `X-Owner-Token` adds `reach` and `ownerMaxTtlDays`. HTML `/source` and `/settings` failures carry `ErrorResponse`. Owner-check schemas name the wire field `isOwner`. `GET /api/publications` (profile token: whole profile; filters `type`, `status`, `q`, `expiring`; cursor; 24 per page) and `.../stats?range&tz`; hosting GET adds `title`, `listed`, `createdAt`, `expiresAt`; gallery `mine=true` items add `expiresAt`. 47 paths and 62 operations.
+- MCP 1.13.0: `User-Agent: brewpage-mcp/1.13.0`; optional `BREWPAGE_OWNER_TOKEN` default (named, never printed); `ownerToken` on `publish_html` and `publish_file`; new tools `set_visibility`, `bind_token`, `mint_token` (twenty tools); `delete_resource` deletes sites and encodes path segments; prints `MANAGE LINK (private)`, `VISIBILITY` and `WARNING (code)` lines; wrong-token 403 hint; hf-space pins 1.13.0.
+
 ## API contract 1.135.0 — 2026-10-23
 
 - API contract version 1.135.0 identifies the backend-generated public snapshot exported from the clean brewpage-app release source `1538d1a448ea44679c79aa06942e4176cd6e9d7a` (tag `v1.135.0`). Deterministic YAML, the byte-identical Scalar copy and export provenance are regenerated with it.

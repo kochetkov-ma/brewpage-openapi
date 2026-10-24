@@ -31,7 +31,7 @@ Edit `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS):
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@1.12.1"]
+      "args": ["-y", "brewpage-mcp@1.13.0"]
     }
   }
 }
@@ -41,14 +41,14 @@ Windows: `%APPDATA%\Claude\claude_desktop_config.json`
 
 ### Claude Code
 
-Run `claude mcp add --transport stdio --scope project brewpage -- npx -y brewpage-mcp@1.12.1`, or add this to project-root `.mcp.json`:
+Run `claude mcp add --transport stdio --scope project brewpage -- npx -y brewpage-mcp@1.13.0`, or add this to project-root `.mcp.json`:
 
 ```json
 {
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@1.12.1"]
+      "args": ["-y", "brewpage-mcp@1.13.0"]
     }
   }
 }
@@ -57,7 +57,7 @@ Run `claude mcp add --transport stdio --scope project brewpage -- npx -y brewpag
 ### Direct run
 
 ```bash
-npx -y brewpage-mcp@1.12.1
+npx -y brewpage-mcp@1.13.0
 ```
 
 ---
@@ -69,7 +69,10 @@ npx -y brewpage-mcp@1.12.1
 | `publish_html` | Publish HTML or Markdown → URL + token |
 | `publish_file` | Upload file from URL → URL + token |
 | `publish_site` | Publish a multi-file HTML site from HTML content (`entryContent`, `namespace?`, `password?`, `ttlDays?`) |
-| `delete_resource` | Delete with owner token |
+| `delete_resource` | Delete with owner token (incl. sites) |
+| `set_visibility` | Hide or show a public publication; link unchanged |
+| `bind_token` | Add a token to your profile (admin token) |
+| `mint_token` | Mint a profile token, shown once (admin token) |
 | `get_page` | Fetch the API's rendered HTML or raw code response; original authored source is owner-only |
 | `get_stats` | Platform statistics |
 | `get_limits` | Current upload limits (`GET /api/limits`) |

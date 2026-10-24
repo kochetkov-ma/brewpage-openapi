@@ -9,13 +9,13 @@
     "subfolder": "mcp-server"
   },
   "websiteUrl": "https://brewpage.app",
-  "version": "1.12.1",
+  "version": "1.13.0",
   "packages": [
     {
       "registryType": "npm",
       "registryBaseUrl": "https://registry.npmjs.org",
       "identifier": "brewpage-mcp",
-      "version": "1.12.1",
+      "version": "1.13.0",
       "transport": {
         "type": "stdio"
       },
@@ -27,6 +27,13 @@
           "isSecret": false,
           "format": "string",
           "default": "https://brewpage.app"
+        },
+        {
+          "name": "BREWPAGE_OWNER_TOKEN",
+          "description": "Optional default owner token for every call; unset = new token per create.",
+          "isRequired": false,
+          "isSecret": true,
+          "format": "string"
         }
       ]
     }

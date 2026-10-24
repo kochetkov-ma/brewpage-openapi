@@ -16,14 +16,14 @@ license: apache-2.0
 
 ## Tools
 
-The `brewpage-mcp` server exposes seventeen typed MCP tools; six are shown below, see the [package README](https://www.npmjs.com/package/brewpage-mcp) for the complete list. All write operations return an owner token; keep it to modify or delete the resource later.
+The `brewpage-mcp` server exposes twenty typed MCP tools; six are shown below, see the [package README](https://www.npmjs.com/package/brewpage-mcp) for the complete list. All write operations return an owner token; keep it to modify or delete the resource later.
 
 | Tool | Purpose | Key parameters |
 |------|---------|----------------|
 | `publish_html` | Publish HTML or Markdown content; returns public URL + owner token. | `content`, `format` (`HTML` \| `MARKDOWN`), `namespace`, `password`, `ttlDays` (1-30, default 15), `filename`, `showTopBar` |
 | `publish_file` | Upload a file by fetching it from a URL (images, PDFs, video, audio, code, archives). | `url`, `namespace`, `filename` |
 | `publish_site` | Publish a single-page or multi-file static HTML site. | `entryContent` *or* `files` (`[{path, content}]`), `entry` (default `index.html`), `namespace`, `password`, `ttlDays`, `ownerToken` |
-| `delete_resource` | Delete an HTML page, KV entry, JSON collection, or file using the owner token. | `type` (`html` \| `kv` \| `json` \| `file`), `namespace`, `id`, `ownerToken` |
+| `delete_resource` | Delete an HTML page, site, KV store, JSON document, or file using the owner token. | `type` (`html` \| `site` \| `kv` \| `json` \| `file`), `namespace`, `id`, `ownerToken` |
 | `get_page` | Fetch the content of a published HTML page by namespace + ID. | `namespace`, `id`, `password` (optional) |
 | `get_stats` | Platform-wide usage statistics (page count, file count, storage, daily totals). | `tz` (optional IANA timezone, default UTC) |
 
@@ -40,7 +40,7 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS)
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@1.9.2"]
+      "args": ["-y", "brewpage-mcp@1.13.0"]
     }
   }
 }
@@ -53,7 +53,7 @@ Add to `~/.codex/config.toml`:
 ```toml
 [mcp_servers.brewpage]
 command = "npx"
-args = ["-y", "brewpage-mcp@1.9.2"]
+args = ["-y", "brewpage-mcp@1.13.0"]
 ```
 
 ### Cursor
@@ -65,7 +65,7 @@ Open **Settings > MCP** and add:
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@1.9.2"]
+      "args": ["-y", "brewpage-mcp@1.13.0"]
     }
   }
 }
@@ -79,7 +79,7 @@ Open the Cline MCP settings panel and add:
 {
   "brewpage": {
     "command": "npx",
-    "args": ["-y", "brewpage-mcp@1.9.2"]
+    "args": ["-y", "brewpage-mcp@1.13.0"]
   }
 }
 ```

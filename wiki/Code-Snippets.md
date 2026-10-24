@@ -2,7 +2,7 @@
 
 Copy-paste examples for working with BrewPage API in 6 languages.
 
-Use returned `link` values exactly. REST omitted `ns` defaults to `public`. KV writes require a previously created store ID and its owner token. Browser viewers, raw API bytes and owner-only original HTML source are distinct representations.
+Use returned `link` values exactly. REST omitted `ns` publishes privately (link only); send `ns=public` for gallery & search. KV writes require a previously created store ID and its owner token. Browser viewers, raw API bytes and owner-only original HTML source are distinct representations.
 
 ---
 

@@ -5,11 +5,66 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { z } from "zod";
 
 const BASE_URL = process.env.BREWPAGE_URL || "https://brewpage.app";
+const USER_AGENT = "brewpage-mcp/1.13.0";
 
 const server = new McpServer({
   name: "brewpage-mcp",
-  version: "1.12.1",
+  version: "1.13.0",
 });
+
+const OWNER_TOKEN_SHAPE = /^[A-Za-z0-9]{32}$/;
+const OWNER_TOKEN_ENV = "BREWPAGE_OWNER_TOKEN";
+
+/** Optional default owner token for every call; a malformed value is ignored with one stderr line. */
+const ENV_OWNER_TOKEN = ((): string | undefined => {
+  const raw = process.env[OWNER_TOKEN_ENV]?.trim();
+  if (!raw) return undefined;
+  if (OWNER_TOKEN_SHAPE.test(raw)) return raw;
+  console.error(`${OWNER_TOKEN_ENV} ignored: expected 32 letters/digits.`);
+  return undefined;
+})();
+
+const NO_OWNER_TOKEN = `No owner token: pass ownerToken or set ${OWNER_TOKEN_ENV}.`;
+const CREATE_OWNER_TOKEN_DESCRIPTION = `Optional. Default: ${OWNER_TOKEN_ENV}, else a new token per create.`;
+const OWNER_TOKEN_DESCRIPTION = `Owner token from create. Default: ${OWNER_TOKEN_ENV}.`;
+const SECRETS = "Secrets allowed; likely ones are flagged in notices. For a secret: private namespace + password.";
+const MANAGE_URL_TEXT = "Returns manageUrl (private): give it to the user privately; never publish it.";
+/** Notice codes the agent must relay to the user. */
+const WARNING_CODES = new Set(["secret-detected", "manage-link-disabled"]);
+/** MCP type name -> REST path segment. */
+const TYPE_SEGMENTS: Record<string, string> = { html: "html", site: "sites", file: "files", json: "json", kv: "kv" };
+
+/** Caller argument first, then the configured default; `fromEnv` marks the configured one. */
+function ownerTokenFor(argument?: string): { token?: string; fromEnv: boolean } {
+  if (argument && argument.length > 0) return { token: argument, fromEnv: false };
+  return { token: ENV_OWNER_TOKEN, fromEnv: ENV_OWNER_TOKEN !== undefined };
+}
+
+/** Only the last 4 characters: tokens never reach a transcript in full. */
+function maskToken(token: string): string {
+  return `…${token.slice(-4)}`;
+}
+
+function textResult(text: string, isError = false) {
+  return isError ? { content: [{ type: "text" as const, text }], isError: true } : { content: [{ type: "text" as const, text }] };
+}
+
+/** Owner-tool failure: the server answer verbatim plus a hint for a plain wrong-token 403. */
+function ownerFailure(operation: string, status: number, data: unknown, fromEnv: boolean) {
+  const lines = [`Failed to ${operation} (${status}): ${JSON.stringify(data)}`];
+  const code = (data as { code?: unknown } | null)?.code;
+  if (status === 403 && (code === undefined || code === "OWNER_AUTHORIZATION_FAILED")) {
+    lines.push(`Wrong owner token for this publication. Use ownerToken from create.${fromEnv ? ` Sent: ${OWNER_TOKEN_ENV}.` : ""}`);
+  }
+  return textResult(lines.join("\n"), true);
+}
+
+/** Every BrewPage call identifies the client; source-file downloads use plain fetch. */
+function bpFetch(url: string, init: RequestInit = {}): Promise<Response> {
+  const headers = new Headers(init.headers);
+  headers.set("User-Agent", USER_AGENT);
+  return fetch(url, { ...init, headers });
+}
 
 const PUBLIC_NAMESPACE = "public";
 
@@ -37,17 +92,16 @@ function resolveNamespace(namespace?: string): string {
 }
 
 const UNLISTED_NOTICE =
-  "Unlisted link — anyone who has it can open it, but it's not in the gallery or search. " +
-  "Use namespace `public` for gallery/search eligibility; password-protected content stays excluded.";
+  "Link only: not listed. Anyone with the link can open it. Use namespace public for gallery & search.";
 
-const PROTECTED_UNLISTED_NOTICE =
-  "Password-protected unlisted link — readers need the password; excluded from gallery and search.";
+const PROTECTED_UNLISTED_NOTICE = "Password: link + password. Not listed.";
 
 const NAMESPACE_DESCRIPTION =
   "Optional. Omit to generate an unlisted namespace: anyone with its unpassworded link can read it, " +
   "but it is excluded from gallery/search. Pass a custom namespace to group unlisted content, " +
   "or pass `public` ONLY when the user explicitly wants gallery/search eligibility. " +
-  "Password-protected content stays excluded; unlisted, protected or otherwise ineligible native responses carry noindex; eligible public HTML, sites and files may permit indexing.";
+  "Password-protected content stays excluded; unlisted, protected or otherwise ineligible native responses carry noindex; eligible public HTML, sites and files may permit indexing. " +
+  "Lowercase only: 1-32 of a-z, 0-9, hyphen.";
 
 const TTL_SCHEMA = z.union([z.number().positive(), z.string().min(1).max(32)]).optional().describe(
   "Requested TTL: days as a number, or a string such as '2w', '36h' or '1 month' (default 15 days). " +
@@ -86,7 +140,30 @@ function noticeLines(data: Record<string, unknown>): string[] {
   return data.notices
     .filter((n): n is { code: string; message: string } =>
       typeof n === "object" && n !== null && typeof n.code === "string" && typeof n.message === "string")
-    .map((n) => `Notice (${n.code}): ${n.message}`);
+    .map((n) => `${WARNING_CODES.has(n.code) ? "WARNING" : "Notice"} (${n.code}): ${n.message}`);
+}
+
+/** Owner token banner; the configured default is named, never repeated. */
+function ownerTokenLines(token: unknown, purpose: string): string[] {
+  const shown = ENV_OWNER_TOKEN !== undefined && token === ENV_OWNER_TOKEN ? `${OWNER_TOKEN_ENV} (not repeated)` : token;
+  return [
+    ``,
+    `===================================`,
+    `OWNER TOKEN: ${shown}`,
+    `===================================`,
+    ``,
+    `IMPORTANT: Save your owner token! You need it to ${purpose}. It cannot be recovered if lost.`,
+  ];
+}
+
+/** Private management link (present only when minted) and the public listing state. */
+function ownerLinkLines(data: Record<string, unknown>): string[] {
+  const lines: string[] = [];
+  if (typeof data.manageUrl === "string" && data.manageUrl.length > 0) {
+    lines.push(``, `MANAGE LINK (private): ${data.manageUrl}`, `Give it to the user privately; never publish it.`);
+  }
+  if (data.listed === true) lines.push(``, `VISIBILITY: public, listed. Hide: set_visibility listed=false`);
+  return lines;
 }
 
 /** Optional delivery fields on HTML and hosting responses: why the mode was chosen, flagged or not applied. */
@@ -106,7 +183,7 @@ async function apiRequest(
   responseType: "json" | "text" = "json"
 ): Promise<{ ok: boolean; status: number; data: unknown; headers: Headers }> {
   const url = `${BASE_URL}${path}`;
-  const res = await fetch(url, {
+  const res = await bpFetch(url, {
     method,
     headers: {
       "Content-Type": "application/json",
@@ -134,14 +211,8 @@ function formatPublishResponse(
   );
   if (data.expiresAt) lines.push(`Expires: ${data.expiresAt}`);
   lines.push(...hostingResponseLines(data));
-  lines.push(
-    ``,
-    `===================================`,
-    `OWNER TOKEN: ${data.ownerToken}`,
-    `===================================`,
-    ``,
-    `IMPORTANT: Save your owner token! You need it to update or delete this resource later. It cannot be recovered if lost.`
-  );
+  lines.push(...ownerTokenLines(data.ownerToken, "update or delete this resource later"));
+  lines.push(...ownerLinkLines(data));
   const ns = ((data.namespace as string | undefined) ?? effectiveNamespace) || "";
   if (ns !== PUBLIC_NAMESPACE) {
     lines.push(``, data.access === "protected" ? PROTECTED_UNLISTED_NOTICE : UNLISTED_NOTICE);
@@ -170,7 +241,8 @@ server.tool(
   "publish_html",
   "Publish HTML or Markdown content to BrewPage (repository default limit 5 MiB). Returns its primary share link and owner token. Supports password protection, custom TTL, optional filename, and an opt-in top toolbar (showTopBar). " +
     "When deliveryMode is omitted for a `public` page, the server may publish it on its own subdomain if the page needs browser features a BrewPage link does not provide; " +
-    "the result then includes deliveryModeReason and a delivery notice. Markdown raw HTML is allowlisted: scripts, styles, event handlers, forms and embeds are removed. Always share the returned URL.",
+    "the result then includes deliveryModeReason and a delivery notice. Markdown raw HTML is allowlisted: scripts, styles, event handlers, forms and embeds are removed. Always share the returned URL. " +
+    MANAGE_URL_TEXT + " " + SECRETS,
   {
     content: z.string().describe("HTML or Markdown content to publish"),
     deliveryMode: DELIVERY_MODE_SCHEMA,
@@ -197,8 +269,9 @@ server.tool(
       .boolean()
       .optional()
       .describe("Add a thin top toolbar (filename + Download button + theme toggle) on the served page. Default: hidden."),
+    ownerToken: z.string().optional().describe(CREATE_OWNER_TOKEN_DESCRIPTION),
   },
-  async ({ content, format, namespace, password, ttlDays, filename, showTopBar, deliveryMode }) => {
+  async ({ content, format, namespace, password, ttlDays, filename, showTopBar, deliveryMode, ownerToken }) => {
     const effectiveNamespace = resolveNamespace(namespace);
     const qsParams = [`ns=${encodeURIComponent(effectiveNamespace)}`, `format=${encodeURIComponent(format.toLowerCase())}`];
     if (ttlDays !== undefined) qsParams.push(`ttl=${encodeURIComponent(String(ttlDays))}`);
@@ -209,6 +282,8 @@ server.tool(
     const headers: Record<string, string> = {};
     if (password) headers["X-Password"] = password;
     if (deliveryMode) headers["X-Delivery-Mode"] = deliveryMode;
+    const owner = ownerTokenFor(ownerToken).token;
+    if (owner) headers["X-Owner-Token"] = owner;
     const { ok, data } = await apiRequest("POST", `/api/html?${qsParams.join("&")}`, body, headers);
 
     if (!ok) {
@@ -236,7 +311,8 @@ server.tool(
 
 server.tool(
   "publish_file",
-  "Upload a file to BrewPage via URL. Repository defaults: 5 MiB for files/audio, 20 MiB for video. Returns its primary share link and owner token. Does not expose password or TTL inputs.",
+  "Upload a file to BrewPage via URL. Repository defaults: 5 MiB for files/audio, 20 MiB for video. Returns its primary share link and owner token. Does not expose password or TTL inputs. " +
+    MANAGE_URL_TEXT + " " + SECRETS,
   {
     url: z.string().url().describe("URL of the file to upload"),
     deliveryMode: DELIVERY_MODE_SCHEMA,
@@ -245,8 +321,9 @@ server.tool(
       .optional()
       .describe(NAMESPACE_DESCRIPTION),
     filename: z.string().optional().describe("Custom filename (optional)"),
+    ownerToken: z.string().optional().describe(CREATE_OWNER_TOKEN_DESCRIPTION),
   },
-  async ({ url: fileUrl, namespace, filename, deliveryMode }) => {
+  async ({ url: fileUrl, namespace, filename, deliveryMode, ownerToken }) => {
     const effectiveNamespace = resolveNamespace(namespace);
     const fileRes = await fetch(fileUrl);
     if (!fileRes.ok) {
@@ -268,9 +345,13 @@ server.tool(
       blob,
       filename || fileUrl.split("/").pop() || "file"
     );
-    const res = await fetch(`${BASE_URL}/api/files?ns=${encodeURIComponent(effectiveNamespace)}`, {
+    const headers: Record<string, string> = {};
+    if (deliveryMode) headers["X-Delivery-Mode"] = deliveryMode;
+    const owner = ownerTokenFor(ownerToken).token;
+    if (owner) headers["X-Owner-Token"] = owner;
+    const res = await bpFetch(`${BASE_URL}/api/files?ns=${encodeURIComponent(effectiveNamespace)}`, {
       method: "POST",
-      headers: deliveryMode ? { "X-Delivery-Mode": deliveryMode } : undefined,
+      headers,
       body: formData,
     });
 
@@ -306,21 +387,17 @@ server.tool(
     type: z.enum(["html", "file", "json", "kv"]).describe("Resource type; sites always stay on their own subdomain"),
     namespace: z.string().describe("Resource namespace; non-public HTML-format pages stay on subdomain"),
     id: z.string().describe("Resource ID"),
-    ownerToken: z.string().describe("Original resource owner token"),
+    ownerToken: z.string().optional().describe(OWNER_TOKEN_DESCRIPTION),
     deliveryMode: z.enum(["path", "subdomain"]).describe("path = Promotion; subdomain = Dedicated subdomain"),
     expectedVersion: z.number().int().min(1).max(Number.MAX_SAFE_INTEGER).optional().describe("Optional current hostingVersion from the server; a stale value still applies and the result says so"),
   },
   async ({ type, namespace, id, ownerToken, deliveryMode, expectedVersion }) => {
-    const segment = type === "file" ? "files" : type;
-    const path = `/api/${segment}/${encodeURIComponent(namespace)}/${encodeURIComponent(id)}/hosting`;
+    const auth = ownerTokenFor(ownerToken);
+    if (!auth.token) return textResult(NO_OWNER_TOKEN, true);
+    const path = `/api/${TYPE_SEGMENTS[type]}/${encodeURIComponent(namespace)}/${encodeURIComponent(id)}/hosting`;
     const { ok, status, data } = await apiRequest("PATCH", path, { deliveryMode, expectedVersion },
-      { "X-Owner-Token": ownerToken });
-    if (!ok) {
-      return {
-        content: [{ type: "text" as const, text: `Failed to update hosting (${status}): ${JSON.stringify(data)}` }],
-        isError: true,
-      };
-    }
+      { "X-Owner-Token": auth.token });
+    if (!ok) return ownerFailure("update hosting", status, data, auth.fromEnv);
     return {
       content: [{ type: "text" as const, text: formatUpdateResponse(data as Record<string, unknown>) }],
     };
@@ -329,45 +406,21 @@ server.tool(
 
 server.tool(
   "delete_resource",
-  "Delete a BrewPage resource (HTML page, KV store, JSON collection, or file) using the owner token.",
+  "Delete a BrewPage resource (HTML page, site, KV store, JSON document, or file) using the owner token.",
   {
     type: z
-      .enum(["html", "kv", "json", "file"])
+      .enum(["html", "site", "kv", "json", "file"])
       .describe("Resource type to delete"),
     namespace: z.string().describe("Resource namespace"),
     id: z.string().describe("Resource ID"),
-    ownerToken: z
-      .string()
-      .describe(
-        "Owner token received when the resource was created"
-      ),
+    ownerToken: z.string().optional().describe(OWNER_TOKEN_DESCRIPTION),
   },
   async ({ type, namespace, id, ownerToken }) => {
-    const pathMap: Record<string, string> = {
-      html: `/api/html/${namespace}/${id}`,
-      kv: `/api/kv/${namespace}/${id}`,
-      json: `/api/json/${namespace}/${id}`,
-      file: `/api/files/${namespace}/${id}`,
-    };
-
-    const { ok, status, data } = await apiRequest(
-      "DELETE",
-      pathMap[type],
-      undefined,
-      { "X-Owner-Token": ownerToken }
-    );
-
-    if (!ok) {
-      return {
-        content: [
-          {
-            type: "text" as const,
-            text: `Failed to delete (${status}): ${JSON.stringify(data)}`,
-          },
-        ],
-        isError: true,
-      };
-    }
+    const auth = ownerTokenFor(ownerToken);
+    if (!auth.token) return textResult(NO_OWNER_TOKEN, true);
+    const path = `/api/${TYPE_SEGMENTS[type]}/${encodeURIComponent(namespace)}/${encodeURIComponent(id)}`;
+    const { ok, status, data } = await apiRequest("DELETE", path, undefined, { "X-Owner-Token": auth.token });
+    if (!ok) return ownerFailure("delete", status, data, auth.fromEnv);
 
     return {
       content: [
@@ -477,7 +530,8 @@ server.tool(
 
 server.tool(
   "publish_site",
-  "Publish an HTML site to BrewPage. Single-page: pass `entryContent`. Multi-page: pass `files` (array of `{path, content}`). Optional `entry` overrides default `index.html`. Use its returned primary link and retain the owner token. " + SITE_LIMITS_TEXT,
+  "Publish an HTML site to BrewPage. Single-page: pass `entryContent`. Multi-page: pass `files` (array of `{path, content}`). Optional `entry` overrides default `index.html`. Use its returned primary link and retain the owner token. " + SITE_LIMITS_TEXT +
+    " " + MANAGE_URL_TEXT + " " + SECRETS,
   {
     deliveryMode: DELIVERY_MODE_SCHEMA,
     entryContent: z
@@ -501,10 +555,7 @@ server.tool(
       .optional()
       .describe("Optional password to protect the site"),
     ttlDays: TTL_SCHEMA,
-    ownerToken: z
-      .string()
-      .optional()
-      .describe("Existing owner token to group this site under the same owner as previous content"),
+    ownerToken: z.string().optional().describe(CREATE_OWNER_TOKEN_DESCRIPTION),
   },
   async ({ entryContent, files, entry, namespace, password, ttlDays, ownerToken, deliveryMode }) => {
     const hasEntry = typeof entryContent === "string";
@@ -535,7 +586,8 @@ server.tool(
     }
     const headers: Record<string, string> = {};
     if (password) headers["X-Password"] = password;
-    if (ownerToken) headers["X-Owner-Token"] = ownerToken;
+    const owner = ownerTokenFor(ownerToken).token;
+    if (owner) headers["X-Owner-Token"] = owner;
     if (deliveryMode) headers["X-Delivery-Mode"] = deliveryMode;
 
     const effectiveNamespace = resolveNamespace(namespace);
@@ -545,7 +597,7 @@ server.tool(
     if (ttlDays) qsParams.push(`ttl=${encodeURIComponent(String(ttlDays))}`);
     const qs = qsParams.length ? `?${qsParams.join("&")}` : "";
     const url = `${BASE_URL}/api/sites${qs}`;
-    const res = await fetch(url, { method: "POST", headers, body: formData });
+    const res = await bpFetch(url, { method: "POST", headers, body: formData });
     const data = await res.json().catch(() => null);
 
     if (!res.ok) {
@@ -575,14 +627,8 @@ server.tool(
     if (Array.isArray(site.tags) && site.tags.length) lines.push(`Tags: ${(site.tags as string[]).join(", ")}`);
     if (site.expiresAt) lines.push(`Expires: ${site.expiresAt}`);
     lines.push(...hostingResponseLines(site));
-    lines.push(
-      ``,
-      `===================================`,
-      `OWNER TOKEN: ${site.ownerToken}`,
-      `===================================`,
-      ``,
-      `IMPORTANT: Save your owner token! You need it to view info or delete this site. It cannot be recovered if lost.`
-    );
+    lines.push(...ownerTokenLines(site.ownerToken, "view info or delete this site"));
+    lines.push(...ownerLinkLines(site));
     const ns = ((site.namespace as string | undefined) || effectiveNamespace) || "";
     if (ns !== PUBLIC_NAMESPACE) {
       lines.push(``, site.access === "protected" ? PROTECTED_UNLISTED_NOTICE : UNLISTED_NOTICE);
@@ -600,9 +646,7 @@ server.tool(
   {
     namespace: z.string().describe("Site namespace"),
     id: z.string().describe("Site ID"),
-    ownerToken: z
-      .string()
-      .describe("Owner token received when the site was created (required for republish)"),
+    ownerToken: z.string().optional().describe(OWNER_TOKEN_DESCRIPTION),
     entryContent: z
       .string()
       .optional()
@@ -649,7 +693,9 @@ server.tool(
       formData.append("paths", entryName);
     }
 
-    const headers: Record<string, string> = { "X-Owner-Token": ownerToken };
+    const auth = ownerTokenFor(ownerToken);
+    if (!auth.token) return textResult(NO_OWNER_TOKEN, true);
+    const headers: Record<string, string> = { "X-Owner-Token": auth.token };
 
     const qsParams: string[] = [];
     if (entry) qsParams.push(`entry=${encodeURIComponent(entry)}`);
@@ -658,20 +704,10 @@ server.tool(
     const qs = qsParams.length ? `?${qsParams.join("&")}` : "";
 
     const url = `${BASE_URL}/api/sites/${encodeURIComponent(namespace)}/${encodeURIComponent(id)}${qs}`;
-    const res = await fetch(url, { method: "PUT", headers, body: formData });
+    const res = await bpFetch(url, { method: "PUT", headers, body: formData });
     const data = await res.json().catch(() => null);
 
-    if (!res.ok) {
-      return {
-        content: [
-          {
-            type: "text" as const,
-            text: `Failed to republish site (${res.status}): ${JSON.stringify(data)}`,
-          },
-        ],
-        isError: true,
-      };
-    }
+    if (!res.ok) return ownerFailure("republish site", res.status, data, auth.fromEnv);
 
     const site = data as Record<string, unknown>;
     const lines = [
@@ -705,9 +741,7 @@ server.tool(
     namespace: z.string().describe("Page namespace"),
     id: z.string().describe("Page ID"),
     content: z.string().describe("New HTML or Markdown content"),
-    ownerToken: z
-      .string()
-      .describe("Owner token received when the page was created"),
+    ownerToken: z.string().optional().describe(OWNER_TOKEN_DESCRIPTION),
     format: z
       .string()
       .optional()
@@ -719,22 +753,14 @@ server.tool(
     const body: Record<string, unknown> = { content };
     if (format) body.format = format;
 
+    const auth = ownerTokenFor(ownerToken);
+    if (!auth.token) return textResult(NO_OWNER_TOKEN, true);
     const path = `/api/html/${encodeURIComponent(namespace)}/${encodeURIComponent(id)}`;
     const { ok, status, data } = await apiRequest("PUT", path, body, {
-      "X-Owner-Token": ownerToken,
+      "X-Owner-Token": auth.token,
     });
 
-    if (!ok) {
-      return {
-        content: [
-          {
-            type: "text" as const,
-            text: `Failed to update HTML (${status}): ${JSON.stringify(data)}`,
-          },
-        ],
-        isError: true,
-      };
-    }
+    if (!ok) return ownerFailure("update HTML", status, data, auth.fromEnv);
 
     return {
       content: [
@@ -749,7 +775,8 @@ server.tool(
 
 server.tool(
   "publish_json",
-  "Publish a JSON document to BrewPage (repository default limit 1 MiB). Accepts a JSON object, array, or a JSON-encoded string containing any valid JSON, including scalars/null. Returns its primary share link and owner token.",
+  "Publish a JSON document to BrewPage (repository default limit 1 MiB). Accepts a JSON object, array, or a JSON-encoded string containing any valid JSON, including scalars/null. Returns its primary share link and owner token. " +
+    MANAGE_URL_TEXT + " " + SECRETS,
   {
     deliveryMode: DELIVERY_MODE_SCHEMA,
     json: z
@@ -768,10 +795,7 @@ server.tool(
       .array(z.string())
       .optional()
       .describe("Optional tags for the document"),
-    ownerToken: z
-      .string()
-      .optional()
-      .describe("Existing owner token to group this document under the same owner as previous content"),
+    ownerToken: z.string().optional().describe(CREATE_OWNER_TOKEN_DESCRIPTION),
   },
   async ({ json, namespace, password, ttlDays, tags, ownerToken, deliveryMode }) => {
     const jsonString = typeof json === "string" ? json : JSON.stringify(json);
@@ -787,10 +811,11 @@ server.tool(
 
     const headers: Record<string, string> = { "Content-Type": "application/json" };
     if (password) headers["X-Password"] = password;
-    if (ownerToken) headers["X-Owner-Token"] = ownerToken;
+    const owner = ownerTokenFor(ownerToken).token;
+    if (owner) headers["X-Owner-Token"] = owner;
     if (deliveryMode) headers["X-Delivery-Mode"] = deliveryMode;
 
-    const res = await fetch(`${BASE_URL}/api/json${qs}`, {
+    const res = await bpFetch(`${BASE_URL}/api/json${qs}`, {
       method: "POST",
       headers,
       body: jsonString,
@@ -875,35 +900,25 @@ server.tool(
     json: z
       .union([z.string(), z.record(z.unknown()), z.array(z.unknown())])
       .describe("New JSON document (object, array, or JSON-encoded string)"),
-    ownerToken: z
-      .string()
-      .describe("Owner token received when the document was created"),
+    ownerToken: z.string().optional().describe(OWNER_TOKEN_DESCRIPTION),
   },
   async ({ namespace, id, json, ownerToken }) => {
     const jsonString = typeof json === "string" ? json : JSON.stringify(json);
+    const auth = ownerTokenFor(ownerToken);
+    if (!auth.token) return textResult(NO_OWNER_TOKEN, true);
 
     const url = `${BASE_URL}/api/json/${encodeURIComponent(namespace)}/${encodeURIComponent(id)}`;
-    const res = await fetch(url, {
+    const res = await bpFetch(url, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
-        "X-Owner-Token": ownerToken,
+        "X-Owner-Token": auth.token,
       },
       body: jsonString,
     });
     const data = await res.json().catch(() => null);
 
-    if (!res.ok) {
-      return {
-        content: [
-          {
-            type: "text" as const,
-            text: `Failed to update JSON (${res.status}): ${JSON.stringify(data)}`,
-          },
-        ],
-        isError: true,
-      };
-    }
+    if (!res.ok) return ownerFailure("update JSON", res.status, data, auth.fromEnv);
 
     return {
       content: [
@@ -918,7 +933,8 @@ server.tool(
 
 server.tool(
   "publish_kv",
-  "Publish a key/value entry to BrewPage. Creates a KV store; the entry is addressed by (namespace, id, key). Repository defaults: 1 MiB per value, 1,000 keys per store. Returns its primary share link and owner token.",
+  "Publish a key/value entry to BrewPage. Creates a KV store; the entry is addressed by (namespace, id, key). Repository defaults: 1 MiB per value, 1,000 keys per store; the key name `hosting` is reserved. Returns its primary share link and owner token. " +
+    MANAGE_URL_TEXT + " " + SECRETS,
   {
     deliveryMode: DELIVERY_MODE_SCHEMA,
     key: z.string().describe("KV key (first part of the (namespace, id, key) addressing tuple)"),
@@ -936,10 +952,7 @@ server.tool(
       .array(z.string())
       .optional()
       .describe("Optional tags for the KV entry"),
-    ownerToken: z
-      .string()
-      .optional()
-      .describe("Existing owner token to group this KV store under the same owner as previous content"),
+    ownerToken: z.string().optional().describe(CREATE_OWNER_TOKEN_DESCRIPTION),
   },
   async ({ key, value, namespace, password, ttlDays, tags, ownerToken, deliveryMode }) => {
     const body: Record<string, unknown> = { key, value };
@@ -955,7 +968,8 @@ server.tool(
 
     const headers: Record<string, string> = {};
     if (password) headers["X-Password"] = password;
-    if (ownerToken) headers["X-Owner-Token"] = ownerToken;
+    const owner = ownerTokenFor(ownerToken).token;
+    if (owner) headers["X-Owner-Token"] = owner;
     if (deliveryMode) headers["X-Delivery-Mode"] = deliveryMode;
 
     const { ok, status, data } = await apiRequest(
@@ -990,35 +1004,25 @@ server.tool(
 
 server.tool(
   "set_kv",
-  "Set or update a key in an existing BrewPage KV store. Requires owner token.",
+  "Set or update a key in an existing BrewPage KV store. Requires owner token. The key name `hosting` is reserved.",
   {
     namespace: z.string().describe("KV store namespace"),
     id: z.string().describe("KV store ID"),
     key: z.string().describe("Key to set"),
     value: z.string().describe("Value to assign to the key"),
-    ownerToken: z
-      .string()
-      .describe("Owner token received when the KV store was created"),
+    ownerToken: z.string().optional().describe(OWNER_TOKEN_DESCRIPTION),
   },
   async ({ namespace, id, key, value, ownerToken }) => {
     const body: Record<string, unknown> = { value };
+    const auth = ownerTokenFor(ownerToken);
+    if (!auth.token) return textResult(NO_OWNER_TOKEN, true);
 
     const path = `/api/kv/${encodeURIComponent(namespace)}/${encodeURIComponent(id)}/${encodeURIComponent(key)}`;
     const { ok, status, data } = await apiRequest("PUT", path, body, {
-      "X-Owner-Token": ownerToken,
+      "X-Owner-Token": auth.token,
     });
 
-    if (!ok) {
-      return {
-        content: [
-          {
-            type: "text" as const,
-            text: `Failed to set KV (${status}): ${JSON.stringify(data)}`,
-          },
-        ],
-        isError: true,
-      };
-    }
+    if (!ok) return ownerFailure("set KV", status, data, auth.fromEnv);
 
     return {
       content: [
@@ -1080,12 +1084,13 @@ server.tool(
 
 server.tool(
   "get_limits",
-  "Get the current BrewPage upload limits (GET /api/limits, no auth): request size, site file count, per-file and total size, " +
+  "Get the current BrewPage upload limits (GET /api/limits): request size, site file count, per-file and total size, " +
     "ZIP expansion, path and name lengths, TTL default/maximum, allowed file extensions and skipped system files. Sizes are bytes. " +
-    "Call it before publishing a large or multi-file site.",
+    `With ${OWNER_TOKEN_ENV} set: also reach (token|profile) and ownerMaxTtlDays. Call it before publishing a large or multi-file site.`,
   {},
   async () => {
-    const { ok, status, data } = await apiRequest("GET", "/api/limits");
+    const headers: Record<string, string> = ENV_OWNER_TOKEN ? { "X-Owner-Token": ENV_OWNER_TOKEN } : {};
+    const { ok, status, data } = await apiRequest("GET", "/api/limits", undefined, headers);
 
     if (!ok) {
       return {
@@ -1139,9 +1144,11 @@ server.tool(
     ownerToken: z
       .string()
       .optional()
-      .describe("Owner token; only sent as X-Owner-Token when 'mine' is true"),
+      .describe(`Owner token; only sent as X-Owner-Token when 'mine' is true. Default: ${OWNER_TOKEN_ENV}.`),
   },
   async ({ q, page, size, sort, mine, ownerToken }) => {
+    const auth = ownerTokenFor(ownerToken);
+    if (mine === true && !auth.token) return textResult(NO_OWNER_TOKEN, true);
     const qsParams: string[] = [];
     if (q !== undefined) qsParams.push(`q=${encodeURIComponent(q)}`);
     if (page !== undefined) qsParams.push(`page=${encodeURIComponent(String(page))}`);
@@ -1151,7 +1158,7 @@ server.tool(
     const qs = qsParams.length ? `?${qsParams.join("&")}` : "";
 
     const headers: Record<string, string> = {};
-    if (mine === true && ownerToken) headers["X-Owner-Token"] = ownerToken;
+    if (mine === true && auth.token) headers["X-Owner-Token"] = auth.token;
 
     const { ok, status, data } = await apiRequest(
       "GET",
@@ -1180,6 +1187,72 @@ server.tool(
         },
       ],
     };
+  }
+);
+
+server.tool(
+  "set_visibility",
+  "Hide or show a public publication in gallery & search. Link unchanged.",
+  {
+    type: z.enum(["html", "site", "file", "json", "kv"]).describe("Publication type; only public html, site and file can be listed"),
+    namespace: z.string().describe("Publication namespace"),
+    id: z.string().describe("Publication ID"),
+    listed: z.boolean().describe("false = hide, true = show"),
+    ownerToken: z.string().optional().describe(OWNER_TOKEN_DESCRIPTION),
+  },
+  async ({ type, namespace, id, listed, ownerToken }) => {
+    const auth = ownerTokenFor(ownerToken);
+    if (!auth.token) return textResult(NO_OWNER_TOKEN, true);
+    const path = `/api/${TYPE_SEGMENTS[type]}/${encodeURIComponent(namespace)}/${encodeURIComponent(id)}/visibility`;
+    const { ok, status, data } = await apiRequest("POST", path, { listed }, { "X-Owner-Token": auth.token });
+    if (!ok) return ownerFailure("set visibility", status, data, auth.fromEnv);
+    const result = data as Record<string, unknown>;
+    return textResult([`LISTED: ${result.listed} · link unchanged`, ...noticeLines(result)].join("\n"));
+  }
+);
+
+server.tool(
+  "bind_token",
+  "Add an owner token to your BrewPage profile (as publish). Needs an admin token of that profile.",
+  {
+    token: z.string().describe("Owner token to add"),
+    ownerToken: z.string().optional().describe(`Admin token of the profile. Default: ${OWNER_TOKEN_ENV}.`),
+  },
+  async ({ token, ownerToken }) => {
+    const auth = ownerTokenFor(ownerToken);
+    if (!auth.token) return textResult(NO_OWNER_TOKEN, true);
+    const { ok, status, data } = await apiRequest("POST", "/api/owner-token/bind", { token }, { "X-Owner-Token": auth.token });
+    if (!ok) return textResult(`Failed to bind token (${status}): ${JSON.stringify(data)}`, true);
+    const result = data as Record<string, unknown>;
+    return textResult(`BOUND ${maskToken(token)} · ${result.active}/${result.max} active`);
+  }
+);
+
+server.tool(
+  "mint_token",
+  "Mint a new profile token with an admin token; the new token is shown once. Scope publish (default) or admin; expiry 30d, 90d, 1y or never.",
+  {
+    label: z.string().optional().describe("Optional label shown in the profile"),
+    scope: z.enum(["publish", "admin"]).optional().describe("publish (default) or admin (can manage tokens)"),
+    expiresIn: z.enum(["30d", "90d", "1y", "never"]).optional().describe("Default: admin 90d, publish never"),
+    ownerToken: z.string().optional().describe(`Admin token of the profile. Default: ${OWNER_TOKEN_ENV}.`),
+  },
+  async ({ label, scope, expiresIn, ownerToken }) => {
+    const auth = ownerTokenFor(ownerToken);
+    if (!auth.token) return textResult(NO_OWNER_TOKEN, true);
+    const { ok, status, data } = await apiRequest("POST", "/api/owner-token/mint", { label, scope, expiresIn },
+      { "X-Owner-Token": auth.token });
+    if (!ok) return textResult(`Failed to mint token (${status}): ${JSON.stringify(data)}`, true);
+    const result = data as Record<string, unknown>;
+    return textResult([
+      `MINTED · ${result.scope} · expires ${result.expiresAt ?? "never"}`,
+      ``,
+      `===================================`,
+      `NEW TOKEN (shown once): ${result.token}`,
+      `===================================`,
+      ``,
+      `Save it now; it cannot be shown again. Never publish it.`,
+    ].join("\n"));
   }
 );
 

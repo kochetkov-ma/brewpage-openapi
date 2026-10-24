@@ -6,9 +6,39 @@ components:
         revoked:
           type: boolean
       type: object
+    BindRequest:
+      properties:
+        token:
+          description: Owner token to add to the profile
+          type:
+            - string
+            - 'null'
+      type: object
+    BindResponse:
+      properties:
+        active:
+          format: int32
+          type: integer
+        bound:
+          type: boolean
+        id:
+          format: uuid
+          type: string
+        max:
+          format: int32
+          type: integer
+      required:
+        - active
+        - bound
+        - id
+        - max
+      type: object
     ErrorResponse:
       properties:
         code:
+          description: >-
+            Machine-readable reason, e.g. OWNER_AUTHORIZATION_FAILED, OWNER_TOKEN_REVOKED, OWNER_TOKEN_EXPIRED,
+            ADMIN_TOKEN_REQUIRED, OLD_PUBLICATION_READ_ONLY, PUBLICATION_UNAVAILABLE, ROTATE_LIMITED.
           type: string
         error:
           type: string
@@ -16,6 +46,9 @@ components:
           format: int32
           type: integer
         message:
+          type: string
+        republishUrl:
+          description: 'With OLD_PUBLICATION_READ_ONLY: publish the content anew here.'
           type: string
         result:
           oneOf:
@@ -38,6 +71,19 @@ components:
         - message
         - status
         - timestamp
+      type: object
+    ExtendResponse:
+      properties:
+        expiresAt:
+          format: date-time
+          type: string
+        notices:
+          description: Advisories about the request or its result; omitted when none.
+          items:
+            $ref: '#/components/schemas/PublishNotice'
+          type: array
+      required:
+        - expiresAt
       type: object
     FileListResponse:
       properties:
@@ -66,12 +112,59 @@ components:
         - link
         - size
       type: object
+    FileUpdateResponse:
+      description: Replace result. For an HTML file published as a page (notice 'html-file-as-page') the page was replaced
+      properties:
+        contentType:
+          description: Detected MIME type of the new content
+          type: string
+        expiresAt:
+          description: 'Unchanged: updates keep the original expiry'
+          format: date-time
+          type: string
+        filename:
+          description: Stored name of the new content
+          type: string
+        id:
+          type: string
+        link:
+          type: string
+        listed:
+          description: Gallery & search eligible now; true only for public, password-free files.
+          type: boolean
+        namespace:
+          type: string
+        notices:
+          description: Advisories about the request or its result; omitted when none.
+          items:
+            $ref: '#/components/schemas/PublishNotice'
+          type: array
+        ownerLink:
+          type: string
+        sizeBytes:
+          format: int64
+          type: integer
+      required:
+        - expiresAt
+        - filename
+        - id
+        - link
+        - listed
+        - namespace
+        - ownerLink
+        - sizeBytes
+      type: object
     FileUploadResponse:
       description: >-
         Upload result. For an HTML file published as a page (notice 'html-file-as-page') id, link and ownerLink belong
         to that page; manage it via /api/html
       properties:
         access:
+          description: 'public: gallery & search eligible. unlisted: link only, not listed. protected: link + password.'
+          enum:
+            - public
+            - unlisted
+            - protected
           type: string
         contentType:
           description: Detected MIME type (e.g. image/png); text/html for an HTML file published as a page
@@ -114,6 +207,14 @@ components:
         link:
           description: Primary URL returned for browser download and sharing
           type: string
+        listed:
+          description: Gallery & search eligible now; true only for public, password-free files.
+          type: boolean
+        manageUrl:
+          description: >-
+            Private, full control of this one publication. Give it only to the owner; never publish it. Present only
+            when minted.
+          type: string
         managementLink:
           type:
             - string
@@ -123,7 +224,7 @@ components:
         namespace:
           type: string
         notices:
-          description: Tolerated-input adjustments (e.g. ttl-clamped); omitted when the request was used as sent.
+          description: Advisories about the request or its result; omitted when none.
           items:
             $ref: '#/components/schemas/PublishNotice'
           type: array
@@ -149,9 +250,11 @@ components:
           type: array
         visibilityNotice:
           description: >-
-            Human-readable explanation of link access and conditional public-discovery eligibility. Unlisted links are
-            not secret; password protection applies when configured. No guarantee of listing, ranking or search-engine
-            indexing.
+            Link access in words, e.g. 'Public: may be listed in gallery & search.' (public html, site and file add a
+            hide hint), 'Private: not listed. Only via your unique private link.' or 'Password: link + password.'
+          type: string
+        visibilityUrl:
+          description: 'Owner: POST {"listed":false|true} here to hide or show. Link unchanged.'
           type: string
       required:
         - access
@@ -182,6 +285,12 @@ components:
           type:
             - string
             - 'null'
+        expiresAt:
+          description: 'mine=true only: when the publication expires'
+          format: date-time
+          type:
+            - string
+            - 'null'
         hostingVersion:
           format: int64
           type:
@@ -192,6 +301,11 @@ components:
         link:
           type:
             - string
+            - 'null'
+        listed:
+          description: 'mine=true only: false for private, password or hidden items (Hidden = public + false)'
+          type:
+            - boolean
             - 'null'
         managementLink:
           type:
@@ -241,6 +355,14 @@ components:
           description: Current page number (1-based)
           format: int32
           type: integer
+        scope:
+          description: 'mine=true only: `profile` when the token is active in a profile (its rows are listed), else `token`'
+          enum:
+            - token
+            - profile
+          type:
+            - string
+            - 'null'
         size:
           description: Items per page
           format: int32
@@ -250,9 +372,30 @@ components:
           format: int64
           type: integer
       type: object
+    HostOwnerCheckResponse:
+      properties:
+        id:
+          description: Publication id; owners only
+          type: string
+        isOwner:
+          type: boolean
+        namespace:
+          description: Publication namespace; owners only
+          type: string
+        type:
+          description: Resource type (html, kv, json, file, site); owners only
+          type: string
+      required:
+        - isOwner
+      type: object
     HostingProjection:
       properties:
         access:
+          description: 'public: gallery & search eligible. unlisted: link only, not listed. protected: link + password.'
+          enum:
+            - public
+            - unlisted
+            - protected
           type: string
         deliveryMode:
           type:
@@ -312,6 +455,84 @@ components:
         - requestedDeliveryMode
         - routingCohort
       type: object
+    HostingReadResponse:
+      properties:
+        access:
+          description: 'public: gallery & search eligible. unlisted: link only, not listed. protected: link + password.'
+          enum:
+            - public
+            - unlisted
+            - protected
+          type: string
+        createdAt:
+          format: date-time
+          type: string
+        deliveryMode:
+          type:
+            - string
+            - 'null'
+        deliveryModeMatched:
+          type:
+            - boolean
+            - 'null'
+        deliveryModeReason:
+          description: >-
+            Why the request was served differently than asked: 'policy:subdomain-required', 'policy:mode-locked',
+            'policy:classic-link', 'policy:version-stale' or 'policy:republish-keeps-mode'. Mismatches are reported, not
+            rejected. Absent when nothing applies.
+          type:
+            - string
+            - 'null'
+        deliveryNotice:
+          description: Human-readable explanation of deliveryModeReason. Absent whenever deliveryModeReason is absent.
+          type:
+            - string
+            - 'null'
+        effectiveDeliveryMode:
+          type:
+            - string
+            - 'null'
+        expiresAt:
+          format: date-time
+          type: string
+        extendDays:
+          description: Days `POST …/extend` sets for this owner; null when Extend is not available (no profile, OLD publication)
+          format: int32
+          type:
+            - integer
+            - 'null'
+        hostingVersion:
+          format: int64
+          type:
+            - integer
+            - 'null'
+        link:
+          type: string
+        listed:
+          description: Shown in the gallery and search
+          type: boolean
+        managementLink:
+          type:
+            - string
+            - 'null'
+        modeLocked:
+          type: boolean
+        namespace:
+          type: string
+        ownerLink:
+          type: string
+        requestedDeliveryMode:
+          type:
+            - string
+            - 'null'
+        routingCohort:
+          type: string
+        title:
+          description: Display title; null for JSON and KV
+          type:
+            - string
+            - 'null'
+      type: object
     HostingUpdateRequest:
       properties:
         deliveryMode:
@@ -348,6 +569,11 @@ components:
       description: HTML update result. NEW publications include hosting metadata; OLD publications omit it.
       properties:
         access:
+          description: 'public: gallery & search eligible. unlisted: link only, not listed. protected: link + password.'
+          enum:
+            - public
+            - unlisted
+            - protected
           type: string
         deliveryMode:
           type:
@@ -386,6 +612,9 @@ components:
         link:
           description: Primary URL returned for browser viewing and sharing
           type: string
+        listed:
+          description: Gallery & search eligible now; true only for public, password-free pages.
+          type: boolean
         managementLink:
           type:
             - string
@@ -395,7 +624,7 @@ components:
         namespace:
           type: string
         notices:
-          description: Tolerated-input adjustments (e.g. ttl-clamped); omitted when the request was used as sent.
+          description: Advisories about the request or its result; omitted when none.
           items:
             $ref: '#/components/schemas/PublishNotice'
           type: array
@@ -417,14 +646,14 @@ components:
           type: integer
         visibilityNotice:
           description: >-
-            Human-readable explanation of link access and conditional public-discovery eligibility. Unlisted links are
-            not secret; password protection applies when configured. No guarantee of listing, ranking or search-engine
-            indexing.
+            Link access in words, e.g. 'Public: may be listed in gallery & search.' (public html, site and file add a
+            hide hint), 'Private: not listed. Only via your unique private link.' or 'Password: link + password.'
           type: string
       required:
         - expiresAt
         - id
         - link
+        - listed
         - namespace
         - ownerLink
         - sizeBytes
@@ -459,6 +688,11 @@ components:
     HtmlUploadResponse:
       properties:
         access:
+          description: 'public: gallery & search eligible. unlisted: link only, not listed. protected: link + password.'
+          enum:
+            - public
+            - unlisted
+            - protected
           type: string
         deliveryMode:
           type:
@@ -501,6 +735,14 @@ components:
         link:
           description: Primary URL returned for browser viewing and sharing
           type: string
+        listed:
+          description: Gallery & search eligible now; true only for public, password-free pages.
+          type: boolean
+        manageUrl:
+          description: >-
+            Private, full control of this one publication. Give it only to the owner; never publish it. Present only
+            when minted.
+          type: string
         managementLink:
           type:
             - string
@@ -510,7 +752,7 @@ components:
         namespace:
           type: string
         notices:
-          description: Tolerated-input adjustments (e.g. ttl-clamped); omitted when the request was used as sent.
+          description: Advisories about the request or its result; omitted when none.
           items:
             $ref: '#/components/schemas/PublishNotice'
           type: array
@@ -539,9 +781,11 @@ components:
           type: array
         visibilityNotice:
           description: >-
-            Human-readable explanation of link access and conditional public-discovery eligibility. Unlisted links are
-            not secret; password protection applies when configured. No guarantee of listing, ranking or search-engine
-            indexing.
+            Link access in words, e.g. 'Public: may be listed in gallery & search.' (public html, site and file add a
+            hide hint), 'Private: not listed. Only via your unique private link.' or 'Password: link + password.'
+          type: string
+        visibilityUrl:
+          description: 'Owner: POST {"listed":false|true} here to hide or show. Link unchanged.'
           type: string
       required:
         - access
@@ -552,6 +796,7 @@ components:
         - hostingVersion
         - id
         - link
+        - listed
         - managementLink
         - modeLocked
         - namespace
@@ -565,6 +810,11 @@ components:
     JsonCreateResponse:
       properties:
         access:
+          description: 'public: gallery & search eligible. unlisted: link only, not listed. protected: link + password.'
+          enum:
+            - public
+            - unlisted
+            - protected
           type: string
         createdAt:
           format: date-time
@@ -604,6 +854,14 @@ components:
         link:
           description: Primary URL returned for browser viewing and sharing
           type: string
+        listed:
+          description: Gallery & search eligible now; always false for JSON.
+          type: boolean
+        manageUrl:
+          description: >-
+            Private, full control of this one document. Give it only to the owner; never publish it. Present only when
+            minted.
+          type: string
         managementLink:
           type:
             - string
@@ -613,7 +871,7 @@ components:
         namespace:
           type: string
         notices:
-          description: Tolerated-input adjustments (e.g. ttl-clamped); omitted when the request was used as sent.
+          description: Advisories about the request or its result; omitted when none.
           items:
             $ref: '#/components/schemas/PublishNotice'
           type: array
@@ -638,9 +896,11 @@ components:
           type: array
         visibilityNotice:
           description: >-
-            Human-readable explanation of link access and conditional public-discovery eligibility. Unlisted links are
-            not secret; password protection applies when configured. No guarantee of listing, ranking or search-engine
-            indexing.
+            Link access in words, e.g. 'Public: may be listed in gallery & search.' (public html, site and file add a
+            hide hint), 'Private: not listed. Only via your unique private link.' or 'Password: link + password.'
+          type: string
+        visibilityUrl:
+          description: 'Owner: POST {"listed":false|true} here to hide or show. Link unchanged.'
           type: string
       required:
         - access
@@ -652,6 +912,7 @@ components:
         - hostingVersion
         - id
         - link
+        - listed
         - managementLink
         - modeLocked
         - namespace
@@ -684,6 +945,11 @@ components:
     JsonUpdateResponse:
       properties:
         access:
+          description: 'public: gallery & search eligible. unlisted: link only, not listed. protected: link + password.'
+          enum:
+            - public
+            - unlisted
+            - protected
           type: string
         deliveryMode:
           type:
@@ -716,6 +982,9 @@ components:
         link:
           description: Primary URL returned for browser viewing and sharing
           type: string
+        listed:
+          description: Gallery & search eligible now; always false for JSON.
+          type: boolean
         managementLink:
           type:
             - string
@@ -725,7 +994,7 @@ components:
         namespace:
           type: string
         notices:
-          description: Tolerated-input adjustments (e.g. ttl-clamped); omitted when the request was used as sent.
+          description: Advisories about the request or its result; omitted when none.
           items:
             $ref: '#/components/schemas/PublishNotice'
           type: array
@@ -746,9 +1015,8 @@ components:
           type: string
         visibilityNotice:
           description: >-
-            Human-readable explanation of link access and conditional public-discovery eligibility. Unlisted links are
-            not secret; password protection applies when configured. No guarantee of listing, ranking or search-engine
-            indexing.
+            Link access in words, e.g. 'Public: may be listed in gallery & search.' (public html, site and file add a
+            hide hint), 'Private: not listed. Only via your unique private link.' or 'Password: link + password.'
           type: string
       required:
         - access
@@ -758,6 +1026,7 @@ components:
         - hostingVersion
         - id
         - link
+        - listed
         - managementLink
         - modeLocked
         - namespace
@@ -782,6 +1051,11 @@ components:
     KvCreateStoreResponse:
       properties:
         access:
+          description: 'public: gallery & search eligible. unlisted: link only, not listed. protected: link + password.'
+          enum:
+            - public
+            - unlisted
+            - protected
           type: string
         deliveryMode:
           type:
@@ -820,6 +1094,14 @@ components:
         link:
           description: Primary URL returned for browser viewing and sharing of the initial key
           type: string
+        listed:
+          description: Gallery & search eligible now; always false for KV.
+          type: boolean
+        manageUrl:
+          description: >-
+            Private, full control of this one store. Give it only to the owner; never publish it. Present only when
+            minted.
+          type: string
         managementLink:
           type:
             - string
@@ -829,7 +1111,7 @@ components:
         namespace:
           type: string
         notices:
-          description: Tolerated-input adjustments (e.g. ttl-clamped); omitted when the request was used as sent.
+          description: Advisories about the request or its result; omitted when none.
           items:
             $ref: '#/components/schemas/PublishNotice'
           type: array
@@ -854,9 +1136,11 @@ components:
           type: array
         visibilityNotice:
           description: >-
-            Human-readable explanation of link access and conditional public-discovery eligibility. Unlisted links are
-            not secret; password protection applies when configured. No guarantee of listing, ranking or search-engine
-            indexing.
+            Link access in words, e.g. 'Public: may be listed in gallery & search.' (public html, site and file add a
+            hide hint), 'Private: not listed. Only via your unique private link.' or 'Password: link + password.'
+          type: string
+        visibilityUrl:
+          description: 'Owner: POST {"listed":false|true} here to hide or show. Link unchanged.'
           type: string
       required:
         - access
@@ -868,6 +1152,7 @@ components:
         - id
         - key
         - link
+        - listed
         - managementLink
         - modeLocked
         - namespace
@@ -954,6 +1239,11 @@ components:
     KvUpsertKeyResponse:
       properties:
         access:
+          description: 'public: gallery & search eligible. unlisted: link only, not listed. protected: link + password.'
+          enum:
+            - public
+            - unlisted
+            - protected
           type: string
         deliveryMode:
           type:
@@ -988,6 +1278,9 @@ components:
         link:
           description: Primary URL returned for browser viewing and sharing of this key
           type: string
+        listed:
+          description: Gallery & search eligible now; always false for KV.
+          type: boolean
         managementLink:
           type:
             - string
@@ -997,7 +1290,7 @@ components:
         namespace:
           type: string
         notices:
-          description: Tolerated-input adjustments (e.g. ttl-clamped); omitted when the request was used as sent.
+          description: Advisories about the request or its result; omitted when none.
           items:
             $ref: '#/components/schemas/PublishNotice'
           type: array
@@ -1015,9 +1308,8 @@ components:
           type: integer
         visibilityNotice:
           description: >-
-            Human-readable explanation of link access and conditional public-discovery eligibility. Unlisted links are
-            not secret; password protection applies when configured. No guarantee of listing, ranking or search-engine
-            indexing.
+            Link access in words, e.g. 'Public: may be listed in gallery & search.' (public html, site and file add a
+            hide hint), 'Private: not listed. Only via your unique private link.' or 'Password: link + password.'
           type: string
       required:
         - access
@@ -1028,6 +1320,7 @@ components:
         - id
         - key
         - link
+        - listed
         - managementLink
         - modeLocked
         - namespace
@@ -1038,11 +1331,81 @@ components:
       type: object
     LimitsResponse:
       properties:
+        ownerMaxTtlDays:
+          description: Per-owner TTL cap in days for this token; absent = per-type maximum
+          format: int32
+          type: integer
+        reach:
+          description: '`profile` when the token is active in a profile, else `token`'
+          enum:
+            - token
+            - profile
+          type: string
         requestMaxBytes:
           format: int64
           type: integer
         sites:
           $ref: '#/components/schemas/SiteLimitsResponse'
+      required:
+        - reach
+        - requestMaxBytes
+        - sites
+      type: object
+    ManageKeyResponse:
+      properties:
+        manageUrl:
+          description: Management link with its key, shown once
+          type: string
+        notices:
+          description: Advisories about the request or its result; omitted when none.
+          items:
+            $ref: '#/components/schemas/PublishNotice'
+          type: array
+      required:
+        - manageUrl
+      type: object
+    MintRequest:
+      properties:
+        expiresIn:
+          description: 'Default: admin 90d, publish never'
+          enum:
+            - 30d
+            - 90d
+            - 1y
+            - never
+          type:
+            - string
+            - 'null'
+        label:
+          type:
+            - string
+            - 'null'
+        scope:
+          default: publish
+          enum:
+            - publish
+            - admin
+          type:
+            - string
+            - 'null'
+      type: object
+    MintResponse:
+      properties:
+        expiresAt:
+          format: date-time
+          type: string
+        id:
+          format: uuid
+          type: string
+        scope:
+          type: string
+        token:
+          description: Shown once
+          type: string
+      required:
+        - id
+        - scope
+        - token
       type: object
     OwnerCheckResponse:
       properties:
@@ -1053,14 +1416,15 @@ components:
           enum:
             - html
             - other
-          type:
-            - string
-            - 'null'
-        owner:
+          type: string
+        isOwner:
           type: boolean
         type:
           description: Resource type (html, kv, json, file, site)
           type: string
+      required:
+        - isOwner
+        - type
       type: object
     OwnerTokenResponse:
       properties:
@@ -1068,6 +1432,110 @@ components:
           type: string
         token:
           type: string
+      type: object
+    PasswordRequest:
+      properties:
+        password:
+          description: New reader password; null or blank removes it
+          type:
+            - string
+            - 'null'
+      type: object
+    PasswordResponse:
+      properties:
+        access:
+          description: 'public: gallery & search eligible. unlisted: link only, not listed. protected: link + password.'
+          enum:
+            - public
+            - unlisted
+            - protected
+          type: string
+        listed:
+          type: boolean
+        notices:
+          description: Advisories about the request or its result; omitted when none.
+          items:
+            $ref: '#/components/schemas/PublishNotice'
+          type: array
+      required:
+        - access
+        - listed
+      type: object
+    PublicationListItemResponse:
+      properties:
+        claimed:
+          description: Added by management link
+          type: boolean
+        createdAt:
+          format: date-time
+          type: string
+        expiresAt:
+          format: date-time
+          type: string
+        extendDays:
+          description: Days `POST …/extend` sets; null when not offered
+          format: int32
+          type: integer
+        id:
+          type: string
+        link:
+          type: string
+        listed:
+          type: boolean
+        namespace:
+          type: string
+        preview:
+          oneOf:
+            - $ref: '#/components/schemas/PublicationPreviewResponse'
+        status:
+          description: public, hidden, private, password or unavailable
+          type: string
+        title:
+          type: string
+        type:
+          type: string
+        views:
+          format: int64
+          type: integer
+      required:
+        - claimed
+        - createdAt
+        - expiresAt
+        - id
+        - listed
+        - namespace
+        - status
+        - type
+        - views
+      type: object
+    PublicationListResponse:
+      properties:
+        items:
+          items:
+            $ref: '#/components/schemas/PublicationListItemResponse'
+          type: array
+        nextCursor:
+          description: Pass as `cursor` for the next page; null on the last page
+          type: string
+        total:
+          format: int64
+          type: integer
+      required:
+        - items
+        - total
+      type: object
+    PublicationPreviewResponse:
+      description: 'WebP previews: thumbD 800x373, thumbM 320x149, full (pages and sites only)'
+      properties:
+        full:
+          type: string
+        thumbD:
+          type: string
+        thumbM:
+          type: string
+      required:
+        - thumbD
+        - thumbM
       type: object
     PublicationResult:
       description: >-
@@ -1101,9 +1569,102 @@ components:
         - action
         - code
       type: object
+    PublicationRotateResponse:
+      properties:
+        id:
+          type: string
+        link:
+          type: string
+        listed:
+          type: boolean
+        manageUrl:
+          description: New management link with its key, shown once; null when the row has none
+          type: string
+        managementLink:
+          description: Management page of the new id; null for classic links
+          type: string
+        namespace:
+          type: string
+        notices:
+          description: rotate-still-listed while the row is shown in gallery and search
+          items:
+            $ref: '#/components/schemas/RotateNotice'
+          type: array
+        ownerLink:
+          type: string
+        type:
+          type: string
+      required:
+        - id
+        - link
+        - listed
+        - namespace
+        - notices
+        - ownerLink
+        - type
+      type: object
+    PublicationStatsReport:
+      properties:
+        countries:
+          items:
+            $ref: '#/components/schemas/StatsCountry'
+          type:
+            - array
+            - 'null'
+        days:
+          items:
+            $ref: '#/components/schemas/StatsDay'
+          type: array
+        devices:
+          $ref: '#/components/schemas/StatsDevices'
+        from:
+          format: date
+          type: string
+        geoAttribution:
+          type: string
+        hours:
+          items:
+            format: int32
+            type: integer
+          type:
+            - array
+            - 'null'
+        previews:
+          additionalProperties:
+            format: int32
+            type: integer
+          type: object
+        range:
+          format: int32
+          type: integer
+        refHosts:
+          items:
+            $ref: '#/components/schemas/StatsHost'
+          type:
+            - array
+            - 'null'
+        through:
+          format: date
+          type: string
+        todayPartial:
+          type: boolean
+        totals:
+          $ref: '#/components/schemas/StatsTotals'
+        updatedAt:
+          format: date-time
+          type:
+            - string
+            - 'null'
+        views:
+          format: int64
+          type: integer
+      type: object
     PublishNotice:
       properties:
         code:
+          description: >-
+            Kebab-case, e.g. ttl-clamped, namespace-defaulted, secret-detected, manage-link-disabled,
+            visibility-not-listable, extend-needs-profile, rotate-still-listed.
           type: string
         message:
           type: string
@@ -1165,6 +1726,52 @@ components:
         reportId:
           description: Unique 10-character alphanumeric report ID
           type: string
+      type: object
+    RevokeOthersRequest:
+      properties:
+        keep:
+          description: Token ids to keep; the header token is always kept
+          items:
+            type: string
+          type:
+            - array
+            - 'null'
+      type: object
+    RevokeOthersResponse:
+      properties:
+        revoked:
+          format: int32
+          type: integer
+      required:
+        - revoked
+      type: object
+    RevokeRequest:
+      properties:
+        id:
+          type:
+            - string
+            - 'null'
+        token:
+          type:
+            - string
+            - 'null'
+      type: object
+    RevokeResponse:
+      properties:
+        revoked:
+          type: boolean
+      required:
+        - revoked
+      type: object
+    RotateNotice:
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+      required:
+        - code
+        - message
       type: object
     SiteFileInfo:
       properties:
@@ -1268,10 +1875,28 @@ components:
           items:
             type: string
           type: array
+      required:
+        - allowedExtensions
+        - defaultTtlDays
+        - maxArchiveExpansionBytes
+        - maxFileBytes
+        - maxFiles
+        - maxNameBytes
+        - maxPathBytes
+        - maxPathChars
+        - maxTotalBytes
+        - maxTtlDays
+        - skippedFileNames
+        - skippedRootFolders
       type: object
     SiteUpdateResponse:
       properties:
         access:
+          description: 'public: gallery & search eligible. unlisted: link only, not listed. protected: link + password.'
+          enum:
+            - public
+            - unlisted
+            - protected
           type: string
         deliveryMode:
           type:
@@ -1314,6 +1939,9 @@ components:
         link:
           description: Primary URL returned for browser viewing and sharing
           type: string
+        listed:
+          description: Gallery & search eligible now; true only for public, password-free html/site/file.
+          type: boolean
         managementLink:
           type:
             - string
@@ -1323,7 +1951,7 @@ components:
         namespace:
           type: string
         notices:
-          description: Tolerated-input adjustments (e.g. ttl-clamped); omitted when the request was used as sent.
+          description: Advisories about the request or its result; omitted when none.
           items:
             $ref: '#/components/schemas/PublishNotice'
           type: array
@@ -1349,9 +1977,8 @@ components:
           type: integer
         visibilityNotice:
           description: >-
-            Human-readable explanation of link access and conditional public-discovery eligibility. Unlisted links are
-            not secret; password protection applies when configured. No guarantee of listing, ranking or search-engine
-            indexing.
+            Link access in words, e.g. 'Public: may be listed in gallery & search.' (public html, site and file add a
+            hide hint), 'Private: not listed. Only via your unique private link.' or 'Password: link + password.'
           type: string
       required:
         - access
@@ -1364,6 +1991,7 @@ components:
         - hostingVersion
         - id
         - link
+        - listed
         - managementLink
         - modeLocked
         - namespace
@@ -1376,6 +2004,11 @@ components:
     SiteUploadResponse:
       properties:
         access:
+          description: 'public: gallery & search eligible. unlisted: link only, not listed. protected: link + password.'
+          enum:
+            - public
+            - unlisted
+            - protected
           type: string
         deliveryMode:
           type:
@@ -1418,6 +2051,12 @@ components:
         link:
           description: Primary URL returned for browser viewing and sharing
           type: string
+        listed:
+          description: Gallery & search eligible now; true only for public, password-free html/site/file.
+          type: boolean
+        manageUrl:
+          description: 'Private manage link, shown once. Absent: old publication or foreign duplicate.'
+          type: string
         managementLink:
           type:
             - string
@@ -1427,7 +2066,7 @@ components:
         namespace:
           type: string
         notices:
-          description: Tolerated-input adjustments (e.g. ttl-clamped); omitted when the request was used as sent.
+          description: Advisories about the request or its result; omitted when none.
           items:
             $ref: '#/components/schemas/PublishNotice'
           type: array
@@ -1456,9 +2095,11 @@ components:
           type: integer
         visibilityNotice:
           description: >-
-            Human-readable explanation of link access and conditional public-discovery eligibility. Unlisted links are
-            not secret; password protection applies when configured. No guarantee of listing, ranking or search-engine
-            indexing.
+            Link access in words, e.g. 'Public: may be listed in gallery & search.' (public html, site and file add a
+            hide hint), 'Private: not listed. Only via your unique private link.' or 'Password: link + password.'
+          type: string
+        visibilityUrl:
+          description: 'Owner: POST {"listed":false|true} here to hide or show. Link unchanged. Absent for a foreign duplicate.'
           type: string
       required:
         - access
@@ -1471,6 +2112,7 @@ components:
         - hostingVersion
         - id
         - link
+        - listed
         - managementLink
         - modeLocked
         - namespace
@@ -1480,6 +2122,49 @@ components:
         - routingCohort
         - tags
         - totalSizeBytes
+      type: object
+    StatsCountry:
+      properties:
+        cc:
+          type: string
+        'n':
+          format: int32
+          type: integer
+      type: object
+    StatsDay:
+      properties:
+        automated:
+          format: int32
+          type: integer
+        d:
+          format: date
+          type: string
+        humans:
+          format: int32
+          type: integer
+        visitors:
+          format: int32
+          type: integer
+      type: object
+    StatsDevices:
+      properties:
+        desktop:
+          format: int32
+          type: integer
+        mobile:
+          format: int32
+          type: integer
+        tablet:
+          format: int32
+          type: integer
+      type: object
+    StatsHost:
+      properties:
+        host:
+          type: string
+        'n':
+          format: int32
+          type: integer
       type: object
     StatsResponse:
       properties:
@@ -1589,6 +2274,15 @@ components:
             - integer
             - 'null'
       type: object
+    StatsTotals:
+      properties:
+        automated:
+          format: int32
+          type: integer
+        humans:
+          format: int32
+          type: integer
+      type: object
     TypeBreakdown:
       properties:
         today:
@@ -1663,7 +2357,41 @@ components:
           description: 'Resource type: html, json, kv, file, or site'
           type: string
       type: object
+    VisibilityRequest:
+      properties:
+        listed:
+          description: false = hide from gallery & search, true = show. Link unchanged; omitted reports the state.
+          type: boolean
+      type: object
+    VisibilityResponse:
+      properties:
+        access:
+          description: 'public: gallery & search eligible. unlisted: link only, not listed. protected: link + password.'
+          enum:
+            - public
+            - unlisted
+            - protected
+          type: string
+        link:
+          type: string
+        listed:
+          type: boolean
+        notices:
+          description: Advisories about the request or its result; omitted when none.
+          items:
+            $ref: '#/components/schemas/PublishNotice'
+          type: array
+      required:
+        - access
+        - link
+        - listed
+      type: object
   securitySchemes:
+    ManageKey:
+      description: 'Key from manageUrl (#k=…): private, full control of one publication.'
+      in: header
+      name: X-Manage-Key
+      type: apiKey
     OwnerToken:
       in: header
       name: X-Owner-Token
@@ -1680,17 +2408,19 @@ info:
     name: BrewPage
     url: https://brewpage.app
   description: >-
-    Free instant hosting for HTML, Markdown, JSON, key-value stores, files and sites. REST omission defaults to the
-    public namespace; MCP omission creates an unlisted namespace. Unlisted URLs are accessible to anyone with the link;
-    use a password for access restrictions. Retain returned links and ownership tokens. Public discovery requires
-    eligibility; protected and non-public publications are excluded. How BrewPage compares with GitHub Pages, GitHub
-    Gist, Netlify Drop, Cloudflare Drop, Tiiny Host and Static.app: https://brewpage.app/compare.
+    Free instant hosting for HTML, Markdown, JSON, key-value stores, files and sites. Omitted ns: private (link only).
+    MCP omission: a generated private namespace. Send ns=public for gallery & search; password, hidden and private
+    publications are excluded. Link only is not secret: anyone with the link can open it; add a password to restrict.
+    Secrets allowed; likely ones are flagged in notices. For a secret: private namespace + password. Retain returned
+    links and owner tokens. manageUrl is private: give it only to the owner, never publish it. How BrewPage compares
+    with GitHub Pages, GitHub Gist, Netlify Drop, Cloudflare Drop, Tiiny Host and Static.app:
+    https://brewpage.app/compare.
   license:
     name: Apache-2.0
     url: https://www.apache.org/licenses/LICENSE-2.0
   termsOfService: https://brewpage.app/terms
   title: BrewPage API
-  version: 1.135.0
+  version: 1.136.0
 openapi: 3.1.0
 paths:
   /api/files:
@@ -1698,22 +2428,16 @@ paths:
       description: Returns files owned by the given token. Empty list without token
       operationId: list_1
       parameters:
-        - description: >-
-            Namespace (default public). Custom namespaces are unlisted, accessible to anyone with the URL. Public
-            discovery additionally requires eligibility and no password.
+        - description: 'Namespace. Omitted: private. `public` = gallery & search. Lowercase only.'
           in: query
           name: ns
           required: false
           schema:
-            default: public
-            pattern: ^[a-z0-9-]{1,32}$
+            pattern: ^$|^[a-z0-9-]{1,32}$
             type: string
         - description: Owner token to filter by ownership. Without token returns empty list
           in: header
           name: X-Owner-Token
-          required: false
-          schema:
-            type: string
       responses:
         '200':
           content:
@@ -1723,6 +2447,12 @@ paths:
                   $ref: '#/components/schemas/FileListResponse'
                 type: array
           description: File list
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Owner token revoked or expired
       security:
         - {}
         - OwnerToken: []
@@ -1736,18 +2466,16 @@ paths:
         entities under one owner. A UTF-8 .html/.htm file sent to namespace 'public' without a password is published as
         an HTML page (same rules and limits as POST /api/html): link and ownerLink point to the page, notice
         'html-file-as-page'. Any other HTML file is stored as a file and shown as source, notice 'html-file-as-source';
-        to publish such a page use POST /api/html
+        to publish such a page use POST /api/html Secrets allowed; likely ones are flagged in notices. For a secret:
+        private namespace + password.
       operationId: upload
       parameters:
-        - description: >-
-            Namespace (default public). Custom namespaces are unlisted, accessible to anyone with the URL. Public
-            discovery additionally requires eligibility and no password.
+        - description: 'Namespace. Omitted: private. `public` = gallery & search. Lowercase only.'
           in: query
           name: ns
           required: false
           schema:
-            default: public
-            pattern: ^[a-z0-9-]{1,32}$
+            pattern: ^$|^[a-z0-9-]{1,32}$
             type: string
         - description: Comma-separated tags
           example: demo,test
@@ -1773,12 +2501,6 @@ paths:
           required: false
           schema:
             type: string
-        - description: Reuse existing owner token to group entities under one owner. If omitted, a new token is generated
-          in: header
-          name: X-Owner-Token
-          required: false
-          schema:
-            type: string
         - in: header
           name: X-Delivery-Mode
           required: false
@@ -1792,6 +2514,9 @@ paths:
           name: verbatim
           schema:
             type: boolean
+        - description: Reuse existing owner token to group entities under one owner. If omitted, a new token is generated
+          in: header
+          name: X-Owner-Token
       requestBody:
         content:
           multipart/form-data:
@@ -1860,12 +2585,12 @@ paths:
           required: true
           schema:
             type: string
-        - description: Owner token returned at creation. Required for update and delete
+        - description: Owner token returned at creation
           in: header
           name: X-Owner-Token
-          required: true
-          schema:
-            type: string
+        - description: Management key of this publication
+          in: header
+          name: X-Manage-Key
       responses:
         '204':
           description: File deleted
@@ -1874,7 +2599,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-          description: Missing or wrong owner token
+          description: Missing or wrong owner token or management key
         '404':
           content:
             application/json:
@@ -1883,6 +2608,7 @@ paths:
           description: File not found or expired
       security:
         - OwnerToken: []
+        - ManageKey: []
       summary: Delete file
       tags:
         - Files
@@ -1971,14 +2697,101 @@ paths:
       summary: Download file
       tags:
         - Files
+    put:
+      description: >-
+        Replaces the file content (multipart 'file'); same type rules and limits as upload. Keeps link, password, TTL
+        and tags. For an HTML file published as a page in 'public', replaces that page (UTF-8 .html/.htm, same rules as
+        PUT /api/html).
+      operationId: replaceFile
+      parameters:
+        - in: path
+          name: ns
+          required: true
+          schema:
+            pattern: ^[a-z0-9-]{1,32}$
+            type: string
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+        - description: 'Ignored: updates keep the original expiry; a supplied value is reported in notices (ttl-ignored).'
+          in: query
+          name: ttl
+          required: false
+          schema:
+            type: string
+        - description: Owner token returned at creation
+          in: header
+          name: X-Owner-Token
+        - description: Management key of this publication
+          in: header
+          name: X-Manage-Key
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              properties:
+                file:
+                  description: File part; any single file part is accepted when 'file' is absent
+                  format: binary
+                  type: string
+              type: object
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FileUpdateResponse'
+          description: File replaced
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Invalid request or file too large
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Missing or wrong owner token or management key, or upload refused
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: File not found or expired
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: >-
+            Old publication is read-only (code: OLD_PUBLICATION_READ_ONLY, republishUrl), or the same content is another
+            file of this owner
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Unsupported file type or content of no supported type
+      security:
+        - OwnerToken: []
+        - ManageKey: []
+      summary: Replace file
+      tags:
+        - Files
   /api/gallery:
     get:
       description: >-
-        Lists live public publications (pages, files, sites; public namespace, no password) with optional
-        case-insensitive search by title (filename for files, id when untitled). When `mine=true` and `X-Owner-Token` is
-        supplied, returns all of the caller's live pages, files and sites in any namespace, including password-protected
-        ones; each item carries its real `namespace` and a `visibility` of my_public, my_public_password or my_private.
-        KV and JSON stores are never listed.
+        Lists live public publications (pages, files, sites; public namespace, no password, not hidden by the owner)
+        with optional case-insensitive search by title (filename for files, id when untitled). When `mine=true` and
+        `X-Owner-Token` is supplied, returns all of the caller's live pages, files and sites in any namespace, including
+        password-protected ones (a token active in a profile lists the profile's rows; `scope` says which); each item
+        carries its real `namespace`, a `visibility` of my_public, my_public_password or my_private, and `listed`. KV
+        and JSON stores are never listed.
       operationId: getGallery
       parameters:
         - description: Case-insensitive substring search by title (filename for files, id when untitled)
@@ -2024,9 +2837,6 @@ paths:
         - description: Owner token; required when mine=true, which without it returns an empty page
           in: header
           name: X-Owner-Token
-          required: false
-          schema:
-            type: string
       responses:
         '200':
           content:
@@ -2040,23 +2850,53 @@ paths:
       summary: Browse gallery
       tags:
         - Gallery
+  /api/hosts/{host}/owner-check:
+    get:
+      description: >-
+        200 `{isOwner:false}` alike for unknown, retired, hidden and not-owned hosts; an owner gets `{isOwner:true,
+        type, namespace, id}`.
+      operationId: hostOwnerCheck
+      parameters:
+        - in: path
+          name: host
+          required: true
+          schema:
+            type: string
+        - description: Owner token to verify
+          in: header
+          name: X-Owner-Token
+        - description: Management key to verify
+          in: header
+          name: X-Manage-Key
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HostOwnerCheckResponse'
+          description: OK
+      security:
+        - {}
+        - OwnerToken: []
+        - ManageKey: []
+      summary: Verify whether the supplied X-Owner-Token or X-Manage-Key owns the publication on a host
+      tags:
+        - Owner Check
   /api/html:
     post:
       description: >-
         Stores HTML or markdown content and returns a shareable link. Reuse existing owner token to group entities under
         one owner. Also accepts raw text/* (HTML, Markdown, YAML, XML, CSV, code) and application/octet-stream bodies —
-        see /llms-full.txt.
+        see /llms-full.txt. Secrets allowed; likely ones are flagged in notices. For a secret: private namespace +
+        password.
       operationId: create_1
       parameters:
-        - description: >-
-            Namespace (default public). Custom namespaces are unlisted, accessible to anyone with the URL. Public
-            discovery additionally requires eligibility and no password.
+        - description: 'Namespace. Omitted: private. `public` = gallery & search. Lowercase only.'
           in: query
           name: ns
           required: false
           schema:
-            default: public
-            pattern: ^[a-z0-9-]{1,32}$
+            pattern: ^$|^[a-z0-9-]{1,32}$
             type: string
         - description: Comma-separated tags
           example: demo,test
@@ -2096,12 +2936,6 @@ paths:
           required: false
           schema:
             type: string
-        - description: Reuse existing owner token to group entities under one owner. If omitted, a new token is generated
-          in: header
-          name: X-Owner-Token
-          required: false
-          schema:
-            type: string
         - in: header
           name: User-Agent
           required: false
@@ -2115,6 +2949,9 @@ paths:
           name: verbatim
           schema:
             type: boolean
+        - description: Reuse existing owner token to group entities under one owner. If omitted, a new token is generated
+          in: header
+          name: X-Owner-Token
         - description: >-
             NEW delivery preference: path or subdomain. Sites and non-public HTML pages get subdomain; a mismatch is
             reported in deliveryModeReason, not rejected. Omission allows smart selection.
@@ -2225,12 +3062,12 @@ paths:
           required: true
           schema:
             type: string
-        - description: Owner token returned at creation. Required for update and delete
+        - description: Owner token returned at creation
           in: header
           name: X-Owner-Token
-          required: true
-          schema:
-            type: string
+        - description: Management key of this publication
+          in: header
+          name: X-Manage-Key
       responses:
         '204':
           description: Page deleted
@@ -2239,7 +3076,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-          description: Missing or wrong owner token
+          description: Missing or wrong owner token or management key
         '404':
           content:
             application/json:
@@ -2248,6 +3085,7 @@ paths:
           description: Page not found or expired
       security:
         - OwnerToken: []
+        - ManageKey: []
       summary: Delete HTML page
       tags:
         - HTML
@@ -2336,8 +3174,8 @@ paths:
         - HTML
     put:
       description: >-
-        Replaces page content; requires the owner token returned at creation. Also accepts raw text/* (HTML, Markdown,
-        YAML, XML, CSV, code) bodies — see /llms-full.txt.
+        Replaces page content; requires the owner token returned at creation or the management key. Also accepts raw
+        text/* (HTML, Markdown, YAML, XML, CSV, code) bodies — see /llms-full.txt.
       operationId: update_1
       parameters:
         - in: path
@@ -2348,12 +3186,6 @@ paths:
             type: string
         - in: path
           name: id
-          required: true
-          schema:
-            type: string
-        - description: Owner token returned at creation. Required for update and delete
-          in: header
-          name: X-Owner-Token
           required: true
           schema:
             type: string
@@ -2372,6 +3204,12 @@ paths:
           required: false
           schema:
             type: string
+        - description: Owner token returned at creation
+          in: header
+          name: X-Owner-Token
+        - description: Management key of this publication
+          in: header
+          name: X-Manage-Key
         - description: >-
             Store the content exactly as sent. By default a whole HTML page pasted from a chat (wrapped in a code block,
             surrounded by chat text, or entity-escaped) is restored and a notice is returned; 'true' keeps the text as
@@ -2440,15 +3278,22 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-          description: Missing or wrong owner token, or upload refused
+          description: Missing or wrong owner token or management key, or upload refused
         '404':
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
           description: Page not found or expired
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: 'Old publication is read-only (code: OLD_PUBLICATION_READ_ONLY, republishUrl)'
       security:
         - OwnerToken: []
+        - ManageKey: []
       summary: Update HTML page
       tags:
         - HTML
@@ -2456,7 +3301,7 @@ paths:
     get:
       description: >-
         Returns republish-prefill settings (namespace, ttlDays, hasPassword, showTopBar, format, title, filename,
-        createdAt, expiresAt) without the content body. Owner-only — requires the owner token returned at creation.
+        createdAt, expiresAt) without the content body. Owner-only: the owner token or the management key.
       operationId: getHtmlSettings
       parameters:
         - in: path
@@ -2470,12 +3315,12 @@ paths:
           required: true
           schema:
             type: string
-        - description: Owner token returned at creation. Required for settings access
+        - description: Owner token returned at creation
           in: header
           name: X-Owner-Token
-          required: true
-          schema:
-            type: string
+        - description: Management key of this publication
+          in: header
+          name: X-Manage-Key
       responses:
         '200':
           content:
@@ -2488,19 +3333,22 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-          description: 'Owner token missing (code: OWNER_TOKEN_REQUIRED)'
+          description: 'No owner token or management key (code: OWNER_TOKEN_REQUIRED)'
         '403':
-          description: Wrong owner token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Wrong owner token (public namespace)
         '404':
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-          description: >-
-            Missing publication: empty body. An expired or unavailable NEW delivery returns the JSON ErrorResponse
-            envelope.
+          description: 'Page unavailable: missing, expired, or not proven outside public'
       security:
         - OwnerToken: []
+        - ManageKey: []
       summary: Get HTML page settings
       tags:
         - HTML
@@ -2508,8 +3356,7 @@ paths:
     get:
       description: >-
         Returns the stored source content (pre-render, pre-sanitize; a chat-pasted page as repaired at publish unless
-        sent with verbatim=true) plus metadata for republish. Owner-only — requires the owner token returned at
-        creation.
+        sent with verbatim=true) plus metadata for republish. Owner-only: the owner token or the management key.
       operationId: getHtmlSource
       parameters:
         - in: path
@@ -2523,12 +3370,12 @@ paths:
           required: true
           schema:
             type: string
-        - description: Owner token returned at creation. Required for source access
+        - description: Owner token returned at creation
           in: header
           name: X-Owner-Token
-          required: true
-          schema:
-            type: string
+        - description: Management key of this publication
+          in: header
+          name: X-Manage-Key
       responses:
         '200':
           content:
@@ -2541,19 +3388,22 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-          description: 'Owner token missing (code: OWNER_TOKEN_REQUIRED)'
+          description: 'No owner token or management key (code: OWNER_TOKEN_REQUIRED)'
         '403':
-          description: Wrong owner token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Wrong owner token (public namespace)
         '404':
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-          description: >-
-            Missing publication: empty body. An expired or unavailable NEW delivery returns the JSON ErrorResponse
-            envelope.
+          description: 'Page unavailable: missing, expired, or not proven outside public'
       security:
         - OwnerToken: []
+        - ManageKey: []
       summary: Get HTML page raw source
       tags:
         - HTML
@@ -2562,22 +3412,16 @@ paths:
       description: Returns documents owned by the given token. Empty list without token
       operationId: list
       parameters:
-        - description: >-
-            Namespace (default public). Custom namespaces are unlisted, accessible to anyone with the URL. Public
-            discovery additionally requires eligibility and no password.
+        - description: 'Namespace. Omitted: private. `public` = gallery & search. Lowercase only.'
           in: query
           name: ns
           required: false
           schema:
-            default: public
-            pattern: ^[a-z0-9-]{1,32}$
+            pattern: ^$|^[a-z0-9-]{1,32}$
             type: string
         - description: Owner token to filter by ownership. Without token returns empty list
           in: header
           name: X-Owner-Token
-          required: false
-          schema:
-            type: string
       responses:
         '200':
           content:
@@ -2587,6 +3431,12 @@ paths:
                   $ref: '#/components/schemas/JsonListResponse'
                 type: array
           description: Document list
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Owner token revoked or expired
       security:
         - {}
         - OwnerToken: []
@@ -2594,18 +3444,17 @@ paths:
       tags:
         - JSON
     post:
-      description: Stores any valid JSON and returns a shareable link. Reuse existing owner token to group entities under one owner
+      description: >-
+        Stores any valid JSON and returns a shareable link. Reuse existing owner token to group entities under one owner
+        Secrets allowed; likely ones are flagged in notices. For a secret: private namespace + password.
       operationId: create
       parameters:
-        - description: >-
-            Namespace (default public). Custom namespaces are unlisted, accessible to anyone with the URL. Public
-            discovery additionally requires eligibility and no password.
+        - description: 'Namespace. Omitted: private. `public` = gallery & search. Lowercase only.'
           in: query
           name: ns
           required: false
           schema:
-            default: public
-            pattern: ^[a-z0-9-]{1,32}$
+            pattern: ^$|^[a-z0-9-]{1,32}$
             type: string
         - description: Comma-separated tags
           example: demo,test
@@ -2631,18 +3480,15 @@ paths:
           required: false
           schema:
             type: string
-        - description: Reuse existing owner token to group entities under one owner. If omitted, a new token is generated
-          in: header
-          name: X-Owner-Token
-          required: false
-          schema:
-            type: string
         - description: 'Delivery mode for a new document: path or subdomain'
           in: header
           name: X-Delivery-Mode
           required: false
           schema:
             type: string
+        - description: Reuse existing owner token to group entities under one owner. If omitted, a new token is generated
+          in: header
+          name: X-Owner-Token
       requestBody:
         content:
           application/json:
@@ -2661,6 +3507,12 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
           description: Invalid JSON or request parameters
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Owner token revoked or expired
         '429':
           content:
             application/json:
@@ -2689,12 +3541,12 @@ paths:
           required: true
           schema:
             type: string
-        - description: Owner token returned at creation. Required for update and delete
+        - description: Owner token returned at creation
           in: header
           name: X-Owner-Token
-          required: true
-          schema:
-            type: string
+        - description: Management key of this document
+          in: header
+          name: X-Manage-Key
       responses:
         '204':
           description: Document deleted
@@ -2703,7 +3555,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-          description: Missing or wrong owner token
+          description: Missing or wrong owner token or management key
         '404':
           content:
             application/json:
@@ -2712,6 +3564,7 @@ paths:
           description: Document not found or expired
       security:
         - OwnerToken: []
+        - ManageKey: []
       summary: Delete JSON document
       tags:
         - JSON
@@ -2781,7 +3634,7 @@ paths:
       tags:
         - JSON
     put:
-      description: Replaces document content; requires the owner token returned at creation
+      description: Replaces document content; requires the owner token returned at creation or the management key
       operationId: update
       parameters:
         - in: path
@@ -2795,12 +3648,6 @@ paths:
           required: true
           schema:
             type: string
-        - description: Owner token returned at creation. Required for update and delete
-          in: header
-          name: X-Owner-Token
-          required: true
-          schema:
-            type: string
         - description: >-
             Ignored on update: republishing keeps the address mode (reported in deliveryNotice); change it with the
             hosting operation
@@ -2809,6 +3656,12 @@ paths:
           required: false
           schema:
             type: string
+        - description: Owner token returned at creation
+          in: header
+          name: X-Owner-Token
+        - description: Management key of this document
+          in: header
+          name: X-Manage-Key
       requestBody:
         content:
           application/json:
@@ -2826,15 +3679,22 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-          description: Missing or wrong owner token
+          description: Missing or wrong owner token or management key
         '404':
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
           description: Document not found or expired
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: 'Old publication is read-only (code: OLD_PUBLICATION_READ_ONLY, republishUrl)'
       security:
         - OwnerToken: []
+        - ManageKey: []
       summary: Update JSON document
       tags:
         - JSON
@@ -2843,22 +3703,16 @@ paths:
       description: Returns all KV stores owned by the given token in the namespace. Returns empty list without token
       operationId: listStores
       parameters:
-        - description: >-
-            Namespace (default public). Custom namespaces are unlisted, accessible to anyone with the URL. Public
-            discovery additionally requires eligibility and no password.
+        - description: 'Namespace. Omitted: private. `public` = gallery & search. Lowercase only.'
           in: query
           name: ns
           required: false
           schema:
-            default: public
-            pattern: ^[a-z0-9-]{1,32}$
+            pattern: ^$|^[a-z0-9-]{1,32}$
             type: string
         - description: Owner token to filter by ownership. Without token returns empty list
           in: header
           name: X-Owner-Token
-          required: false
-          schema:
-            type: string
       responses:
         '200':
           content:
@@ -2868,6 +3722,12 @@ paths:
                   $ref: '#/components/schemas/KvStoreListResponse'
                 type: array
           description: Store list
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Owner token revoked or expired
       security:
         - {}
         - OwnerToken: []
@@ -2877,18 +3737,16 @@ paths:
     post:
       description: >-
         Creates a new store with an initial key-value pair and returns a shareable link. Reuse existing owner token to
-        group entities under one owner
+        group entities under one owner Secrets allowed; likely ones are flagged in notices. For a secret: private
+        namespace + password.
       operationId: createStore
       parameters:
-        - description: >-
-            Namespace (default public). Custom namespaces are unlisted, accessible to anyone with the URL. Public
-            discovery additionally requires eligibility and no password.
+        - description: 'Namespace. Omitted: private. `public` = gallery & search. Lowercase only.'
           in: query
           name: ns
           required: false
           schema:
-            default: public
-            pattern: ^[a-z0-9-]{1,32}$
+            pattern: ^$|^[a-z0-9-]{1,32}$
             type: string
         - description: Comma-separated tags
           example: demo,test
@@ -2914,18 +3772,15 @@ paths:
           required: false
           schema:
             type: string
-        - description: Reuse existing owner token to group entities under one owner. If omitted, a new token is generated
-          in: header
-          name: X-Owner-Token
-          required: false
-          schema:
-            type: string
         - description: 'Delivery mode for a new store: path or subdomain'
           in: header
           name: X-Delivery-Mode
           required: false
           schema:
             type: string
+        - description: Reuse existing owner token to group entities under one owner. If omitted, a new token is generated
+          in: header
+          name: X-Owner-Token
       requestBody:
         content:
           application/json:
@@ -2945,6 +3800,12 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
           description: Invalid request parameters
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Owner token revoked or expired
         '429':
           content:
             application/json:
@@ -2959,7 +3820,7 @@ paths:
         - KV
   /api/kv/{ns}/{id}:
     delete:
-      description: Permanently removes all keys in the store; requires the owner token returned at creation
+      description: Permanently removes all keys in the store; requires the owner token returned at creation or the management key
       operationId: deleteKvStore
       parameters:
         - in: path
@@ -2973,12 +3834,12 @@ paths:
           required: true
           schema:
             type: string
-        - description: Owner token returned at creation. Required for delete
+        - description: Owner token returned at creation
           in: header
           name: X-Owner-Token
-          required: true
-          schema:
-            type: string
+        - description: Management key of this store
+          in: header
+          name: X-Manage-Key
       responses:
         '204':
           description: Bucket deleted
@@ -2987,7 +3848,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-          description: Missing or wrong owner token
+          description: Missing or wrong owner token or management key
         '404':
           content:
             application/json:
@@ -2996,6 +3857,7 @@ paths:
           description: Store not found or expired
       security:
         - OwnerToken: []
+        - ManageKey: []
       summary: Delete entire KV bucket (all keys under ns/id)
       tags:
         - KV
@@ -3086,12 +3948,12 @@ paths:
           required: true
           schema:
             type: string
-        - description: Owner token returned at creation. Required for update and delete
+        - description: Owner token returned at creation
           in: header
           name: X-Owner-Token
-          required: true
-          schema:
-            type: string
+        - description: Management key of this store
+          in: header
+          name: X-Manage-Key
       responses:
         '204':
           description: Key deleted
@@ -3100,7 +3962,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-          description: Missing or wrong owner token
+          description: Missing or wrong owner token or management key
         '404':
           content:
             application/json:
@@ -3109,6 +3971,7 @@ paths:
           description: Store or key not found
       security:
         - OwnerToken: []
+        - ManageKey: []
       summary: Delete key
       tags:
         - KV
@@ -3203,17 +4066,17 @@ paths:
           required: true
           schema:
             type: string
-        - description: Owner token returned at creation. Required for update and delete
-          in: header
-          name: X-Owner-Token
-          required: true
-          schema:
-            type: string
         - in: header
           name: X-Delivery-Mode
           required: false
           schema:
             type: string
+        - description: Owner token returned at creation
+          in: header
+          name: X-Owner-Token
+        - description: Management key of this store
+          in: header
+          name: X-Manage-Key
       requestBody:
         content:
           application/json:
@@ -3227,12 +4090,18 @@ paths:
               schema:
                 $ref: '#/components/schemas/KvUpsertKeyResponse'
           description: Key upserted
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Invalid key or value; key name `hosting` is reserved
         '403':
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-          description: Missing or wrong owner token
+          description: Missing or wrong owner token or management key
         '404':
           content:
             application/json:
@@ -3244,9 +4113,10 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-          description: Key limit exceeded
+          description: 'Key limit exceeded, or old publication is read-only (code: OLD_PUBLICATION_READ_ONLY, republishUrl)'
       security:
         - OwnerToken: []
+        - ManageKey: []
       summary: Upsert key
       tags:
         - KV
@@ -3255,8 +4125,13 @@ paths:
       description: >-
         Returns the size, count, path, TTL and file-type limits a site upload must fit. Sizes are bytes; `maxTotalBytes`
         counts uncompressed files, `maxArchiveExpansionBytes` every inflated ZIP byte including skipped system files
-        (`skippedFileNames`, `skippedRootFolders`), which never count toward the limits.
+        (`skippedFileNames`, `skippedRootFolders`), which never count toward the limits. With `X-Owner-Token`: `reach`,
+        `ownerMaxTtlDays`; an unusable token gets the anonymous answer.
       operationId: getLimits
+      parameters:
+        - description: Optional owner token
+          in: header
+          name: X-Owner-Token
       responses:
         '200':
           content:
@@ -3270,6 +4145,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
           description: Rate limit exceeded for this IP
+      security:
+        - {}
+        - OwnerToken: []
       summary: Upload limits for sites and requests
       tags:
         - Limits
@@ -3318,6 +4196,396 @@ paths:
       summary: Mint a fresh owner token and its derived owner id
       tags:
         - Owner Token
+  /api/owner-token/bind:
+    post:
+      operationId: bindOwnerToken
+      parameters:
+        - description: Admin token of the profile
+          in: header
+          name: X-Owner-Token
+          required: true
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BindRequest'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BindResponse'
+          description: Bound (also when already in the profile)
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Invalid token
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Header token not admin, not in a profile, revoked or expired; or body token revoked
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Active token limit
+      security:
+        - OwnerToken: []
+      summary: Add a token to your profile (as publish)
+      tags:
+        - Owner Token
+  /api/owner-token/mint:
+    post:
+      operationId: mintOwnerToken
+      parameters:
+        - description: Admin token of the profile
+          in: header
+          name: X-Owner-Token
+          required: true
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MintRequest'
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MintResponse'
+          description: Minted
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Invalid label, scope or expiresIn
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Header token not admin, not in a profile, revoked or expired
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Active token limit
+      security:
+        - OwnerToken: []
+      summary: Mint a profile token with scope and expiry; the token is shown once
+      tags:
+        - Owner Token
+  /api/owner-token/revoke:
+    post:
+      operationId: revokeOwnerToken
+      parameters:
+        - description: Admin token of the profile
+          in: header
+          name: X-Owner-Token
+          required: true
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RevokeRequest'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RevokeResponse'
+          description: Revoked (false = already revoked)
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Header token not admin, not in a profile, revoked or expired
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Not a token of this profile
+      security:
+        - OwnerToken: []
+      summary: Delete a profile token by id or token; it stops working everywhere, its publications stay
+      tags:
+        - Owner Token
+  /api/owner-token/revoke-others:
+    post:
+      operationId: revokeOtherOwnerTokens
+      parameters:
+        - description: Admin token of the profile
+          in: header
+          name: X-Owner-Token
+          required: true
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RevokeOthersRequest'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RevokeOthersResponse'
+          description: Number of tokens deleted
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Header token not admin, not in a profile, revoked or expired
+      security:
+        - OwnerToken: []
+      summary: Delete every other active profile token
+      tags:
+        - Owner Token
+  /api/publications:
+    get:
+      description: Rows of the owner token; a profile token lists the whole profile. Newest first.
+      operationId: listPublications
+      parameters:
+        - description: html, site, file, json or kv
+          in: query
+          name: type
+          required: false
+          schema:
+            enum:
+              - html
+              - site
+              - file
+              - json
+              - kv
+            type: string
+        - description: public, hidden, private, password or unavailable
+          in: query
+          name: status
+          required: false
+          schema:
+            enum:
+              - public
+              - hidden
+              - private
+              - password
+              - unavailable
+            type: string
+        - description: Title search
+          in: query
+          name: q
+          required: false
+          schema:
+            type: string
+        - description: Only rows expiring within 7 days
+          in: query
+          name: expiring
+          required: false
+          schema:
+            default: false
+            type: boolean
+        - description: nextCursor of the previous page
+          in: query
+          name: cursor
+          required: false
+          schema:
+            type: string
+        - description: Page size, 1-24 (default 24)
+          in: query
+          name: limit
+          required: false
+          schema:
+            format: int32
+            type: integer
+        - description: Owner token
+          in: header
+          name: X-Owner-Token
+          required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicationListResponse'
+          description: One page
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Invalid filter or cursor
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Owner token revoked or expired
+      security:
+        - OwnerToken: []
+      summary: List my publications
+      tags:
+        - Publications
+  /api/publications/{type}/{ns}/{id}/preview/{variant}.webp:
+    get:
+      description: Real content of password rows for the owner (X-Owner-Token or X-Manage-Key); others get the public variant
+      operationId: ownerPreviewWebp
+      parameters:
+        - in: path
+          name: type
+          required: true
+          schema:
+            enum:
+              - html
+              - site
+              - file
+              - json
+              - kv
+            type: string
+        - in: path
+          name: ns
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: variant
+          required: true
+          schema:
+            enum:
+              - thumb-d
+              - thumb-m
+              - full
+            type: string
+        - description: Version from a server-built URL
+          in: query
+          name: v
+          required: false
+          schema:
+            type: string
+        - in: header
+          name: If-None-Match
+          required: false
+          schema:
+            type: string
+        - description: Owner token
+          in: header
+          name: X-Owner-Token
+          required: false
+          schema:
+            type: string
+        - description: Management key
+          in: header
+          name: X-Manage-Key
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          content:
+            image/webp:
+              schema:
+                format: binary
+                type: string
+          description: WebP bytes
+        '304':
+          description: Not modified
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: No preview or not the owner
+        '429':
+          description: Owner rate limit exceeded
+      security:
+        - OwnerToken: []
+        - ManageKey: []
+      summary: Owner WebP preview
+      tags:
+        - preview
+  /api/publications/{type}/{ns}/{id}/stats:
+    get:
+      description: Daily humans/automated, visitors, hours, devices, link previews, countries, referrer hosts
+      operationId: getPublicationStats
+      parameters:
+        - in: path
+          name: type
+          required: true
+          schema:
+            enum:
+              - html
+              - site
+              - file
+              - json
+              - kv
+            type: string
+        - in: path
+          name: ns
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+        - description: 'Days: 7, 30 or 90'
+          in: query
+          name: range
+          required: false
+          schema:
+            default: 30
+            format: int32
+            type: integer
+        - description: IANA time zone for hours (default UTC)
+          in: query
+          name: tz
+          required: false
+          schema:
+            type: string
+        - description: Owner token
+          in: header
+          name: X-Owner-Token
+        - description: Management key
+          in: header
+          name: X-Manage-Key
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicationStatsReport'
+          description: Stats for the range
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Invalid range or tz
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Not found or not the owner
+      security:
+        - OwnerToken: []
+        - ManageKey: []
+      summary: Publication stats
+      tags:
+        - Publications
   /api/reports:
     post:
       description: Records a public report about a resource hosted on brewpage.app for moderator review
@@ -3409,18 +4677,15 @@ paths:
     post:
       description: >-
         Upload a multi-file HTML site as a ZIP archive or as individual files with paths. Returns a link to the
-        published site
+        published site Secrets allowed; likely ones are flagged in notices. For a secret: private namespace + password.
       operationId: uploadSite
       parameters:
-        - description: >-
-            Namespace (default public). Custom namespaces are unlisted, accessible to anyone with the URL. Public
-            discovery additionally requires eligibility and no password.
+        - description: 'Namespace. Omitted: private. `public` = gallery & search. Lowercase only.'
           in: query
           name: ns
           required: false
           schema:
-            default: public
-            pattern: ^[a-z0-9-]{1,32}$
+            pattern: ^$|^[a-z0-9-]{1,32}$
             type: string
         - description: Comma-separated tags
           example: demo,portfolio
@@ -3452,12 +4717,6 @@ paths:
           required: false
           schema:
             type: string
-        - description: Reuse existing owner token to group entities under one owner
-          in: header
-          name: X-Owner-Token
-          required: false
-          schema:
-            type: string
         - in: header
           name: User-Agent
           required: false
@@ -3468,6 +4727,9 @@ paths:
           required: false
           schema:
             type: string
+        - description: Reuse existing owner token to group entities under one owner
+          in: header
+          name: X-Owner-Token
       requestBody:
         content:
           multipart/form-data:
@@ -3558,12 +4820,12 @@ paths:
           required: true
           schema:
             type: string
-        - description: Owner token returned at creation. Required for delete
+        - description: Owner token returned at creation
           in: header
           name: X-Owner-Token
-          required: true
-          schema:
-            type: string
+        - description: Management key of this site
+          in: header
+          name: X-Manage-Key
       responses:
         '204':
           description: Site deleted
@@ -3581,6 +4843,7 @@ paths:
           description: Site not found
       security:
         - OwnerToken: []
+        - ManageKey: []
       summary: Delete site
       tags:
         - Sites
@@ -3602,9 +4865,9 @@ paths:
         - description: Owner token returned at creation
           in: header
           name: X-Owner-Token
-          required: true
-          schema:
-            type: string
+        - description: Management key of this site
+          in: header
+          name: X-Manage-Key
       responses:
         '200':
           content:
@@ -3625,7 +4888,9 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
           description: Site not found
       security:
+        - {}
         - OwnerToken: []
+        - ManageKey: []
       summary: Get site info
       tags:
         - Sites
@@ -3667,12 +4932,6 @@ paths:
           required: false
           schema:
             type: string
-        - description: Owner token returned at creation. Required for update
-          in: header
-          name: X-Owner-Token
-          required: true
-          schema:
-            type: string
         - in: header
           name: User-Agent
           required: false
@@ -3686,6 +4945,12 @@ paths:
           required: false
           schema:
             type: string
+        - description: Owner token returned at creation
+          in: header
+          name: X-Owner-Token
+        - description: Management key of this site
+          in: header
+          name: X-Manage-Key
       requestBody:
         content:
           multipart/form-data:
@@ -3740,6 +5005,12 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
           description: Site not found or expired
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: 'Old publication: read-only, publish a new one (republishUrl)'
         '410':
           content:
             application/json:
@@ -3762,6 +5033,7 @@ paths:
           description: 'No servable file left: every file has an unsupported or missing extension'
       security:
         - OwnerToken: []
+        - ManageKey: []
       summary: Update site
       tags:
         - Sites
@@ -3869,8 +5141,8 @@ paths:
   /api/{ns}/{id}/owner-check:
     get:
       description: >-
-        Returns `{isOwner, type}`, plus `format` for an `html`-type resource. Constant-time BCrypt match. 404 when the
-        resource does not exist (or has expired). 200 with `isOwner:false` when the X-Owner-Token header is absent.
+        Returns `{isOwner, type}`, plus `format` for an `html`-type resource. 404 or 410 exactly as reading the resource
+        would answer. 200 with `isOwner:false` when no credential is sent or it does not own the resource.
       operationId: ownerCheck
       parameters:
         - in: path
@@ -3883,12 +5155,12 @@ paths:
           required: true
           schema:
             type: string
-        - description: Owner token to verify (constant-time match)
+        - description: Owner token to verify
           in: header
           name: X-Owner-Token
-          required: false
-          schema:
-            type: string
+        - description: Management key to verify
+          in: header
+          name: X-Manage-Key
       responses:
         '200':
           content:
@@ -3899,7 +5171,8 @@ paths:
       security:
         - {}
         - OwnerToken: []
-      summary: Verify whether the supplied X-Owner-Token owns the resource
+        - ManageKey: []
+      summary: Verify whether the supplied X-Owner-Token or X-Manage-Key owns the resource
       tags:
         - Owner Check
   /api/{type}/{ns}/{id}/access/revoke:
@@ -3927,11 +5200,12 @@ paths:
           required: true
           schema:
             type: string
-        - in: header
+        - description: Owner token returned at creation
+          in: header
           name: X-Owner-Token
-          required: true
-          schema:
-            type: string
+        - description: Management key of this publication
+          in: header
+          name: X-Manage-Key
       responses:
         '200':
           content:
@@ -3959,7 +5233,76 @@ paths:
           description: Publication unavailable
       security:
         - OwnerToken: []
+        - ManageKey: []
       summary: Revoke reader access to a new protected publication
+      tags:
+        - Hosting Management
+  /api/{type}/{ns}/{id}/extend:
+    post:
+      operationId: extendPublication
+      parameters:
+        - in: path
+          name: type
+          required: true
+          schema:
+            enum:
+              - html
+              - files
+              - json
+              - kv
+              - sites
+            type: string
+        - in: path
+          name: ns
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+        - description: Owner token returned at creation
+          in: header
+          name: X-Owner-Token
+        - description: Management key of this publication
+          in: header
+          name: X-Manage-Key
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExtendResponse'
+          description: OK
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Missing or wrong owner token or management key; token revoked or expired
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Publication unavailable (outside public also for wrong credentials)
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: 'Old publication is read-only (code: OLD_PUBLICATION_READ_ONLY, republishUrl)'
+        '429':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Rate limit exceeded
+      security:
+        - OwnerToken: []
+        - ManageKey: []
+      summary: Extend storage to 90 days from now (profile owners); never shortens
       tags:
         - Hosting Management
   /api/{type}/{ns}/{id}/hosting:
@@ -3987,17 +5330,18 @@ paths:
           required: true
           schema:
             type: string
-        - in: header
+        - description: Owner token returned at creation
+          in: header
           name: X-Owner-Token
-          required: true
-          schema:
-            type: string
+        - description: Management key of this publication
+          in: header
+          name: X-Manage-Key
       responses:
         '200':
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/HostingProjection'
+                $ref: '#/components/schemas/HostingReadResponse'
           description: OK
         '403':
           content:
@@ -4013,6 +5357,7 @@ paths:
           description: Publication unavailable
       security:
         - OwnerToken: []
+        - ManageKey: []
       summary: Read owner-only publication delivery settings
       tags:
         - Hosting Management
@@ -4040,11 +5385,12 @@ paths:
           required: true
           schema:
             type: string
-        - in: header
+        - description: Owner token returned at creation
+          in: header
           name: X-Owner-Token
-          required: true
-          schema:
-            type: string
+        - description: Management key of this publication
+          in: header
+          name: X-Manage-Key
       requestBody:
         content:
           application/json:
@@ -4084,9 +5430,302 @@ paths:
           description: Hosting changes temporarily unavailable
       security:
         - OwnerToken: []
+        - ManageKey: []
       summary: >-
         Change delivery mode for a new publication. Sites and non-public HTML pages stay on subdomain; mismatches are
         reported, not rejected
+      tags:
+        - Hosting Management
+  /api/{type}/{ns}/{id}/manage-key:
+    post:
+      operationId: resetManageKey
+      parameters:
+        - in: path
+          name: type
+          required: true
+          schema:
+            enum:
+              - html
+              - files
+              - json
+              - kv
+              - sites
+            type: string
+        - in: path
+          name: ns
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+        - description: Owner token returned at creation
+          in: header
+          name: X-Owner-Token
+        - description: Management key of this publication
+          in: header
+          name: X-Manage-Key
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ManageKeyResponse'
+          description: OK
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Missing or wrong owner token or management key; token revoked or expired
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Publication unavailable (outside public also for wrong credentials)
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: 'Old publication is read-only (code: OLD_PUBLICATION_READ_ONLY, republishUrl)'
+        '429':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Rate limit exceeded
+      security:
+        - OwnerToken: []
+        - ManageKey: []
+      summary: Mint or reset the management link; the old link stops working
+      tags:
+        - Hosting Management
+  /api/{type}/{ns}/{id}/password:
+    post:
+      operationId: setPassword
+      parameters:
+        - in: path
+          name: type
+          required: true
+          schema:
+            enum:
+              - html
+              - files
+              - sites
+            type: string
+        - in: path
+          name: ns
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+        - description: Owner token returned at creation
+          in: header
+          name: X-Owner-Token
+        - description: Management key of this publication
+          in: header
+          name: X-Manage-Key
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PasswordRequest'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PasswordResponse'
+          description: OK
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Password too short
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Missing or wrong owner token or management key; token revoked or expired
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Publication unavailable (outside public also for wrong credentials)
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: 'Old publication is read-only (code: OLD_PUBLICATION_READ_ONLY, republishUrl)'
+        '429':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Rate limit exceeded
+      security:
+        - OwnerToken: []
+        - ManageKey: []
+      summary: Set, change or remove the reader password
+      tags:
+        - Hosting Management
+  /api/{type}/{ns}/{id}/rotate:
+    post:
+      operationId: rotatePublicationLink
+      parameters:
+        - in: path
+          name: type
+          required: true
+          schema:
+            enum:
+              - html
+              - files
+              - json
+              - kv
+              - sites
+            type: string
+        - in: path
+          name: ns
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+        - description: Owner token
+          in: header
+          name: X-Owner-Token
+          required: false
+          schema:
+            type: string
+        - description: Management key
+          in: header
+          name: X-Manage-Key
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicationRotateResponse'
+          description: OK
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Missing or wrong owner token or management key; token revoked or expired
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Publication unavailable (outside public also for wrong credentials)
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: 'Old publication is read-only (code: OLD_PUBLICATION_READ_ONLY, republishUrl)'
+        '429':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: 'Rate limit exceeded, or ROTATE_LIMITED: at most 3 link changes a day'
+        '503':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Link changes temporarily unavailable
+      security:
+        - OwnerToken: []
+        - ManageKey: []
+      summary: 'Change link: new id, the old link stops working'
+      tags:
+        - Hosting Management
+  /api/{type}/{ns}/{id}/visibility:
+    post:
+      operationId: setVisibility
+      parameters:
+        - in: path
+          name: type
+          required: true
+          schema:
+            enum:
+              - html
+              - files
+              - json
+              - kv
+              - sites
+            type: string
+        - in: path
+          name: ns
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+        - description: Owner token returned at creation
+          in: header
+          name: X-Owner-Token
+        - description: Management key of this publication
+          in: header
+          name: X-Manage-Key
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VisibilityRequest'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VisibilityResponse'
+          description: OK
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Missing or wrong owner token or management key; token revoked or expired
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Publication unavailable (outside public also for wrong credentials)
+        '429':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Rate limit exceeded
+      security:
+        - OwnerToken: []
+        - ManageKey: []
+      summary: Hide or show a public publication in gallery & search. Link unchanged
       tags:
         - Hosting Management
   /galleries:
@@ -4223,6 +5862,58 @@ paths:
         '429':
           description: Per-IP rate limit exceeded
       summary: Per-content OG image (legacy URL)
+      tags:
+        - preview
+  /preview/{ns}/{id}/{variant}.webp:
+    get:
+      description: thumb-d 800x373, thumb-m 320x149, full (page top); same gates as the card
+      operationId: previewWebp
+      parameters:
+        - in: path
+          name: ns
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: variant
+          required: true
+          schema:
+            enum:
+              - thumb-d
+              - thumb-m
+              - full
+            type: string
+        - description: Version from a server-built URL
+          in: query
+          name: v
+          required: false
+          schema:
+            type: string
+        - in: header
+          name: If-None-Match
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          content:
+            image/webp:
+              schema:
+                format: binary
+                type: string
+          description: WebP bytes
+        '304':
+          description: Not modified
+        '404':
+          description: No preview
+        '429':
+          description: Per-IP rate limit exceeded
+      summary: WebP preview
       tags:
         - preview
   /{key}.txt:
@@ -4410,6 +6101,8 @@ servers:
 tags:
   - description: Key-Value store with up to 1000 keys per store
     name: KV
+  - description: Get a new owner token (stateless); with an admin token, manage profile tokens.
+    name: Owner Token
   - description: >-
       Browse public content from the 'public' namespace without password protection; mine=true lists the caller's own
       publications
@@ -4424,14 +6117,14 @@ tags:
     name: Limits
   - description: Multi-file HTML site hosting via ZIP or folder upload
     name: Sites
-  - description: Mints a fresh owner token client-side; stateless, persists nothing
-    name: Owner Token
-  - description: Search engine optimization endpoints
-    name: SEO
+  - description: Owner list and stats
+    name: Publications
   - description: >-
       Social previews: per-content OpenGraph image (1200×630 JPEG; .png is a legacy URL alias) and OG meta stub for
       social bots
     name: preview
+  - description: Search engine optimization endpoints
+    name: SEO
   - description: JSON document store with up to 10,000 docs per collection
     name: JSON
   - description: Platform-wide usage statistics

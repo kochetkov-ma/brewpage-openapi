@@ -19,4 +19,6 @@ for (const path of ['server.json', 'mcp-server/server.json']) {
 const source = readFileSync(new URL('../mcp-server/src/index.ts', import.meta.url), 'utf8');
 assert.equal(source.match(/new McpServer\(\{[\s\S]*?version: "([^"]+)"/)?.[1], manifest.version,
   'MCP handshake source version must match package');
+assert.equal(source.match(/USER_AGENT = "brewpage-mcp\/([^"]+)"/)?.[1], manifest.version,
+  'MCP User-Agent version must match package');
 console.log(`MCP release identity valid: ${manifest.name}@${manifest.version}`);

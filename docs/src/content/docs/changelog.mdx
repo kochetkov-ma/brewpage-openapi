@@ -6,6 +6,10 @@ order: 5
 
 # Changelog
 
+## Spec 1.136.0 / MCP 1.13.0 — Owner features (unreleased)
+
+REST create and list without `ns` publish privately (link only, notice `namespace-defaulted`). Create responses add a private `manageUrl` (give it only to the owner), `listed` and `visibilityUrl`; `access` is an enum. Owner operations accept `X-Owner-Token` or the new `X-Manage-Key` scheme. New operations: `setVisibility`, `setPassword`, `resetManageKey`, `extendPublication`, `rotatePublicationLink`, `replaceFile` (`PUT /api/files/{ns}/{id}`), `hostOwnerCheck`, `bindOwnerToken`, `mintOwnerToken`, `revokeOwnerToken`, `revokeOtherOwnerTokens`, `listPublications`, `getPublicationStats`, `previewWebp` and `ownerPreviewWebp`. Old publications are read-only (`409 OLD_PUBLICATION_READ_ONLY` with `republishUrl`); the KV key `hosting` is reserved. Secrets allowed; likely ones are flagged in notices. For a secret: private namespace + password. 47 paths and 62 operations. MCP 1.13.0 adds `set_visibility`, `bind_token` and `mint_token` (twenty tools), an identifying User-Agent, an optional `BREWPAGE_OWNER_TOKEN` default and site deletion.
+
 ## Spec 1.135.0 — Chat-pasted pages repaired, verbatim opt-out
 
 `POST /api/html`, `PUT /api/html/{ns}/{id}` and public `.html` files published as pages via `POST /api/files` repair an HTML page copied from a chat: a wrapping ```` ```html ```` fence or chat text around the page is removed (notice `chat-text-removed`), an entity-escaped page is restored (notice `escaped-html-restored`). The new optional query parameter `verbatim=true` stores the content exactly as sent; `GET /api/html/{ns}/{id}/source` returns what was stored. 33 paths and 47 operations. No MCP release.

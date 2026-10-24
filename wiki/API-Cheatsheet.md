@@ -23,7 +23,7 @@ GET    /api/html?ns={ns}      → Owner-scoped list (X-Owner-Token)
 
 **Headers:** `X-Owner-Token: tok_xxx` (update/delete) · `X-Password: secret` (protected pages)
 
-Creation options use query parameters `ns`, `format`, `ttl`, `tags` and the `X-Password` header. REST omitted `ns` defaults to `public`; MCP omitted `namespace` generates an unlisted namespace. Use exact returned links. Rendered HTML/code, original owner-only `/source`, and browser viewers are distinct representations.
+Creation options use query parameters `ns`, `format`, `ttl`, `tags` and the `X-Password` header. REST omitted `ns` publishes privately (link only); MCP omitted `namespace` generates a private namespace. Use exact returned links. Rendered HTML/code, original owner-only `/source`, and browser viewers are distinct representations.
 
 ---
 
@@ -79,7 +79,7 @@ Limits: **5 MB/file**, **1,000 files/namespace**
 | Serve site file | `GET` | `/api/sites/{ns}/{id}/files/{filePath}` |
 | Delete site | `DELETE` | `/api/sites/{ns}/{id}` |
 
-**Query params (upload):** `ns` (default: public), `tags` (comma-separated), `ttl` (1-30 days), `entry` (override entry file)
+**Query params (upload):** `ns` (omitted: private), `tags` (comma-separated), `ttl` (1-30 days), `entry` (override entry file)
 **Headers:** `X-Password` (protection), `X-Owner-Token` (owner grouping / info / delete)
 **Response (201):** `id`, `namespace`, `entryFile`, `link`, `ownerLink`, `fileCount`, `totalSizeBytes`, `expiresAt`, `tags`, `ownerToken`
 **Limits:** `GET /api/limits` (bytes). Entry: `entry`, else root `index.html`, else the shallowest HTML file. System files (`.DS_Store`, `__MACOSX/`, ...) are skipped and never count.

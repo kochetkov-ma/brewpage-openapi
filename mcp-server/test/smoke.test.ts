@@ -3,14 +3,18 @@ import assert from "node:assert/strict";
 import { createServer, type IncomingHttpHeaders } from "node:http";
 import { once } from "node:events";
 import { fileURLToPath } from "node:url";
+import { readFileSync } from "node:fs";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 
 const EXPECTED_TOOL_NAMES = [
   "publish_html", "publish_file", "delete_resource", "get_page", "get_stats", "publish_site",
   "republish_site", "update_html", "publish_json", "get_json", "update_json", "publish_kv",
-  "set_kv", "get_kv", "search_gallery", "update_hosting", "get_limits",
+  "set_kv", "get_kv", "search_gallery", "update_hosting", "get_limits", "set_visibility", "bind_token", "mint_token",
 ];
+
+const PACKAGE_VERSION = (JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8")) as { version: string }).version;
+const ENV_TOKEN = "EnvOwnerToken0123456789abcdefABC";
 
 const NEW_RESPONSE = {
   id: "aBcDeFgHiJ", namespace: "public", ownerToken: "fixture-owner",
@@ -22,7 +26,7 @@ const NEW_RESPONSE = {
 
 interface RequestSnapshot { method: string; url: string; headers: IncomingHttpHeaders; body: string }
 
-async function fixture(t: TestContext) {
+async function fixture(t: TestContext, env: Record<string, string> = {}) {
   const requests: RequestSnapshot[] = [];
   let response = { status: 201, body: JSON.stringify(NEW_RESPONSE), headers: {} as Record<string, string> };
   const api = createServer(async (req, res) => {
@@ -42,7 +46,7 @@ async function fixture(t: TestContext) {
   const transport = new StdioClientTransport({
     command: process.execPath,
     args: [fileURLToPath(new URL("../dist/index.js", import.meta.url))],
-    env: { BREWPAGE_URL: baseUrl }, stderr: "pipe",
+    env: { BREWPAGE_URL: baseUrl, ...env }, stderr: "pipe",
   });
   const client = new Client({ name: "contract-smoke-test", version: "0.0.0" });
   t.after(async () => {
@@ -61,7 +65,7 @@ async function fixture(t: TestContext) {
   };
 }
 
-test("MCP exposes exactly 17 tools and optional create-only delivery choice", { timeout: 10_000 }, async (t) => {
+test("MCP exposes exactly 20 tools and optional create-only delivery choice", { timeout: 10_000 }, async (t) => {
   // GIVEN local MCP connected to a synthetic API.
   const f = await fixture(t);
   // WHEN client discovers tools.
@@ -117,7 +121,7 @@ test("omitted namespace stays generated private and omitted delivery stays absen
   assert.deepEqual(JSON.parse(f.requests[0].body), { content: "<p>Unlisted fixture</p>" }, "JSON contains only the supported content field");
   assert.equal(f.requests[0].headers["x-password"], undefined, "omitted password remains absent");
   assert.equal(f.requests[0].headers["x-delivery-mode"], undefined, "omission invents no requested mode");
-  assert.match(result.content[0].text, /Unlisted link/, "private result retains its unlisted notice");
+  assert.match(result.content[0].text, /Link only: not listed\./, "private result retains its link-only notice");
 });
 
 for (const scenario of [
@@ -302,7 +306,8 @@ for (const error of [
     const result = await f.call("update_hosting", { type: "html", namespace: "public", id: "aBcDeFgHiJ", ownerToken: "fixture-owner", deliveryMode: "path", expectedVersion: 1 });
     // THEN status/code remain visible and the call is not retried.
     assert.equal(result.isError, true, "server failure becomes a tool error");
-    assert.equal(result.content[0].text, `Failed to update hosting (${error.status}): ${JSON.stringify({ code: error.code })}`, "status and code are retained exactly");
+    const hint = error.status === 403 ? "\nWrong owner token for this publication. Use ownerToken from create." : "";
+    assert.equal(result.content[0].text, `Failed to update hosting (${error.status}): ${JSON.stringify({ code: error.code })}${hint}`, "status and code are retained exactly");
     assert.equal(f.requests.length, 1, "failed mutation is not retried");
   });
 }
@@ -449,3 +454,133 @@ for (const scenario of [
       "limits request and relayed text match exactly");
   });
 }
+
+for (const scenario of [
+  { tool: "publish_html", args: { content: "<h1>Fixture</h1>" } },
+  { tool: "publish_json", args: { json: { value: 7 } } },
+  { tool: "publish_kv", args: { key: "k", value: "v" } },
+  { tool: "publish_site", args: { entryContent: "<h1>Fixture</h1>" } },
+  { tool: "update_json", args: { namespace: "public", id: "aBcDeFgHiJ", json: { value: 7 }, ownerToken: "fixture-owner" } },
+  { tool: "republish_site", args: { namespace: "public", id: "aBcDeFgHiJ", entryContent: "<h1>Fixture</h1>", ownerToken: "fixture-owner" } },
+  { tool: "get_limits", args: {} },
+]) {
+  test(`${scenario.tool} identifies the client with the package User-Agent`, { timeout: 10_000 }, async (t) => {
+    // GIVEN a synthetic API.
+    const f = await fixture(t);
+    // WHEN the tool calls BrewPage.
+    await f.call(scenario.tool, scenario.args);
+    // THEN every API request carries the versioned agent name.
+    assert.deepEqual(f.requests.map((request) => request.headers["user-agent"]), [`brewpage-mcp/${PACKAGE_VERSION}`],
+      "one API request with the identifying User-Agent");
+  });
+}
+
+for (const scenario of [
+  { tool: "publish_html", args: { content: "<h1>Fixture</h1>" } },
+  { tool: "publish_file", args: {} },
+  { tool: "publish_site", args: { entryContent: "<h1>Fixture</h1>" } },
+  { tool: "publish_json", args: { json: { value: 7 } } },
+  { tool: "publish_kv", args: { key: "k", value: "v" } },
+]) {
+  test(`${scenario.tool} sends BREWPAGE_OWNER_TOKEN by default and never repeats it`, { timeout: 10_000 }, async (t) => {
+    // GIVEN a configured default token that the server echoes back.
+    const f = await fixture(t, { BREWPAGE_OWNER_TOKEN: ENV_TOKEN });
+    f.respond(201, { ...NEW_RESPONSE, ownerToken: ENV_TOKEN });
+    const extra = scenario.tool === "publish_file" ? { url: `${f.baseUrl}/source-file` } : {};
+    // WHEN the create runs without an ownerToken argument.
+    const result = await f.call(scenario.tool, { ...scenario.args, ...extra, namespace: "public" });
+    // THEN the default is the create header and the transcript names it instead of printing it.
+    assert.deepEqual({ owner: f.requests.at(-1)!.headers["x-owner-token"], leaked: result.content[0].text.includes(ENV_TOKEN),
+      banner: result.content[0].text.includes("OWNER TOKEN: BREWPAGE_OWNER_TOKEN (not repeated)") },
+      { owner: ENV_TOKEN, leaked: false, banner: true }, "default token is sent and masked in the banner");
+  });
+}
+
+for (const scenario of [
+  { label: "argument wins over the default", env: { BREWPAGE_OWNER_TOKEN: ENV_TOKEN }, args: { ownerToken: "fixture-owner" }, owner: "fixture-owner" },
+  { label: "malformed default is ignored", env: { BREWPAGE_OWNER_TOKEN: "short" }, args: {}, owner: undefined },
+]) {
+  test(`publish_html owner token: ${scenario.label}`, { timeout: 10_000 }, async (t) => {
+    // GIVEN a configured default token.
+    const f = await fixture(t, scenario.env);
+    // WHEN HTML is published.
+    await f.call("publish_html", { content: "<h1>Fixture</h1>", ...scenario.args });
+    // THEN the expected owner header (or none) reaches the server.
+    assert.equal(f.requests[0].headers["x-owner-token"], scenario.owner, "owner header follows argument, then valid default");
+  });
+}
+
+for (const scenario of [
+  { tool: "update_html", args: { namespace: "public", id: "aBcDeFgHiJ", content: "x" } },
+  { tool: "delete_resource", args: { type: "site", namespace: "public", id: "aBcDeFgHiJ" } },
+  { tool: "set_visibility", args: { type: "html", namespace: "public", id: "aBcDeFgHiJ", listed: false } },
+  { tool: "bind_token", args: { token: "fixture-bound-token" } },
+  { tool: "search_gallery", args: { mine: true } },
+]) {
+  test(`${scenario.tool} without any owner token fails before HTTP`, { timeout: 10_000 }, async (t) => {
+    // GIVEN no argument and no configured default.
+    const f = await fixture(t);
+    // WHEN the owner tool runs.
+    const result = await f.call(scenario.tool, scenario.args);
+    // THEN it reports the missing token without calling the API.
+    assert.deepEqual({ isError: result.isError, text: result.content[0].text, requests: f.requests.length },
+      { isError: true, text: "No owner token: pass ownerToken or set BREWPAGE_OWNER_TOKEN.", requests: 0 }, "missing token is a local error");
+  });
+}
+
+for (const scenario of [
+  { tool: "delete_resource", args: { type: "site", namespace: "my ns", id: "a/b" }, status: 204, response: {},
+    request: { method: "DELETE", url: "/api/sites/my%20ns/a%2Fb", body: "" }, text: "Successfully deleted site resource: my ns/a/b" },
+  { tool: "set_visibility", args: { type: "file", namespace: "public", id: "aBcDeFgHiJ", listed: false }, status: 200,
+    response: { listed: false, access: "public", link: NEW_RESPONSE.link, notices: [{ code: "visibility-not-listable", message: "Not listable." }] },
+    request: { method: "POST", url: "/api/files/public/aBcDeFgHiJ/visibility", body: '{"listed":false}' },
+    text: "LISTED: false · link unchanged\nNotice (visibility-not-listable): Not listable." },
+  { tool: "bind_token", args: { token: "fixture-bound-token-0123456789ab" }, status: 200, response: { bound: true, id: "x", active: 3, max: 10 },
+    request: { method: "POST", url: "/api/owner-token/bind", body: '{"token":"fixture-bound-token-0123456789ab"}' }, text: "BOUND …89ab · 3/10 active" },
+  { tool: "mint_token", args: { label: "ci", scope: "admin", expiresIn: "90d" }, status: 201,
+    response: { token: "MintedToken0123456789abcdefABCDE", id: "x", scope: "admin", expiresAt: "2027-01-22T00:00:00Z" },
+    request: { method: "POST", url: "/api/owner-token/mint", body: '{"label":"ci","scope":"admin","expiresIn":"90d"}' },
+    text: "MINTED · admin · expires 2027-01-22T00:00:00Z\n\n===================================\nNEW TOKEN (shown once): MintedToken0123456789abcdefABCDE\n===================================\n\nSave it now; it cannot be shown again. Never publish it." },
+]) {
+  test(`${scenario.tool} maps to ${scenario.request.method} ${scenario.request.url} and never echoes the admin token`, { timeout: 10_000 }, async (t) => {
+    // GIVEN a configured admin/owner default token and a server answer.
+    const f = await fixture(t, { BREWPAGE_OWNER_TOKEN: ENV_TOKEN });
+    f.respond(scenario.status, scenario.response);
+    // WHEN the owner tool runs.
+    const result = await f.call(scenario.tool, scenario.args);
+    // THEN request, owner header and output are exact.
+    assert.deepEqual({ requests: f.requests.map(({ method, url, headers, body }) => ({ method, url, owner: headers["x-owner-token"], body })),
+      text: result.content[0].text, isError: result.isError },
+    { requests: [{ ...scenario.request, owner: ENV_TOKEN }], text: scenario.text, isError: undefined }, "owner tool contract is exact");
+  });
+}
+
+test("publish_kv prints the private manage link, the listing hint and warning-class notices", { timeout: 10_000 }, async (t) => {
+  // GIVEN a listed result with a manage link, a secret warning and an ordinary notice.
+  const f = await fixture(t);
+  f.respond(201, { ...NEW_RESPONSE, manageUrl: "https://brewpage.app/manage/kv/public/aBcDeFgHiJ#k=bpm_fixture", listed: true,
+    notices: [{ code: "secret-detected", message: "Possible secret (API key/token?). Anyone with the link can read it." },
+      { code: "ttl-clamped", message: "TTL clamped." }] });
+  // WHEN the KV entry is published.
+  const result = await f.call("publish_kv", { key: "k", value: "v", namespace: "public" });
+  // THEN the agent sees lines it must relay.
+  const lines = result.content[0].text.split("\n");
+  assert.deepEqual(lines.filter((line) => /^(WARNING|Notice|MANAGE LINK|Give it|VISIBILITY)/.test(line)), [
+    "WARNING (secret-detected): Possible secret (API key/token?). Anyone with the link can read it.",
+    "Notice (ttl-clamped): TTL clamped.",
+    "MANAGE LINK (private): https://brewpage.app/manage/kv/public/aBcDeFgHiJ#k=bpm_fixture",
+    "Give it to the user privately; never publish it.",
+    "VISIBILITY: public, listed. Hide: set_visibility listed=false",
+  ], "warning, manage link and listing lines are exact");
+});
+
+test("owner tool 403 names the configured default token in its hint", { timeout: 10_000 }, async (t) => {
+  // GIVEN a wrong configured token.
+  const f = await fixture(t, { BREWPAGE_OWNER_TOKEN: ENV_TOKEN });
+  f.respond(403, { code: "OWNER_AUTHORIZATION_FAILED" });
+  // WHEN an update uses it.
+  const result = await f.call("update_html", { namespace: "public", id: "aBcDeFgHiJ", content: "x" });
+  // THEN the hint says which token was sent.
+  assert.equal(result.content[0].text, 'Failed to update HTML (403): {"code":"OWNER_AUTHORIZATION_FAILED"}\n' +
+    "Wrong owner token for this publication. Use ownerToken from create. Sent: BREWPAGE_OWNER_TOKEN.", "403 hint is exact");
+});
