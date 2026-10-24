@@ -232,12 +232,20 @@ components:
           description: API URL for programmatic access (delete); /api/html/{ns}/{id} for a published page
           type: string
         ownerToken:
-          description: Secret token required for delete operation. Store it safely -- cannot be recovered
+          description: >-
+            Secret token required for delete operation. Store it safely -- cannot be recovered. Absent when an existing
+            publication of another owner was returned (result.extras.isOwner false)
           type: string
         requestedDeliveryMode:
           type:
             - string
             - 'null'
+        result:
+          description: >-
+            Present when an existing publication was returned: action merged, extras.isOwner says if ownerToken manages
+            it
+          oneOf:
+            - $ref: '#/components/schemas/PublicationResult'
         routingCohort:
           type: string
         sizeBytes:
@@ -270,7 +278,6 @@ components:
         - modeLocked
         - namespace
         - ownerLink
-        - ownerToken
         - requestedDeliveryMode
         - routingCohort
         - sizeBytes
@@ -1476,6 +1483,9 @@ components:
           description: Days `POST …/extend` sets; null when not offered
           format: int32
           type: integer
+        format:
+          description: Page content format (html, markdown, code formats) or file MIME type; absent for sites, JSON and KV
+          type: string
         id:
           type: string
         link:

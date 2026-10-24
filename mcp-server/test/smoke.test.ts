@@ -584,3 +584,21 @@ test("owner tool 403 names the configured default token in its hint", { timeout:
   assert.equal(result.content[0].text, 'Failed to update HTML (403): {"code":"OWNER_AUTHORIZATION_FAILED"}\n' +
     "Wrong owner token for this publication. Use ownerToken from create. Sent: BREWPAGE_OWNER_TOKEN.", "403 hint is exact");
 });
+
+for (const scenario of [
+  { label: "foreign duplicate", extra: { ownerToken: undefined, result: { code: "duplicate", action: "merged", extras: { isOwner: false } } },
+    lines: ["No owner token: an existing publication of another owner was returned."] },
+  { label: "own duplicate", extra: { result: { code: "duplicate", action: "merged", extras: { isOwner: true } } }, lines: ["OWNER TOKEN: fixture-owner"] },
+  { label: "absent token", extra: { ownerToken: undefined }, lines: [] },
+]) {
+  test(`publish_file owner token banner for ${scenario.label}`, { timeout: 10_000 }, async (t) => {
+    // GIVEN an upload answer for an existing or token-less publication.
+    const f = await fixture(t);
+    f.respond(200, { ...NEW_RESPONSE, ...scenario.extra });
+    // WHEN the file is published.
+    const result = await f.call("publish_file", { url: `${f.baseUrl}/source-file`, namespace: "public" });
+    // THEN the banner appears only for a token the caller owns.
+    assert.deepEqual(result.content[0].text.split("\n").filter((line) => /^(OWNER TOKEN|No owner token)/.test(line)), scenario.lines,
+      "owner token banner follows result.extras.isOwner and token presence");
+  });
+}

@@ -143,8 +143,12 @@ function noticeLines(data: Record<string, unknown>): string[] {
     .map((n) => `${WARNING_CODES.has(n.code) ? "WARNING" : "Notice"} (${n.code}): ${n.message}`);
 }
 
-/** Owner token banner; the configured default is named, never repeated. */
-function ownerTokenLines(token: unknown, purpose: string): string[] {
+/** Owner token banner; the configured default is named, never repeated; none for a foreign existing publication. */
+function ownerTokenLines(data: Record<string, unknown>, purpose: string): string[] {
+  const token = data.ownerToken;
+  const extras = (data.result as { extras?: { isOwner?: unknown } } | null | undefined)?.extras;
+  if (extras?.isOwner === false) return [``, `No owner token: an existing publication of another owner was returned.`];
+  if (typeof token !== "string" || token.length === 0) return [];
   const shown = ENV_OWNER_TOKEN !== undefined && token === ENV_OWNER_TOKEN ? `${OWNER_TOKEN_ENV} (not repeated)` : token;
   return [
     ``,
@@ -211,7 +215,7 @@ function formatPublishResponse(
   );
   if (data.expiresAt) lines.push(`Expires: ${data.expiresAt}`);
   lines.push(...hostingResponseLines(data));
-  lines.push(...ownerTokenLines(data.ownerToken, "update or delete this resource later"));
+  lines.push(...ownerTokenLines(data, "update or delete this resource later"));
   lines.push(...ownerLinkLines(data));
   const ns = ((data.namespace as string | undefined) ?? effectiveNamespace) || "";
   if (ns !== PUBLIC_NAMESPACE) {
@@ -627,7 +631,7 @@ server.tool(
     if (Array.isArray(site.tags) && site.tags.length) lines.push(`Tags: ${(site.tags as string[]).join(", ")}`);
     if (site.expiresAt) lines.push(`Expires: ${site.expiresAt}`);
     lines.push(...hostingResponseLines(site));
-    lines.push(...ownerTokenLines(site.ownerToken, "view info or delete this site"));
+    lines.push(...ownerTokenLines(site, "view info or delete this site"));
     lines.push(...ownerLinkLines(site));
     const ns = ((site.namespace as string | undefined) || effectiveNamespace) || "";
     if (ns !== PUBLIC_NAMESPACE) {
