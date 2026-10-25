@@ -143,7 +143,7 @@ function noticeLines(data: Record<string, unknown>): string[] {
     .map((n) => `${WARNING_CODES.has(n.code) ? "WARNING" : "Notice"} (${n.code}): ${n.message}`);
 }
 
-const SIGN_IN_HINT = "Optional: sign in at https://account.brewpage.app to manage your pages and tokens from any device. Not required.";
+const SIGN_IN_HINT = "Optional: sign in free (Google or any email) at https://account.brewpage.app to never lose your pages or tokens and to mint tokens that never expire. Not needed to publish.";
 
 /** Owner token banner; the configured default is named, never repeated; none for a foreign existing publication.
  * Sign-in hint only for a token minted by this call (not `sent`, not the configured default). */

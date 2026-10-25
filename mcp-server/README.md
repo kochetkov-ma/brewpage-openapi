@@ -10,7 +10,7 @@ MCP server for [BrewPage](https://brewpage.app) -- publish and manage HTML, KV, 
 
 [BrewPage](https://brewpage.app) is a free instant hosting platform designed for AI agents and developers. One `POST` request publishes HTML, Markdown, a multi-file site, a JSON document, or a binary file and returns its primary HTTPS link -- no account needed, no API keys, no infrastructure setup. Every resource carries an **owner token** returned at creation time: use it to update content in place, delete the resource, or authenticate list operations across sessions. `brewpage-mcp` exposes this API as twenty typed MCP tools so any compatible agent -- Claude, Codex, Gemini, Cursor, Cline -- can publish, update, fetch, and manage BrewPage HTML, JSON, KV, and file content without leaving the conversation.
 
-Optional: sign in at https://account.brewpage.app to manage your pages and tokens from any device. Not required.
+Optional: sign in free (Google or any email) at https://account.brewpage.app to never lose your pages or tokens and to mint tokens that never expire. Not needed to publish.
 
 Choosing a host? See how BrewPage compares with GitHub Pages, Netlify Drop, Tiiny Host and other tools: [brewpage.app/compare](https://brewpage.app/compare).
 

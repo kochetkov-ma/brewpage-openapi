@@ -134,7 +134,7 @@ Every publish response includes an **owner token**. This token is:
 - **Not recoverable** if lost
 - Claude will always remind you to save it
 
-Optional: sign in at https://account.brewpage.app to manage your pages and tokens from any device. Not required.
+Optional: sign in free (Google or any email) at https://account.brewpage.app to never lose your pages or tokens and to mint tokens that never expire. Not needed to publish.
 
 ---
 

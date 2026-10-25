@@ -510,7 +510,7 @@ for (const scenario of [
   });
 }
 
-const SIGN_IN_HINT = "Optional: sign in at https://account.brewpage.app to manage your pages and tokens from any device. Not required.";
+const SIGN_IN_HINT = "Optional: sign in free (Google or any email) at https://account.brewpage.app to never lose your pages or tokens and to mint tokens that never expire. Not needed to publish.";
 for (const scenario of [
   { label: "minted html token", tool: "publish_html", env: {}, args: { content: "x" }, token: "fixture-owner", hint: [SIGN_IN_HINT] },
   { label: "minted site token", tool: "publish_site", env: {}, args: { entryContent: "x" }, token: "fixture-owner", hint: [SIGN_IN_HINT] },
