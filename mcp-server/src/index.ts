@@ -143,8 +143,11 @@ function noticeLines(data: Record<string, unknown>): string[] {
     .map((n) => `${WARNING_CODES.has(n.code) ? "WARNING" : "Notice"} (${n.code}): ${n.message}`);
 }
 
-/** Owner token banner; the configured default is named, never repeated; none for a foreign existing publication. */
-function ownerTokenLines(data: Record<string, unknown>, purpose: string): string[] {
+const SIGN_IN_HINT = "Optional: sign in at https://account.brewpage.app to manage your pages and tokens from any device. Not required.";
+
+/** Owner token banner; the configured default is named, never repeated; none for a foreign existing publication.
+ * Sign-in hint only for a token minted by this call (not `sent`, not the configured default). */
+function ownerTokenLines(data: Record<string, unknown>, purpose: string, sent?: string): string[] {
   const token = data.ownerToken;
   const extras = (data.result as { extras?: { isOwner?: unknown } } | null | undefined)?.extras;
   if (extras?.isOwner === false) return [``, `No owner token: an existing publication of another owner was returned.`];
@@ -157,6 +160,7 @@ function ownerTokenLines(data: Record<string, unknown>, purpose: string): string
     `===================================`,
     ``,
     `IMPORTANT: Save your owner token! You need it to ${purpose}. It cannot be recovered if lost.`,
+    ...(token !== sent && token !== ENV_OWNER_TOKEN ? [SIGN_IN_HINT] : []),
   ];
 }
 
@@ -201,7 +205,8 @@ async function apiRequest(
 
 function formatPublishResponse(
   data: Record<string, unknown>,
-  effectiveNamespace?: string
+  effectiveNamespace?: string,
+  sentOwnerToken?: string
 ): string {
   const lines = [
     `Published successfully!`,
@@ -215,7 +220,7 @@ function formatPublishResponse(
   );
   if (data.expiresAt) lines.push(`Expires: ${data.expiresAt}`);
   lines.push(...hostingResponseLines(data));
-  lines.push(...ownerTokenLines(data, "update or delete this resource later"));
+  lines.push(...ownerTokenLines(data, "update or delete this resource later", sentOwnerToken));
   lines.push(...ownerLinkLines(data));
   const ns = ((data.namespace as string | undefined) ?? effectiveNamespace) || "";
   if (ns !== PUBLIC_NAMESPACE) {
@@ -306,7 +311,7 @@ server.tool(
       content: [
         {
           type: "text" as const,
-          text: formatPublishResponse(data as Record<string, unknown>, effectiveNamespace),
+          text: formatPublishResponse(data as Record<string, unknown>, effectiveNamespace, owner),
         },
       ],
     };
@@ -377,7 +382,7 @@ server.tool(
       content: [
         {
           type: "text" as const,
-          text: formatPublishResponse(data as Record<string, unknown>, effectiveNamespace),
+          text: formatPublishResponse(data as Record<string, unknown>, effectiveNamespace, owner),
         },
       ],
     };
@@ -631,7 +636,7 @@ server.tool(
     if (Array.isArray(site.tags) && site.tags.length) lines.push(`Tags: ${(site.tags as string[]).join(", ")}`);
     if (site.expiresAt) lines.push(`Expires: ${site.expiresAt}`);
     lines.push(...hostingResponseLines(site));
-    lines.push(...ownerTokenLines(site, "view info or delete this site"));
+    lines.push(...ownerTokenLines(site, "view info or delete this site", owner));
     lines.push(...ownerLinkLines(site));
     const ns = ((site.namespace as string | undefined) || effectiveNamespace) || "";
     if (ns !== PUBLIC_NAMESPACE) {
@@ -842,7 +847,7 @@ server.tool(
       content: [
         {
           type: "text" as const,
-          text: formatPublishResponse(data as Record<string, unknown>, effectiveNamespace),
+          text: formatPublishResponse(data as Record<string, unknown>, effectiveNamespace, owner),
         },
       ],
     };
@@ -999,7 +1004,7 @@ server.tool(
       content: [
         {
           type: "text" as const,
-          text: formatPublishResponse(data as Record<string, unknown>, effectiveNamespace),
+          text: formatPublishResponse(data as Record<string, unknown>, effectiveNamespace, owner),
         },
       ],
     };

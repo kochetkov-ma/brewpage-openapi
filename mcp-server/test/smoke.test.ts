@@ -510,6 +510,25 @@ for (const scenario of [
   });
 }
 
+const SIGN_IN_HINT = "Optional: sign in at https://account.brewpage.app to manage your pages and tokens from any device. Not required.";
+for (const scenario of [
+  { label: "minted html token", tool: "publish_html", env: {}, args: { content: "x" }, token: "fixture-owner", hint: [SIGN_IN_HINT] },
+  { label: "minted site token", tool: "publish_site", env: {}, args: { entryContent: "x" }, token: "fixture-owner", hint: [SIGN_IN_HINT] },
+  { label: "BREWPAGE_OWNER_TOKEN", tool: "publish_html", env: { BREWPAGE_OWNER_TOKEN: ENV_TOKEN }, args: { content: "x" }, token: ENV_TOKEN, hint: [] },
+  { label: "ownerToken argument", tool: "publish_html", env: {}, args: { content: "x", ownerToken: "fixture-owner" }, token: "fixture-owner", hint: [] },
+]) {
+  test(`${scenario.tool} sign-in hint for ${scenario.label}`, { timeout: 10_000 }, async (t) => {
+    // GIVEN a create answer carrying a new or the caller's own owner token.
+    const f = await fixture(t, scenario.env);
+    f.respond(201, { ...NEW_RESPONSE, ownerToken: scenario.token });
+    // WHEN the publication is created.
+    const result = await f.call(scenario.tool, { ...scenario.args, namespace: "public" });
+    // THEN the optional sign-in hint appears only for a token minted by this call.
+    assert.deepEqual(result.content[0].text.split("\n").filter((line) => line.startsWith("Optional: sign in")), scenario.hint,
+      "sign-in hint follows token origin");
+  });
+}
+
 for (const scenario of [
   { tool: "update_html", args: { namespace: "public", id: "aBcDeFgHiJ", content: "x" } },
   { tool: "delete_resource", args: { type: "site", namespace: "public", id: "aBcDeFgHiJ" } },

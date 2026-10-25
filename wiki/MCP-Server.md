@@ -130,9 +130,11 @@ Omitted `namespace` generates an unlisted namespace. Use `public` explicitly for
 ## Owner Token
 
 Every publish response includes an **owner token**. This token is:
-- The **only** way to delete or update your content
+- Needed to delete or update your content
 - **Not recoverable** if lost
 - Claude will always remind you to save it
+
+Optional: sign in at https://account.brewpage.app to manage your pages and tokens from any device. Not required.
 
 ---
 
@@ -141,6 +143,7 @@ Every publish response includes an **owner token**. This token is:
 | Env Variable | Default | Description |
 |-------------|---------|-------------|
 | `BREWPAGE_URL` | `https://brewpage.app` | API base URL |
+| `BREWPAGE_OWNER_TOKEN` | unset | Default owner token; never printed |
 
 ---
 
