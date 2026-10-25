@@ -259,7 +259,8 @@ components:
         visibilityNotice:
           description: >-
             Link access in words, e.g. 'Public: may be listed in gallery & search.' (public html, site and file add a
-            hide hint), 'Private: not listed. Only via your unique private link.' or 'Password: link + password.'
+            hide hint), 'Public: anyone with the link. Not listed.' (public json, kv), 'Private: not listed. Only via
+            your unique private link.' or 'Password: link + password.'
           type: string
         visibilityUrl:
           description: 'Owner: POST {"listed":false|true} here to hide or show. Link unchanged.'
@@ -660,7 +661,8 @@ components:
         visibilityNotice:
           description: >-
             Link access in words, e.g. 'Public: may be listed in gallery & search.' (public html, site and file add a
-            hide hint), 'Private: not listed. Only via your unique private link.' or 'Password: link + password.'
+            hide hint), 'Public: anyone with the link. Not listed.' (public json, kv), 'Private: not listed. Only via
+            your unique private link.' or 'Password: link + password.'
           type: string
       required:
         - expiresAt
@@ -795,7 +797,8 @@ components:
         visibilityNotice:
           description: >-
             Link access in words, e.g. 'Public: may be listed in gallery & search.' (public html, site and file add a
-            hide hint), 'Private: not listed. Only via your unique private link.' or 'Password: link + password.'
+            hide hint), 'Public: anyone with the link. Not listed.' (public json, kv), 'Private: not listed. Only via
+            your unique private link.' or 'Password: link + password.'
           type: string
         visibilityUrl:
           description: 'Owner: POST {"listed":false|true} here to hide or show. Link unchanged.'
@@ -910,7 +913,8 @@ components:
         visibilityNotice:
           description: >-
             Link access in words, e.g. 'Public: may be listed in gallery & search.' (public html, site and file add a
-            hide hint), 'Private: not listed. Only via your unique private link.' or 'Password: link + password.'
+            hide hint), 'Public: anyone with the link. Not listed.' (public json, kv), 'Private: not listed. Only via
+            your unique private link.' or 'Password: link + password.'
           type: string
         visibilityUrl:
           description: 'Owner: POST {"listed":false|true} here to hide or show. Link unchanged.'
@@ -1029,7 +1033,8 @@ components:
         visibilityNotice:
           description: >-
             Link access in words, e.g. 'Public: may be listed in gallery & search.' (public html, site and file add a
-            hide hint), 'Private: not listed. Only via your unique private link.' or 'Password: link + password.'
+            hide hint), 'Public: anyone with the link. Not listed.' (public json, kv), 'Private: not listed. Only via
+            your unique private link.' or 'Password: link + password.'
           type: string
       required:
         - access
@@ -1150,7 +1155,8 @@ components:
         visibilityNotice:
           description: >-
             Link access in words, e.g. 'Public: may be listed in gallery & search.' (public html, site and file add a
-            hide hint), 'Private: not listed. Only via your unique private link.' or 'Password: link + password.'
+            hide hint), 'Public: anyone with the link. Not listed.' (public json, kv), 'Private: not listed. Only via
+            your unique private link.' or 'Password: link + password.'
           type: string
         visibilityUrl:
           description: 'Owner: POST {"listed":false|true} here to hide or show. Link unchanged.'
@@ -1322,7 +1328,8 @@ components:
         visibilityNotice:
           description: >-
             Link access in words, e.g. 'Public: may be listed in gallery & search.' (public html, site and file add a
-            hide hint), 'Private: not listed. Only via your unique private link.' or 'Password: link + password.'
+            hide hint), 'Public: anyone with the link. Not listed.' (public json, kv), 'Private: not listed. Only via
+            your unique private link.' or 'Password: link + password.'
           type: string
       required:
         - access
@@ -1994,7 +2001,8 @@ components:
         visibilityNotice:
           description: >-
             Link access in words, e.g. 'Public: may be listed in gallery & search.' (public html, site and file add a
-            hide hint), 'Private: not listed. Only via your unique private link.' or 'Password: link + password.'
+            hide hint), 'Public: anyone with the link. Not listed.' (public json, kv), 'Private: not listed. Only via
+            your unique private link.' or 'Password: link + password.'
           type: string
       required:
         - access
@@ -2112,7 +2120,8 @@ components:
         visibilityNotice:
           description: >-
             Link access in words, e.g. 'Public: may be listed in gallery & search.' (public html, site and file add a
-            hide hint), 'Private: not listed. Only via your unique private link.' or 'Password: link + password.'
+            hide hint), 'Public: anyone with the link. Not listed.' (public json, kv), 'Private: not listed. Only via
+            your unique private link.' or 'Password: link + password.'
           type: string
         visibilityUrl:
           description: 'Owner: POST {"listed":false|true} here to hide or show. Link unchanged. Absent for a foreign duplicate.'
@@ -2435,7 +2444,7 @@ info:
     url: https://www.apache.org/licenses/LICENSE-2.0
   termsOfService: https://brewpage.app/terms
   title: BrewPage API
-  version: 1.136.0
+  version: 2.0.1
 openapi: 3.1.0
 paths:
   /api/files:

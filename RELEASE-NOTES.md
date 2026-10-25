@@ -1,8 +1,9 @@
 # Release Notes
 
-## API contract 1.136.0 / MCP 1.13.0 — unreleased
+## API contract 2.0.1 / MCP 1.13.0 — 2026-10-25
 
-- Pre-release snapshot from the brewpage-app owner-features branch (provenance `backendDirty: false`, commit `bce821a372ca43ca6deee32dc72f0fab2bf9e8c6`); re-export from the release tag before publishing.
+- API contract version 2.0.1 identifies the backend-generated public snapshot exported from the clean brewpage-app release source `03d2f3f9991edf69297b4232c5847f64196bb068` (tag `v2.0.1`; the app took a major version for the owner features). Deterministic YAML, the byte-identical Scalar copy and export provenance are regenerated with it.
+- `access` descriptions add the public JSON/KV wording "Public: anyone with the link. Not listed."
 - REST create and list without `ns`: private, notice `namespace-defaulted`. `ns` description: "Namespace. Omitted: private. `public` = gallery & search." Create operations state: "Secrets allowed; likely ones are flagged in notices. For a secret: private namespace + password."
 - Create responses add `manageUrl` (private; present only when minted), `listed` and `visibilityUrl`; `access` is the enum `public`, `unlisted`, `protected`; `notices` are advisories about the request or its result.
 - New security scheme `ManageKey` (`X-Manage-Key`): owner operations accept the owner token or the management key.

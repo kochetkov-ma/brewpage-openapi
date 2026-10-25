@@ -491,7 +491,7 @@ Every publish response includes an **owner token** -- the only credential that a
 
 ## Changelog
 
-## 1.13.0 -- unreleased
+## 1.13.0 -- 2026-10-25
 
 - Identifying `User-Agent: brewpage-mcp/1.13.0` on every BrewPage call.
 - Optional `BREWPAGE_OWNER_TOKEN` default; `ownerToken` on `publish_html` and `publish_file`; owner tools fail before HTTP without a token.

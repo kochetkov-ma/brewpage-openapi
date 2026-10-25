@@ -341,7 +341,7 @@
             "type": "array"
           },
           "visibilityNotice": {
-            "description": "Link access in words, e.g. 'Public: may be listed in gallery & search.' (public html, site and file add a hide hint), 'Private: not listed. Only via your unique private link.' or 'Password: link + password.'",
+            "description": "Link access in words, e.g. 'Public: may be listed in gallery & search.' (public html, site and file add a hide hint), 'Public: anyone with the link. Not listed.' (public json, kv), 'Private: not listed. Only via your unique private link.' or 'Password: link + password.'",
             "type": "string"
           },
           "visibilityUrl": {
@@ -866,7 +866,7 @@
             "type": "integer"
           },
           "visibilityNotice": {
-            "description": "Link access in words, e.g. 'Public: may be listed in gallery & search.' (public html, site and file add a hide hint), 'Private: not listed. Only via your unique private link.' or 'Password: link + password.'",
+            "description": "Link access in words, e.g. 'Public: may be listed in gallery & search.' (public html, site and file add a hide hint), 'Public: anyone with the link. Not listed.' (public json, kv), 'Private: not listed. Only via your unique private link.' or 'Password: link + password.'",
             "type": "string"
           }
         },
@@ -1033,7 +1033,7 @@
             "type": "array"
           },
           "visibilityNotice": {
-            "description": "Link access in words, e.g. 'Public: may be listed in gallery & search.' (public html, site and file add a hide hint), 'Private: not listed. Only via your unique private link.' or 'Password: link + password.'",
+            "description": "Link access in words, e.g. 'Public: may be listed in gallery & search.' (public html, site and file add a hide hint), 'Public: anyone with the link. Not listed.' (public json, kv), 'Private: not listed. Only via your unique private link.' or 'Password: link + password.'",
             "type": "string"
           },
           "visibilityUrl": {
@@ -1178,7 +1178,7 @@
             "type": "array"
           },
           "visibilityNotice": {
-            "description": "Link access in words, e.g. 'Public: may be listed in gallery & search.' (public html, site and file add a hide hint), 'Private: not listed. Only via your unique private link.' or 'Password: link + password.'",
+            "description": "Link access in words, e.g. 'Public: may be listed in gallery & search.' (public html, site and file add a hide hint), 'Public: anyone with the link. Not listed.' (public json, kv), 'Private: not listed. Only via your unique private link.' or 'Password: link + password.'",
             "type": "string"
           },
           "visibilityUrl": {
@@ -1331,7 +1331,7 @@
             "type": "string"
           },
           "visibilityNotice": {
-            "description": "Link access in words, e.g. 'Public: may be listed in gallery & search.' (public html, site and file add a hide hint), 'Private: not listed. Only via your unique private link.' or 'Password: link + password.'",
+            "description": "Link access in words, e.g. 'Public: may be listed in gallery & search.' (public html, site and file add a hide hint), 'Public: anyone with the link. Not listed.' (public json, kv), 'Private: not listed. Only via your unique private link.' or 'Password: link + password.'",
             "type": "string"
           }
         },
@@ -1486,7 +1486,7 @@
             "type": "array"
           },
           "visibilityNotice": {
-            "description": "Link access in words, e.g. 'Public: may be listed in gallery & search.' (public html, site and file add a hide hint), 'Private: not listed. Only via your unique private link.' or 'Password: link + password.'",
+            "description": "Link access in words, e.g. 'Public: may be listed in gallery & search.' (public html, site and file add a hide hint), 'Public: anyone with the link. Not listed.' (public json, kv), 'Private: not listed. Only via your unique private link.' or 'Password: link + password.'",
             "type": "string"
           },
           "visibilityUrl": {
@@ -1710,7 +1710,7 @@
             "type": "integer"
           },
           "visibilityNotice": {
-            "description": "Link access in words, e.g. 'Public: may be listed in gallery & search.' (public html, site and file add a hide hint), 'Private: not listed. Only via your unique private link.' or 'Password: link + password.'",
+            "description": "Link access in words, e.g. 'Public: may be listed in gallery & search.' (public html, site and file add a hide hint), 'Public: anyone with the link. Not listed.' (public json, kv), 'Private: not listed. Only via your unique private link.' or 'Password: link + password.'",
             "type": "string"
           }
         },
@@ -2627,7 +2627,7 @@
             "type": "integer"
           },
           "visibilityNotice": {
-            "description": "Link access in words, e.g. 'Public: may be listed in gallery & search.' (public html, site and file add a hide hint), 'Private: not listed. Only via your unique private link.' or 'Password: link + password.'",
+            "description": "Link access in words, e.g. 'Public: may be listed in gallery & search.' (public html, site and file add a hide hint), 'Public: anyone with the link. Not listed.' (public json, kv), 'Private: not listed. Only via your unique private link.' or 'Password: link + password.'",
             "type": "string"
           }
         },
@@ -2781,7 +2781,7 @@
             "type": "integer"
           },
           "visibilityNotice": {
-            "description": "Link access in words, e.g. 'Public: may be listed in gallery & search.' (public html, site and file add a hide hint), 'Private: not listed. Only via your unique private link.' or 'Password: link + password.'",
+            "description": "Link access in words, e.g. 'Public: may be listed in gallery & search.' (public html, site and file add a hide hint), 'Public: anyone with the link. Not listed.' (public json, kv), 'Private: not listed. Only via your unique private link.' or 'Password: link + password.'",
             "type": "string"
           },
           "visibilityUrl": {
@@ -3208,7 +3208,7 @@
     },
     "termsOfService": "https://brewpage.app/terms",
     "title": "BrewPage API",
-    "version": "1.136.0"
+    "version": "2.0.1"
   },
   "openapi": "3.1.0",
   "paths": {
