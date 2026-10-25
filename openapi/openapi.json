@@ -390,6 +390,13 @@
               "null"
             ]
           },
+          "format": {
+            "description": "type=file: lowercase extension, else null",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "hostingVersion": {
             "format": "int64",
             "type": [
@@ -424,6 +431,17 @@
             "type": [
               "string",
               "null"
+            ]
+          },
+          "preview": {
+            "description": "WebP previews; null while previews are off and on password rows",
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/PublicationPreviewResponse"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "routingCohort": {
@@ -2014,6 +2032,10 @@
       "PublicationPreviewResponse": {
         "description": "WebP previews: thumbD 800x373, thumbM 320x149, full: page top (pages, sites) or the 1200 px card",
         "properties": {
+          "branded": {
+            "description": "true = type card, not a page or content render; absent when false",
+            "type": "boolean"
+          },
           "full": {
             "type": "string"
           },
@@ -3208,7 +3230,7 @@
     },
     "termsOfService": "https://brewpage.app/terms",
     "title": "BrewPage API",
-    "version": "2.1.5"
+    "version": "2.2.0"
   },
   "openapi": "3.1.0",
   "paths": {
