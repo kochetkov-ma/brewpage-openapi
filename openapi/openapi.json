@@ -2012,7 +2012,7 @@
         "type": "object"
       },
       "PublicationPreviewResponse": {
-        "description": "WebP previews: thumbD 800x373, thumbM 320x149, full (pages and sites only)",
+        "description": "WebP previews: thumbD 800x373, thumbM 320x149, full: page top (pages, sites) or the 1200 px card",
         "properties": {
           "full": {
             "type": "string"
@@ -3208,7 +3208,7 @@
     },
     "termsOfService": "https://brewpage.app/terms",
     "title": "BrewPage API",
-    "version": "2.0.1"
+    "version": "2.1.0"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -8571,7 +8571,7 @@
     },
     "/preview/{ns}/{id}/{variant}.webp": {
       "get": {
-        "description": "thumb-d 800x373, thumb-m 320x149, full (page top); same gates as the card",
+        "description": "thumb-d 800x373, thumb-m 320x149, full (page top, else the 1200 px card); same gates as the card",
         "operationId": "previewWebp",
         "parameters": [
           {

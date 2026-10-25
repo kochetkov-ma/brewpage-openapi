@@ -1,5 +1,10 @@
 # Release Notes
 
+## API contract 2.1.0 — 2026-10-25
+
+- API contract version 2.1.0 identifies the backend-generated public snapshot exported from the clean brewpage-app source `9f7e87fd7f84730ca61da21e423e6cf63fe63a7f` (branch `fix/v2-observability-polish`, released as `v2.1.0`). Deterministic YAML, the byte-identical Scalar copy and export provenance are regenerated with it.
+- `PublicationPreviewResponse` and `GET /preview/{ns}/{id}/{variant}.webp` (`previewWebp`): the `full` variant now exists for every type: page top for pages and sites, else the 1200 px card. Description-only: 47 paths and 62 operations. No MCP release.
+
 ## API contract 2.0.1 / MCP 1.13.0 — 2026-10-25
 
 - API contract version 2.0.1 identifies the backend-generated public snapshot exported from the clean brewpage-app release source `03d2f3f9991edf69297b4232c5847f64196bb068` (tag `v2.0.1`; the app took a major version for the owner features). Deterministic YAML, the byte-identical Scalar copy and export provenance are regenerated with it.
