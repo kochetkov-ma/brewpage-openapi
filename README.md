@@ -26,7 +26,7 @@ Key characteristics:
 - **Key-value store** -- KV pairs addressed by namespace/store ID, up to 1,000 keys per store, mutable in place via the owner token.
 - **JSON documents** -- store and retrieve arbitrary JSON, up to 1 MiB per document, 10,000 documents per namespace.
 - **File hosting** -- upload any safe file type (images, PDFs, video, audio, archives, code), up to 5 MB (video 20 MB), with inline preview.
-- **Visibility** -- REST omitted `?ns=` publishes privately; MCP omitted namespace generates a private namespace. Send `public` for gallery & search; `POST …/visibility {"listed":false}` hides a public publication, link unchanged. Public unpassworded content may qualify for gallery discovery; search eligibility additionally depends on delivery. Custom namespaces are unlisted, readable by anyone with the link unless password-protected. Unlisted, protected or otherwise ineligible native responses carry `noindex`; eligible public HTML, sites and files may permit indexing.
+- **Visibility** -- REST omitted `?ns=` publishes privately; MCP omitted namespace generates a private namespace: unlisted and not indexed; anyone with the link can still open it. `public` lists HTML, sites and files in the gallery and sitemap, so Google, Bing and AI search can find and index them; public pages are served on the brewpage.app domain for the strongest reach (a site always gets its own subdomain). Never put secrets in a public publication. Password-protected publications, JSON and KV are never listed. `POST …/visibility {"listed":false}` hides a public publication, link unchanged.
 - **Owner tokens** -- every publish response includes an `ownerToken`. Use it to update content in place (stable URL), delete it, or list your own resources. No account needed. Optional: sign in free (Google or any email) at https://account.brewpage.app to never lose your pages or tokens and to mint tokens that never expire. Not needed to publish. Creates also return a private `manageUrl` for that one publication: give it only to the owner.
 - **TTL** -- default 15 days, ordinary maximum 30 days, configured through the REST `ttl` query parameter. Owner-specific caps and eligible automatic extensions can affect expiry; use returned `expiresAt`.
 - **Access** -- unprotected reads and creation require no account. Protected reads use `X-Password`; owner updates, deletion and scoped lists use `X-Owner-Token`. Rate limits depend on operation/visibility; handle `429` and `Retry-After`.
@@ -86,7 +86,7 @@ Open `link` in any browser -- no further steps required.
 | **Files** | Upload files with automatic MIME detection and inline preview | 5 MB (video 20 MB), 1,000 files/namespace |
 | **Sites** | Multi-file HTML sites via ZIP or individual files | 20 MB total, 200 files, 5 MB/file, TTL 1--30d |
 
-Creation returns a primary link and owner token. Keep the token for management and share the link exactly. Password protection excludes discovery; public namespace alone does not guarantee indexing. TTL and supported inputs vary by operation.
+Creation returns a primary link and owner token. Keep the token for management and share the link exactly. Password-protected publications are never listed. TTL and supported inputs vary by operation.
 
 ## API Examples
 
@@ -177,7 +177,7 @@ Rerunning historical tag workflows that used token authentication is unsupported
 | `publish_file` | Upload a file from a URL |
 | `publish_site` | Publish a single-page or multi-file HTML site |
 | `delete_resource` | Delete any resource (HTML, site, KV, JSON, file) by owner token |
-| `set_visibility` | Hide or show a public publication in gallery & search |
+| `set_visibility` | Hide or show a public publication in the gallery and sitemap |
 | `get_page` | Fetch a published HTML page and its content |
 | `get_stats` | Get platform-wide usage statistics |
 
@@ -190,7 +190,7 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@1.13.1"]
+      "args": ["-y", "brewpage-mcp@1.13.2"]
     }
   }
 }
@@ -205,7 +205,7 @@ Add to `~/.claude/settings.json`:
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@1.13.1"]
+      "args": ["-y", "brewpage-mcp@1.13.2"]
     }
   }
 }

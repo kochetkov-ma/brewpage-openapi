@@ -64,7 +64,7 @@
             "type": "string"
           },
           "republishUrl": {
-            "description": "With OLD_PUBLICATION_READ_ONLY: publish the content anew here.",
+            "description": "With OLD_PUBLICATION_READ_ONLY on an HTML page: publish the content anew here.",
             "type": "string"
           },
           "result": {
@@ -179,7 +179,7 @@
             "type": "string"
           },
           "listed": {
-            "description": "Gallery & search eligible now; true only for public, password-free files.",
+            "description": "true = listed in the gallery and sitemap now (public, no password, not hidden).",
             "type": "boolean"
           },
           "namespace": {
@@ -216,7 +216,7 @@
         "description": "Upload result. For an HTML file published as a page (notice 'html-file-as-page') id, link and ownerLink belong to that page; manage it via /api/html",
         "properties": {
           "access": {
-            "description": "public: gallery & search eligible. unlisted: private, not listed. protected: link + password.",
+            "description": "public: html, site and file listed in gallery and sitemap. unlisted: private, not listed. protected: link + password.",
             "enum": [
               "public",
               "unlisted",
@@ -278,7 +278,7 @@
             "type": "string"
           },
           "listed": {
-            "description": "Gallery & search eligible now; true only for public, password-free files.",
+            "description": "true = listed in the gallery and sitemap now (public, no password, not hidden).",
             "type": "boolean"
           },
           "manageUrl": {
@@ -341,7 +341,7 @@
             "type": "array"
           },
           "visibilityNotice": {
-            "description": "Link access in words, e.g. 'Public: may be listed in gallery & search.' (public html, site and file add a hide hint), 'Public: anyone with the link. Not listed.' (public json, kv), 'Private: not listed. Only via your unique private link.' or 'Password: link + password.'",
+            "description": "Link access in words, e.g. 'Public: listed in the gallery and sitemap; search engines can index it.' (public html, site and file add a hide hint), 'Public: anyone with the link. Not listed.' (public json, kv), 'Private: not listed. Only via your unique private link.' or 'Password: link + password.'",
             "type": "string"
           },
           "visibilityUrl": {
@@ -390,13 +390,6 @@
               "null"
             ]
           },
-          "format": {
-            "description": "type=file: lowercase extension, else null",
-            "type": [
-              "string",
-              "null"
-            ]
-          },
           "hostingVersion": {
             "format": "int64",
             "type": [
@@ -431,17 +424,6 @@
             "type": [
               "string",
               "null"
-            ]
-          },
-          "preview": {
-            "description": "WebP previews; null while previews are off and on password rows",
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/PublicationPreviewResponse"
-              },
-              {
-                "type": "null"
-              }
             ]
           },
           "routingCohort": {
@@ -539,7 +521,7 @@
       "HostingProjection": {
         "properties": {
           "access": {
-            "description": "public: gallery & search eligible. unlisted: private, not listed. protected: link + password.",
+            "description": "public: html, site and file listed in gallery and sitemap. unlisted: private, not listed. protected: link + password.",
             "enum": [
               "public",
               "unlisted",
@@ -627,7 +609,7 @@
       "HostingReadResponse": {
         "properties": {
           "access": {
-            "description": "public: gallery & search eligible. unlisted: private, not listed. protected: link + password.",
+            "description": "public: html, site and file listed in gallery and sitemap. unlisted: private, not listed. protected: link + password.",
             "enum": [
               "public",
               "unlisted",
@@ -783,7 +765,7 @@
         "description": "HTML update result. NEW publications include hosting metadata; OLD publications omit it.",
         "properties": {
           "access": {
-            "description": "public: gallery & search eligible. unlisted: private, not listed. protected: link + password.",
+            "description": "public: html, site and file listed in gallery and sitemap. unlisted: private, not listed. protected: link + password.",
             "enum": [
               "public",
               "unlisted",
@@ -836,7 +818,7 @@
             "type": "string"
           },
           "listed": {
-            "description": "Gallery & search eligible now; true only for public, password-free pages.",
+            "description": "true = listed in the gallery and sitemap now (public, no password, not hidden).",
             "type": "boolean"
           },
           "managementLink": {
@@ -884,7 +866,7 @@
             "type": "integer"
           },
           "visibilityNotice": {
-            "description": "Link access in words, e.g. 'Public: may be listed in gallery & search.' (public html, site and file add a hide hint), 'Public: anyone with the link. Not listed.' (public json, kv), 'Private: not listed. Only via your unique private link.' or 'Password: link + password.'",
+            "description": "Link access in words, e.g. 'Public: listed in the gallery and sitemap; search engines can index it.' (public html, site and file add a hide hint), 'Public: anyone with the link. Not listed.' (public json, kv), 'Private: not listed. Only via your unique private link.' or 'Password: link + password.'",
             "type": "string"
           }
         },
@@ -935,7 +917,7 @@
       "HtmlUploadResponse": {
         "properties": {
           "access": {
-            "description": "public: gallery & search eligible. unlisted: private, not listed. protected: link + password.",
+            "description": "public: html, site and file listed in gallery and sitemap. unlisted: private, not listed. protected: link + password.",
             "enum": [
               "public",
               "unlisted",
@@ -989,7 +971,7 @@
             "type": "string"
           },
           "listed": {
-            "description": "Gallery & search eligible now; true only for public, password-free pages.",
+            "description": "true = listed in the gallery and sitemap now (public, no password, not hidden).",
             "type": "boolean"
           },
           "manageUrl": {
@@ -1051,7 +1033,7 @@
             "type": "array"
           },
           "visibilityNotice": {
-            "description": "Link access in words, e.g. 'Public: may be listed in gallery & search.' (public html, site and file add a hide hint), 'Public: anyone with the link. Not listed.' (public json, kv), 'Private: not listed. Only via your unique private link.' or 'Password: link + password.'",
+            "description": "Link access in words, e.g. 'Public: listed in the gallery and sitemap; search engines can index it.' (public html, site and file add a hide hint), 'Public: anyone with the link. Not listed.' (public json, kv), 'Private: not listed. Only via your unique private link.' or 'Password: link + password.'",
             "type": "string"
           },
           "visibilityUrl": {
@@ -1084,7 +1066,7 @@
       "JsonCreateResponse": {
         "properties": {
           "access": {
-            "description": "public: gallery & search eligible. unlisted: private, not listed. protected: link + password.",
+            "description": "public: html, site and file listed in gallery and sitemap. unlisted: private, not listed. protected: link + password.",
             "enum": [
               "public",
               "unlisted",
@@ -1142,7 +1124,7 @@
             "type": "string"
           },
           "listed": {
-            "description": "Gallery & search eligible now; always false for JSON.",
+            "description": "Always false: JSON is never listed in the gallery or sitemap.",
             "type": "boolean"
           },
           "manageUrl": {
@@ -1196,7 +1178,7 @@
             "type": "array"
           },
           "visibilityNotice": {
-            "description": "Link access in words, e.g. 'Public: may be listed in gallery & search.' (public html, site and file add a hide hint), 'Public: anyone with the link. Not listed.' (public json, kv), 'Private: not listed. Only via your unique private link.' or 'Password: link + password.'",
+            "description": "Link access in words, e.g. 'Public: listed in the gallery and sitemap; search engines can index it.' (public html, site and file add a hide hint), 'Public: anyone with the link. Not listed.' (public json, kv), 'Private: not listed. Only via your unique private link.' or 'Password: link + password.'",
             "type": "string"
           },
           "visibilityUrl": {
@@ -1256,7 +1238,7 @@
       "JsonUpdateResponse": {
         "properties": {
           "access": {
-            "description": "public: gallery & search eligible. unlisted: private, not listed. protected: link + password.",
+            "description": "public: html, site and file listed in gallery and sitemap. unlisted: private, not listed. protected: link + password.",
             "enum": [
               "public",
               "unlisted",
@@ -1305,7 +1287,7 @@
             "type": "string"
           },
           "listed": {
-            "description": "Gallery & search eligible now; always false for JSON.",
+            "description": "Always false: JSON is never listed in the gallery or sitemap.",
             "type": "boolean"
           },
           "managementLink": {
@@ -1349,7 +1331,7 @@
             "type": "string"
           },
           "visibilityNotice": {
-            "description": "Link access in words, e.g. 'Public: may be listed in gallery & search.' (public html, site and file add a hide hint), 'Public: anyone with the link. Not listed.' (public json, kv), 'Private: not listed. Only via your unique private link.' or 'Password: link + password.'",
+            "description": "Link access in words, e.g. 'Public: listed in the gallery and sitemap; search engines can index it.' (public html, site and file add a hide hint), 'Public: anyone with the link. Not listed.' (public json, kv), 'Private: not listed. Only via your unique private link.' or 'Password: link + password.'",
             "type": "string"
           }
         },
@@ -1393,7 +1375,7 @@
       "KvCreateStoreResponse": {
         "properties": {
           "access": {
-            "description": "public: gallery & search eligible. unlisted: private, not listed. protected: link + password.",
+            "description": "public: html, site and file listed in gallery and sitemap. unlisted: private, not listed. protected: link + password.",
             "enum": [
               "public",
               "unlisted",
@@ -1450,7 +1432,7 @@
             "type": "string"
           },
           "listed": {
-            "description": "Gallery & search eligible now; always false for KV.",
+            "description": "Always false: KV is never listed in the gallery or sitemap.",
             "type": "boolean"
           },
           "manageUrl": {
@@ -1504,7 +1486,7 @@
             "type": "array"
           },
           "visibilityNotice": {
-            "description": "Link access in words, e.g. 'Public: may be listed in gallery & search.' (public html, site and file add a hide hint), 'Public: anyone with the link. Not listed.' (public json, kv), 'Private: not listed. Only via your unique private link.' or 'Password: link + password.'",
+            "description": "Link access in words, e.g. 'Public: listed in the gallery and sitemap; search engines can index it.' (public html, site and file add a hide hint), 'Public: anyone with the link. Not listed.' (public json, kv), 'Private: not listed. Only via your unique private link.' or 'Password: link + password.'",
             "type": "string"
           },
           "visibilityUrl": {
@@ -1636,7 +1618,7 @@
       "KvUpsertKeyResponse": {
         "properties": {
           "access": {
-            "description": "public: gallery & search eligible. unlisted: private, not listed. protected: link + password.",
+            "description": "public: html, site and file listed in gallery and sitemap. unlisted: private, not listed. protected: link + password.",
             "enum": [
               "public",
               "unlisted",
@@ -1688,7 +1670,7 @@
             "type": "string"
           },
           "listed": {
-            "description": "Gallery & search eligible now; always false for KV.",
+            "description": "Always false: KV is never listed in the gallery or sitemap.",
             "type": "boolean"
           },
           "managementLink": {
@@ -1728,7 +1710,7 @@
             "type": "integer"
           },
           "visibilityNotice": {
-            "description": "Link access in words, e.g. 'Public: may be listed in gallery & search.' (public html, site and file add a hide hint), 'Public: anyone with the link. Not listed.' (public json, kv), 'Private: not listed. Only via your unique private link.' or 'Password: link + password.'",
+            "description": "Link access in words, e.g. 'Public: listed in the gallery and sitemap; search engines can index it.' (public html, site and file add a hide hint), 'Public: anyone with the link. Not listed.' (public json, kv), 'Private: not listed. Only via your unique private link.' or 'Password: link + password.'",
             "type": "string"
           }
         },
@@ -1911,7 +1893,7 @@
       "PasswordResponse": {
         "properties": {
           "access": {
-            "description": "public: gallery & search eligible. unlisted: private, not listed. protected: link + password.",
+            "description": "public: html, site and file listed in gallery and sitemap. unlisted: private, not listed. protected: link + password.",
             "enum": [
               "public",
               "unlisted",
@@ -2529,7 +2511,7 @@
       "SiteUpdateResponse": {
         "properties": {
           "access": {
-            "description": "public: gallery & search eligible. unlisted: private, not listed. protected: link + password.",
+            "description": "public: html, site and file listed in gallery and sitemap. unlisted: private, not listed. protected: link + password.",
             "enum": [
               "public",
               "unlisted",
@@ -2591,7 +2573,7 @@
             "type": "string"
           },
           "listed": {
-            "description": "Gallery & search eligible now; true only for public, password-free html/site/file.",
+            "description": "true = listed in the gallery and sitemap now (public, no password, not hidden).",
             "type": "boolean"
           },
           "managementLink": {
@@ -2645,7 +2627,7 @@
             "type": "integer"
           },
           "visibilityNotice": {
-            "description": "Link access in words, e.g. 'Public: may be listed in gallery & search.' (public html, site and file add a hide hint), 'Public: anyone with the link. Not listed.' (public json, kv), 'Private: not listed. Only via your unique private link.' or 'Password: link + password.'",
+            "description": "Link access in words, e.g. 'Public: listed in the gallery and sitemap; search engines can index it.' (public html, site and file add a hide hint), 'Public: anyone with the link. Not listed.' (public json, kv), 'Private: not listed. Only via your unique private link.' or 'Password: link + password.'",
             "type": "string"
           }
         },
@@ -2675,7 +2657,7 @@
       "SiteUploadResponse": {
         "properties": {
           "access": {
-            "description": "public: gallery & search eligible. unlisted: private, not listed. protected: link + password.",
+            "description": "public: html, site and file listed in gallery and sitemap. unlisted: private, not listed. protected: link + password.",
             "enum": [
               "public",
               "unlisted",
@@ -2737,7 +2719,7 @@
             "type": "string"
           },
           "listed": {
-            "description": "Gallery & search eligible now; true only for public, password-free html/site/file.",
+            "description": "true = listed in the gallery and sitemap now (public, no password, not hidden).",
             "type": "boolean"
           },
           "manageUrl": {
@@ -2799,7 +2781,7 @@
             "type": "integer"
           },
           "visibilityNotice": {
-            "description": "Link access in words, e.g. 'Public: may be listed in gallery & search.' (public html, site and file add a hide hint), 'Public: anyone with the link. Not listed.' (public json, kv), 'Private: not listed. Only via your unique private link.' or 'Password: link + password.'",
+            "description": "Link access in words, e.g. 'Public: listed in the gallery and sitemap; search engines can index it.' (public html, site and file add a hide hint), 'Public: anyone with the link. Not listed.' (public json, kv), 'Private: not listed. Only via your unique private link.' or 'Password: link + password.'",
             "type": "string"
           },
           "visibilityUrl": {
@@ -3161,7 +3143,7 @@
       "VisibilityResponse": {
         "properties": {
           "access": {
-            "description": "public: gallery & search eligible. unlisted: private, not listed. protected: link + password.",
+            "description": "public: html, site and file listed in gallery and sitemap. unlisted: private, not listed. protected: link + password.",
             "enum": [
               "public",
               "unlisted",
@@ -3226,7 +3208,7 @@
     },
     "termsOfService": "https://brewpage.app/terms",
     "title": "BrewPage API",
-    "version": "2.2.0"
+    "version": "2.1.5"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -3292,7 +3274,7 @@
         "operationId": "upload",
         "parameters": [
           {
-            "description": "Namespace. Omitted: private. `public` = gallery & search. Lowercase only.",
+            "description": "ns=public: the page is listed in the public gallery and the sitemap, so Google, Bing and AI search can find and index it and people can discover it. Use it for anything meant to be found or shared: docs, guides, demos, portfolios, reports, landing pages. Public pages are served right on the brewpage.app domain, which gives them the strongest reach in search; a page whose code needs its own origin (cookies, storage) gets its own subdomain automatically. Anyone can find and read a public page: never put secrets, tokens or personal data there. No ns (default): private. Unlisted and not indexed; anyone who has the link can still open it. Lowercase only.",
             "in": "query",
             "name": "ns",
             "required": false,
@@ -3740,7 +3722,7 @@
                 }
               }
             },
-            "description": "Old publication is read-only (code: OLD_PUBLICATION_READ_ONLY, republishUrl), or the same content is another file of this owner"
+            "description": "Old publication is read-only (code: OLD_PUBLICATION_READ_ONLY), or the same content is another file of this owner"
           },
           "422": {
             "content": {
@@ -3912,7 +3894,7 @@
         "operationId": "create_1",
         "parameters": [
           {
-            "description": "Namespace. Omitted: private. `public` = gallery & search. Lowercase only.",
+            "description": "ns=public: the page is listed in the public gallery and the sitemap, so Google, Bing and AI search can find and index it and people can discover it. Use it for anything meant to be found or shared: docs, guides, demos, portfolios, reports, landing pages. Public pages are served right on the brewpage.app domain, which gives them the strongest reach in search; a page whose code needs its own origin (cookies, storage) gets its own subdomain automatically. Anyone can find and read a public page: never put secrets, tokens or personal data there. No ns (default): private. Unlisted and not indexed; anyone who has the link can still open it. Lowercase only.",
             "in": "query",
             "name": "ns",
             "required": false,
@@ -3951,7 +3933,7 @@
             }
           },
           {
-            "description": "Access password. Empty means no password restriction; public discovery additionally requires eligibility. Protected pages are hidden from the gallery. OLD links accept ?p=; NEW access uses X-Password or a reader access cookie after password entry.",
+            "description": "Access password. Empty means no password restriction. Protected pages are never listed in the gallery or sitemap. OLD links accept ?p=; NEW access uses X-Password or a reader access cookie after password entry.",
             "in": "header",
             "name": "X-Password",
             "required": false,
@@ -4766,7 +4748,7 @@
         "operationId": "create",
         "parameters": [
           {
-            "description": "Namespace. Omitted: private. `public` = gallery & search. Lowercase only.",
+            "description": "No ns (default): private. ns=public: the shared public namespace. JSON and KV are never listed in the gallery or indexed, in any namespace; anyone who has the link can open it. Lowercase only.",
             "in": "query",
             "name": "ns",
             "required": false,
@@ -5140,7 +5122,7 @@
                 }
               }
             },
-            "description": "Old publication is read-only (code: OLD_PUBLICATION_READ_ONLY, republishUrl)"
+            "description": "Old publication is read-only (code: OLD_PUBLICATION_READ_ONLY)"
           }
         },
         "security": [
@@ -5219,7 +5201,7 @@
         "operationId": "createStore",
         "parameters": [
           {
-            "description": "Namespace. Omitted: private. `public` = gallery & search. Lowercase only.",
+            "description": "No ns (default): private. ns=public: the shared public namespace. JSON and KV are never listed in the gallery or indexed, in any namespace; anyone who has the link can open it. Lowercase only.",
             "in": "query",
             "name": "ns",
             "required": false,
@@ -5807,7 +5789,7 @@
                 }
               }
             },
-            "description": "Key limit exceeded, or old publication is read-only (code: OLD_PUBLICATION_READ_ONLY, republishUrl)"
+            "description": "Key limit exceeded, or old publication is read-only (code: OLD_PUBLICATION_READ_ONLY)"
           }
         },
         "security": [
@@ -6695,7 +6677,7 @@
         "operationId": "uploadSite",
         "parameters": [
           {
-            "description": "Namespace. Omitted: private. `public` = gallery & search. Lowercase only.",
+            "description": "ns=public: the page is listed in the public gallery and the sitemap, so Google, Bing and AI search can find and index it and people can discover it. Use it for anything meant to be found or shared: docs, guides, demos, portfolios, reports, landing pages. A site always gets its own subdomain. Anyone can find and read a public page: never put secrets, tokens or personal data there. No ns (default): private. Unlisted and not indexed; anyone who has the link can still open it. Lowercase only.",
             "in": "query",
             "name": "ns",
             "required": false,
@@ -7204,7 +7186,7 @@
                 }
               }
             },
-            "description": "Old publication: read-only, publish a new one (republishUrl)"
+            "description": "Old publication: read-only, publish a new one"
           },
           "410": {
             "content": {
@@ -7652,7 +7634,7 @@
                 }
               }
             },
-            "description": "Old publication is read-only (code: OLD_PUBLICATION_READ_ONLY, republishUrl)"
+            "description": "Old publication is read-only (code: OLD_PUBLICATION_READ_ONLY; HTML adds republishUrl)"
           },
           "429": {
             "content": {
@@ -7986,7 +7968,7 @@
                 }
               }
             },
-            "description": "Old publication is read-only (code: OLD_PUBLICATION_READ_ONLY, republishUrl)"
+            "description": "Old publication is read-only (code: OLD_PUBLICATION_READ_ONLY; HTML adds republishUrl)"
           },
           "429": {
             "content": {
@@ -8115,7 +8097,7 @@
                 }
               }
             },
-            "description": "Old publication is read-only (code: OLD_PUBLICATION_READ_ONLY, republishUrl)"
+            "description": "Old publication is read-only (code: OLD_PUBLICATION_READ_ONLY; HTML adds republishUrl)"
           },
           "429": {
             "content": {
@@ -8235,7 +8217,7 @@
                 }
               }
             },
-            "description": "Old publication is read-only (code: OLD_PUBLICATION_READ_ONLY, republishUrl)"
+            "description": "Old publication is read-only (code: OLD_PUBLICATION_READ_ONLY; HTML adds republishUrl)"
           },
           "429": {
             "content": {

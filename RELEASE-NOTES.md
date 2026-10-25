@@ -1,5 +1,13 @@
 # Release Notes
 
+## API contract 2.1.5 / MCP 1.13.2 — 2026-10-25
+
+- API contract version 2.1.5 mirrors production BrewPage v2.1.5: `https://brewpage.app/api/openapi.json` with `servers` normalized to `https://brewpage.app` exactly as the backend exporter writes it; provenance names the release source `d99fa959b8003fb2db99fd358f935a94fe504076` (tag `v2.1.5`) and its backend source hash. Deterministic YAML and the byte-identical Scalar copy are regenerated with it.
+- `ns` on `POST /api/html` and `POST /api/files`: `public` is listed in the gallery and sitemap so Google, Bing and AI search can find and index it, is served on the brewpage.app domain (a page needing its own origin gets a subdomain automatically), and must never hold secrets; omitted = private, unlisted and not indexed, the link still opens. `POST /api/sites`: the same, with "A site always gets its own subdomain." `POST /api/json` and `POST /api/kv`: JSON and KV are never listed or indexed in any namespace. `access`, `listed`, `visibilityNotice` and the create `X-Password` descriptions state the listing plainly.
+- `republishUrl` on `409 OLD_PUBLICATION_READ_ONLY` is HTML-only; site, JSON, KV and file 409 descriptions drop it.
+- The 2.2.0 snapshot (unreleased branch `feat/gallery-card-previews`) is superseded: `GalleryItem.preview` and `GalleryItem.format` are not served by production and return with backend 2.2.0. 47 paths and 62 operations.
+- MCP 1.13.2: `namespace` descriptions follow the per-type `ns` text (HTML/file, site, JSON/KV); private `publish_json`/`publish_kv` results no longer suggest `public` for listing; update tools say old publications were made before 5 October 2026; the 409 hint mentions `republishUrl` only when the server sends it. `User-Agent: brewpage-mcp/1.13.2`; pins bumped.
+
 ## API contract 2.2.0 — 2026-10-25
 
 - API contract version 2.2.0 identifies the backend-generated public snapshot exported from the clean brewpage-app source `1806d1cf13a37c9c027e3ab696cf23a1f3cd288a` (branch `feat/gallery-card-previews`, for backend `v2.2.0`). Deterministic YAML, the byte-identical Scalar copy and export provenance are regenerated with it.
@@ -7,7 +15,7 @@
 
 ## MCP 1.13.1 — 2026-10-25
 
-- `update_html`, `republish_site`, `update_json` and `set_kv` say old publications (created before the new link format) answer `409 OLD_PUBLICATION_READ_ONLY`; that failure adds a hint: publish the content anew in the same namespace and give the user the new URL and owner token (`republishUrl` is browser-only); for KV, read all keys with `get_kv` and publish them together. No contract change.
+- `update_html`, `republish_site`, `update_json` and `set_kv` say old publications (made before 5 October 2026) answer `409 OLD_PUBLICATION_READ_ONLY`; that failure adds a hint: publish the content anew in the same namespace and give the user the new URL and owner token (`republishUrl` is browser-only); for KV, read all keys with `get_kv` and publish them together. No contract change.
 
 ## API contract 2.1.0 — 2026-10-25
 

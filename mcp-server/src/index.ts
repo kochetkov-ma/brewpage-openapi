@@ -5,11 +5,11 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { z } from "zod";
 
 const BASE_URL = process.env.BREWPAGE_URL || "https://brewpage.app";
-const USER_AGENT = "brewpage-mcp/1.13.1";
+const USER_AGENT = "brewpage-mcp/1.13.2";
 
 const server = new McpServer({
   name: "brewpage-mcp",
-  version: "1.13.1",
+  version: "1.13.2",
 });
 
 const OWNER_TOKEN_SHAPE = /^[A-Za-z0-9]{32}$/;
@@ -30,7 +30,7 @@ const OWNER_TOKEN_DESCRIPTION = `Owner token from create. Default: ${OWNER_TOKEN
 const SECRETS = "Secrets allowed; likely ones are flagged in notices. For a secret: private namespace + password.";
 const MANAGE_URL_TEXT = "Returns manageUrl (private): give it to the user privately; never publish it.";
 const OLD_READ_ONLY_CODE = "OLD_PUBLICATION_READ_ONLY";
-const OLD_READ_ONLY_TEXT = ` Old publications (created before the new link format) answer 409 ${OLD_READ_ONLY_CODE}.`;
+const OLD_READ_ONLY_TEXT = ` Old publications (made before 5 October 2026) are read-only: 409 ${OLD_READ_ONLY_CODE}.`;
 /** Notice codes the agent must relay to the user. */
 const WARNING_CODES = new Set(["secret-detected", "manage-link-disabled"]);
 /** MCP type name -> REST path segment. */
@@ -59,9 +59,10 @@ function ownerFailure(operation: string, status: number, data: unknown, fromEnv:
     lines.push(`Wrong owner token for this publication. Use ownerToken from create.${fromEnv ? ` Sent: ${OWNER_TOKEN_ENV}.` : ""}`);
   }
   if (status === 409 && code === OLD_READ_ONLY_CODE) {
+    const republishUrl = (data as { republishUrl?: unknown }).republishUrl;
     lines.push("Read-only old publication: cannot be updated. Publish the content anew with the matching " +
       "publish tool in the same namespace; give the user the NEW URL and owner token. The old URL keeps its old content " +
-      "until it expires. Ignore republishUrl (browser-only)." +
+      "until it expires." + (typeof republishUrl === "string" ? " Ignore republishUrl (browser-only)." : "") +
       (operation === "set KV" ? " For KV, read all keys with get_kv and publish them together with publish_kv." : ""));
   }
   return textResult(lines.join("\n"), true);
@@ -76,12 +77,7 @@ function bpFetch(url: string, init: RequestInit = {}): Promise<Response> {
 
 const PUBLIC_NAMESPACE = "public";
 
-/**
- * Generate a short, unlisted private namespace slug used when the caller omits
- * `namespace`. Sending an explicit non-public ns prevents the backend from
- * applying its `public` default and making the content discovery-eligible.
- * Format: `priv-<6 lowercase-alphanumeric chars>`.
- */
+/** Private namespace slug `priv-<6 lowercase-alphanumeric chars>` sent when the caller omits `namespace`. */
 function defaultPrivateNamespace(): string {
   const alphabet = "abcdefghijklmnopqrstuvwxyz0123456789";
   let slug = "";
@@ -91,25 +87,34 @@ function defaultPrivateNamespace(): string {
   return `priv-${slug}`;
 }
 
-/**
- * Resolve the effective namespace actually sent to the API: the caller's value
- * verbatim when provided (including `public`), otherwise a generated private slug.
- */
+/** Namespace sent to the API: the caller's value verbatim (including `public`), else a generated private slug. */
 function resolveNamespace(namespace?: string): string {
   return namespace && namespace.length > 0 ? namespace : defaultPrivateNamespace();
 }
 
-const UNLISTED_NOTICE =
-  "Private: not listed. Anyone with the link can open it. Use namespace public for gallery & search.";
+const UNLISTED_NOTICE = "Private: not listed. Anyone with the link can open it.";
+const LISTABLE_HINT = " Use namespace public to list it in the gallery and sitemap.";
 
 const PROTECTED_UNLISTED_NOTICE = "Password: link + password. Not listed.";
 
-const NAMESPACE_DESCRIPTION =
-  "Optional. Omit to generate an unlisted namespace: anyone with its unpassworded link can read it, " +
-  "but it is excluded from gallery/search. Pass a custom namespace to group unlisted content, " +
-  "or pass `public` ONLY when the user explicitly wants gallery/search eligibility. " +
-  "Password-protected content stays excluded; unlisted, protected or otherwise ineligible native responses carry noindex; eligible public HTML, sites and files may permit indexing. " +
-  "Lowercase only: 1-32 of a-z, 0-9, hyphen.";
+const PUBLIC_NAMESPACE_LEAD =
+  "namespace=public: listed in the public gallery and the sitemap, so Google, Bing and AI search can find and index it " +
+  "and people can discover it. Use it for anything meant to be found or shared: docs, guides, demos, portfolios, reports, landing pages. ";
+const PUBLIC_NAMESPACE_TAIL =
+  " Anyone can find and read a public page: never put secrets, tokens or personal data there. " +
+  "Omit (default): private. Unlisted and not indexed; anyone who has the link can still open it. ";
+const NAMESPACE_FORMAT = "Lowercase only: 1-32 of a-z, 0-9, hyphen.";
+/** `namespace` for publish_html and publish_file. */
+const NAMESPACE_DESCRIPTION = PUBLIC_NAMESPACE_LEAD +
+  "Public pages are served right on the brewpage.app domain, which gives them the strongest reach in search; " +
+  "a page whose code needs its own origin (cookies, storage) gets its own subdomain automatically." +
+  PUBLIC_NAMESPACE_TAIL + NAMESPACE_FORMAT;
+const SITE_NAMESPACE_DESCRIPTION = PUBLIC_NAMESPACE_LEAD + "A site always gets its own subdomain." +
+  PUBLIC_NAMESPACE_TAIL + NAMESPACE_FORMAT;
+/** `namespace` for publish_json and publish_kv: data is never listed. */
+const DATA_NAMESPACE_DESCRIPTION =
+  "Omit (default): private. namespace=public: the shared public namespace. JSON and KV are never listed in the gallery " +
+  "or indexed, in any namespace; anyone who has the link can open it. " + NAMESPACE_FORMAT;
 
 const TTL_SCHEMA = z.union([z.number().positive(), z.string().min(1).max(32)]).optional().describe(
   "Requested TTL: days as a number, or a string such as '2w', '36h' or '1 month' (default 15 days). " +
@@ -214,7 +219,8 @@ async function apiRequest(
 function formatPublishResponse(
   data: Record<string, unknown>,
   effectiveNamespace?: string,
-  sentOwnerToken?: string
+  sentOwnerToken?: string,
+  listable = true
 ): string {
   const lines = [
     `Published successfully!`,
@@ -232,7 +238,7 @@ function formatPublishResponse(
   lines.push(...ownerLinkLines(data));
   const ns = ((data.namespace as string | undefined) ?? effectiveNamespace) || "";
   if (ns !== PUBLIC_NAMESPACE) {
-    lines.push(``, data.access === "protected" ? PROTECTED_UNLISTED_NOTICE : UNLISTED_NOTICE);
+    lines.push(``, data.access === "protected" ? PROTECTED_UNLISTED_NOTICE : UNLISTED_NOTICE + (listable ? LISTABLE_HINT : ""));
   }
   return lines.join("\n");
 }
@@ -566,7 +572,7 @@ server.tool(
     namespace: z
       .string()
       .optional()
-      .describe(NAMESPACE_DESCRIPTION),
+      .describe(SITE_NAMESPACE_DESCRIPTION),
     password: z
       .string()
       .optional()
@@ -648,7 +654,7 @@ server.tool(
     lines.push(...ownerLinkLines(site));
     const ns = ((site.namespace as string | undefined) || effectiveNamespace) || "";
     if (ns !== PUBLIC_NAMESPACE) {
-      lines.push(``, site.access === "protected" ? PROTECTED_UNLISTED_NOTICE : UNLISTED_NOTICE);
+      lines.push(``, site.access === "protected" ? PROTECTED_UNLISTED_NOTICE : UNLISTED_NOTICE + LISTABLE_HINT);
     }
 
     return {
@@ -802,7 +808,7 @@ server.tool(
     namespace: z
       .string()
       .optional()
-      .describe(NAMESPACE_DESCRIPTION),
+      .describe(DATA_NAMESPACE_DESCRIPTION),
     password: z
       .string()
       .optional()
@@ -855,7 +861,7 @@ server.tool(
       content: [
         {
           type: "text" as const,
-          text: formatPublishResponse(data as Record<string, unknown>, effectiveNamespace, owner),
+          text: formatPublishResponse(data as Record<string, unknown>, effectiveNamespace, owner, false),
         },
       ],
     };
@@ -959,7 +965,7 @@ server.tool(
     namespace: z
       .string()
       .optional()
-      .describe(NAMESPACE_DESCRIPTION),
+      .describe(DATA_NAMESPACE_DESCRIPTION),
     password: z
       .string()
       .optional()
@@ -1012,7 +1018,7 @@ server.tool(
       content: [
         {
           type: "text" as const,
-          text: formatPublishResponse(data as Record<string, unknown>, effectiveNamespace, owner),
+          text: formatPublishResponse(data as Record<string, unknown>, effectiveNamespace, owner, false),
         },
       ],
     };
@@ -1209,7 +1215,7 @@ server.tool(
 
 server.tool(
   "set_visibility",
-  "Hide or show a public publication in gallery & search. Link unchanged.",
+  "Hide or show a public publication in the gallery and sitemap. Link unchanged.",
   {
     type: z.enum(["html", "site", "file", "json", "kv"]).describe("Publication type; only public html, site and file can be listed"),
     namespace: z.string().describe("Publication namespace"),
