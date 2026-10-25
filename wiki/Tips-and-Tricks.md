@@ -87,7 +87,7 @@ curl 'https://brewpage.app/api/json?ns=myapp' -H "X-Owner-Token: your-owner-toke
 
 ## Gallery for discovery
 
-Unpassworded `public` publications may qualify for gallery/search discovery. Eligible public native HTML, sites and files may permit indexing; unlisted, protected or otherwise ineligible native responses carry `noindex`:
+Unpassworded `public` HTML, sites and files are listed in the gallery and sitemap, so Google, Bing and AI search can find and index them; private and password-protected publications carry `noindex`:
 
 ```bash
 curl https://brewpage.app/api/gallery

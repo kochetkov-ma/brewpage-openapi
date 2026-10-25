@@ -17,7 +17,7 @@ Choosing a host? See how BrewPage compares with GitHub Pages, Netlify Drop, Tiin
 ## Quick Start
 
 ```bash
-npx -y brewpage-mcp@1.13.1
+npx -y brewpage-mcp@1.13.2
 ```
 
 Requires Node.js 20 or newer. This starts the stdio server for an MCP client.
@@ -33,7 +33,7 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS)
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@1.13.1"]
+      "args": ["-y", "brewpage-mcp@1.13.2"]
     }
   }
 }
@@ -44,7 +44,7 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS)
 Register a project-scoped stdio server:
 
 ```bash
-claude mcp add --transport stdio --scope project brewpage -- npx -y brewpage-mcp@1.13.1
+claude mcp add --transport stdio --scope project brewpage -- npx -y brewpage-mcp@1.13.2
 ```
 
 This writes `.mcp.json` in the project root. Use `--scope user` for user-scoped registration. See the [official Claude Code MCP guide](https://code.claude.com/docs/en/mcp).
@@ -58,7 +58,7 @@ Open **Settings > MCP** and add:
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@1.13.1"]
+      "args": ["-y", "brewpage-mcp@1.13.2"]
     }
   }
 }
@@ -72,7 +72,7 @@ Open the Cline MCP settings panel and add:
 {
   "brewpage": {
     "command": "npx",
-    "args": ["-y", "brewpage-mcp@1.13.1"]
+    "args": ["-y", "brewpage-mcp@1.13.2"]
   }
 }
 ```
@@ -80,7 +80,7 @@ Open the Cline MCP settings panel and add:
 ### Global Install
 
 ```bash
-npm install -g brewpage-mcp@1.13.1
+npm install -g brewpage-mcp@1.13.2
 brewpage-mcp
 ```
 
@@ -104,14 +104,14 @@ Twenty tools are available. Creation returns an owner token; keep it to modify o
 | `get_kv` | Read a KV value |
 | `update_hosting` | Change eligible delivery mode with owner token and hosting version |
 | `delete_resource` | Delete an HTML page, site, JSON document, KV store or file |
-| `set_visibility` | Hide or show a public publication in gallery & search; link unchanged |
+| `set_visibility` | Hide or show a public publication in the gallery and sitemap; link unchanged |
 | `bind_token` | Add an owner token to your profile (admin token) |
 | `mint_token` | Mint a profile token, shown once (admin token) |
 | `search_gallery` | Browse public content or list owned resources |
 | `get_stats` | Read platform-wide statistics |
 | `get_limits` | Read the current upload limits (`GET /api/limits`) |
 
-All five publish tools accept optional `deliveryMode: "path" | "subdomain"`, sent only as `X-Delivery-Mode`; authored JSON and multipart bodies keep their existing format. Visibility and password protection are separate choices. Omitted namespace still generates an unlisted `priv-<random>` namespace; anyone with an unpassworded unlisted link can read it. `public` grants gallery/search eligibility only; password-protected content remains excluded and unlisted, protected or otherwise ineligible native responses carry `noindex`; eligible public HTML, sites and files may permit indexing.
+All five publish tools accept optional `deliveryMode: "path" | "subdomain"`, sent only as `X-Delivery-Mode`; authored JSON and multipart bodies keep their existing format. Visibility and password protection are separate choices. Omitted namespace is private (a generated `priv-<random>` namespace): unlisted and not indexed; anyone with the link can still open it. `public` lists HTML, sites and files in the gallery and sitemap, so Google, Bing and AI search can find and index them; public pages are served on the brewpage.app domain for the strongest reach (a site always gets its own subdomain). Never put secrets in a public publication. Password-protected publications, JSON and KV are never listed.
 
 The MCP server wraps a subset of the backend-generated public [REST contract](../openapi/openapi.json). TTL inputs take days or a string such as `2w`/`36h` (default 15); the server rounds to whole days and clamps to 1–30 (owner-specific caps and eligible automatic extensions can differ). Use returned `expiresAt`. Every tolerated-input adjustment (TTL clamp, format alias, skipped site member, normalised namespace) comes back in the response `notices` array and is printed as `Notice (code): message`; `secret-detected` and `manage-link-disabled` print as `WARNING (code): message`: relay them to the user. A minted `manageUrl` prints as `MANAGE LINK (private): …`: give it to the user privately, never publish it. A listed public result prints `VISIBILITY: public, listed. Hide: set_visibility listed=false`. `get_page` reads stored rendered HTML or format-specific code/text from the API; it does not call the owner-only original-source endpoint or a browser viewer. `publish_file` uploads from a source URL and does not expose password or TTL inputs.
 
@@ -141,7 +141,7 @@ update_hosting(type="html", namespace="public", id="aBcDeFgHiJ", ownerToken="tok
 
 Publish HTML or Markdown content to BrewPage. Returns a public URL and owner token. Markdown raw HTML is rendered through an allowlist: scripts, styles, event handlers, forms, frames/embeds and `meta`/`base`/`link` are removed; links allow `http`, `https`, `mailto`, `tel` and relative URLs, images also `data:`; a lone unknown tag such as `<author>` shows as text.
 
-Parameters: `content` (string), `format` (default `HTML`; `HTML`, `MARKDOWN` or an alias the server maps, e.g. `md`), `namespace` (optional -- **omit for unlisted content**; pass `public` only for gallery/search eligibility, except when password-protected), `password` (optional), `ttlDays` (days or a string such as `2w`; default 15; the server clamps to 1--30), `filename` (optional, used as title fallback), `showTopBar` (optional boolean -- adds a toolbar with filename, Download button, and theme toggle), `deliveryMode` (optional).
+Parameters: `content` (string), `format` (default `HTML`; `HTML`, `MARKDOWN` or an alias the server maps, e.g. `md`), `namespace` (optional -- **omit for private, unlisted content**; `public` lists the page in the gallery and sitemap for Google, Bing and AI search, served on the brewpage.app domain; never put secrets there), `password` (optional), `ttlDays` (days or a string such as `2w`; default 15; the server clamps to 1--30), `filename` (optional, used as title fallback), `showTopBar` (optional boolean -- adds a toolbar with filename, Download button, and theme toggle), `deliveryMode` (optional).
 
 The result includes `deliveryModeReason` and a `Delivery notice:` line when the server returns them (see above).
 
@@ -197,7 +197,7 @@ get_page(namespace="public", id="aBcDeFgHiJ")
 
 Upload a file to BrewPage by fetching it from a URL. Returns a public URL and owner token. Supports images, PDFs, video, audio, code files, and archives.
 
-Parameters: `url` (string, the source URL to fetch), `namespace` (optional -- omit to keep the file private/unlisted: reachable only by its link, not in the gallery, not search-indexed; pass `public` only for gallery/search eligibility), `filename` (optional custom filename), `deliveryMode` (optional). This tool does not expose base64, password, or TTL inputs.
+Parameters: `url` (string, the source URL to fetch), `namespace` (optional -- omit to keep the file private: unlisted and not indexed, anyone with the link can open it; `public` lists the file in the gallery and sitemap for Google, Bing and AI search), `filename` (optional custom filename), `deliveryMode` (optional). This tool does not expose base64, password, or TTL inputs.
 
 Example prompt:
 
@@ -217,7 +217,7 @@ Publish a single-page or multi-file HTML site. Pass `entryContent` for a single 
 
 Limits (current values from `get_limits`): a request is at most 25 MB; a site at most 200 files, 5 MB per file and 20 MB in total; each path at most 380 characters. System files such as `.DS_Store` and `__MACOSX/` are skipped and never count; files with an unsupported extension or a too-long path are skipped and reported in notices. Entry: `entry`, else root `index.html`, else the shallowest HTML file. A site limit hit answers 400 with a message naming the limit; 413 means the request is over 25 MB, has too many files and form fields, or a file name/path is too long; 422 means no servable file is left.
 
-Parameters: exactly one of `entryContent` (string) or non-empty `files` (array of `{path, content}`), `entry` (optional entry file path, default `index.html`), `namespace` (optional -- omit for unlisted content; `public` grants gallery eligibility except when password-protected), `password` (optional), `ttlDays` (days or a string such as `2w`; default 15; the server clamps to 1--30), `ownerToken` (optional, groups site under an existing owner), `deliveryMode` (optional; fresh sites require `subdomain`).
+Parameters: exactly one of `entryContent` (string) or non-empty `files` (array of `{path, content}`), `entry` (optional entry file path, default `index.html`), `namespace` (optional -- omit for private, unlisted content; `public` lists the site in the gallery and sitemap for Google, Bing and AI search; a site always gets its own subdomain), `password` (optional), `ttlDays` (days or a string such as `2w`; default 15; the server clamps to 1--30), `ownerToken` (optional, groups site under an existing owner), `deliveryMode` (optional; fresh sites require `subdomain`).
 
 Example prompt:
 
@@ -247,7 +247,7 @@ republish_site(namespace="public", id="aBcDeFgHiJ", ownerToken="tok_...", files=
 
 Publish a JSON document to BrewPage. Returns a public URL and owner token. The body may be passed as a JSON string or as a structured object.
 
-Parameters: `json` (string, object, or array), `namespace` (optional -- omit for unlisted content; `public` grants gallery/search eligibility, except when password-protected), `password` (optional), `ttlDays` (days or a string such as `2w`; default 15; the server clamps to 1--30), `tags` (optional `string[]`), `ownerToken` (optional existing owner), `deliveryMode` (optional).
+Parameters: `json` (string, object, or array), `namespace` (optional -- omit for private content; `public` is the shared public namespace; JSON is never listed or indexed, anyone with the link can open it), `password` (optional), `ttlDays` (days or a string such as `2w`; default 15; the server clamps to 1--30), `tags` (optional `string[]`), `ownerToken` (optional existing owner), `deliveryMode` (optional).
 
 Example prompt:
 
@@ -297,7 +297,7 @@ update_json(namespace="public", id="aBcDeFgHiJ", json={"mode": "dark", "version"
 
 Create a new KV (key/value) entry. Returns a public URL and owner token. The KV entry is addressed by `(namespace, id, key)`; this tool creates the entry and emits the generated `id` along with the owner token.
 
-Parameters: `key` (string), `value` (string), `namespace` (optional -- omit for unlisted content; `public` grants gallery/search eligibility, except when password-protected), `password` (optional), `ttlDays` (days or a string such as `2w`; default 15; the server clamps to 1--30), `tags` (optional `string[]`), `ownerToken` (optional existing owner), `deliveryMode` (optional).
+Parameters: `key` (string), `value` (string), `namespace` (optional -- omit for private content; `public` is the shared public namespace; KV is never listed or indexed, anyone with the link can open it), `password` (optional), `ttlDays` (days or a string such as `2w`; default 15; the server clamps to 1--30), `tags` (optional `string[]`), `ownerToken` (optional existing owner), `deliveryMode` (optional).
 
 Example prompt:
 
@@ -379,7 +379,7 @@ delete_resource(type="html", namespace="public", id="aBcDeFgHiJ", ownerToken="to
 
 ### `set_visibility`
 
-Hide or show a public publication in gallery & search; the link stays the same. Only public, password-free HTML, sites and files can be listed; others answer with a `visibility-not-listable` notice.
+Hide or show a public publication in the gallery and sitemap; the link stays the same. Only public, password-free HTML, sites and files can be listed; others answer with a `visibility-not-listable` notice.
 
 Parameters: `type` (`html` | `site` | `file` | `json` | `kv`), `namespace`, `id`, `listed` (boolean), `ownerToken` (optional).
 
@@ -443,7 +443,7 @@ get_limits()
 |--------------------|------|-------|
 | "Publish this HTML so I can share it" | `publish_html` | `format=HTML`; save `ownerToken` |
 | "Share these meeting notes as a link" | `publish_html` | `format=MARKDOWN`; readable rendered output |
-| "Host this AI-generated artifact" | `publish_html` | `namespace` optional; **private/unlisted by default**; `public` grants gallery/search eligibility except when protected |
+| "Host this AI-generated artifact" | `publish_html` | `namespace` optional; **private/unlisted by default**; `public` lists it in the gallery and sitemap |
 | "Upload this image / PDF / video" | `publish_file` | Fetches from URL; inline preview on short URL |
 | "Deploy this static site" | `publish_site` | Pass `files` array or `entryContent` |
 | "Replace the site I published" | `republish_site` | Owner token; complete bundle replaces all existing files |
@@ -491,9 +491,14 @@ Every publish response includes an **owner token** -- the only credential that a
 
 ## Changelog
 
+## 1.13.2 -- 2026-10-25
+
+- `namespace` guidance matches BrewPage 2.1.5: `public` lists HTML, sites and files in the gallery and sitemap for Google, Bing and AI search (pages on the brewpage.app domain, a site on its own subdomain); omitted stays private; JSON and KV are never listed. Private `publish_json`/`publish_kv` results no longer suggest `public` for listing.
+- Old publications (made before 5 October 2026): the 409 hint mentions `republishUrl` only when the server sends it (HTML pages).
+
 ## 1.13.1 -- 2026-10-25
 
-- Old publications (created before the new link format): update tools say they answer `409 OLD_PUBLICATION_READ_ONLY`; that failure adds a hint to publish the content anew and give the user the new URL and owner token.
+- Old publications (made before 5 October 2026): update tools say they answer `409 OLD_PUBLICATION_READ_ONLY`; that failure adds a hint to publish the content anew and give the user the new URL and owner token.
 
 ## 1.13.0 -- 2026-10-25
 

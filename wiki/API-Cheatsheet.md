@@ -90,7 +90,7 @@ Limits: **5 MB/file**, **1,000 files/namespace**
 ## Gallery & Stats
 
 ```
-GET /api/gallery                   → Browse eligible public publications
+GET /api/gallery                   → Browse the public gallery
 GET /api/gallery?search=query      → Search
 GET /api/stats                      → Platform statistics
 GET /api/limits                     → Current upload limits (bytes)
@@ -122,4 +122,4 @@ Limits depend on operation and visibility. Handle `429` and any `Retry-After` he
 
 Repository defaults use MiB; video files allow up to 20 MiB. Deployment and owner-specific TTL caps can differ. Eligible content may receive automatic TTL extensions; `expiresAt` is authoritative. Site republishing without a new TTL retains the existing expiry. A ZIP uploaded as `archive` to `/api/sites` is extracted for hosting; a ZIP sent to `/api/files` is hosted as a file.
 
-Unpassworded `public` publications may qualify for gallery/search. Eligible public native HTML/sites/files may permit indexing; unlisted, protected or otherwise ineligible native responses carry `noindex`. Public namespace is not a guarantee of listing or indexing.
+Unpassworded `public` HTML, sites and files are listed in the gallery and sitemap and can be indexed by search engines; private and password-protected publications carry `noindex`. JSON and KV are never listed.

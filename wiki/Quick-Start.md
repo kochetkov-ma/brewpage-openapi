@@ -104,7 +104,7 @@ Upload report.md to brewpage.app
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@1.13.1"]
+      "args": ["-y", "brewpage-mcp@1.13.2"]
     }
   }
 }
@@ -116,7 +116,7 @@ Upload report.md to brewpage.app
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@1.13.1"]
+      "args": ["-y", "brewpage-mcp@1.13.2"]
     }
   }
 }
@@ -188,7 +188,7 @@ curl -X POST 'https://brewpage.app/api/files?ns=assets' \
 
 > **Save your `ownerToken`!** It's the only way to delete or update content later.
 
-Use the exact returned `link` for sharing; the example above is a legacy response. REST omitted `ns` publishes privately; MCP omitted `namespace` generates a private namespace. Public discovery and native indexing depend on eligibility and password protection.
+Use the exact returned `link` for sharing; the example above is a legacy response. REST omitted `ns` publishes privately; MCP omitted `namespace` generates a private namespace. `public` lists HTML, sites and files in the gallery and sitemap; password-protected publications are never listed.
 
 ### With Options
 

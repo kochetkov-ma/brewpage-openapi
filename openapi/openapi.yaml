@@ -48,7 +48,7 @@ components:
         message:
           type: string
         republishUrl:
-          description: 'With OLD_PUBLICATION_READ_ONLY: publish the content anew here.'
+          description: 'With OLD_PUBLICATION_READ_ONLY on an HTML page: publish the content anew here.'
           type: string
         result:
           oneOf:
@@ -130,7 +130,7 @@ components:
         link:
           type: string
         listed:
-          description: Gallery & search eligible now; true only for public, password-free files.
+          description: true = listed in the gallery and sitemap now (public, no password, not hidden).
           type: boolean
         namespace:
           type: string
@@ -160,7 +160,9 @@ components:
         to that page; manage it via /api/html
       properties:
         access:
-          description: 'public: gallery & search eligible. unlisted: private, not listed. protected: link + password.'
+          description: >-
+            public: html, site and file listed in gallery and sitemap. unlisted: private, not listed. protected: link +
+            password.
           enum:
             - public
             - unlisted
@@ -208,7 +210,7 @@ components:
           description: Primary URL returned for browser download and sharing
           type: string
         listed:
-          description: Gallery & search eligible now; true only for public, password-free files.
+          description: true = listed in the gallery and sitemap now (public, no password, not hidden).
           type: boolean
         manageUrl:
           description: >-
@@ -258,9 +260,9 @@ components:
           type: array
         visibilityNotice:
           description: >-
-            Link access in words, e.g. 'Public: may be listed in gallery & search.' (public html, site and file add a
-            hide hint), 'Public: anyone with the link. Not listed.' (public json, kv), 'Private: not listed. Only via
-            your unique private link.' or 'Password: link + password.'
+            Link access in words, e.g. 'Public: listed in the gallery and sitemap; search engines can index it.' (public
+            html, site and file add a hide hint), 'Public: anyone with the link. Not listed.' (public json, kv),
+            'Private: not listed. Only via your unique private link.' or 'Password: link + password.'
           type: string
         visibilityUrl:
           description: 'Owner: POST {"listed":false|true} here to hide or show. Link unchanged.'
@@ -299,11 +301,6 @@ components:
           type:
             - string
             - 'null'
-        format:
-          description: 'type=file: lowercase extension, else null'
-          type:
-            - string
-            - 'null'
         hostingVersion:
           format: int64
           type:
@@ -331,11 +328,6 @@ components:
           type:
             - string
             - 'null'
-        preview:
-          description: WebP previews; null while previews are off and on password rows
-          oneOf:
-            - $ref: '#/components/schemas/PublicationPreviewResponse'
-            - type: 'null'
         routingCohort:
           type: string
         title:
@@ -409,7 +401,9 @@ components:
     HostingProjection:
       properties:
         access:
-          description: 'public: gallery & search eligible. unlisted: private, not listed. protected: link + password.'
+          description: >-
+            public: html, site and file listed in gallery and sitemap. unlisted: private, not listed. protected: link +
+            password.
           enum:
             - public
             - unlisted
@@ -476,7 +470,9 @@ components:
     HostingReadResponse:
       properties:
         access:
-          description: 'public: gallery & search eligible. unlisted: private, not listed. protected: link + password.'
+          description: >-
+            public: html, site and file listed in gallery and sitemap. unlisted: private, not listed. protected: link +
+            password.
           enum:
             - public
             - unlisted
@@ -593,7 +589,9 @@ components:
       description: HTML update result. NEW publications include hosting metadata; OLD publications omit it.
       properties:
         access:
-          description: 'public: gallery & search eligible. unlisted: private, not listed. protected: link + password.'
+          description: >-
+            public: html, site and file listed in gallery and sitemap. unlisted: private, not listed. protected: link +
+            password.
           enum:
             - public
             - unlisted
@@ -637,7 +635,7 @@ components:
           description: Primary URL returned for browser viewing and sharing
           type: string
         listed:
-          description: Gallery & search eligible now; true only for public, password-free pages.
+          description: true = listed in the gallery and sitemap now (public, no password, not hidden).
           type: boolean
         managementLink:
           type:
@@ -670,9 +668,9 @@ components:
           type: integer
         visibilityNotice:
           description: >-
-            Link access in words, e.g. 'Public: may be listed in gallery & search.' (public html, site and file add a
-            hide hint), 'Public: anyone with the link. Not listed.' (public json, kv), 'Private: not listed. Only via
-            your unique private link.' or 'Password: link + password.'
+            Link access in words, e.g. 'Public: listed in the gallery and sitemap; search engines can index it.' (public
+            html, site and file add a hide hint), 'Public: anyone with the link. Not listed.' (public json, kv),
+            'Private: not listed. Only via your unique private link.' or 'Password: link + password.'
           type: string
       required:
         - expiresAt
@@ -713,7 +711,9 @@ components:
     HtmlUploadResponse:
       properties:
         access:
-          description: 'public: gallery & search eligible. unlisted: private, not listed. protected: link + password.'
+          description: >-
+            public: html, site and file listed in gallery and sitemap. unlisted: private, not listed. protected: link +
+            password.
           enum:
             - public
             - unlisted
@@ -761,7 +761,7 @@ components:
           description: Primary URL returned for browser viewing and sharing
           type: string
         listed:
-          description: Gallery & search eligible now; true only for public, password-free pages.
+          description: true = listed in the gallery and sitemap now (public, no password, not hidden).
           type: boolean
         manageUrl:
           description: >-
@@ -806,9 +806,9 @@ components:
           type: array
         visibilityNotice:
           description: >-
-            Link access in words, e.g. 'Public: may be listed in gallery & search.' (public html, site and file add a
-            hide hint), 'Public: anyone with the link. Not listed.' (public json, kv), 'Private: not listed. Only via
-            your unique private link.' or 'Password: link + password.'
+            Link access in words, e.g. 'Public: listed in the gallery and sitemap; search engines can index it.' (public
+            html, site and file add a hide hint), 'Public: anyone with the link. Not listed.' (public json, kv),
+            'Private: not listed. Only via your unique private link.' or 'Password: link + password.'
           type: string
         visibilityUrl:
           description: 'Owner: POST {"listed":false|true} here to hide or show. Link unchanged.'
@@ -836,7 +836,9 @@ components:
     JsonCreateResponse:
       properties:
         access:
-          description: 'public: gallery & search eligible. unlisted: private, not listed. protected: link + password.'
+          description: >-
+            public: html, site and file listed in gallery and sitemap. unlisted: private, not listed. protected: link +
+            password.
           enum:
             - public
             - unlisted
@@ -881,7 +883,7 @@ components:
           description: Primary URL returned for browser viewing and sharing
           type: string
         listed:
-          description: Gallery & search eligible now; always false for JSON.
+          description: 'Always false: JSON is never listed in the gallery or sitemap.'
           type: boolean
         manageUrl:
           description: >-
@@ -922,9 +924,9 @@ components:
           type: array
         visibilityNotice:
           description: >-
-            Link access in words, e.g. 'Public: may be listed in gallery & search.' (public html, site and file add a
-            hide hint), 'Public: anyone with the link. Not listed.' (public json, kv), 'Private: not listed. Only via
-            your unique private link.' or 'Password: link + password.'
+            Link access in words, e.g. 'Public: listed in the gallery and sitemap; search engines can index it.' (public
+            html, site and file add a hide hint), 'Public: anyone with the link. Not listed.' (public json, kv),
+            'Private: not listed. Only via your unique private link.' or 'Password: link + password.'
           type: string
         visibilityUrl:
           description: 'Owner: POST {"listed":false|true} here to hide or show. Link unchanged.'
@@ -972,7 +974,9 @@ components:
     JsonUpdateResponse:
       properties:
         access:
-          description: 'public: gallery & search eligible. unlisted: private, not listed. protected: link + password.'
+          description: >-
+            public: html, site and file listed in gallery and sitemap. unlisted: private, not listed. protected: link +
+            password.
           enum:
             - public
             - unlisted
@@ -1010,7 +1014,7 @@ components:
           description: Primary URL returned for browser viewing and sharing
           type: string
         listed:
-          description: Gallery & search eligible now; always false for JSON.
+          description: 'Always false: JSON is never listed in the gallery or sitemap.'
           type: boolean
         managementLink:
           type:
@@ -1042,9 +1046,9 @@ components:
           type: string
         visibilityNotice:
           description: >-
-            Link access in words, e.g. 'Public: may be listed in gallery & search.' (public html, site and file add a
-            hide hint), 'Public: anyone with the link. Not listed.' (public json, kv), 'Private: not listed. Only via
-            your unique private link.' or 'Password: link + password.'
+            Link access in words, e.g. 'Public: listed in the gallery and sitemap; search engines can index it.' (public
+            html, site and file add a hide hint), 'Public: anyone with the link. Not listed.' (public json, kv),
+            'Private: not listed. Only via your unique private link.' or 'Password: link + password.'
           type: string
       required:
         - access
@@ -1079,7 +1083,9 @@ components:
     KvCreateStoreResponse:
       properties:
         access:
-          description: 'public: gallery & search eligible. unlisted: private, not listed. protected: link + password.'
+          description: >-
+            public: html, site and file listed in gallery and sitemap. unlisted: private, not listed. protected: link +
+            password.
           enum:
             - public
             - unlisted
@@ -1123,7 +1129,7 @@ components:
           description: Primary URL returned for browser viewing and sharing of the initial key
           type: string
         listed:
-          description: Gallery & search eligible now; always false for KV.
+          description: 'Always false: KV is never listed in the gallery or sitemap.'
           type: boolean
         manageUrl:
           description: >-
@@ -1164,9 +1170,9 @@ components:
           type: array
         visibilityNotice:
           description: >-
-            Link access in words, e.g. 'Public: may be listed in gallery & search.' (public html, site and file add a
-            hide hint), 'Public: anyone with the link. Not listed.' (public json, kv), 'Private: not listed. Only via
-            your unique private link.' or 'Password: link + password.'
+            Link access in words, e.g. 'Public: listed in the gallery and sitemap; search engines can index it.' (public
+            html, site and file add a hide hint), 'Public: anyone with the link. Not listed.' (public json, kv),
+            'Private: not listed. Only via your unique private link.' or 'Password: link + password.'
           type: string
         visibilityUrl:
           description: 'Owner: POST {"listed":false|true} here to hide or show. Link unchanged.'
@@ -1268,7 +1274,9 @@ components:
     KvUpsertKeyResponse:
       properties:
         access:
-          description: 'public: gallery & search eligible. unlisted: private, not listed. protected: link + password.'
+          description: >-
+            public: html, site and file listed in gallery and sitemap. unlisted: private, not listed. protected: link +
+            password.
           enum:
             - public
             - unlisted
@@ -1308,7 +1316,7 @@ components:
           description: Primary URL returned for browser viewing and sharing of this key
           type: string
         listed:
-          description: Gallery & search eligible now; always false for KV.
+          description: 'Always false: KV is never listed in the gallery or sitemap.'
           type: boolean
         managementLink:
           type:
@@ -1337,9 +1345,9 @@ components:
           type: integer
         visibilityNotice:
           description: >-
-            Link access in words, e.g. 'Public: may be listed in gallery & search.' (public html, site and file add a
-            hide hint), 'Public: anyone with the link. Not listed.' (public json, kv), 'Private: not listed. Only via
-            your unique private link.' or 'Password: link + password.'
+            Link access in words, e.g. 'Public: listed in the gallery and sitemap; search engines can index it.' (public
+            html, site and file add a hide hint), 'Public: anyone with the link. Not listed.' (public json, kv),
+            'Private: not listed. Only via your unique private link.' or 'Password: link + password.'
           type: string
       required:
         - access
@@ -1474,7 +1482,9 @@ components:
     PasswordResponse:
       properties:
         access:
-          description: 'public: gallery & search eligible. unlisted: private, not listed. protected: link + password.'
+          description: >-
+            public: html, site and file listed in gallery and sitemap. unlisted: private, not listed. protected: link +
+            password.
           enum:
             - public
             - unlisted
@@ -1925,7 +1935,9 @@ components:
     SiteUpdateResponse:
       properties:
         access:
-          description: 'public: gallery & search eligible. unlisted: private, not listed. protected: link + password.'
+          description: >-
+            public: html, site and file listed in gallery and sitemap. unlisted: private, not listed. protected: link +
+            password.
           enum:
             - public
             - unlisted
@@ -1973,7 +1985,7 @@ components:
           description: Primary URL returned for browser viewing and sharing
           type: string
         listed:
-          description: Gallery & search eligible now; true only for public, password-free html/site/file.
+          description: true = listed in the gallery and sitemap now (public, no password, not hidden).
           type: boolean
         managementLink:
           type:
@@ -2010,9 +2022,9 @@ components:
           type: integer
         visibilityNotice:
           description: >-
-            Link access in words, e.g. 'Public: may be listed in gallery & search.' (public html, site and file add a
-            hide hint), 'Public: anyone with the link. Not listed.' (public json, kv), 'Private: not listed. Only via
-            your unique private link.' or 'Password: link + password.'
+            Link access in words, e.g. 'Public: listed in the gallery and sitemap; search engines can index it.' (public
+            html, site and file add a hide hint), 'Public: anyone with the link. Not listed.' (public json, kv),
+            'Private: not listed. Only via your unique private link.' or 'Password: link + password.'
           type: string
       required:
         - access
@@ -2038,7 +2050,9 @@ components:
     SiteUploadResponse:
       properties:
         access:
-          description: 'public: gallery & search eligible. unlisted: private, not listed. protected: link + password.'
+          description: >-
+            public: html, site and file listed in gallery and sitemap. unlisted: private, not listed. protected: link +
+            password.
           enum:
             - public
             - unlisted
@@ -2086,7 +2100,7 @@ components:
           description: Primary URL returned for browser viewing and sharing
           type: string
         listed:
-          description: Gallery & search eligible now; true only for public, password-free html/site/file.
+          description: true = listed in the gallery and sitemap now (public, no password, not hidden).
           type: boolean
         manageUrl:
           description: 'Private manage link, shown once. Absent: old publication or foreign duplicate.'
@@ -2129,9 +2143,9 @@ components:
           type: integer
         visibilityNotice:
           description: >-
-            Link access in words, e.g. 'Public: may be listed in gallery & search.' (public html, site and file add a
-            hide hint), 'Public: anyone with the link. Not listed.' (public json, kv), 'Private: not listed. Only via
-            your unique private link.' or 'Password: link + password.'
+            Link access in words, e.g. 'Public: listed in the gallery and sitemap; search engines can index it.' (public
+            html, site and file add a hide hint), 'Public: anyone with the link. Not listed.' (public json, kv),
+            'Private: not listed. Only via your unique private link.' or 'Password: link + password.'
           type: string
         visibilityUrl:
           description: 'Owner: POST {"listed":false|true} here to hide or show. Link unchanged. Absent for a foreign duplicate.'
@@ -2401,7 +2415,9 @@ components:
     VisibilityResponse:
       properties:
         access:
-          description: 'public: gallery & search eligible. unlisted: private, not listed. protected: link + password.'
+          description: >-
+            public: html, site and file listed in gallery and sitemap. unlisted: private, not listed. protected: link +
+            password.
           enum:
             - public
             - unlisted
@@ -2454,7 +2470,7 @@ info:
     url: https://www.apache.org/licenses/LICENSE-2.0
   termsOfService: https://brewpage.app/terms
   title: BrewPage API
-  version: 2.2.0
+  version: 2.1.5
 openapi: 3.1.0
 paths:
   /api/files:
@@ -2504,7 +2520,14 @@ paths:
         private namespace + password.
       operationId: upload
       parameters:
-        - description: 'Namespace. Omitted: private. `public` = gallery & search. Lowercase only.'
+        - description: >-
+            ns=public: the page is listed in the public gallery and the sitemap, so Google, Bing and AI search can find
+            and index it and people can discover it. Use it for anything meant to be found or shared: docs, guides,
+            demos, portfolios, reports, landing pages. Public pages are served right on the brewpage.app domain, which
+            gives them the strongest reach in search; a page whose code needs its own origin (cookies, storage) gets its
+            own subdomain automatically. Anyone can find and read a public page: never put secrets, tokens or personal
+            data there. No ns (default): private. Unlisted and not indexed; anyone who has the link can still open it.
+            Lowercase only.
           in: query
           name: ns
           required: false
@@ -2803,8 +2826,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
           description: >-
-            Old publication is read-only (code: OLD_PUBLICATION_READ_ONLY, republishUrl), or the same content is another
-            file of this owner
+            Old publication is read-only (code: OLD_PUBLICATION_READ_ONLY), or the same content is another file of this
+            owner
         '422':
           content:
             application/json:
@@ -2925,7 +2948,14 @@ paths:
         password.
       operationId: create_1
       parameters:
-        - description: 'Namespace. Omitted: private. `public` = gallery & search. Lowercase only.'
+        - description: >-
+            ns=public: the page is listed in the public gallery and the sitemap, so Google, Bing and AI search can find
+            and index it and people can discover it. Use it for anything meant to be found or shared: docs, guides,
+            demos, portfolios, reports, landing pages. Public pages are served right on the brewpage.app domain, which
+            gives them the strongest reach in search; a page whose code needs its own origin (cookies, storage) gets its
+            own subdomain automatically. Anyone can find and read a public page: never put secrets, tokens or personal
+            data there. No ns (default): private. Unlisted and not indexed; anyone who has the link can still open it.
+            Lowercase only.
           in: query
           name: ns
           required: false
@@ -2962,9 +2992,8 @@ paths:
             default: html
             type: string
         - description: >-
-            Access password. Empty means no password restriction; public discovery additionally requires eligibility.
-            Protected pages are hidden from the gallery. OLD links accept ?p=; NEW access uses X-Password or a reader
-            access cookie after password entry.
+            Access password. Empty means no password restriction. Protected pages are never listed in the gallery or
+            sitemap. OLD links accept ?p=; NEW access uses X-Password or a reader access cookie after password entry.
           in: header
           name: X-Password
           required: false
@@ -3483,7 +3512,9 @@ paths:
         Secrets allowed; likely ones are flagged in notices. For a secret: private namespace + password.
       operationId: create
       parameters:
-        - description: 'Namespace. Omitted: private. `public` = gallery & search. Lowercase only.'
+        - description: >-
+            No ns (default): private. ns=public: the shared public namespace. JSON and KV are never listed in the
+            gallery or indexed, in any namespace; anyone who has the link can open it. Lowercase only.
           in: query
           name: ns
           required: false
@@ -3725,7 +3756,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-          description: 'Old publication is read-only (code: OLD_PUBLICATION_READ_ONLY, republishUrl)'
+          description: 'Old publication is read-only (code: OLD_PUBLICATION_READ_ONLY)'
       security:
         - OwnerToken: []
         - ManageKey: []
@@ -3775,7 +3806,9 @@ paths:
         namespace + password.
       operationId: createStore
       parameters:
-        - description: 'Namespace. Omitted: private. `public` = gallery & search. Lowercase only.'
+        - description: >-
+            No ns (default): private. ns=public: the shared public namespace. JSON and KV are never listed in the
+            gallery or indexed, in any namespace; anyone who has the link can open it. Lowercase only.
           in: query
           name: ns
           required: false
@@ -4147,7 +4180,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-          description: 'Key limit exceeded, or old publication is read-only (code: OLD_PUBLICATION_READ_ONLY, republishUrl)'
+          description: 'Key limit exceeded, or old publication is read-only (code: OLD_PUBLICATION_READ_ONLY)'
       security:
         - OwnerToken: []
         - ManageKey: []
@@ -4714,7 +4747,12 @@ paths:
         published site Secrets allowed; likely ones are flagged in notices. For a secret: private namespace + password.
       operationId: uploadSite
       parameters:
-        - description: 'Namespace. Omitted: private. `public` = gallery & search. Lowercase only.'
+        - description: >-
+            ns=public: the page is listed in the public gallery and the sitemap, so Google, Bing and AI search can find
+            and index it and people can discover it. Use it for anything meant to be found or shared: docs, guides,
+            demos, portfolios, reports, landing pages. A site always gets its own subdomain. Anyone can find and read a
+            public page: never put secrets, tokens or personal data there. No ns (default): private. Unlisted and not
+            indexed; anyone who has the link can still open it. Lowercase only.
           in: query
           name: ns
           required: false
@@ -5044,7 +5082,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-          description: 'Old publication: read-only, publish a new one (republishUrl)'
+          description: 'Old publication: read-only, publish a new one'
         '410':
           content:
             application/json:
@@ -5326,7 +5364,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-          description: 'Old publication is read-only (code: OLD_PUBLICATION_READ_ONLY, republishUrl)'
+          description: 'Old publication is read-only (code: OLD_PUBLICATION_READ_ONLY; HTML adds republishUrl)'
         '429':
           content:
             application/json:
@@ -5531,7 +5569,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-          description: 'Old publication is read-only (code: OLD_PUBLICATION_READ_ONLY, republishUrl)'
+          description: 'Old publication is read-only (code: OLD_PUBLICATION_READ_ONLY; HTML adds republishUrl)'
         '429':
           content:
             application/json:
@@ -5608,7 +5646,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-          description: 'Old publication is read-only (code: OLD_PUBLICATION_READ_ONLY, republishUrl)'
+          description: 'Old publication is read-only (code: OLD_PUBLICATION_READ_ONLY; HTML adds republishUrl)'
         '429':
           content:
             application/json:
@@ -5682,7 +5720,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-          description: 'Old publication is read-only (code: OLD_PUBLICATION_READ_ONLY, republishUrl)'
+          description: 'Old publication is read-only (code: OLD_PUBLICATION_READ_ONLY; HTML adds republishUrl)'
         '429':
           content:
             application/json:

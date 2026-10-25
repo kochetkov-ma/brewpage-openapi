@@ -624,33 +624,61 @@ for (const scenario of [
 
 const OLD_READ_ONLY_BODY = {
   status: 409, error: "Conflict", message: "Old publication: publish a new one.", code: "OLD_PUBLICATION_READ_ONLY",
-  republishUrl: "https://brewpage.app/?republish=public/aBcDeFgHiJ",
 };
+const OLD_HTML_BODY = { ...OLD_READ_ONLY_BODY, republishUrl: "https://brewpage.app/?republish=public/aBcDeFgHiJ" };
 
 for (const scenario of [
-  { tool: "update_html", operation: "update HTML", args: { content: "x" }, kv: "" },
-  { tool: "republish_site", operation: "republish site", args: { entryContent: "<h1>x</h1>" }, kv: "" },
-  { tool: "update_json", operation: "update JSON", args: { json: { a: 1 } }, kv: "" },
-  { tool: "set_kv", operation: "set KV", args: { key: "k", value: "v" },
-    kv: " For KV, read all keys with get_kv and publish them together with publish_kv." },
+  { tool: "update_html", operation: "update HTML", args: { content: "x" }, body: OLD_HTML_BODY, extra: " Ignore republishUrl (browser-only)." },
+  { tool: "republish_site", operation: "republish site", args: { entryContent: "<h1>x</h1>" }, body: OLD_READ_ONLY_BODY, extra: "" },
+  { tool: "update_json", operation: "update JSON", args: { json: { a: 1 } }, body: OLD_READ_ONLY_BODY, extra: "" },
+  { tool: "set_kv", operation: "set KV", args: { key: "k", value: "v" }, body: OLD_READ_ONLY_BODY,
+    extra: " For KV, read all keys with get_kv and publish them together with publish_kv." },
 ]) {
   test(`${scenario.tool} turns 409 OLD_PUBLICATION_READ_ONLY into a publish-anew hint`, { timeout: 10_000 }, async (t) => {
     // GIVEN a frozen old publication.
     const f = await fixture(t);
-    f.respond(409, OLD_READ_ONLY_BODY);
+    f.respond(409, scenario.body);
     // WHEN its owner updates it.
     const { tools } = await f.client.listTools();
     const result = await f.call(scenario.tool, { namespace: "public", id: "aBcDeFgHiJ", ownerToken: "fixture-owner", ...scenario.args });
     // THEN the tool warns up front and the failure keeps the server body plus the publish-anew hint, without retry.
     assert.deepEqual({
-      described: tools.find(({ name }) => name === scenario.tool)!.description!.includes("Old publications (created before the new link format) answer 409 OLD_PUBLICATION_READ_ONLY."),
+      described: tools.find(({ name }) => name === scenario.tool)!.description!.includes("Old publications (made before 5 October 2026) are read-only: 409 OLD_PUBLICATION_READ_ONLY."),
       isError: result.isError, text: result.content[0].text, requests: f.requests.length,
     }, {
       described: true, isError: true, requests: 1,
-      text: `Failed to ${scenario.operation} (409): ${JSON.stringify(OLD_READ_ONLY_BODY)}\n` +
+      text: `Failed to ${scenario.operation} (409): ${JSON.stringify(scenario.body)}\n` +
         "Read-only old publication: cannot be updated. Publish the content anew with the matching " +
         "publish tool in the same namespace; give the user the NEW URL and owner token. The old URL keeps its old content " +
-        "until it expires. Ignore republishUrl (browser-only)." + scenario.kv,
+        "until it expires." + scenario.extra,
     }, "frozen update is described, relayed verbatim and hinted once");
+  });
+}
+
+const PRIVATE_RESPONSE = { ...NEW_RESPONSE, namespace: "priv-synthetic", access: "unlisted" };
+const LISTED_PRIVATE = "Private: not listed. Anyone with the link can open it. Use namespace public to list it in the gallery and sitemap.";
+for (const scenario of [
+  { tool: "publish_html", args: { content: "x" }, kind: "domain", notice: LISTED_PRIVATE },
+  { tool: "publish_file", args: {}, kind: "domain", notice: LISTED_PRIVATE },
+  { tool: "publish_site", args: { entryContent: "<h1>x</h1>" }, kind: "site", notice: LISTED_PRIVATE },
+  { tool: "publish_json", args: { json: { a: 1 } }, kind: "data", notice: "Private: not listed. Anyone with the link can open it." },
+  { tool: "publish_kv", args: { key: "k", value: "v" }, kind: "data", notice: "Private: not listed. Anyone with the link can open it." },
+]) {
+  test(`${scenario.tool} describes namespace ${scenario.kind} reach and prints the matching private notice`, { timeout: 10_000 }, async (t) => {
+    // GIVEN a private create answer.
+    const f = await fixture(t);
+    f.respond(201, PRIVATE_RESPONSE);
+    // WHEN the client reads the namespace input and publishes without a namespace.
+    const { tools } = await f.client.listTools();
+    const text = (tools.find(({ name }) => name === scenario.tool)!.inputSchema.properties!.namespace as { description: string }).description;
+    const result = await f.call(scenario.tool, { ...scenario.args, ...(scenario.tool === "publish_file" ? { url: `${f.baseUrl}/source-file` } : {}) });
+    // THEN the description states the type's public reach without hedges and the notice fits the type.
+    const kind = text.includes("served right on the brewpage.app domain") ? "domain"
+      : text.includes("A site always gets its own subdomain.") ? "site"
+      : text.includes("JSON and KV are never listed in the gallery or indexed") ? "data" : "none";
+    assert.deepEqual({
+      kind, privateDefault: /Omit \(default\): private\./.test(text), hedged: /eligib|may permit|secure|qualif/i.test(text),
+      notice: result.content[0].text.split("\n").find((line) => line.startsWith("Private:")),
+    }, { kind: scenario.kind, privateDefault: true, hedged: false, notice: scenario.notice }, "namespace guidance matches the type");
   });
 }

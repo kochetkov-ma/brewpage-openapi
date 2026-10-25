@@ -31,7 +31,7 @@ Edit `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS):
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@1.13.1"]
+      "args": ["-y", "brewpage-mcp@1.13.2"]
     }
   }
 }
@@ -41,14 +41,14 @@ Windows: `%APPDATA%\Claude\claude_desktop_config.json`
 
 ### Claude Code
 
-Run `claude mcp add --transport stdio --scope project brewpage -- npx -y brewpage-mcp@1.13.1`, or add this to project-root `.mcp.json`:
+Run `claude mcp add --transport stdio --scope project brewpage -- npx -y brewpage-mcp@1.13.2`, or add this to project-root `.mcp.json`:
 
 ```json
 {
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@1.13.1"]
+      "args": ["-y", "brewpage-mcp@1.13.2"]
     }
   }
 }
@@ -57,7 +57,7 @@ Run `claude mcp add --transport stdio --scope project brewpage -- npx -y brewpag
 ### Direct run
 
 ```bash
-npx -y brewpage-mcp@1.13.1
+npx -y brewpage-mcp@1.13.2
 ```
 
 ---
@@ -84,10 +84,10 @@ npx -y brewpage-mcp@1.13.1
 | `publish_kv` | Create a KV store |
 | `set_kv` | Upsert a key with owner authority |
 | `get_kv` | Read a key |
-| `search_gallery` | Search eligible public publications |
+| `search_gallery` | Search the public gallery |
 | `update_hosting` | Change hosting with owner authority and the expected hosting version |
 
-Omitted `namespace` generates an unlisted namespace. Use `public` explicitly for discovery eligibility; password protection excludes discovery independently. Unlisted links remain readable by anyone who has them unless protected. Keep the exact server-returned `link`, cohort and effective mode. Eligible public native HTML, sites and files may permit indexing; unlisted, protected or otherwise ineligible native responses carry `noindex`.
+Omitted `namespace` is private (a generated namespace): unlisted and not indexed; anyone with the link can still open it. `public` lists HTML, sites and files in the gallery and sitemap, so Google, Bing and AI search can index them. Password-protected publications are never listed. Keep the exact server-returned `link`, cohort and effective mode.
 
 ---
 

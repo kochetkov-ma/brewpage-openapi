@@ -6,13 +6,17 @@ order: 5
 
 # Changelog
 
+## MCP 1.13.2 / Spec 2.1.5 — Public reach wording
+
+The spec mirrors production BrewPage 2.1.5. `ns` says what `public` gives: HTML, sites and files listed in the gallery and sitemap for Google, Bing and AI search, pages served on the brewpage.app domain, a site on its own subdomain; omitted stays private; JSON and KV are never listed. `access`, `listed` and `visibilityNotice` descriptions follow. `republishUrl` on `409 OLD_PUBLICATION_READ_ONLY` is HTML-only. The 2.2.0 gallery `preview` and `format` fields are not in production yet and return with backend 2.2.0. MCP 1.13.2 tool descriptions match. 47 paths and 62 operations.
+
 ## Spec 2.2.0 — Gallery previews
 
 `GalleryItem` (`GET /api/gallery`) adds nullable `preview` (`PublicationPreviewResponse`; null while previews are off and on password rows) and nullable `format` (`type=file`: lowercase extension, else null). Additive: 47 paths and 62 operations. No MCP release.
 
 ## MCP 1.13.1 — Old publications hint
 
-Update tools say old publications (created before the new link format) answer `409 OLD_PUBLICATION_READ_ONLY`; that failure tells the client to publish the content anew and give the user the new URL and owner token. No contract change.
+Update tools say old publications (made before 5 October 2026) answer `409 OLD_PUBLICATION_READ_ONLY`; that failure tells the client to publish the content anew and give the user the new URL and owner token. No contract change.
 
 ## Spec 2.1.0 — Full preview for every type
 

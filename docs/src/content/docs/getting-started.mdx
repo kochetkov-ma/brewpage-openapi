@@ -44,7 +44,7 @@ Current upload limits are published as JSON at [`GET /api/limits`](https://brewp
 <Timeline steps={[
   { title: "Install the publishing skill", description: "Follow the linked skill installation guide for your client" },
   { title: "Use the slash command", description: '/brewpage "Hello world" — or say: publish this to brewpage' },
-  { title: "Pick namespace and password", description: "The skill defaults to a suggested unlisted namespace; select public only for gallery/search eligibility" },
+  { title: "Pick namespace and password", description: "The skill defaults to a private, unlisted namespace; select public to list it in the gallery and sitemap" },
   { title: "Get link + saved token", description: "Use the exact returned link; the skill stores owner authority in its local publication history" },
 ]} />
 
@@ -55,7 +55,7 @@ Current upload limits are published as JSON at [`GET /api/limits`](https://brewp
 ### 3. MCP Server (AI Agent)
 
 <Timeline steps={[
-  { title: "Configure brewpage-mcp@1.13.1", description: "Follow the MCP guide for your client; the pinned stdio command is npx -y brewpage-mcp@1.13.1" },
+  { title: "Configure brewpage-mcp@1.13.2", description: "Follow the MCP guide for your client; the pinned stdio command is npx -y brewpage-mcp@1.13.2" },
   { title: 'Ask your assistant: "Publish this to BrewPage"', description: "Twenty tools support HTML, Markdown, JSON, KV, files, sites, hosting updates, visibility, owner tokens and upload limits; namespace defaults to unlisted" },
   { title: "Get link + owner token", description: "Claude returns the URL and reminds you to save the token" },
 ]} />
@@ -72,7 +72,7 @@ Current upload limits are published as JSON at [`GET /api/limits`](https://brewp
   { title: "Share the link", description: "Copy the returned link exactly; do not construct it from namespace or ID" },
 ]} />
 
-REST creation defaults to `ns=public`, unlike MCP's unlisted default. These examples explicitly select `public`; use a custom namespace for unlisted content, readable by anyone with its unpassworded link. Password-protected content remains excluded from gallery/search and unlisted, protected or otherwise ineligible native responses carry `noindex`; eligible public HTML, sites and files may permit indexing. Ordinary TTL is 1–30 days, default 15; owner-specific caps and eligible automatic extensions can affect expiry. Use returned `expiresAt`.
+REST and MCP both default to private: unlisted and not indexed; anyone with the link can still open it. These examples explicitly select `public`, which lists HTML, sites and files in the gallery and sitemap for Google, Bing and AI search. Password-protected publications are never listed. Ordinary TTL is 1–30 days, default 15; owner-specific caps and eligible automatic extensions can affect expiry. Use returned `expiresAt`.
 
 **Publish HTML:**
 
