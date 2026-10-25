@@ -6,6 +6,10 @@ order: 5
 
 # Changelog
 
+## Spec 2.2.0 — Gallery previews
+
+`GalleryItem` (`GET /api/gallery`) adds nullable `preview` (`PublicationPreviewResponse`; null while previews are off and on password rows) and nullable `format` (`type=file`: lowercase extension, else null). Additive: 47 paths and 62 operations. No MCP release.
+
 ## MCP 1.13.1 — Old publications hint
 
 Update tools say old publications (created before the new link format) answer `409 OLD_PUBLICATION_READ_ONLY`; that failure tells the client to publish the content anew and give the user the new URL and owner token. No contract change.

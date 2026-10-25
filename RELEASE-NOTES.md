@@ -1,5 +1,10 @@
 # Release Notes
 
+## API contract 2.2.0 — 2026-10-25
+
+- API contract version 2.2.0 identifies the backend-generated public snapshot exported from the clean brewpage-app source `1806d1cf13a37c9c027e3ab696cf23a1f3cd288a` (branch `feat/gallery-card-previews`, for backend `v2.2.0`). Deterministic YAML, the byte-identical Scalar copy and export provenance are regenerated with it.
+- `GalleryItem` (`GET /api/gallery`) adds nullable `preview` (`PublicationPreviewResponse`; null while previews are off and on password rows) and nullable `format` (`type=file`: lowercase extension, else null). Additive: 47 paths and 62 operations. No MCP release; `search_gallery` returns the fields as sent.
+
 ## MCP 1.13.1 — 2026-10-25
 
 - `update_html`, `republish_site`, `update_json` and `set_kv` say old publications (created before the new link format) answer `409 OLD_PUBLICATION_READ_ONLY`; that failure adds a hint: publish the content anew in the same namespace and give the user the new URL and owner token (`republishUrl` is browser-only); for KV, read all keys with `get_kv` and publish them together. No contract change.
