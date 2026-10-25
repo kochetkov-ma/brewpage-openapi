@@ -493,7 +493,7 @@ Every publish response includes an **owner token** -- the only credential that a
 
 ## 1.13.1 -- 2026-10-25
 
-- Old (pre-2.0) publications: update tools say they answer `409 OLD_PUBLICATION_READ_ONLY`; that failure adds a hint to publish the content anew and give the user the new URL and owner token.
+- Old publications (created before the new link format): update tools say they answer `409 OLD_PUBLICATION_READ_ONLY`; that failure adds a hint to publish the content anew and give the user the new URL and owner token.
 
 ## 1.13.0 -- 2026-10-25
 
