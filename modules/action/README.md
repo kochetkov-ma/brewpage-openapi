@@ -4,7 +4,7 @@
 > This folder is a reference snapshot, not a git submodule (no-submodules strategy, locked 2026-05-20). Development is coordinated from `brewpage-openapi` via the `action-engineer` subagent (`.claude/agents/action-engineer.md`).
 > Note: separate dev repo keeps `@v1` semantics clean for Actions Marketplace.
 
-**Status:** RELEASED -- the action is listed on the [GitHub Marketplace](https://github.com/marketplace/actions/publish-to-brewpage); use it by `uses: kochetkov-ma/brewpage-action@v1`. Current release `v1.1.2`; major ref `@v1` points to it.
+**Status:** RELEASED -- the action is listed on the [GitHub Marketplace](https://github.com/marketplace/actions/publish-to-brewpage); use it by `uses: kochetkov-ma/brewpage-action@v1`. Current release `v1.2.0`; major ref `@v1` points to it.
 
 **Intent.** Publish CI artefacts -- HTML reports, Playwright reports, generated docs, build outputs -- to BrewPage from GitHub Actions. One step, one live URL as a job output.
 
