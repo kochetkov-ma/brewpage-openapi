@@ -5,11 +5,11 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { z } from "zod";
 
 const BASE_URL = process.env.BREWPAGE_URL || "https://brewpage.app";
-const USER_AGENT = "brewpage-mcp/1.13.0";
+const USER_AGENT = "brewpage-mcp/1.13.1";
 
 const server = new McpServer({
   name: "brewpage-mcp",
-  version: "1.13.0",
+  version: "1.13.1",
 });
 
 const OWNER_TOKEN_SHAPE = /^[A-Za-z0-9]{32}$/;
@@ -29,6 +29,8 @@ const CREATE_OWNER_TOKEN_DESCRIPTION = `Optional. Default: ${OWNER_TOKEN_ENV}, e
 const OWNER_TOKEN_DESCRIPTION = `Owner token from create. Default: ${OWNER_TOKEN_ENV}.`;
 const SECRETS = "Secrets allowed; likely ones are flagged in notices. For a secret: private namespace + password.";
 const MANAGE_URL_TEXT = "Returns manageUrl (private): give it to the user privately; never publish it.";
+const OLD_READ_ONLY_CODE = "OLD_PUBLICATION_READ_ONLY";
+const OLD_READ_ONLY_TEXT = ` Old (pre-2.0) publications answer 409 ${OLD_READ_ONLY_CODE}.`;
 /** Notice codes the agent must relay to the user. */
 const WARNING_CODES = new Set(["secret-detected", "manage-link-disabled"]);
 /** MCP type name -> REST path segment. */
@@ -49,12 +51,17 @@ function textResult(text: string, isError = false) {
   return isError ? { content: [{ type: "text" as const, text }], isError: true } : { content: [{ type: "text" as const, text }] };
 }
 
-/** Owner-tool failure: the server answer verbatim plus a hint for a plain wrong-token 403. */
+/** Owner-tool failure: the server answer verbatim plus a hint for a plain wrong-token 403 or a frozen old publication. */
 function ownerFailure(operation: string, status: number, data: unknown, fromEnv: boolean) {
   const lines = [`Failed to ${operation} (${status}): ${JSON.stringify(data)}`];
   const code = (data as { code?: unknown } | null)?.code;
   if (status === 403 && (code === undefined || code === "OWNER_AUTHORIZATION_FAILED")) {
     lines.push(`Wrong owner token for this publication. Use ownerToken from create.${fromEnv ? ` Sent: ${OWNER_TOKEN_ENV}.` : ""}`);
+  }
+  if (status === 409 && code === OLD_READ_ONLY_CODE) {
+    lines.push("Read-only old publication (pre-BrewPage 2.0): cannot be updated. Publish the content anew with the matching " +
+      "publish tool in the same namespace; give the user the NEW URL and owner token. The old URL keeps its old content " +
+      "until it expires. Ignore republishUrl (browser-only).");
   }
   return textResult(lines.join("\n"), true);
 }
@@ -651,7 +658,7 @@ server.tool(
 
 server.tool(
   "republish_site",
-  "Republish (full-replace) an existing multi-file BrewPage site in place at the SAME URL/ID. Requires owner token. The uploaded bundle becomes the complete new file set — files absent from it are removed, new files added, matching files overwritten. Single-page: pass `entryContent`. Multi-page: pass `files` (array of `{path, content}`). Optional `entry` overrides the default `index.html`. Republishing preserves existing expiry. " + SITE_LIMITS_TEXT,
+  "Republish (full-replace) an existing multi-file BrewPage site in place at the SAME URL/ID. Requires owner token. The uploaded bundle becomes the complete new file set — files absent from it are removed, new files added, matching files overwritten. Single-page: pass `entryContent`. Multi-page: pass `files` (array of `{path, content}`). Optional `entry` overrides the default `index.html`. Republishing preserves existing expiry." + OLD_READ_ONLY_TEXT + " " + SITE_LIMITS_TEXT,
   {
     namespace: z.string().describe("Site namespace"),
     id: z.string().describe("Site ID"),
@@ -745,7 +752,7 @@ server.tool(
 server.tool(
   "update_html",
   "Update an existing BrewPage HTML/Markdown page. Requires owner token. Returns the updated page metadata. " +
-    "The link and delivery mode never change on update; an advisory deliveryModeReason and delivery notice are included when the new content uses browser features that may not work fully on a BrewPage link.",
+    "The link and delivery mode never change on update; an advisory deliveryModeReason and delivery notice are included when the new content uses browser features that may not work fully on a BrewPage link." + OLD_READ_ONLY_TEXT,
   {
     namespace: z.string().describe("Page namespace"),
     id: z.string().describe("Page ID"),
@@ -902,7 +909,7 @@ server.tool(
 
 server.tool(
   "update_json",
-  "Update an existing BrewPage JSON document. Requires owner token. Accepts a JSON object, array, or a JSON-encoded string.",
+  "Update an existing BrewPage JSON document. Requires owner token. Accepts a JSON object, array, or a JSON-encoded string." + OLD_READ_ONLY_TEXT,
   {
     namespace: z.string().describe("Document namespace"),
     id: z.string().describe("Document ID"),
@@ -1013,7 +1020,7 @@ server.tool(
 
 server.tool(
   "set_kv",
-  "Set or update a key in an existing BrewPage KV store. Requires owner token. The key name `hosting` is reserved.",
+  "Set or update a key in an existing BrewPage KV store. Requires owner token. The key name `hosting` is reserved." + OLD_READ_ONLY_TEXT,
   {
     namespace: z.string().describe("KV store namespace"),
     id: z.string().describe("KV store ID"),

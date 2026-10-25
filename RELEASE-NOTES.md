@@ -1,5 +1,9 @@
 # Release Notes
 
+## MCP 1.13.1 — 2026-10-25
+
+- `update_html`, `republish_site`, `update_json` and `set_kv` say old (pre-2.0) publications answer `409 OLD_PUBLICATION_READ_ONLY`; that failure adds a hint: publish the content anew in the same namespace and give the user the new URL and owner token (`republishUrl` is browser-only). No contract change.
+
 ## API contract 2.1.0 — 2026-10-25
 
 - API contract version 2.1.0 identifies the backend-generated public snapshot exported from the clean brewpage-app source `9f7e87fd7f84730ca61da21e423e6cf63fe63a7f` (branch `fix/v2-observability-polish`, released as `v2.1.0`). Deterministic YAML, the byte-identical Scalar copy and export provenance are regenerated with it.
