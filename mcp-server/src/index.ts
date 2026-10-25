@@ -30,7 +30,7 @@ const OWNER_TOKEN_DESCRIPTION = `Owner token from create. Default: ${OWNER_TOKEN
 const SECRETS = "Secrets allowed; likely ones are flagged in notices. For a secret: private namespace + password.";
 const MANAGE_URL_TEXT = "Returns manageUrl (private): give it to the user privately; never publish it.";
 const OLD_READ_ONLY_CODE = "OLD_PUBLICATION_READ_ONLY";
-const OLD_READ_ONLY_TEXT = ` Old (pre-2.0) publications answer 409 ${OLD_READ_ONLY_CODE}.`;
+const OLD_READ_ONLY_TEXT = ` Old publications (created before the new link format) answer 409 ${OLD_READ_ONLY_CODE}.`;
 /** Notice codes the agent must relay to the user. */
 const WARNING_CODES = new Set(["secret-detected", "manage-link-disabled"]);
 /** MCP type name -> REST path segment. */
@@ -59,9 +59,10 @@ function ownerFailure(operation: string, status: number, data: unknown, fromEnv:
     lines.push(`Wrong owner token for this publication. Use ownerToken from create.${fromEnv ? ` Sent: ${OWNER_TOKEN_ENV}.` : ""}`);
   }
   if (status === 409 && code === OLD_READ_ONLY_CODE) {
-    lines.push("Read-only old publication (pre-BrewPage 2.0): cannot be updated. Publish the content anew with the matching " +
+    lines.push("Read-only old publication: cannot be updated. Publish the content anew with the matching " +
       "publish tool in the same namespace; give the user the NEW URL and owner token. The old URL keeps its old content " +
-      "until it expires. Ignore republishUrl (browser-only).");
+      "until it expires. Ignore republishUrl (browser-only)." +
+      (operation === "set KV" ? " For KV, read all keys with get_kv and publish them together with publish_kv." : ""));
   }
   return textResult(lines.join("\n"), true);
 }

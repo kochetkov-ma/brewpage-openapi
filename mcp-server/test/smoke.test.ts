@@ -628,13 +628,14 @@ const OLD_READ_ONLY_BODY = {
 };
 
 for (const scenario of [
-  { tool: "update_html", operation: "update HTML", args: { content: "x" } },
-  { tool: "republish_site", operation: "republish site", args: { entryContent: "<h1>x</h1>" } },
-  { tool: "update_json", operation: "update JSON", args: { json: { a: 1 } } },
-  { tool: "set_kv", operation: "set KV", args: { key: "k", value: "v" } },
+  { tool: "update_html", operation: "update HTML", args: { content: "x" }, kv: "" },
+  { tool: "republish_site", operation: "republish site", args: { entryContent: "<h1>x</h1>" }, kv: "" },
+  { tool: "update_json", operation: "update JSON", args: { json: { a: 1 } }, kv: "" },
+  { tool: "set_kv", operation: "set KV", args: { key: "k", value: "v" },
+    kv: " For KV, read all keys with get_kv and publish them together with publish_kv." },
 ]) {
   test(`${scenario.tool} turns 409 OLD_PUBLICATION_READ_ONLY into a publish-anew hint`, { timeout: 10_000 }, async (t) => {
-    // GIVEN a frozen pre-2.0 publication.
+    // GIVEN a frozen old publication.
     const f = await fixture(t);
     f.respond(409, OLD_READ_ONLY_BODY);
     // WHEN its owner updates it.
@@ -642,14 +643,14 @@ for (const scenario of [
     const result = await f.call(scenario.tool, { namespace: "public", id: "aBcDeFgHiJ", ownerToken: "fixture-owner", ...scenario.args });
     // THEN the tool warns up front and the failure keeps the server body plus the publish-anew hint, without retry.
     assert.deepEqual({
-      described: tools.find(({ name }) => name === scenario.tool)!.description!.includes("Old (pre-2.0) publications answer 409 OLD_PUBLICATION_READ_ONLY."),
+      described: tools.find(({ name }) => name === scenario.tool)!.description!.includes("Old publications (created before the new link format) answer 409 OLD_PUBLICATION_READ_ONLY."),
       isError: result.isError, text: result.content[0].text, requests: f.requests.length,
     }, {
       described: true, isError: true, requests: 1,
       text: `Failed to ${scenario.operation} (409): ${JSON.stringify(OLD_READ_ONLY_BODY)}\n` +
-        "Read-only old publication (pre-BrewPage 2.0): cannot be updated. Publish the content anew with the matching " +
+        "Read-only old publication: cannot be updated. Publish the content anew with the matching " +
         "publish tool in the same namespace; give the user the NEW URL and owner token. The old URL keeps its old content " +
-        "until it expires. Ignore republishUrl (browser-only).",
+        "until it expires. Ignore republishUrl (browser-only)." + scenario.kv,
     }, "frozen update is described, relayed verbatim and hinted once");
   });
 }

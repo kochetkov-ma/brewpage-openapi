@@ -2,7 +2,7 @@
 
 ## MCP 1.13.1 — 2026-10-25
 
-- `update_html`, `republish_site`, `update_json` and `set_kv` say old (pre-2.0) publications answer `409 OLD_PUBLICATION_READ_ONLY`; that failure adds a hint: publish the content anew in the same namespace and give the user the new URL and owner token (`republishUrl` is browser-only). No contract change.
+- `update_html`, `republish_site`, `update_json` and `set_kv` say old publications (created before the new link format) answer `409 OLD_PUBLICATION_READ_ONLY`; that failure adds a hint: publish the content anew in the same namespace and give the user the new URL and owner token (`republishUrl` is browser-only); for KV, read all keys with `get_kv` and publish them together. No contract change.
 
 ## API contract 2.1.0 — 2026-10-25
 
