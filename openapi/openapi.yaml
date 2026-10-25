@@ -508,6 +508,12 @@ components:
           type:
             - integer
             - 'null'
+        fileCount:
+          description: Files in the site; sites only
+          format: int32
+          type:
+            - integer
+            - 'null'
         hostingVersion:
           format: int64
           type:
@@ -5364,6 +5370,12 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
           description: Publication unavailable
+        '410':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Publication unavailable; owner credentials valid
       security:
         - OwnerToken: []
         - ManageKey: []
@@ -6003,12 +6015,6 @@ paths:
           required: false
           schema:
             type: string
-        - description: 'Owner token; when supplied, response carries X-Is-Owner: true on match'
-          in: header
-          name: X-Owner-Token
-          required: false
-          schema:
-            type: string
         - in: header
           name: User-Agent
           required: false
@@ -6017,6 +6023,11 @@ paths:
         - in: header
           name: Accept
           required: false
+          schema:
+            type: string
+        - description: 'Owner token; when supplied, response carries X-Is-Owner: true on match'
+          in: header
+          name: X-Owner-Token
           schema:
             type: string
       responses:
@@ -6081,15 +6092,14 @@ paths:
           required: false
           schema:
             type: string
-        - description: 'Owner token; when supplied, response carries X-Is-Owner: true on match'
-          in: header
-          name: X-Owner-Token
-          required: false
-          schema:
-            type: string
         - in: header
           name: User-Agent
           required: false
+          schema:
+            type: string
+        - description: 'Owner token; when supplied, response carries X-Is-Owner: true on match'
+          in: header
+          name: X-Owner-Token
           schema:
             type: string
       responses:

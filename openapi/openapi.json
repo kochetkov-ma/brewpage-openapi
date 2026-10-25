@@ -665,6 +665,14 @@
               "null"
             ]
           },
+          "fileCount": {
+            "description": "Files in the site; sites only",
+            "format": "int32",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
           "hostingVersion": {
             "format": "int64",
             "type": [
@@ -7729,6 +7737,16 @@
               }
             },
             "description": "Publication unavailable"
+          },
+          "410": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Publication unavailable; owner credentials valid"
           }
         },
         "security": [
@@ -8748,15 +8766,6 @@
             }
           },
           {
-            "description": "Owner token; when supplied, response carries X-Is-Owner: true on match",
-            "in": "header",
-            "name": "X-Owner-Token",
-            "required": false,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
             "in": "header",
             "name": "User-Agent",
             "required": false,
@@ -8768,6 +8777,14 @@
             "in": "header",
             "name": "Accept",
             "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Owner token; when supplied, response carries X-Is-Owner: true on match",
+            "in": "header",
+            "name": "X-Owner-Token",
             "schema": {
               "type": "string"
             }
@@ -8871,18 +8888,17 @@
             }
           },
           {
-            "description": "Owner token; when supplied, response carries X-Is-Owner: true on match",
             "in": "header",
-            "name": "X-Owner-Token",
+            "name": "User-Agent",
             "required": false,
             "schema": {
               "type": "string"
             }
           },
           {
+            "description": "Owner token; when supplied, response carries X-Is-Owner: true on match",
             "in": "header",
-            "name": "User-Agent",
-            "required": false,
+            "name": "X-Owner-Token",
             "schema": {
               "type": "string"
             }
