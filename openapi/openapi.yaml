@@ -3316,7 +3316,7 @@ paths:
     get:
       description: >-
         Returns republish-prefill settings (namespace, ttlDays, hasPassword, showTopBar, format, title, filename,
-        createdAt, expiresAt) without the content body. Owner-only: the owner token or the management key.
+        createdAt, expiresAt, readOnly) without the content body. Owner-only: the owner token or the management key.
       operationId: getHtmlSettings
       parameters:
         - in: path
