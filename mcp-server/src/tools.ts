@@ -15,8 +15,8 @@ export interface ServerOptions {
   userAgent?: string;
   /** Extra headers on every BrewPage call; tool headers win on conflict. */
   headers?: Record<string, string>;
-  /** Source download for publish_file; default plain fetch. */
-  fetchSource?: (url: string) => Promise<Response>;
+  /** Source download for publish_file: file bytes, or a thrown Error whose message is the tool error. */
+  fetchSource?: (url: string) => Promise<Blob>;
   /** Origin for links built locally (get_page fallback); default baseUrl. */
   publicOrigin?: string;
   /** Transport for BrewPage API calls; default global fetch. */
@@ -189,12 +189,19 @@ function formatUpdateResponse(data: Record<string, unknown>): string {
   return lines.join("\n");
 }
 
+/** Stdio source download: plain fetch; a non-2xx answer becomes the tool error. */
+async function plainFetchSource(url: string): Promise<Blob> {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Failed to fetch file from URL: ${res.status} ${res.statusText}`);
+  return res.blob();
+}
+
 /** Fresh server with all tools; stdio builds one, stateless HTTP one per request. */
 export function createServer(options: ServerOptions = {}): McpServer {
   const baseUrl = options.baseUrl ?? DEFAULT_BASE_URL;
   const userAgent = options.userAgent ?? USER_AGENT;
   const defaultOwnerToken = options.ownerToken;
-  const fetchSource = options.fetchSource ?? ((url: string) => fetch(url));
+  const fetchSource = options.fetchSource ?? plainFetchSource;
   const publicOrigin = options.publicOrigin ?? baseUrl;
   const apiFetch = options.fetch ?? fetch;
   const server = new McpServer({
@@ -376,20 +383,7 @@ export function createServer(options: ServerOptions = {}): McpServer {
     },
     async ({ url: fileUrl, namespace, filename, deliveryMode, ownerToken }) => {
       const effectiveNamespace = resolveNamespace(namespace);
-      const fileRes = await fetchSource(fileUrl);
-      if (!fileRes.ok) {
-        return {
-          content: [
-            {
-              type: "text" as const,
-              text: `Failed to fetch file from URL: ${fileRes.status} ${fileRes.statusText}`,
-            },
-          ],
-          isError: true,
-        };
-      }
-
-      const blob = await fileRes.blob();
+      const blob = await fetchSource(fileUrl);
       const formData = new FormData();
       formData.append(
         "file",
