@@ -35,8 +35,8 @@ function toolMeta(title: string, hints: ToolAnnotations) {
 const NO_OWNER_TOKEN = `No owner token: pass ownerToken or set ${OWNER_TOKEN_ENV}.`;
 const CREATE_OWNER_TOKEN_DESCRIPTION = `Optional. Default: ${OWNER_TOKEN_ENV}, else a new token per create.`;
 const OWNER_TOKEN_DESCRIPTION = `Owner token from create. Default: ${OWNER_TOKEN_ENV}.`;
-const SECRETS = "Secrets allowed; likely ones are flagged in notices. For a secret: private namespace + password.";
-const MANAGE_URL_TEXT = "Returns manageUrl (private): give it to the user privately; never publish it.";
+const SECRETS = "Secrets allowed; likely ones are flagged in notices. Private namespace + password suit secrets.";
+const MANAGE_URL_TEXT = "Returns manageUrl, a private management link (grants control; not for public sharing).";
 const OLD_READ_ONLY_CODE = "OLD_PUBLICATION_READ_ONLY";
 const OLD_READ_ONLY_TEXT = ` Old publications (made before 5 October 2026) are read-only: 409 ${OLD_READ_ONLY_CODE} with createUrl to publish anew.`;
 /** Notice codes the agent must relay to the user. */
@@ -114,9 +114,9 @@ const PROTECTED_UNLISTED_NOTICE = "Password: link + password. Not listed.";
 
 const PUBLIC_NAMESPACE_LEAD =
   "namespace=public: listed in the public gallery and the sitemap, so Google, Bing and AI search can find and index it " +
-  "and people can discover it. Use it for anything meant to be found or shared: docs, guides, demos, portfolios, reports, landing pages. ";
+  "and people can discover it. Suits anything meant to be found or shared: docs, guides, demos, portfolios, reports, landing pages. ";
 const PUBLIC_NAMESPACE_TAIL =
-  " Anyone can find and read a public page: never put secrets, tokens or personal data there. " +
+  " Anyone can find and read a public page, so it is unsuitable for secrets, tokens or personal data. " +
   "Omit (default): private. Unlisted and not indexed; anyone who has the link can still open it. ";
 const NAMESPACE_FORMAT = "Lowercase only: 1-32 of a-z, 0-9, hyphen.";
 /** `namespace` for publish_html and publish_file. */
@@ -133,7 +133,7 @@ const DATA_NAMESPACE_DESCRIPTION =
 
 const TTL_SCHEMA = z.union([z.number().positive(), z.string().min(1).max(32)]).optional().describe(
   "Requested TTL: days as a number, or a string such as '2w', '36h' or '1 month' (default 15 days). " +
-  "The server rounds to whole days and clamps to the allowed range (1-30 by default; owner caps differ), reporting each adjustment in notices; use returned expiresAt."
+  "The server rounds to whole days and clamps to the allowed range (1-30 by default; owner caps differ), reporting each adjustment in notices; the returned expiresAt is the actual expiry."
 );
 
 const DELIVERY_MODE_SCHEMA = z.enum(["path", "subdomain"]).optional().describe(
@@ -145,10 +145,10 @@ const DELIVERY_MODE_SCHEMA = z.enum(["path", "subdomain"]).optional().describe(
 
 /** Site upload rules shared by publish_site and republish_site; current values come from get_limits. */
 const SITE_LIMITS_TEXT =
-  "Limits (call get_limits for current values): a request is at most 25 MB; a site at most 200 files, 5 MB per file and 20 MB in total; " +
+  "Default limits (current values: GET /api/limits): a request is at most 25 MB; a site at most 200 files, 5 MB per file and 20 MB in total; " +
   "each path at most 380 characters. System files (.DS_Store, __MACOSX/ and similar) are skipped and never count; files with an unsupported extension " +
   "or a too-long path are skipped and listed in notices. Entry: `entry`, else root index.html, else the shallowest HTML file. " +
-  "Errors: 400 = a site limit exceeded (the message names it and what to do), invalid path or no HTML file; 413 = request over 25 MB, " +
+  "Errors: 400 = a site limit exceeded (the message names it), invalid path or no HTML file; 413 = request over 25 MB, " +
   "too many files and form fields, or a file name/path too long; 422 = no servable file left.";
 
 function hostingResponseLines(data: Record<string, unknown>): string[] {
@@ -315,7 +315,7 @@ export function createServer(options: ServerOptions = {}): McpServer {
       ...toolMeta("Publish HTML or Markdown page", ADDITIVE),
       description: "Publish HTML or Markdown content to BrewPage (repository default limit 5 MiB). Returns its primary share link and owner token. Supports password protection, custom TTL, optional filename, and an opt-in top toolbar (showTopBar). " +
         "When deliveryMode is omitted for a `public` page, the server may publish it on its own subdomain if the page needs browser features a BrewPage link does not provide; " +
-        "the result then includes deliveryModeReason and a delivery notice. Markdown raw HTML is allowlisted: scripts, styles, event handlers, forms and embeds are removed. Always share the returned URL. " +
+        "the result then includes deliveryModeReason and a delivery notice. Markdown raw HTML is allowlisted: scripts, styles, event handlers, forms and embeds are removed. " +
         MANAGE_URL_TEXT + " " + SECRETS,
       inputSchema: {
         content: z.string().describe("HTML or Markdown content to publish"),
@@ -448,7 +448,7 @@ export function createServer(options: ServerOptions = {}): McpServer {
     "update_hosting",
     {
       ...toolMeta("Change delivery mode", ADDITIVE),
-      description: "Change delivery mode for a NEW publication (not a site, not a non-public HTML-format page). Requires owner token; pass the current hostingVersion when known. Mismatches are reported, not rejected: a stale version still applies, and OLD links or forced subdomain modes stay unchanged; the result then carries a delivery notice. Content updates never change hosting.",
+      description: "Change delivery mode for a NEW publication (not a site, not a non-public HTML-format page). Requires owner token; optional expectedVersion = current hostingVersion. Mismatches are reported, not rejected: a stale version still applies, and OLD links or forced subdomain modes stay unchanged; the result then carries a delivery notice. Content updates never change hosting.",
       inputSchema: {
         type: z.enum(["html", "file", "json", "kv"]).describe("Resource type; sites always stay on their own subdomain"),
         namespace: z.string().describe("Resource namespace; non-public HTML-format pages stay on subdomain"),
@@ -608,7 +608,7 @@ export function createServer(options: ServerOptions = {}): McpServer {
     "publish_site",
     {
       ...toolMeta("Publish site", ADDITIVE),
-      description: "Publish an HTML site to BrewPage. Single-page: pass `entryContent`. Multi-page: pass `files` (array of `{path, content}`). Optional `entry` overrides default `index.html`. Use its returned primary link and retain the owner token. " + SITE_LIMITS_TEXT +
+      description: "Publish an HTML site to BrewPage. Single-page: `entryContent`. Multi-page: `files` (array of `{path, content}`). Optional `entry` overrides default `index.html`. Returns its primary share link and owner token. " + SITE_LIMITS_TEXT +
         " " + MANAGE_URL_TEXT + " " + SECRETS,
       inputSchema: {
         deliveryMode: DELIVERY_MODE_SCHEMA,
@@ -719,7 +719,7 @@ export function createServer(options: ServerOptions = {}): McpServer {
     "republish_site",
     {
       ...toolMeta("Republish site", DESTRUCTIVE),
-      description: "Republish (full-replace) an existing multi-file BrewPage site in place at the SAME URL/ID. Requires owner token. The uploaded bundle becomes the complete new file set — files absent from it are removed, new files added, matching files overwritten. Single-page: pass `entryContent`. Multi-page: pass `files` (array of `{path, content}`). Optional `entry` overrides the default `index.html`. Republishing preserves existing expiry." + OLD_READ_ONLY_TEXT + " " + SITE_LIMITS_TEXT,
+      description: "Republish (full-replace) an existing multi-file BrewPage site in place at the SAME URL/ID. Requires owner token. The uploaded bundle becomes the complete new file set — files absent from it are removed, new files added, matching files overwritten. Single-page: `entryContent`. Multi-page: `files` (array of `{path, content}`). Optional `entry` overrides the default `index.html`. Republishing preserves existing expiry." + OLD_READ_ONLY_TEXT + " " + SITE_LIMITS_TEXT,
       inputSchema: {
         namespace: z.string().describe("Site namespace"),
         id: z.string().describe("Site ID"),
@@ -1172,7 +1172,7 @@ export function createServer(options: ServerOptions = {}): McpServer {
       ...toolMeta("Get upload limits", READ_ONLY),
       description: "Get the current BrewPage upload limits (GET /api/limits): request size, site file count, per-file and total size, " +
         "ZIP expansion, path and name lengths, TTL default/maximum, allowed file extensions and skipped system files. Sizes are bytes. " +
-        `With ${OWNER_TOKEN_ENV} set: also reach (token|profile) and ownerMaxTtlDays. Call it before publishing a large or multi-file site.`,
+        `With ${OWNER_TOKEN_ENV} set: also reach (token|profile) and ownerMaxTtlDays.`,
       inputSchema: {},
     },
     async () => {

@@ -109,6 +109,22 @@ test("every tool carries a title and its exact safety hints", { timeout: 10_000 
   assert.deepEqual(actual, expected, "tool titles and annotations match the directory contract");
 });
 
+const MODEL_DIRECTIVE = /(^|[.:;]\s+)(always|never (publish|put|share|give)|use|call|pass|give|tell|retain|share|ask|remember|do not|don't)\b|\byou (must|should)\b|[​-‏⁠﻿]/i;
+
+test("tool and input descriptions state facts, not model directives or other tools", { timeout: 10_000 }, async (t) => {
+  // GIVEN local MCP connected to a synthetic API.
+  const f = await fixture(t);
+  // WHEN client discovers tools.
+  const { tools } = await f.client.listTools();
+  // THEN no description directs the model, names another tool or hides characters.
+  const offending = tools.flatMap(({ name, description, inputSchema }) => [
+    [name, description ?? ""],
+    ...Object.entries(inputSchema.properties ?? {}).map(([prop, schema]) => [`${name}.${prop}`, (schema as { description?: string }).description ?? ""]),
+  ].filter(([owner, text]) => MODEL_DIRECTIVE.test(text) ||
+    EXPECTED_TOOL_NAMES.some((tool) => tool !== owner.split(".")[0] && text.includes(tool))).map(([owner]) => owner));
+  assert.deepEqual(offending, [], "directory policy: descriptions contain only neutral facts");
+});
+
 for (const scenario of [
   { name: "publish_html", args: { content: "<h1>Fixture</h1>" }, segment: "html", jsonBody: { content: "<h1>Fixture</h1>" } },
   { name: "publish_json", args: { json: { deliveryMode: "authored value", value: 7 } }, segment: "json", jsonBody: { deliveryMode: "authored value", value: 7 } },
