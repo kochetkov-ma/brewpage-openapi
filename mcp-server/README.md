@@ -478,6 +478,24 @@ Every publish response includes an **owner token** -- the only credential that a
 | `BREWPAGE_URL` | `https://brewpage.app` | Authorized apex API base URL; never a publication host |
 | `BREWPAGE_OWNER_TOKEN` | unset | Optional default owner token (32 letters/digits) for every call; unset = new token per create |
 
+## Remote HTTP mode
+
+`node dist/http.js` serves stateless MCP Streamable HTTP for a deployment behind a reverse proxy (BrewPage runs it at `https://brewpage.app/mcp`). Docker: the image default is stdio; run `docker run ... <image> node dist/http.js`.
+
+- `POST /mcp` only, JSON responses, no `Mcp-Session-Id`; `GET`/`DELETE /mcp` -> 405. `GET /healthz` for the container healthcheck.
+- Requests with an `Origin` header -> 403 (no browser access). Only peers in `BREWPAGE_TRUSTED_PROXY_CIDRS` are served (others -> 403); the last `X-Forwarded-For` IP goes to the API with `X-Forwarded-Proto`/`X-Forwarded-Host` of the public origin.
+- `publish_file` downloads only from public addresses (every redirect re-checked, at most 3, 20 MiB).
+- Never reads `BREWPAGE_OWNER_TOKEN`; refuses to start when it is set. Pass `ownerToken` per call.
+- One JSON log line per request on stdout (method, tool, status, outcome, ms); no arguments, tokens or IPs. `SIGTERM` drains for up to 30 s.
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `BREWPAGE_TRUSTED_PROXY_CIDRS` | required | Comma list of reverse-proxy CIDRs or IPs |
+| `BREWPAGE_BACKEND_URL` | `http://brewpage-backend-mcp:8080` | API base URL (internal address) |
+| `BREWPAGE_PUBLIC_ORIGIN` | `https://brewpage.app` | Origin for returned links and forwarded proto/host |
+| `BREWPAGE_MCP_PORT` | `8787` | Listen port |
+| `BREWPAGE_MCP_HOST` | `0.0.0.0` | Listen address |
+
 ## Links
 
 - [brewpage.app](https://brewpage.app) -- Live platform
@@ -490,6 +508,10 @@ Every publish response includes an **owner token** -- the only credential that a
 - [Brewcode Plugin](https://github.com/kochetkov-ma/claude-brewcode) -- Claude Code plugin suite
 
 ## Changelog
+
+## 1.14.0 -- 2026-10-26
+
+- Remote mode: `node dist/http.js` serves stateless Streamable HTTP (see [Remote HTTP mode](#remote-http-mode)); stdio is unchanged. `User-Agent: brewpage-mcp/1.14.0` (`(remote)` in HTTP mode).
 
 ## 1.13.2 -- 2026-10-25
 

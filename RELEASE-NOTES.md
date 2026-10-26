@@ -1,5 +1,9 @@
 # Release Notes
 
+## MCP 1.14.0 — 2026-10-26
+
+- Stateless Streamable HTTP entry `dist/http.js` (`POST /mcp`, `/healthz`) for the remote server at `https://brewpage.app/mcp`: trusted-proxy client IP forwarding, `Origin` -> 403, SSRF-safe `publish_file` downloads, owner token env refused. The Docker image default stays stdio. `User-Agent: brewpage-mcp/1.14.0` (`(remote)` over HTTP); `server.json` and `gemini-extension.json` stamps bumped. No contract change.
+
 ## API contract 2.2.0 — 2026-10-25
 
 - API contract version 2.2.0 is the backend-generated public snapshot exported from the clean brewpage-app source `f486700d7cc6cf6c7f3ea255113c7dd8c0cf3445` (branch `feat/gallery-card-previews`, for backend `v2.2.0`), built on the 2.1.5 wording. Deterministic YAML, the byte-identical Scalar copy and export provenance are regenerated with it. Replaces the earlier 2.2.0 snapshot from `1806d1cf13a37c9c027e3ab696cf23a1f3cd288a`.

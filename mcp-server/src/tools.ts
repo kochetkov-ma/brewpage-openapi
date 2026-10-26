@@ -3,7 +3,7 @@ import type { ToolAnnotations } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 
 export const DEFAULT_BASE_URL = "https://brewpage.app";
-const USER_AGENT = "brewpage-mcp/1.13.2";
+export const USER_AGENT = "brewpage-mcp/1.14.0";
 export const OWNER_TOKEN_ENV = "BREWPAGE_OWNER_TOKEN";
 
 export interface ServerOptions {
@@ -17,6 +17,10 @@ export interface ServerOptions {
   headers?: Record<string, string>;
   /** Source download for publish_file; default plain fetch. */
   fetchSource?: (url: string) => Promise<Response>;
+  /** Origin for links built locally (get_page fallback); default baseUrl. */
+  publicOrigin?: string;
+  /** Transport for BrewPage API calls; default global fetch. */
+  fetch?: typeof fetch;
 }
 
 const READ_ONLY: ToolAnnotations = { readOnlyHint: true };
@@ -191,9 +195,11 @@ export function createServer(options: ServerOptions = {}): McpServer {
   const userAgent = options.userAgent ?? USER_AGENT;
   const defaultOwnerToken = options.ownerToken;
   const fetchSource = options.fetchSource ?? ((url: string) => fetch(url));
+  const publicOrigin = options.publicOrigin ?? baseUrl;
+  const apiFetch = options.fetch ?? fetch;
   const server = new McpServer({
     name: "brewpage-mcp",
-    version: "1.13.2",
+    version: "1.14.0",
   });
 
   /** Caller argument first, then the configured default; `fromEnv` marks the configured one. */
@@ -207,7 +213,7 @@ export function createServer(options: ServerOptions = {}): McpServer {
     const headers = new Headers(options.headers);
     new Headers(init.headers).forEach((value, name) => headers.set(name, value));
     headers.set("User-Agent", userAgent);
-    return fetch(url, { ...init, headers });
+    return apiFetch(url, { ...init, headers });
   }
 
   /** Owner token banner; the configured default is named, never repeated; none for a foreign existing publication.
@@ -530,7 +536,7 @@ export function createServer(options: ServerOptions = {}): McpServer {
       const hasNewMarkers = (routingCohort !== null && routingCohort !== "old") || deliveryMode !== null;
       const lines = [
         `Page: ${namespace}/${id}`,
-        `URL: ${responseHeaders.get("X-Canonical-Link") ?? (hasNewMarkers ? "N/A" : `${baseUrl}/${namespace}/${id}`)}`,
+        `URL: ${responseHeaders.get("X-Canonical-Link") ?? (hasNewMarkers ? "N/A" : `${publicOrigin}/${namespace}/${id}`)}`,
         `Content-Type: ${responseHeaders.get("Content-Type") || "N/A"}`,
         ...hostingResponseLines(hosting),
         ``,

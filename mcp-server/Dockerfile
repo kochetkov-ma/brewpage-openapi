@@ -1,4 +1,5 @@
-# brewpage-mcp stdio server image; build context = mcp-server/.
+# brewpage-mcp image; build context = mcp-server/. Default CMD = stdio (catalogs).
+# Remote Streamable HTTP: command ["node", "dist/http.js"], port 8787, see README "Remote HTTP mode".
 FROM node:24.22.1-alpine3.24 AS build
 WORKDIR /app
 COPY package.json package-lock.json ./
@@ -14,4 +15,5 @@ COPY package.json package-lock.json ./
 RUN npm ci --omit=dev --ignore-scripts && npm cache clean --force
 COPY --from=build /app/dist ./dist
 USER node
-ENTRYPOINT ["node", "dist/index.js"]
+EXPOSE 8787
+CMD ["node", "dist/index.js"]

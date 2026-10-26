@@ -1,6 +1,6 @@
 {
   "name": "brewpage-mcp",
-  "version": "1.13.2",
+  "version": "1.14.0",
   "mcpName": "io.github.kochetkov-ma/brewpage-mcp",
   "description": "MCP server for BrewPage — publish and manage HTML, sites, KV, JSON and files from AI assistants",
   "type": "module",
@@ -20,8 +20,9 @@
   "scripts": {
     "build": "tsc",
     "start": "node dist/index.js",
+    "start:http": "node dist/http.js",
     "dev": "tsx src/index.ts",
-    "test": "npm run build && node --import tsx --test test/smoke.test.ts",
+    "test": "npm run build && node --import tsx --test test/smoke.test.ts test/http.test.ts",
     "prepublishOnly": "npm run build"
   },
   "keywords": [
