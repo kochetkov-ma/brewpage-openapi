@@ -80,6 +80,35 @@ test("MCP exposes exactly 20 tools and optional create-only delivery choice", { 
   assert.equal(f.requests.length, 0, "tool discovery never calls the API");
 });
 
+const READ_ONLY = { readOnlyHint: true };
+const DESTRUCTIVE = { readOnlyHint: false, destructiveHint: true };
+const ADDITIVE = { readOnlyHint: false, destructiveHint: false };
+const EXPECTED_TOOL_META: Record<string, [string, Record<string, boolean>]> = {
+  get_page: ["Read page", READ_ONLY], get_json: ["Read JSON document", READ_ONLY], get_kv: ["Read KV value", READ_ONLY],
+  get_stats: ["Get platform statistics", READ_ONLY], get_limits: ["Get upload limits", READ_ONLY],
+  search_gallery: ["Search public gallery", READ_ONLY],
+  delete_resource: ["Delete publication", DESTRUCTIVE], update_html: ["Update page", DESTRUCTIVE],
+  update_json: ["Update JSON document", DESTRUCTIVE], set_kv: ["Set KV value", DESTRUCTIVE],
+  republish_site: ["Republish site", DESTRUCTIVE],
+  publish_html: ["Publish HTML or Markdown page", ADDITIVE], publish_file: ["Publish file from URL", ADDITIVE],
+  publish_site: ["Publish site", ADDITIVE], publish_json: ["Publish JSON document", ADDITIVE],
+  publish_kv: ["Publish KV entry", ADDITIVE], set_visibility: ["Set gallery visibility", ADDITIVE],
+  update_hosting: ["Change delivery mode", ADDITIVE], bind_token: ["Add token to profile", ADDITIVE],
+  mint_token: ["Mint profile token", ADDITIVE],
+};
+
+test("every tool carries a title and its exact safety hints", { timeout: 10_000 }, async (t) => {
+  // GIVEN local MCP connected to a synthetic API.
+  const f = await fixture(t);
+  // WHEN client discovers tools.
+  const { tools } = await f.client.listTools();
+  // THEN each tool has the directory title and hint map.
+  const actual = Object.fromEntries(tools.map(({ name, title, annotations }) => [name, { title, annotations }]));
+  const expected = Object.fromEntries(Object.entries(EXPECTED_TOOL_META)
+    .map(([name, [title, hints]]) => [name, { title, annotations: { title, ...hints } }]));
+  assert.deepEqual(actual, expected, "tool titles and annotations match the directory contract");
+});
+
 for (const scenario of [
   { name: "publish_html", args: { content: "<h1>Fixture</h1>" }, segment: "html", jsonBody: { content: "<h1>Fixture</h1>" } },
   { name: "publish_json", args: { json: { deliveryMode: "authored value", value: 7 } }, segment: "json", jsonBody: { deliveryMode: "authored value", value: 7 } },
@@ -519,7 +548,7 @@ for (const scenario of [
 ]) {
   test(`${scenario.tool} sign-in hint for ${scenario.label}`, { timeout: 10_000 }, async (t) => {
     // GIVEN a create answer carrying a new or the caller's own owner token.
-    const f = await fixture(t, scenario.env);
+    const f = await fixture(t, scenario.env as Record<string, string>);
     f.respond(201, { ...NEW_RESPONSE, ownerToken: scenario.token });
     // WHEN the publication is created.
     const result = await f.call(scenario.tool, { ...scenario.args, namespace: "public" });

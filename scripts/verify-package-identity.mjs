@@ -20,7 +20,7 @@ const gemini = read('gemini-extension.json');
 assert.equal(gemini.version, manifest.version, 'gemini-extension.json version must match package');
 assert.deepEqual(gemini.mcpServers.brewpage.args, ['-y', `${manifest.name}@${manifest.version}`],
   'gemini-extension.json must pin the package version');
-const source = readFileSync(new URL('../mcp-server/src/index.ts', import.meta.url), 'utf8');
+const source = readFileSync(new URL('../mcp-server/src/tools.ts', import.meta.url), 'utf8');
 assert.equal(source.match(/new McpServer\(\{[\s\S]*?version: "([^"]+)"/)?.[1], manifest.version,
   'MCP handshake source version must match package');
 assert.equal(source.match(/USER_AGENT = "brewpage-mcp\/([^"]+)"/)?.[1], manifest.version,
