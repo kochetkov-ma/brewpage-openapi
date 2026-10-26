@@ -652,15 +652,23 @@ for (const scenario of [
 }
 
 const OLD_READ_ONLY_BODY = {
-  status: 409, error: "Conflict", message: "Old publication: publish a new one.", code: "OLD_PUBLICATION_READ_ONLY",
+  status: 409, error: "Conflict", message: "Made before 5 October 2026: read-only. Publish it anew; the old link keeps working.",
+  code: "OLD_PUBLICATION_READ_ONLY",
 };
-const OLD_HTML_BODY = { ...OLD_READ_ONLY_BODY, republishUrl: "https://brewpage.app/?republish=public/aBcDeFgHiJ" };
+const OLD_HTML_BODY = { ...OLD_READ_ONLY_BODY, republishUrl: "https://brewpage.app/?republish=public/aBcDeFgHiJ",
+  createUrl: "https://brewpage.app/api/html?ns=public" };
+const VIA_TOOL = "with the matching publish tool in the same namespace";
+const viaCreateUrl = (url: string) => `by POSTing it to createUrl (${url}): use the matching publish tool in that namespace`;
 
 for (const scenario of [
-  { tool: "update_html", operation: "update HTML", args: { content: "x" }, body: OLD_HTML_BODY, extra: " Ignore republishUrl (browser-only)." },
-  { tool: "republish_site", operation: "republish site", args: { entryContent: "<h1>x</h1>" }, body: OLD_READ_ONLY_BODY, extra: "" },
-  { tool: "update_json", operation: "update JSON", args: { json: { a: 1 } }, body: OLD_READ_ONLY_BODY, extra: "" },
-  { tool: "set_kv", operation: "set KV", args: { key: "k", value: "v" }, body: OLD_READ_ONLY_BODY,
+  { tool: "update_html", operation: "update HTML", args: { content: "x" }, body: OLD_HTML_BODY,
+    how: viaCreateUrl("https://brewpage.app/api/html?ns=public"), extra: " republishUrl is browser-only: ignore it." },
+  { tool: "republish_site", operation: "republish site", args: { entryContent: "<h1>x</h1>" },
+    body: { ...OLD_READ_ONLY_BODY, createUrl: "https://brewpage.app/api/sites?ns=public" },
+    how: viaCreateUrl("https://brewpage.app/api/sites?ns=public"), extra: "" },
+  { tool: "update_json", operation: "update JSON", args: { json: { a: 1 } }, body: OLD_READ_ONLY_BODY, how: VIA_TOOL, extra: "" },
+  { tool: "set_kv", operation: "set KV", args: { key: "k", value: "v" },
+    body: { ...OLD_READ_ONLY_BODY, createUrl: "https://brewpage.app/api/kv?ns=public" }, how: viaCreateUrl("https://brewpage.app/api/kv?ns=public"),
     extra: " For KV, read all keys with get_kv and publish them together with publish_kv." },
 ]) {
   test(`${scenario.tool} turns 409 OLD_PUBLICATION_READ_ONLY into a publish-anew hint`, { timeout: 10_000 }, async (t) => {
@@ -672,14 +680,13 @@ for (const scenario of [
     const result = await f.call(scenario.tool, { namespace: "public", id: "aBcDeFgHiJ", ownerToken: "fixture-owner", ...scenario.args });
     // THEN the tool warns up front and the failure keeps the server body plus the publish-anew hint, without retry.
     assert.deepEqual({
-      described: tools.find(({ name }) => name === scenario.tool)!.description!.includes("Old publications (made before 5 October 2026) are read-only: 409 OLD_PUBLICATION_READ_ONLY."),
+      described: tools.find(({ name }) => name === scenario.tool)!.description!.includes("Old publications (made before 5 October 2026) are read-only: 409 OLD_PUBLICATION_READ_ONLY with createUrl to publish anew."),
       isError: result.isError, text: result.content[0].text, requests: f.requests.length,
     }, {
       described: true, isError: true, requests: 1,
       text: `Failed to ${scenario.operation} (409): ${JSON.stringify(scenario.body)}\n` +
-        "Read-only old publication: cannot be updated. Publish the content anew with the matching " +
-        "publish tool in the same namespace; give the user the NEW URL and owner token. The old URL keeps its old content " +
-        "until it expires." + scenario.extra,
+        `Read-only old publication: cannot be updated. Publish the content anew ${scenario.how}; give the user the NEW URL ` +
+        "and owner token. The old URL keeps its old content until it expires." + scenario.extra,
     }, "frozen update is described, relayed verbatim and hinted once");
   });
 }

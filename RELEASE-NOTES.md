@@ -1,5 +1,11 @@
 # Release Notes
 
+## API contract 2.3.1 / MCP 1.14.3 — 2026-10-26
+
+- API contract version 2.3.1 is the backend-generated public snapshot exported from the clean brewpage-app source `01af63af2f4a1736bf6e1507ce3c9af628b87aa8` (branch `fix/old-409-hint-webvisor`, for backend `v2.3.1`). Deterministic YAML, the byte-identical Scalar copy and export provenance are regenerated with it.
+- `ErrorResponse.createUrl`: with `409 OLD_PUBLICATION_READ_ONLY` on every type, the create endpoint in the same namespace (`https://brewpage.app/api/{html|sites|files|json|kv}?ns={ns}`); POST the content there to publish it anew. `republishUrl` (HTML only) is the browser composer. The 409 descriptions on content updates and on password, rotate, manage-key and extend say to publish anew via `createUrl`. Additive: 47 paths and 62 operations.
+- MCP 1.14.3: the 409 hint tells the client to POST the content to `createUrl` with the matching publish tool in that namespace (`republishUrl` is browser-only); update tool descriptions mention `createUrl`. `User-Agent: brewpage-mcp/1.14.3`; pins bumped.
+
 ## MCP 1.14.2 — 2026-10-26
 
 - MCP Registry: `server.json` lists the remote endpoint `https://brewpage.app/mcp` (`remotes`, `streamable-http`, no auth) beside the npm stdio package, so registry clients can connect by URL. Root `server.json` moves to schema `2025-12-11` like `mcp-server/server.json`. `User-Agent: brewpage-mcp/1.14.2`; pins bumped. No tool or contract change.

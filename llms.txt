@@ -6,7 +6,7 @@ Public contract snapshots, documentation and the BrewPage MCP server. The backen
 
 - `openapi/openapi.json` — exported backend-generated public OpenAPI 3.1 contract; version and provenance identify the backend source.
 - `openapi/openapi.yaml` — deterministic derived representation; `docs/public/openapi.json` is the identical Scalar copy.
-- `mcp-server/` — TypeScript implementation of the BrewPage MCP server. Prepared `version: 1.14.2`. Published as `brewpage-mcp` on npm.
+- `mcp-server/` — TypeScript implementation of the BrewPage MCP server. Prepared `version: 1.14.3`. Published as `brewpage-mcp` on npm.
 - `docs/` — Astro docs site published at https://kochetkov-ma.github.io/brewpage-openapi/.
 
 ## Where to read the live API
@@ -20,6 +20,7 @@ Public contract snapshots, documentation and the BrewPage MCP server. The backen
 
 ## Recent contract changes
 
+- 2.3.1 (matches backend v2.3.1): `ErrorResponse.createUrl` on `409 OLD_PUBLICATION_READ_ONLY` for every type: the same-namespace create endpoint (`/api/{html|sites|files|json|kv}?ns={ns}`); POST the content there to publish it anew. `republishUrl` (HTML only) is the browser composer. Additive: 47 paths and 62 operations.
 - 2.2.0 (matches backend v2.2.0): `GalleryItem` restores nullable `preview` (`PublicationPreviewResponse`; null while previews are off and on password rows) and `format` (`type=file`: lowercase extension, else null); `PublicationPreviewResponse` adds optional `branded` (true = type card, not a page or content render; absent when false). Additive: 47 paths and 62 operations.
 - 2.1.5 (matches backend v2.1.5): `ns`, `access`, `listed` and `visibilityNotice` describe `public` reach: HTML, sites and files listed in the gallery and sitemap for Google, Bing and AI search (pages on the brewpage.app domain, a site on its own subdomain); JSON and KV are never listed. `republishUrl` on `409 OLD_PUBLICATION_READ_ONLY` is HTML-only. Gallery `preview`/`format` (prepared as 2.2.0) arrive with backend 2.2.0. 47 paths and 62 operations.
 - 2.1.0 (matches backend v2.1.0): `full` WebP preview (`PublicationPreviewResponse.full`, `previewWebp`) for every type: page top for pages and sites, else the 1200 px card. Description-only: 47 paths and 62 operations.
@@ -45,7 +46,7 @@ Public contract snapshots, documentation and the BrewPage MCP server. The backen
 ## How to use the MCP server
 
 ```bash
-npx -y brewpage-mcp@1.14.2
+npx -y brewpage-mcp@1.14.3
 ```
 
 Always pin an exact version.

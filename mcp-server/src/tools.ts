@@ -3,7 +3,7 @@ import type { ToolAnnotations } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 
 export const DEFAULT_BASE_URL = "https://brewpage.app";
-export const USER_AGENT = "brewpage-mcp/1.14.2";
+export const USER_AGENT = "brewpage-mcp/1.14.3";
 export const OWNER_TOKEN_ENV = "BREWPAGE_OWNER_TOKEN";
 
 export interface ServerOptions {
@@ -38,7 +38,7 @@ const OWNER_TOKEN_DESCRIPTION = `Owner token from create. Default: ${OWNER_TOKEN
 const SECRETS = "Secrets allowed; likely ones are flagged in notices. For a secret: private namespace + password.";
 const MANAGE_URL_TEXT = "Returns manageUrl (private): give it to the user privately; never publish it.";
 const OLD_READ_ONLY_CODE = "OLD_PUBLICATION_READ_ONLY";
-const OLD_READ_ONLY_TEXT = ` Old publications (made before 5 October 2026) are read-only: 409 ${OLD_READ_ONLY_CODE}.`;
+const OLD_READ_ONLY_TEXT = ` Old publications (made before 5 October 2026) are read-only: 409 ${OLD_READ_ONLY_CODE} with createUrl to publish anew.`;
 /** Notice codes the agent must relay to the user. */
 const WARNING_CODES = new Set(["secret-detected", "manage-link-disabled"]);
 /** MCP type name -> REST path segment. */
@@ -79,10 +79,12 @@ function ownerFailure(operation: string, status: number, data: unknown, fromEnv:
     lines.push(`Wrong owner token for this publication. Use ownerToken from create.${fromEnv ? ` Sent: ${OWNER_TOKEN_ENV}.` : ""}`);
   }
   if (status === 409 && code === OLD_READ_ONLY_CODE) {
-    const republishUrl = (data as { republishUrl?: unknown }).republishUrl;
-    lines.push("Read-only old publication: cannot be updated. Publish the content anew with the matching " +
-      "publish tool in the same namespace; give the user the NEW URL and owner token. The old URL keeps its old content " +
-      "until it expires." + (typeof republishUrl === "string" ? " Ignore republishUrl (browser-only)." : "") +
+    const { createUrl, republishUrl } = data as { createUrl?: unknown; republishUrl?: unknown };
+    lines.push("Read-only old publication: cannot be updated. Publish the content anew " +
+      (typeof createUrl === "string" ? `by POSTing it to createUrl (${createUrl}): use the matching publish tool in that namespace`
+        : "with the matching publish tool in the same namespace") +
+      "; give the user the NEW URL and owner token. The old URL keeps its old content until it expires." +
+      (typeof republishUrl === "string" ? " republishUrl is browser-only: ignore it." : "") +
       (operation === "set KV" ? " For KV, read all keys with get_kv and publish them together with publish_kv." : ""));
   }
   return textResult(lines.join("\n"), true);
@@ -224,7 +226,7 @@ export function createServer(options: ServerOptions = {}): McpServer {
   const apiFetch = options.fetch ?? fetch;
   const server = new McpServer({
     name: "brewpage-mcp",
-    version: "1.14.2",
+    version: "1.14.3",
   });
 
   /** Caller argument first, then the configured default; `fromEnv` marks the configured one. */

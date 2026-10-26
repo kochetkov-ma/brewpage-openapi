@@ -8,7 +8,7 @@ import ScalarApiReference from '../../components/docs/ScalarApiReference.astro';
 
 # API Reference
 
-Last updated: 2026-10-22
+Last updated: 2026-10-26
 
 Explore the [BrewPage](https://brewpage.app) REST API. This backend-generated public specification includes anonymous, password-protected and owner-only operations with their access requirements. Administrative operations are excluded from public artifacts.
 
@@ -72,7 +72,7 @@ Owner mutations use the original token returned at creation, or the management k
 | Header | `X-Owner-Token: tok_xxx` |
 | Header | `X-Manage-Key: bpm_xxx` (key from `manageUrl`, after `#k=`) |
 
-`manageUrl` is private: give it only to the owner, never publish it. A token active in a profile also manages the profile's publications. Old publications are read-only: content writes answer `409 OLD_PUBLICATION_READ_ONLY` with `republishUrl`; delete and Hide still work.
+`manageUrl` is private: give it only to the owner, never publish it. A token active in a profile also manages the profile's publications. Old publications are read-only: content writes answer `409 OLD_PUBLICATION_READ_ONLY` with `createUrl`: POST the content there to publish it anew (HTML also adds `republishUrl`, the browser composer); delete and Hide still work.
 
 Programmatic protected reads:
 

@@ -6,6 +6,10 @@ order: 5
 
 # Changelog
 
+## MCP 1.14.3 / Spec 2.3.1 — Publish old publications anew
+
+A `409 OLD_PUBLICATION_READ_ONLY` answer now carries `createUrl` for every type: the create endpoint in the same namespace, where the content is POSTed to publish it anew. `republishUrl` stays HTML-only and opens the browser composer. The MCP update tools point to `createUrl` in their failure hint.
+
 ## MCP 1.14.2 — Remote endpoint in the MCP Registry
 
 The registry entry now lists `https://brewpage.app/mcp` (Streamable HTTP, no auth) next to the npm package, so clients can connect by URL. Tools are unchanged.

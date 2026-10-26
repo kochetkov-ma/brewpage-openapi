@@ -53,6 +53,10 @@
             "description": "Machine-readable reason, e.g. OWNER_AUTHORIZATION_FAILED, OWNER_TOKEN_REVOKED, OWNER_TOKEN_EXPIRED, ADMIN_TOKEN_REQUIRED, OLD_PUBLICATION_READ_ONLY, PUBLICATION_UNAVAILABLE, ROTATE_LIMITED.",
             "type": "string"
           },
+          "createUrl": {
+            "description": "With OLD_PUBLICATION_READ_ONLY: create endpoint (same namespace); POST the content there to publish it anew.",
+            "type": "string"
+          },
           "error": {
             "type": "string"
           },
@@ -64,7 +68,7 @@
             "type": "string"
           },
           "republishUrl": {
-            "description": "With OLD_PUBLICATION_READ_ONLY on an HTML page: publish the content anew here.",
+            "description": "With OLD_PUBLICATION_READ_ONLY on an HTML page: browser composer to publish it anew.",
             "type": "string"
           },
           "result": {
@@ -3230,7 +3234,7 @@
     },
     "termsOfService": "https://brewpage.app/terms",
     "title": "BrewPage API",
-    "version": "2.2.0"
+    "version": "2.3.1"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -3744,7 +3748,7 @@
                 }
               }
             },
-            "description": "Old publication is read-only (code: OLD_PUBLICATION_READ_ONLY), or the same content is another file of this owner"
+            "description": "Old publication is read-only (code: OLD_PUBLICATION_READ_ONLY; publish anew via createUrl), or the same content is another file of this owner"
           },
           "422": {
             "content": {
@@ -4513,7 +4517,7 @@
                 }
               }
             },
-            "description": "Old publication is read-only (code: OLD_PUBLICATION_READ_ONLY, republishUrl)"
+            "description": "Old publication is read-only (code: OLD_PUBLICATION_READ_ONLY); publish anew via createUrl (API) or republishUrl (browser)"
           }
         },
         "security": [
@@ -5144,7 +5148,7 @@
                 }
               }
             },
-            "description": "Old publication is read-only (code: OLD_PUBLICATION_READ_ONLY)"
+            "description": "Old publication is read-only (code: OLD_PUBLICATION_READ_ONLY); publish anew via createUrl"
           }
         },
         "security": [
@@ -5811,7 +5815,7 @@
                 }
               }
             },
-            "description": "Key limit exceeded, or old publication is read-only (code: OLD_PUBLICATION_READ_ONLY)"
+            "description": "Key limit exceeded, or old publication is read-only (code: OLD_PUBLICATION_READ_ONLY; publish anew via createUrl)"
           }
         },
         "security": [
@@ -7208,7 +7212,7 @@
                 }
               }
             },
-            "description": "Old publication: read-only, publish a new one"
+            "description": "Old publication is read-only (code: OLD_PUBLICATION_READ_ONLY); publish anew via createUrl"
           },
           "410": {
             "content": {
@@ -7656,7 +7660,7 @@
                 }
               }
             },
-            "description": "Old publication is read-only (code: OLD_PUBLICATION_READ_ONLY; HTML adds republishUrl)"
+            "description": "Old publication is read-only (code: OLD_PUBLICATION_READ_ONLY); publish anew via createUrl"
           },
           "429": {
             "content": {
@@ -7990,7 +7994,7 @@
                 }
               }
             },
-            "description": "Old publication is read-only (code: OLD_PUBLICATION_READ_ONLY; HTML adds republishUrl)"
+            "description": "Old publication is read-only (code: OLD_PUBLICATION_READ_ONLY); publish anew via createUrl"
           },
           "429": {
             "content": {
@@ -8119,7 +8123,7 @@
                 }
               }
             },
-            "description": "Old publication is read-only (code: OLD_PUBLICATION_READ_ONLY; HTML adds republishUrl)"
+            "description": "Old publication is read-only (code: OLD_PUBLICATION_READ_ONLY); publish anew via createUrl"
           },
           "429": {
             "content": {
@@ -8239,7 +8243,7 @@
                 }
               }
             },
-            "description": "Old publication is read-only (code: OLD_PUBLICATION_READ_ONLY; HTML adds republishUrl)"
+            "description": "Old publication is read-only (code: OLD_PUBLICATION_READ_ONLY); publish anew via createUrl"
           },
           "429": {
             "content": {
