@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { createServer, type IncomingHttpHeaders } from "node:http";
 import { connect, createServer as createTcpServer, type Socket } from "node:net";
-import { once } from "node:events";
+import { EventEmitter, once } from "node:events";
 import { createInterface } from "node:readline";
 import { fileURLToPath } from "node:url";
 import { readFileSync } from "node:fs";
@@ -22,26 +22,51 @@ const MIB = 1024 * 1024;
 
 interface RequestSnapshot { method: string; url: string; headers: IncomingHttpHeaders }
 
-/** Stub backend plus the built HTTP entry on ephemeral ports; `trusted` sets the proxy CIDRs. */
-async function fixture(t: TestContext, trusted = "127.0.0.1/32") {
+/** Stub backend plus the built HTTP entry on ephemeral ports; `trusted` sets the proxy CIDRs.
+ * Backend counts open calls; `hold` = it never answers, `delayMs` = it answers late; `shared` = shared-egress CIDRs. */
+async function fixture(t: TestContext, trusted = "127.0.0.1/32", { hold = false, delayMs = 0, shared = "" } = {}) {
   const requests: RequestSnapshot[] = [];
+  const backend = { open: 0, maxOpen: 0, events: new EventEmitter() };
   const api = createServer((req, res) => {
     requests.push({ method: req.method!, url: req.url!, headers: req.headers });
-    res.writeHead(200, { "Content-Type": "application/json" });
-    res.end(JSON.stringify(LIMITS));
+    backend.maxOpen = Math.max(backend.maxOpen, ++backend.open);
+    res.once("close", () => {
+      backend.open--;
+      backend.events.emit("change");
+    });
+    backend.events.emit("change");
+    req.resume();
+    if (hold) return;
+    req.once("end", () => setTimeout(() => {
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify(LIMITS));
+    }, delayMs));
   });
   api.listen(0, "127.0.0.1");
   await once(api, "listening");
   const backendUrl = `http://127.0.0.1:${(api.address() as { port: number }).port}`;
   const child = spawn(process.execPath, [HTTP_ENTRY], {
     env: { PATH: process.env.PATH, BREWPAGE_BACKEND_URL: backendUrl, BREWPAGE_TRUSTED_PROXY_CIDRS: trusted,
-      BREWPAGE_MCP_HOST: "127.0.0.1", BREWPAGE_MCP_PORT: "0" },
+      BREWPAGE_MCP_HOST: "127.0.0.1", BREWPAGE_MCP_PORT: "0", BREWPAGE_SHARED_EGRESS_CIDRS: shared },
     stdio: ["ignore", "pipe", "inherit"],
   });
   const lines = createInterface({ input: child.stdout! });
   const [first] = (await once(lines, "line")) as [string];
   const logs: Array<Record<string, unknown>> = [];
-  lines.on("line", (line) => logs.push(JSON.parse(line) as Record<string, unknown>));
+  lines.on("line", (line) => {
+    logs.push(JSON.parse(line) as Record<string, unknown>);
+    backend.events.emit("change");
+  });
+  /** Resolves once `ready()` holds; re-checked on every backend or log event. */
+  const until = (ready: () => boolean) => new Promise<void>((resolve) => {
+    const check = () => {
+      if (!ready()) return;
+      backend.events.off("change", check);
+      resolve();
+    };
+    backend.events.on("change", check);
+    check();
+  });
   const listening = JSON.parse(first) as { event: string; port: number; version: string };
   assert.deepEqual({ event: listening.event, version: listening.version }, { event: "listening", version: PACKAGE_VERSION },
     "HTTP entry announces its port and version once");
@@ -53,7 +78,7 @@ async function fixture(t: TestContext, trusted = "127.0.0.1/32") {
     await new Promise<void>((resolve, reject) => api.close((error) => error ? reject(error) : resolve()));
   });
   return {
-    requests, backendUrl, mcpUrl, logs, port: listening.port, child,
+    requests, backendUrl, mcpUrl, logs, port: listening.port, child, backend, until,
     async connect(headers: Record<string, string> = { "X-Forwarded-For": "198.51.100.7, 203.0.113.9" }) {
       const client = new Client({ name: "http-test", version: "0.0.0" });
       t.after(() => client.close());
@@ -156,17 +181,17 @@ for (const path of ["//[", "/%", "/mcp/../[?x=%"]) {
   });
 }
 
-test("one client trickling bodies holds at most 2 slots; another client is still served", { timeout: 15_000 }, async (t) => {
+test("one client trickling small bodies holds at most 4 slots; another client is still served", { timeout: 15_000 }, async (t) => {
   // GIVEN client A opening 8 requests whose bodies never finish.
   const f = await fixture(t);
   const stalled = Array.from({ length: 8 }, () => f.raw("POST /mcp HTTP/1.1\r\nHost: x\r\nX-Forwarded-For: 198.51.100.1\r\n" +
     "Content-Type: application/json\r\nAccept: application/json, text/event-stream\r\nContent-Length: 100\r\n\r\n{"));
-  const refused = await Promise.all(stalled.slice(2).map(({ status }) => status));
+  const refused = await Promise.all(stalled.slice(4).map(({ status }) => status));
   // WHEN client B initializes meanwhile.
   const other = await f.post({ "X-Forwarded-For": "198.51.100.2" });
   stalled.forEach(({ socket }) => socket.destroy());
   // THEN A's extra requests get 503 and B gets 200.
-  assert.deepEqual({ refused, other: other.status }, { refused: Array(6).fill("HTTP/1.1 503 Service Unavailable"), other: 200 },
+  assert.deepEqual({ refused, other: other.status }, { refused: Array(4).fill("HTTP/1.1 503 Service Unavailable"), other: 200 },
     "per-client cap keeps global slots free");
 });
 
@@ -196,6 +221,53 @@ for (const target of ["http://127.0.0.1:{port}/source-file", "http://169.254.169
       { result: { content: [{ type: "text", text: SOURCE_REFUSED }], isError: true }, backend: 0 }, `${url} is never fetched`);
   });
 }
+
+for (const scenario of [
+  { label: "standard publish_html", content: "<p>x</p>", cap: 2 },
+  { label: "heavy publish_html", content: "x".repeat(1.5 * MIB), cap: 1 },
+]) {
+  test(`${scenario.label}: slots stay held until the handler settles; disconnect aborts the backend call`, { timeout: 15_000 }, async (t) => {
+    // GIVEN a backend that never answers and one client filling its ${scenario.cap} slot(s).
+    const f = await fixture(t, "127.0.0.1/32", { hold: true });
+    const body = JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/call",
+      params: { name: "publish_html", arguments: { content: scenario.content } } });
+    const call = () => f.raw("POST /mcp HTTP/1.1\r\nHost: x\r\nX-Forwarded-For: 198.51.100.1\r\nContent-Type: application/json\r\n" +
+      `Accept: ${MCP_ACCEPT}\r\nContent-Length: ${Buffer.byteLength(body)}\r\n\r\n${body}`);
+    const held = Array.from({ length: scenario.cap }, call);
+    await f.until(() => f.backend.open === scenario.cap);
+    // WHEN one more call arrives, then the client disconnects every held call and calls again.
+    const extra = await call().status;
+    held.forEach(({ socket }) => socket.destroy());
+    await f.until(() => f.backend.open === 0 && f.logs.length === scenario.cap + 1);
+    const again = call();
+    await f.until(() => f.backend.open === 1);
+    again.socket.destroy();
+    await f.until(() => f.backend.open === 0 && f.logs.length === scenario.cap + 2);
+    // THEN the extra call is refused while handlers run, every disconnect aborts its backend call and frees the slot.
+    assert.deepEqual({ extra, maxOpen: f.backend.maxOpen, outcomes: f.logs.map(({ outcome }) => outcome) },
+      { extra: "HTTP/1.1 503 Service Unavailable", maxOpen: scenario.cap,
+        outcomes: ["http_503", ...Array(scenario.cap + 1).fill("client_closed")] }, "slots follow handlers, not sockets");
+  });
+}
+
+test("a burst of 20 calls from one shared-egress address all succeed: queued, never refused", { timeout: 15_000 }, async (t) => {
+  // GIVEN a slow backend and a platform egress range exempt from per-client caps.
+  const f = await fixture(t, "127.0.0.1/32", { delayMs: 300, shared: "198.51.100.0/24" });
+  const calls = [
+    ...Array.from({ length: 6 }, (_, id) => ({ jsonrpc: "2.0", id, method: "tools/list" })),
+    ...Array.from({ length: 10 }, (_, id) => ({ jsonrpc: "2.0", id, method: "tools/call", params: { name: "publish_html", arguments: { content: "<p>x</p>" } } })),
+    ...Array.from({ length: 4 }, (_, id) => ({ jsonrpc: "2.0", id, method: "tools/call", params: { name: "publish_html", arguments: { content: "x".repeat(1.5 * MIB) } } })),
+  ];
+  // WHEN all 20 arrive at once from one address.
+  const answers = await Promise.all(calls.map(async (call) => {
+    const res = await f.post({ "X-Forwarded-For": "198.51.100.50" }, "POST", JSON.stringify(call));
+    const json = await res.json() as { result?: { isError?: boolean } };
+    return `${res.status} ${json.result?.isError === true ? "tool_error" : "ok"}`;
+  }));
+  // THEN every call succeeds; the backend never sees more than 8 standard plus 1 heavy at once.
+  assert.deepEqual({ answers, backendCalls: f.requests.length, maxOpen: f.backend.maxOpen },
+    { answers: Array(20).fill("200 ok"), backendCalls: 14, maxOpen: 9 }, "pools queue a shared address instead of refusing it");
+});
 
 test("publish_file download budget is 10 per client address", { timeout: 15_000 }, async (t) => {
   // GIVEN one client address.
@@ -237,6 +309,28 @@ for (const scenario of [
     assert.equal(outcome, scenario.expected, `${scenario.label} settles as ${scenario.expected}`);
   });
 }
+
+test("source fetch stops when the caller aborts", { timeout: 15_000 }, async (t) => {
+  // GIVEN a loopback source that reads the request and never answers.
+  const sockets: Socket[] = [];
+  const server = createTcpServer((socket) => sockets.push(socket.on("error", () => undefined).resume()));
+  server.listen(0, "127.0.0.1");
+  await once(server, "listening");
+  t.after(() => new Promise<void>((resolve) => {
+    sockets.forEach((socket) => socket.destroy());
+    server.close(() => resolve());
+  }));
+  const controller = new AbortController();
+  const connected = once(server, "connection") as Promise<[Socket]>;
+  const outcome = fetchSourceSafely(`http://127.0.0.1:${(server.address() as { port: number }).port}/x`, allowLoopback, controller.signal)
+    .then(() => "fetched", (error: Error) => error.name);
+  const [socket] = await connected;
+  const closed = once(socket, "close").then(() => true);
+  // WHEN the caller aborts.
+  controller.abort();
+  // THEN the download rejects with an abort and the source connection is closed.
+  assert.deepEqual({ outcome: await outcome, closed: await closed }, { outcome: "AbortError", closed: true }, "abort reaches the source socket");
+});
 
 test("source fetch refuses a non-http protocol up front", async () => {
   // GIVEN an ftp URL.

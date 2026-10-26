@@ -1,5 +1,9 @@
 # Release Notes
 
+## MCP 1.14.4 — 2026-10-26
+
+- Remote mode (`dist/http.js`): a request holds its slot until the tool handler settles, not until the socket closes; a client disconnect aborts its backend calls and the `publish_file` download, and each backend call times out after 60 s. Separate light, standard and heavy pools queue a request (before its body is read) for up to 30 s instead of answering 503. Request body cap 8 -> 32 MiB so the largest site fits; run with a 512 MiB container and `--max-old-space-size=192`. `BREWPAGE_SHARED_EGRESS_CIDRS` lists platform egress ranges that skip per-IP caps and the download budget. A client disconnect logs `client_closed`. `User-Agent: brewpage-mcp/1.14.4`; pins bumped. No tool or contract change.
+
 ## API contract 2.3.1 / MCP 1.14.3 — 2026-10-26
 
 - API contract version 2.3.1 is the backend-generated public snapshot exported from the clean brewpage-app source `01af63af2f4a1736bf6e1507ce3c9af628b87aa8` (branch `fix/old-409-hint-webvisor`, for backend `v2.3.1`). Deterministic YAML, the byte-identical Scalar copy and export provenance are regenerated with it.

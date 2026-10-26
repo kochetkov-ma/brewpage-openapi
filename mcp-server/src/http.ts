@@ -13,14 +13,29 @@ import type { JSONRPCMessage } from "@modelcontextprotocol/sdk/types.js";
 import { createServer, OWNER_TOKEN_ENV, USER_AGENT } from "./tools.js";
 
 const MIB = 1024 * 1024;
-/** A 31 MiB tools/call peaked at 375 MiB RSS, 7.9 MiB at 164 MiB; 8 MiB keeps a 320 MiB container safe. */
-const MAX_BODY_BYTES = 8 * MIB;
+/** Fits the largest site (25 MiB backend request: 20 MiB of inline text plus JSON escaping).
+ * Two 32 MiB sites + 8x1 MiB + 32 light per round peaked at 373 MiB (heap 192): run with mem_limit 512m. */
+const MAX_BODY_BYTES = 32 * MIB;
 const LARGE_BODY_BYTES = 1 * MIB;
-const BODY_TIMEOUT_MS = 10_000;
+const SMALL_BODY_BYTES = 64 * 1024;
+/** Body deadline: 2 s plus 1 s per declared MiB (a 1 MiB/s floor); unknown length gets the maximum. */
+const BODY_BASE_MS = 2_000;
+const BODY_MS_PER_MIB = 1_000;
+const BODY_TIMEOUT_MS = BODY_BASE_MS + (MAX_BODY_BYTES / MIB) * BODY_MS_PER_MIB;
+/** Light = small body, not tools/call or a LIGHT_TOOLS call; own pool so writes cannot starve handshakes. */
+const MAX_LIGHT_IN_FLIGHT = 32;
+const MAX_LIGHT_PER_CLIENT = 4;
 const MAX_IN_FLIGHT = 8;
 const MAX_PER_CLIENT = 2;
-/** Heavy = body over 1 MiB or publish_file; each peaks ~100 MiB RSS, two reached 313 MiB, too close to 320 MiB. */
+/** Heavy = body over 1 MiB or publish_file; one at a time keeps a 32 MiB call inside the container memory. */
 const MAX_HEAVY_IN_FLIGHT = 1;
+const MAX_HEAVY_PER_CLIENT = 1;
+/** A full pool queues a request (before its body is read) for up to 30 s instead of answering 503. */
+const QUEUE_WAIT_MS = 30_000;
+const MAX_QUEUED = 64;
+/** Read-only tools with small answers; content reads (get_page/json/kv) stay in the standard pool. */
+const LIGHT_TOOLS = new Set(["get_limits", "get_stats", "search_gallery"]);
+const BACKEND_TIMEOUT_MS = 60_000;
 const MAX_SOURCE_BYTES = 20 * MIB;
 const MAX_REDIRECTS = 3;
 const SOURCE_TIMEOUT_MS = 30_000;
@@ -50,18 +65,18 @@ function fail(message: string): never {
   process.exit(1);
 }
 
-/** Comma list of CIDRs or bare IPs; empty entries skipped, any invalid entry is fatal. */
-function parseCidrs(raw: string | undefined): BlockList {
+/** Comma list of CIDRs or bare IPs from env `name`; empty entries skipped, any invalid entry is fatal. */
+function parseCidrs(name: string, required: boolean): BlockList {
   const list = new BlockList();
-  const entries = (raw ?? "").split(",").map((entry) => entry.trim()).filter((entry) => entry.length > 0);
-  if (entries.length === 0) fail("BREWPAGE_TRUSTED_PROXY_CIDRS is required: comma list of proxy CIDRs.");
+  const entries = (process.env[name] ?? "").split(",").map((entry) => entry.trim()).filter((entry) => entry.length > 0);
+  if (entries.length === 0 && required) fail(`${name} is required: comma list of proxy CIDRs.`);
   for (const entry of entries) {
     const [address, prefixText] = entry.split("/");
     const family = isIP(address);
     const prefix = prefixText === undefined ? (family === 6 ? 128 : 32) : Number(prefixText);
     const maxPrefix = family === 6 ? 128 : 32;
     if (family === 0 || !Number.isInteger(prefix) || prefix < 0 || prefix > maxPrefix) {
-      fail(`BREWPAGE_TRUSTED_PROXY_CIDRS: invalid entry ${JSON.stringify(entry)}.`);
+      fail(`${name}: invalid entry ${JSON.stringify(entry)}.`);
     }
     list.addSubnet(address, prefix, family === 6 ? "ipv6" : "ipv4");
   }
@@ -79,7 +94,9 @@ function loadConfig() {
     publicOrigin: publicOrigin.origin,
     forwardedProto: publicOrigin.protocol.replace(/:$/, ""),
     forwardedHost: publicOrigin.host,
-    trustedProxies: parseCidrs(process.env.BREWPAGE_TRUSTED_PROXY_CIDRS),
+    trustedProxies: parseCidrs("BREWPAGE_TRUSTED_PROXY_CIDRS", true),
+    /** Platform egress (one IP, many users): global pools only, no per-client caps or download budget. */
+    sharedEgress: parseCidrs("BREWPAGE_SHARED_EGRESS_CIDRS", false),
     host: process.env.BREWPAGE_MCP_HOST || "0.0.0.0",
     port,
   };
@@ -106,6 +123,7 @@ export function isBlockedSource(address: string): boolean {
 }
 
 const SOURCE_REFUSED = "Source URL refused: private or reserved address.";
+const BODY_TOO_LARGE = "Request body over 32 MiB.";
 const SOURCE_TOO_LARGE = "Source file over 20 MiB.";
 
 type LookupCallback = (error: NodeJS.ErrnoException | null, address: string | LookupAddress[], family?: number) => void;
@@ -173,9 +191,11 @@ function sourceHop(url: URL, signal: AbortSignal, isBlocked: (address: string) =
   });
 }
 
-/** SSRF-safe publish_file download: every hop re-checked, at most 3 redirects, one Blob copy. */
-export async function fetchSourceSafely(url: string, isBlocked: (address: string) => boolean = isBlockedSource): Promise<Blob> {
-  const signal = AbortSignal.timeout(SOURCE_TIMEOUT_MS);
+/** SSRF-safe publish_file download: every hop re-checked, at most 3 redirects, one Blob copy; `abort` cancels it. */
+export async function fetchSourceSafely(url: string, isBlocked: (address: string) => boolean = isBlockedSource,
+  abort?: AbortSignal): Promise<Blob> {
+  const timeout = AbortSignal.timeout(SOURCE_TIMEOUT_MS);
+  const signal = abort ? AbortSignal.any([timeout, abort]) : timeout;
   let current = new URL(url);
   for (let hop = 0; ; hop++) {
     const answer = await sourceHop(current, signal, isBlocked);
@@ -217,7 +237,7 @@ const backendFetch: typeof fetch = async (input, init) => {
     try {
       return await fetch(input, init);
     } catch (error) {
-      if (!isDialFailure(error) || Date.now() >= deadline) throw error;
+      if (!isDialFailure(error) || Date.now() >= deadline || init?.signal?.aborted) throw error;
       await new Promise((resolve) => setTimeout(resolve, DIAL_RETRY_PAUSE_MS));
     }
   }
@@ -240,13 +260,15 @@ function rpcError(res: ServerResponse, status: number, code: number, message: st
   res.end(JSON.stringify({ jsonrpc: "2.0", error: { code, message }, id: null }));
 }
 
-/** Reads at most `limit` bytes within `timeoutMs`; never rejects. */
-function readBody(req: IncomingMessage, limit: number, timeoutMs: number): Promise<Buffer | "too_large" | "timeout" | "aborted"> {
+type BodyFailure = "too_large" | "timeout" | "aborted" | "busy";
+
+/** Reads at most `limit` bytes within `timeoutMs`; `onLarge` (false = busy) runs once past LARGE_BODY_BYTES; never rejects. */
+function readBody(req: IncomingMessage, limit: number, timeoutMs: number, onLarge: () => boolean): Promise<Buffer | BodyFailure> {
   return new Promise((resolve) => {
     const chunks: Buffer[] = [];
     let size = 0;
     let done = false;
-    const finish = (value: Buffer | "too_large" | "timeout" | "aborted") => {
+    const finish = (value: Buffer | BodyFailure) => {
       if (done) return;
       done = true;
       clearTimeout(timer);
@@ -254,13 +276,17 @@ function readBody(req: IncomingMessage, limit: number, timeoutMs: number): Promi
     };
     const timer = setTimeout(() => finish("timeout"), timeoutMs);
     req.on("data", (chunk: Buffer) => {
+      const before = size;
       size += chunk.length;
       if (size > limit) return finish("too_large");
+      if (before <= LARGE_BODY_BYTES && size > LARGE_BODY_BYTES && !onLarge()) return finish("busy");
       if (!done) chunks.push(chunk);
     });
     req.on("end", () => finish(Buffer.concat(chunks)));
     req.on("error", () => finish("aborted"));
     req.on("close", () => finish("aborted"));
+    // A client that left while the request was queued closed before these listeners existed.
+    if (req.socket.destroyed) finish("aborted");
   });
 }
 
@@ -277,12 +303,76 @@ async function registeredToolNames(): Promise<Set<string>> {
   return new Set(tools.map(({ name }) => name));
 }
 
+/** Slot pool: global limit with a FIFO wait queue, plus a per-client cap (client undefined = shared egress, no cap). */
+class Pool {
+  active = 0;
+  private readonly clients = new Map<string, number>();
+  private readonly waiters: Array<() => void> = [];
+  constructor(private readonly limit: number, private readonly perClient: number) {}
+
+  /** A free slot now, or false; never queues. */
+  tryTake(client: string | undefined): boolean {
+    if (!this.reserve(client)) return false;
+    if (this.active < this.limit) {
+      this.active++;
+      return true;
+    }
+    this.release(client);
+    return false;
+  }
+
+  /** True once a slot is held; false at once over the per-client cap or a full queue, or after QUEUE_WAIT_MS. */
+  async take(client: string | undefined): Promise<boolean> {
+    if (!this.reserve(client)) return false;
+    if (this.active < this.limit) {
+      this.active++;
+      return true;
+    }
+    const granted = this.waiters.length < MAX_QUEUED && await new Promise<boolean>((resolve) => {
+      const wake = () => {
+        clearTimeout(timer);
+        resolve(true);
+      };
+      const timer = setTimeout(() => {
+        this.waiters.splice(this.waiters.indexOf(wake), 1);
+        resolve(false);
+      }, QUEUE_WAIT_MS);
+      this.waiters.push(wake);
+    });
+    if (!granted) this.release(client);
+    return granted;
+  }
+
+  /** Frees a slot; a queued request inherits it directly. */
+  give(client: string | undefined): void {
+    this.release(client);
+    const next = this.waiters.shift();
+    if (next) next();
+    else this.active--;
+  }
+
+  private reserve(client: string | undefined): boolean {
+    if (client === undefined) return true;
+    const held = this.clients.get(client) ?? 0;
+    if (held >= this.perClient) return false;
+    this.clients.set(client, held + 1);
+    return true;
+  }
+
+  private release(client: string | undefined): void {
+    if (client === undefined) return;
+    const left = (this.clients.get(client) ?? 1) - 1;
+    if (left > 0) this.clients.set(client, left);
+    else this.clients.delete(client);
+  }
+}
+
 async function main(): Promise<void> {
   const config = loadConfig();
   const toolNames = await registeredToolNames();
-  const perClient = new Map<string, number>();
-  let inFlight = 0;
-  let heavyInFlight = 0;
+  const light = new Pool(MAX_LIGHT_IN_FLIGHT, MAX_LIGHT_PER_CLIENT);
+  const standard = new Pool(MAX_IN_FLIGHT, MAX_PER_CLIENT);
+  const heavy = new Pool(MAX_HEAVY_IN_FLIGHT, MAX_HEAVY_PER_CLIENT);
   let draining = false;
 
   async function handleMcp(req: IncomingMessage, res: ServerResponse, entry: LogFields): Promise<void> {
@@ -296,83 +386,107 @@ async function main(): Promise<void> {
     if (client === undefined) return rpcError(res, 400, SERVER_ERROR, "Missing client address.");
     if (draining) return rpcError(res, 503, SERVER_ERROR, "Shutting down.", { "Retry-After": "5" });
     const declared = Number(req.headers["content-length"]);
-    if (declared > MAX_BODY_BYTES) return rpcError(res, 413, SERVER_ERROR, "Request body over 8 MiB.");
-    const busy = () => rpcError(res, 503, SERVER_ERROR, "Busy, retry shortly.", { "Retry-After": "1" });
-    let heavy = !(Number.isFinite(declared) && declared <= LARGE_BODY_BYTES);
-    if (inFlight >= MAX_IN_FLIGHT || (perClient.get(client) ?? 0) >= MAX_PER_CLIENT || (heavy && heavyInFlight >= MAX_HEAVY_IN_FLIGHT)) {
-      return busy();
-    }
-    inFlight++;
-    perClient.set(client, (perClient.get(client) ?? 0) + 1);
-    if (heavy) heavyInFlight++;
-    res.once("close", () => {
-      inFlight--;
-      const left = (perClient.get(client) ?? 1) - 1;
-      if (left > 0) perClient.set(client, left);
-      else perClient.delete(client);
-      if (heavy) heavyInFlight--;
-    });
-
-    const body = await readBody(req, MAX_BODY_BYTES, BODY_TIMEOUT_MS);
-    if (!(body instanceof Buffer)) {
-      if (body === "aborted") return;
-      res.once("finish", () => req.socket.destroy());
-      return body === "timeout"
-        ? rpcError(res, 408, SERVER_ERROR, "Request body too slow.", { Connection: "close" })
-        : rpcError(res, 413, SERVER_ERROR, "Request body over 8 MiB.", { Connection: "close" });
-    }
-    let message: unknown;
-    try {
-      message = JSON.parse(body.toString("utf8"));
-    } catch {
-      return rpcError(res, 400, PARSE_ERROR, "Parse error.");
-    }
-    if (Array.isArray(message)) return rpcError(res, 400, INVALID_REQUEST, "Batch requests are not supported.");
-    if (message === null || typeof message !== "object") return rpcError(res, 400, INVALID_REQUEST, "Invalid Request.");
-    const rpc = message as { method?: unknown; params?: { name?: unknown } | null };
-    const toolName = rpc.method === "tools/call" ? rpc.params?.name : undefined;
-    entry.method = typeof rpc.method === "string" ? rpc.method.slice(0, MAX_LOGGED_METHOD) : null;
-    entry.tool = rpc.method === "tools/call" ? (typeof toolName === "string" && toolNames.has(toolName) ? toolName : "unknown") : null;
-    if (toolName === "publish_file" && !heavy) {
-      if (heavyInFlight >= MAX_HEAVY_IN_FLIGHT) return busy();
-      heavy = true;
-      heavyInFlight++;
-    }
-
-    const server = createServer({
-      baseUrl: config.backendUrl,
-      publicOrigin: config.publicOrigin,
-      userAgent: REMOTE_USER_AGENT,
-      headers: { "X-Forwarded-For": client, "X-Forwarded-Proto": config.forwardedProto, "X-Forwarded-Host": config.forwardedHost },
-      fetchSource: (url) => takeDownload(client)
-        ? fetchSourceSafely(url)
-        : Promise.reject(new Error("Download limit reached for this address; try again in a few minutes.")),
-      fetch: backendFetch,
-    });
-    const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined, enableJsonResponse: true });
-    const send = transport.send.bind(transport);
-    transport.send = (outgoing: JSONRPCMessage, options) => {
-      if ("error" in outgoing) entry.outcome = "rpc_error";
-      else if ("result" in outgoing && (outgoing.result as { isError?: unknown }).isError === true) entry.outcome = "tool_error";
-      return send(outgoing, options);
+    if (declared > MAX_BODY_BYTES) return rpcError(res, 413, SERVER_ERROR, BODY_TOO_LARGE);
+    // Discards any unread body so the 503 is delivered and the connection stays usable.
+    const busy = () => {
+      req.resume();
+      rpcError(res, 503, SERVER_ERROR, "Busy, retry shortly.", { "Retry-After": "1" });
     };
-    res.once("close", () => {
-      void transport.close();
-      void server.close();
-    });
-    await server.connect(transport);
-    await transport.handleRequest(req, res, message);
+    const known = Number.isFinite(declared);
+    const shared = config.sharedEgress.check(client, isIP(client) === 6 ? "ipv6" : "ipv4");
+    const capKey = shared ? undefined : client;
+    // One slot per request, released only after the handler settles, never on socket close.
+    let slot: Pool | undefined;
+    const acquire = async (pool: Pool) => {
+      if (!(await pool.take(capKey))) return false;
+      slot?.give(capKey);
+      slot = pool;
+      return true;
+    };
+    try {
+      const first = !known ? standard : declared <= SMALL_BODY_BYTES ? light : declared <= LARGE_BODY_BYTES ? standard : heavy;
+      if (!(await acquire(first))) return busy();
+
+      const timeout = known ? BODY_BASE_MS + (declared / MIB) * BODY_MS_PER_MIB : BODY_TIMEOUT_MS;
+      // Unknown length that grows past 1 MiB must find a free heavy slot at once.
+      const body = await readBody(req, MAX_BODY_BYTES, timeout, () => {
+        if (slot === heavy) return true;
+        if (!heavy.tryTake(capKey)) return false;
+        slot?.give(capKey);
+        slot = heavy;
+        return true;
+      });
+      if (!(body instanceof Buffer)) {
+        if (body === "aborted") return;
+        if (body === "busy") return busy();
+        res.once("finish", () => req.socket.destroy());
+        return body === "timeout"
+          ? rpcError(res, 408, SERVER_ERROR, "Request body too slow.", { Connection: "close" })
+          : rpcError(res, 413, SERVER_ERROR, BODY_TOO_LARGE, { Connection: "close" });
+      }
+      let message: unknown;
+      try {
+        message = JSON.parse(body.toString("utf8"));
+      } catch {
+        return rpcError(res, 400, PARSE_ERROR, "Parse error.");
+      }
+      if (Array.isArray(message)) return rpcError(res, 400, INVALID_REQUEST, "Batch requests are not supported.");
+      if (message === null || typeof message !== "object") return rpcError(res, 400, INVALID_REQUEST, "Invalid Request.");
+      const rpc = message as { method?: unknown; params?: { name?: unknown } | null };
+      const toolName = rpc.method === "tools/call" ? rpc.params?.name : undefined;
+      entry.method = typeof rpc.method === "string" ? rpc.method.slice(0, MAX_LOGGED_METHOD) : null;
+      entry.tool = rpc.method === "tools/call" ? (typeof toolName === "string" && toolNames.has(toolName) ? toolName : "unknown") : null;
+      const isLight = rpc.method !== "tools/call" || (typeof toolName === "string" && LIGHT_TOOLS.has(toolName));
+      if (toolName === "publish_file" && slot !== heavy && !(await acquire(heavy))) return busy();
+      if (slot === light && !isLight && !(await acquire(standard))) return busy();
+
+      const abort = new AbortController();
+      res.once("close", () => abort.abort());
+      const forwarded = { "X-Forwarded-For": client, "X-Forwarded-Proto": config.forwardedProto, "X-Forwarded-Host": config.forwardedHost };
+      const callBackend: typeof fetch = (input, init) =>
+        backendFetch(input, { ...init, signal: AbortSignal.any([abort.signal, AbortSignal.timeout(BACKEND_TIMEOUT_MS)]) });
+      const server = createServer({
+        baseUrl: config.backendUrl,
+        publicOrigin: config.publicOrigin,
+        userAgent: REMOTE_USER_AGENT,
+        headers: forwarded,
+        fetchSource: (url) => shared || takeDownload(client)
+          ? fetchSourceSafely(url, isBlockedSource, abort.signal)
+          : Promise.reject(new Error("Download limit reached for this address; try again in a few minutes.")),
+        fetch: callBackend,
+      });
+      const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined, enableJsonResponse: true });
+      const send = transport.send.bind(transport);
+      transport.send = (outgoing: JSONRPCMessage, options) => {
+        if ("error" in outgoing) entry.outcome = "rpc_error";
+        else if ("result" in outgoing && (outgoing.result as { isError?: unknown }).isError === true) entry.outcome = "tool_error";
+        return send(outgoing, options);
+      };
+      try {
+        await server.connect(transport);
+        // JSON mode resolves only after the response is sent, i.e. after the handler settled.
+        await transport.handleRequest(req, res, message);
+      } finally {
+        await transport.close();
+        await server.close();
+      }
+    } finally {
+      slot?.give(capKey);
+    }
   }
 
-  function handle(req: IncomingMessage, res: ServerResponse, entry: LogFields): void {
+  function handle(req: IncomingMessage, res: ServerResponse, entry: LogFields): Promise<void> {
     const path = (req.url ?? "/").split("?")[0];
     if (path === "/healthz") {
       res.writeHead(draining ? 503 : 200, { "Content-Type": "application/json" });
       res.end(JSON.stringify({ status: draining ? "draining" : "ok", version: VERSION }));
-      return;
+      return Promise.resolve();
     }
-    if (path !== "/mcp") return rpcError(res, 404, SERVER_ERROR, "Not found.");
-    handleMcp(req, res, entry).catch((error: unknown) => {
+    if (path !== "/mcp") {
+      rpcError(res, 404, SERVER_ERROR, "Not found.");
+      return Promise.resolve();
+    }
+    return handleMcp(req, res, entry).catch((error: unknown) => {
       entry.outcome = "exception";
       log({ event: "request_failed", message: error instanceof Error ? error.message : String(error) });
       if (!res.headersSent) rpcError(res, 500, SERVER_ERROR, "Internal error.");
@@ -384,27 +498,32 @@ async function main(): Promise<void> {
     const started = performance.now();
     const entry: LogFields = { http: req.method ?? "", method: null, tool: null, status: 0, outcome: null, ms: 0 };
     const logged = !(req.url ?? "").startsWith("/healthz");
-    res.once("close", () => {
-      if (!logged) return;
-      entry.status = res.statusCode;
-      entry.outcome ??= res.statusCode < 400 ? "ok" : `http_${res.statusCode}`;
-      entry.ms = Math.round(performance.now() - started);
-      log(entry);
-    });
+    const closedEarly = new Promise<boolean>((resolve) => res.once("close", () => resolve(!res.writableFinished)));
+    let done: Promise<void>;
     try {
-      handle(req, res, entry);
+      done = handle(req, res, entry);
     } catch (error) {
       entry.outcome = "exception";
       log({ event: "request_failed", message: error instanceof Error ? error.message : String(error) });
       if (!res.headersSent) rpcError(res, 500, SERVER_ERROR, "Internal error.");
+      done = Promise.resolve();
     }
+    // One line once the socket closed and the handler settled (slots released); ms covers both.
+    void Promise.all([closedEarly, done]).then(([early]) => {
+      if (!logged) return;
+      entry.status = res.statusCode;
+      if (early) entry.outcome = "client_closed";
+      else entry.outcome ??= res.statusCode < 400 ? "ok" : `http_${res.statusCode}`;
+      entry.ms = Math.round(performance.now() - started);
+      log(entry);
+    });
   });
   httpServer.requestTimeout = 120_000;
 
   const shutdown = () => {
     if (draining) return;
     draining = true;
-    log({ event: "draining", inFlight });
+    log({ event: "draining", inFlight: light.active + standard.active + heavy.active });
     httpServer.close(() => process.exit(0));
     httpServer.closeIdleConnections();
     setTimeout(() => {

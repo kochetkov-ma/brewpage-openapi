@@ -17,7 +17,7 @@ Choosing a host? See how BrewPage compares with GitHub Pages, Netlify Drop, Tiin
 ## Quick Start
 
 ```bash
-npx -y brewpage-mcp@1.14.3
+npx -y brewpage-mcp@1.14.4
 ```
 
 Requires Node.js 20 or newer. This starts the stdio server for an MCP client.
@@ -33,7 +33,7 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS)
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@1.14.3"]
+      "args": ["-y", "brewpage-mcp@1.14.4"]
     }
   }
 }
@@ -44,7 +44,7 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS)
 Register a project-scoped stdio server:
 
 ```bash
-claude mcp add --transport stdio --scope project brewpage -- npx -y brewpage-mcp@1.14.3
+claude mcp add --transport stdio --scope project brewpage -- npx -y brewpage-mcp@1.14.4
 ```
 
 This writes `.mcp.json` in the project root. Use `--scope user` for user-scoped registration. See the [official Claude Code MCP guide](https://code.claude.com/docs/en/mcp).
@@ -58,7 +58,7 @@ Open **Settings > MCP** and add:
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@1.14.3"]
+      "args": ["-y", "brewpage-mcp@1.14.4"]
     }
   }
 }
@@ -72,7 +72,7 @@ Open the Cline MCP settings panel and add:
 {
   "brewpage": {
     "command": "npx",
-    "args": ["-y", "brewpage-mcp@1.14.3"]
+    "args": ["-y", "brewpage-mcp@1.14.4"]
   }
 }
 ```
@@ -80,7 +80,7 @@ Open the Cline MCP settings panel and add:
 ### Global Install
 
 ```bash
-npm install -g brewpage-mcp@1.14.3
+npm install -g brewpage-mcp@1.14.4
 brewpage-mcp
 ```
 
@@ -485,12 +485,15 @@ Every publish response includes an **owner token** -- the only credential that a
 - `POST /mcp` only, JSON responses, no `Mcp-Session-Id`; `GET`/`DELETE /mcp` -> 405. `GET /healthz` for the container healthcheck.
 - Requests with an `Origin` header -> 403 (no browser access). Only peers in `BREWPAGE_TRUSTED_PROXY_CIDRS` are served (others -> 403); the last `X-Forwarded-For` IP goes to the API with `X-Forwarded-Proto`/`X-Forwarded-Host` of the public origin.
 - `publish_file` downloads only from public addresses (every redirect re-checked, at most 3, 20 MiB).
+- Request body up to 32 MiB (`413` above). Light calls (handshake, `tools/list`, small reads), writes and large calls (over 1 MiB, `publish_file`) have separate slot pools; a full pool queues a request up to 30 s before `503`. A slot is held until the tool finishes; a client disconnect cancels its backend calls. Per-IP caps and the `publish_file` download budget skip `BREWPAGE_SHARED_EGRESS_CIDRS`.
+- Memory: run with `--max-old-space-size=192` and a 512 MiB container limit.
 - Never reads `BREWPAGE_OWNER_TOKEN`; refuses to start when it is set. Pass `ownerToken` per call.
 - One JSON log line per request on stdout (method, tool, status, outcome, ms); no arguments, tokens or IPs. `SIGTERM` drains for up to 30 s.
 
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `BREWPAGE_TRUSTED_PROXY_CIDRS` | required | Comma list of reverse-proxy CIDRs or IPs |
+| `BREWPAGE_SHARED_EGRESS_CIDRS` | empty | Comma list of platform egress CIDRs (one IP, many users): global limits only, no per-IP caps |
 | `BREWPAGE_BACKEND_URL` | `http://brewpage-backend-mcp:8080` | API base URL (internal address) |
 | `BREWPAGE_PUBLIC_ORIGIN` | `https://brewpage.app` | Origin for returned links and forwarded proto/host |
 | `BREWPAGE_MCP_PORT` | `8787` | Listen port |
@@ -508,6 +511,10 @@ Every publish response includes an **owner token** -- the only credential that a
 - [Brewcode Plugin](https://github.com/kochetkov-ma/claude-brewcode) -- Claude Code plugin suite
 
 ## Changelog
+
+## 1.14.4 -- 2026-10-26
+
+- Remote mode: a request keeps its slot until the tool finishes, and a client disconnect cancels its backend calls and source download; backend calls time out after 60 s. Separate pools for light, write and large calls queue briefly instead of refusing; request body up to 32 MiB. New `BREWPAGE_SHARED_EGRESS_CIDRS` exempts platform egress from per-IP caps. Tools are unchanged.
 
 ## 1.14.3 -- 2026-10-26
 
