@@ -1,8 +1,8 @@
 # Release Notes
 
-## API contract 2.4.0 — 2026-10-26
+## API contract 2.5.0 — 2026-10-26
 
-- API contract version 2.4.0 is the backend-generated public snapshot exported from the clean brewpage-app source `23fe3bc7ca50911b756c3b33cdf01e02cc01e338` (branch `feat/stats-accounts-ranges`, for backend `v2.4.0`).
+- API contract version 2.5.0 is the backend-generated public snapshot exported from the clean brewpage-app source `a6f93bb4d96813dd8adab88554d9c61916c70755` (tag `v2.5.0`).
 - `StatsResponse` (`GET /api/stats`) adds nullable `accountsToday` (accounts created today, `tz` day) and `totalAccounts` (all-time). Additive: 47 paths and 62 operations; `get_stats` returns the raw JSON, MCP unchanged.
 
 ## MCP 1.14.4 — 2026-10-26
