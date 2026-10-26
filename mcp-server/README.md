@@ -485,7 +485,7 @@ Every publish response includes an **owner token** -- the only credential that a
 - `POST /mcp` only, JSON responses, no `Mcp-Session-Id`; `GET`/`DELETE /mcp` -> 405. `GET /healthz` for the container healthcheck.
 - Requests with an `Origin` header -> 403 (no browser access). Only peers in `BREWPAGE_TRUSTED_PROXY_CIDRS` are served (others -> 403); the last `X-Forwarded-For` IP goes to the API with `X-Forwarded-Proto`/`X-Forwarded-Host` of the public origin.
 - `publish_file` downloads only from public addresses (every redirect re-checked, at most 3, 20 MiB).
-- Request body up to 32 MiB (`413` above). Light calls (handshake, `tools/list`, small reads), writes and large calls (over 1 MiB, `publish_file`) have separate slot pools; a full pool queues a request up to 30 s before `503`. A slot is held until the tool finishes; a client disconnect cancels its backend calls. Per-IP caps and the `publish_file` download budget skip `BREWPAGE_SHARED_EGRESS_CIDRS`.
+- Request body up to 32 MiB (`413` above), sent at least ~250 KiB/s after the first 2 s (`408` below). Light calls (handshake, `tools/list`, small reads), writes and large calls (over 1 MiB, `publish_file`) have separate slot pools; a full pool queues a request up to 30 s before `503`. A body without `Content-Length` that grows past 1 MiB gets `503` at once when the large-call slot is busy. A slot is held until the tool finishes; a client disconnect cancels its backend calls. Per-IP caps and the `publish_file` download budget skip shared platform egress (`BREWPAGE_SHARED_EGRESS_CIDRS` plus the published lists).
 - Memory: run with `--max-old-space-size=192` and a 512 MiB container limit.
 - Never reads `BREWPAGE_OWNER_TOKEN`; refuses to start when it is set. Pass `ownerToken` per call.
 - One JSON log line per request on stdout (method, tool, status, outcome, ms); no arguments, tokens or IPs. `SIGTERM` drains for up to 30 s.
@@ -494,6 +494,7 @@ Every publish response includes an **owner token** -- the only credential that a
 |----------|---------|-------------|
 | `BREWPAGE_TRUSTED_PROXY_CIDRS` | required | Comma list of reverse-proxy CIDRs or IPs |
 | `BREWPAGE_SHARED_EGRESS_CIDRS` | empty | Comma list of platform egress CIDRs (one IP, many users): global limits only, no per-IP caps |
+| `BREWPAGE_SHARED_EGRESS_LIST_URLS` | empty | Comma list of published egress lists (`{"prefixes":[{"ipv4Prefix"}]}`, at least 100 prefixes); fetched at startup and daily, last good list kept |
 | `BREWPAGE_BACKEND_URL` | `http://brewpage-backend-mcp:8080` | API base URL (internal address) |
 | `BREWPAGE_PUBLIC_ORIGIN` | `https://brewpage.app` | Origin for returned links and forwarded proto/host |
 | `BREWPAGE_MCP_PORT` | `8787` | Listen port |
@@ -514,7 +515,7 @@ Every publish response includes an **owner token** -- the only credential that a
 
 ## 1.14.4 -- 2026-10-26
 
-- Remote mode: a request keeps its slot until the tool finishes, and a client disconnect cancels its backend calls and source download; backend calls time out after 60 s. Separate pools for light, write and large calls queue briefly instead of refusing; request body up to 32 MiB. New `BREWPAGE_SHARED_EGRESS_CIDRS` exempts platform egress from per-IP caps. Tools are unchanged.
+- Remote mode: a request keeps its slot until the tool finishes, and a client disconnect cancels its backend calls and source download; backend calls time out after 60 s. Separate pools for light, write and large calls queue briefly instead of refusing; request body up to 32 MiB. `BREWPAGE_SHARED_EGRESS_CIDRS` and `BREWPAGE_SHARED_EGRESS_LIST_URLS` exempt platform egress from per-IP caps. Tools are unchanged.
 
 ## 1.14.3 -- 2026-10-26
 

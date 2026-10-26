@@ -22,12 +22,28 @@ const MIB = 1024 * 1024;
 
 interface RequestSnapshot { method: string; url: string; headers: IncomingHttpHeaders }
 
+/** Raw MCP POST from client `ip` with a declared length. */
+const rawPost = (ip: string, body: string) => `POST /mcp HTTP/1.1\r\nHost: x\r\nX-Forwarded-For: ${ip}\r\nContent-Type: application/json\r\n` +
+  `Accept: ${MCP_ACCEPT}\r\nContent-Length: ${Buffer.byteLength(body)}\r\n\r\n${body}`;
+const toolCall = (name: string, args: Record<string, unknown>) => JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/call", params: { name, arguments: args } });
+const TOOLS_LIST = JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list" });
+const PUBLISH = toolCall("publish_html", { content: "<p>x</p>" });
+
 /** Stub backend plus the built HTTP entry on ephemeral ports; `trusted` sets the proxy CIDRs.
- * Backend counts open calls; `hold` = it never answers, `delayMs` = it answers late; `shared` = shared-egress CIDRs. */
-async function fixture(t: TestContext, trusted = "127.0.0.1/32", { hold = false, delayMs = 0, shared = "" } = {}) {
+ * Backend counts open calls; `hold` = answers wait for `backend.release()`; `shared`/`list` = shared-egress CIDRs and list body. */
+async function fixture(t: TestContext, trusted = "127.0.0.1/32", { hold = false, shared = "", list = "" } = {}) {
   const requests: RequestSnapshot[] = [];
-  const backend = { open: 0, maxOpen: 0, events: new EventEmitter() };
+  const pending: Array<() => void> = [];
+  let holding = hold;
+  const backend = {
+    open: 0, maxOpen: 0, events: new EventEmitter(),
+    release() {
+      holding = false;
+      pending.splice(0).forEach((answer) => answer());
+    },
+  };
   const api = createServer((req, res) => {
+    if (req.url === "/egress.json") return res.end(list);
     requests.push({ method: req.method!, url: req.url!, headers: req.headers });
     backend.maxOpen = Math.max(backend.maxOpen, ++backend.open);
     res.once("close", () => {
@@ -35,26 +51,27 @@ async function fixture(t: TestContext, trusted = "127.0.0.1/32", { hold = false,
       backend.events.emit("change");
     });
     backend.events.emit("change");
-    req.resume();
-    if (hold) return;
-    req.once("end", () => setTimeout(() => {
+    const answer = () => {
       res.writeHead(200, { "Content-Type": "application/json" });
       res.end(JSON.stringify(LIMITS));
-    }, delayMs));
+    };
+    req.resume().once("end", () => holding ? pending.push(answer) : answer());
   });
   api.listen(0, "127.0.0.1");
   await once(api, "listening");
   const backendUrl = `http://127.0.0.1:${(api.address() as { port: number }).port}`;
   const child = spawn(process.execPath, [HTTP_ENTRY], {
     env: { PATH: process.env.PATH, BREWPAGE_BACKEND_URL: backendUrl, BREWPAGE_TRUSTED_PROXY_CIDRS: trusted,
-      BREWPAGE_MCP_HOST: "127.0.0.1", BREWPAGE_MCP_PORT: "0", BREWPAGE_SHARED_EGRESS_CIDRS: shared },
+      BREWPAGE_MCP_HOST: "127.0.0.1", BREWPAGE_MCP_PORT: "0", BREWPAGE_SHARED_EGRESS_CIDRS: shared,
+      BREWPAGE_SHARED_EGRESS_LIST_URLS: list ? `${backendUrl}/egress.json` : "" },
     stdio: ["ignore", "pipe", "inherit"],
   });
   const lines = createInterface({ input: child.stdout! });
-  const [first] = (await once(lines, "line")) as [string];
   const logs: Array<Record<string, unknown>> = [];
+  const events: Array<Record<string, unknown>> = [];
   lines.on("line", (line) => {
-    logs.push(JSON.parse(line) as Record<string, unknown>);
+    const entry = JSON.parse(line) as Record<string, unknown>;
+    (entry.event === undefined ? logs : events).push(entry);
     backend.events.emit("change");
   });
   /** Resolves once `ready()` holds; re-checked on every backend or log event. */
@@ -67,6 +84,8 @@ async function fixture(t: TestContext, trusted = "127.0.0.1/32", { hold = false,
     backend.events.on("change", check);
     check();
   });
+  await until(() => events.some(({ event }) => event === "listening"));
+  const first = JSON.stringify(events.find(({ event }) => event === "listening"));
   const listening = JSON.parse(first) as { event: string; port: number; version: string };
   assert.deepEqual({ event: listening.event, version: listening.version }, { event: "listening", version: PACKAGE_VERSION },
     "HTTP entry announces its port and version once");
@@ -78,7 +97,7 @@ async function fixture(t: TestContext, trusted = "127.0.0.1/32", { hold = false,
     await new Promise<void>((resolve, reject) => api.close((error) => error ? reject(error) : resolve()));
   });
   return {
-    requests, backendUrl, mcpUrl, logs, port: listening.port, child, backend, until,
+    requests, backendUrl, mcpUrl, logs, events, port: listening.port, child, backend, until,
     async connect(headers: Record<string, string> = { "X-Forwarded-For": "198.51.100.7, 203.0.113.9" }) {
       const client = new Client({ name: "http-test", version: "0.0.0" });
       t.after(() => client.close());
@@ -186,12 +205,12 @@ test("one client trickling small bodies holds at most 4 slots; another client is
   const f = await fixture(t);
   const stalled = Array.from({ length: 8 }, () => f.raw("POST /mcp HTTP/1.1\r\nHost: x\r\nX-Forwarded-For: 198.51.100.1\r\n" +
     "Content-Type: application/json\r\nAccept: application/json, text/event-stream\r\nContent-Length: 100\r\n\r\n{"));
-  const refused = await Promise.all(stalled.slice(4).map(({ status }) => status));
+  await f.until(() => f.logs.filter(({ outcome }) => outcome === "http_503").length === 4);
   // WHEN client B initializes meanwhile.
   const other = await f.post({ "X-Forwarded-For": "198.51.100.2" });
   stalled.forEach(({ socket }) => socket.destroy());
-  // THEN A's extra requests get 503 and B gets 200.
-  assert.deepEqual({ refused, other: other.status }, { refused: Array(4).fill("HTTP/1.1 503 Service Unavailable"), other: 200 },
+  // THEN 4 of A's requests get 503 (whichever arrived last) and B gets 200.
+  assert.deepEqual({ refused: f.logs.filter(({ outcome }) => outcome === "http_503").length, other: other.status }, { refused: 4, other: 200 },
     "per-client cap keeps global slots free");
 });
 
@@ -229,10 +248,7 @@ for (const scenario of [
   test(`${scenario.label}: slots stay held until the handler settles; disconnect aborts the backend call`, { timeout: 15_000 }, async (t) => {
     // GIVEN a backend that never answers and one client filling its ${scenario.cap} slot(s).
     const f = await fixture(t, "127.0.0.1/32", { hold: true });
-    const body = JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/call",
-      params: { name: "publish_html", arguments: { content: scenario.content } } });
-    const call = () => f.raw("POST /mcp HTTP/1.1\r\nHost: x\r\nX-Forwarded-For: 198.51.100.1\r\nContent-Type: application/json\r\n" +
-      `Accept: ${MCP_ACCEPT}\r\nContent-Length: ${Buffer.byteLength(body)}\r\n\r\n${body}`);
+    const call = () => f.raw(rawPost("198.51.100.1", toolCall("publish_html", { content: scenario.content })));
     const held = Array.from({ length: scenario.cap }, call);
     await f.until(() => f.backend.open === scenario.cap);
     // WHEN one more call arrives, then the client disconnects every held call and calls again.
@@ -251,23 +267,77 @@ for (const scenario of [
 }
 
 test("a burst of 20 calls from one shared-egress address all succeed: queued, never refused", { timeout: 15_000 }, async (t) => {
-  // GIVEN a slow backend and a platform egress range exempt from per-client caps.
-  const f = await fixture(t, "127.0.0.1/32", { delayMs: 300, shared: "198.51.100.0/24" });
+  // GIVEN a backend holding answers and a platform egress range exempt from per-client caps.
+  const f = await fixture(t, "127.0.0.1/32", { hold: true, shared: "198.51.100.0/24" });
   const calls = [
-    ...Array.from({ length: 6 }, (_, id) => ({ jsonrpc: "2.0", id, method: "tools/list" })),
-    ...Array.from({ length: 10 }, (_, id) => ({ jsonrpc: "2.0", id, method: "tools/call", params: { name: "publish_html", arguments: { content: "<p>x</p>" } } })),
-    ...Array.from({ length: 4 }, (_, id) => ({ jsonrpc: "2.0", id, method: "tools/call", params: { name: "publish_html", arguments: { content: "x".repeat(1.5 * MIB) } } })),
+    ...Array(6).fill(TOOLS_LIST), ...Array(10).fill(PUBLISH), ...Array(4).fill(toolCall("publish_html", { content: "x".repeat(1.5 * MIB) })),
   ];
-  // WHEN all 20 arrive at once from one address.
-  const answers = await Promise.all(calls.map(async (call) => {
-    const res = await f.post({ "X-Forwarded-For": "198.51.100.50" }, "POST", JSON.stringify(call));
+  // WHEN all 20 arrive at once from one address and the backend answers once both pools are full.
+  const answers = Promise.all(calls.map(async (call) => {
+    const res = await f.post({ "X-Forwarded-For": "198.51.100.50" }, "POST", call);
     const json = await res.json() as { result?: { isError?: boolean } };
     return `${res.status} ${json.result?.isError === true ? "tool_error" : "ok"}`;
   }));
-  // THEN every call succeeds; the backend never sees more than 8 standard plus 1 heavy at once.
-  assert.deepEqual({ answers, backendCalls: f.requests.length, maxOpen: f.backend.maxOpen },
+  await f.until(() => f.backend.open === 9);
+  f.backend.release();
+  // THEN every call succeeds; the backend never sees more than the 8 standard plus 1 heavy slots.
+  assert.deepEqual({ answers: await answers, backendCalls: f.requests.length, maxOpen: f.backend.maxOpen },
     { answers: Array(20).fill("200 ok"), backendCalls: 14, maxOpen: 9 }, "pools queue a shared address instead of refusing it");
 });
+
+test("a write burst never holds light slots: another client's tools/list answers at once", { timeout: 15_000 }, async (t) => {
+  // GIVEN 40 small writes from one shared address: 8 in the standard pool, 32 queued for it.
+  const f = await fixture(t, "127.0.0.1/32", { hold: true, shared: "198.51.100.0/24" });
+  const burst = Array.from({ length: 40 }, () => f.raw(rawPost("198.51.100.50", PUBLISH)));
+  await f.until(() => f.backend.open === 8);
+  // WHEN another client lists tools.
+  const res = await f.post({ "X-Forwarded-For": "203.0.113.5" }, "POST", TOOLS_LIST);
+  const tools = ((await res.json()) as { result: { tools: unknown[] } }).result.tools.length;
+  burst.forEach(({ socket }) => socket.destroy());
+  // THEN it is served from the light pool while the writes wait.
+  assert.deepEqual({ status: res.status, tools, backendOpen: f.backend.open }, { status: 200, tools: 20, backendOpen: 8 },
+    "queued writes released their light slots");
+});
+
+test("a client that leaves while queued for a slot never reaches the backend", { timeout: 15_000 }, async (t) => {
+  // GIVEN the standard pool full with 8 held writes from 4 addresses.
+  const f = await fixture(t, "127.0.0.1/32", { hold: true });
+  const held = ["203.0.113.1", "203.0.113.2", "203.0.113.3", "203.0.113.4"].flatMap((ip) => [f.raw(rawPost(ip, PUBLISH)), f.raw(rawPost(ip, PUBLISH))]);
+  await f.until(() => f.backend.open === 8);
+  // WHEN a fifth client's write queues (a later light call proves it was parsed), the client leaves, then a slot frees.
+  const queued = f.raw(rawPost("203.0.113.9", PUBLISH));
+  await once(queued.socket, "connect");
+  const barrier = await f.post({ "X-Forwarded-For": "203.0.113.10" }, "POST", TOOLS_LIST);
+  queued.socket.destroy();
+  held[0].socket.destroy();
+  await f.until(() => f.backend.open === 7 && f.logs.length === 3);
+  held.forEach(({ socket }) => socket.destroy());
+  // THEN the queued call is dropped when it gets the slot: no ninth backend call.
+  assert.deepEqual({ barrier: barrier.status, backendCalls: f.requests.length, outcomes: f.logs.map(({ outcome }) => outcome).sort() },
+    { barrier: 200, backendCalls: 8, outcomes: ["client_closed", "client_closed", "ok"] }, "abort is armed before the queue");
+});
+
+for (const scenario of [
+  { label: "a valid list", prefixes: 100, outcome: "backend", event: { event: "shared_egress_list", ranges: 100 } },
+  { label: "a truncated list", prefixes: 99, outcome: "HTTP/1.1 503 Service Unavailable",
+    event: { event: "shared_egress_list_failed", message: "99 valid, 0 invalid prefixes" } },
+]) {
+  test(`published egress list: ${scenario.label}`, { timeout: 15_000 }, async (t) => {
+    // GIVEN a published list naming the caller's /24 among ${scenario.prefixes} prefixes.
+    const prefixes = [{ ipv4Prefix: "198.51.100.0/24" }, ...Array.from({ length: scenario.prefixes - 1 }, (_, i) => ({ ipv4Prefix: `10.${i}.0.0/16` }))];
+    const f = await fixture(t, "127.0.0.1/32", { hold: true, list: JSON.stringify({ creationTime: "2026-10-20", prefixes }) });
+    await f.until(() => f.events.length === 2);
+    // WHEN that address sends a third concurrent write.
+    const held = [f.raw(rawPost("198.51.100.50", PUBLISH)), f.raw(rawPost("198.51.100.50", PUBLISH))];
+    await f.until(() => f.backend.open === 2);
+    const third = f.raw(rawPost("198.51.100.50", PUBLISH));
+    const outcome = await Promise.race([third.status, f.until(() => f.backend.open === 3).then(() => "backend")]);
+    [...held, third].forEach(({ socket }) => socket.destroy());
+    // THEN a loaded list lifts the per-client cap; a rejected one keeps it and logs why.
+    const { ts: _ts, url: _url, ...event } = f.events.find(({ event: name }) => name !== "listening")!;
+    assert.deepEqual({ outcome, event }, { outcome: scenario.outcome, event: scenario.event }, `${scenario.label} sets the exemption`);
+  });
+}
 
 test("publish_file download budget is 10 per client address", { timeout: 15_000 }, async (t) => {
   // GIVEN one client address.
@@ -354,6 +424,25 @@ test("source address guard blocks internal ranges and allows public ones", () =>
   // THEN only public addresses pass.
   assert.deepEqual(actual, cases, "blocked/allowed table matches");
 });
+
+for (const [name, value] of [
+  ["BREWPAGE_SHARED_EGRESS_CIDRS", "34.162.0.0/"], ["BREWPAGE_SHARED_EGRESS_CIDRS", "1.2.3.4/24/9"], ["BREWPAGE_SHARED_EGRESS_CIDRS", "/0x10"],
+  ["BREWPAGE_SHARED_EGRESS_CIDRS", "10.0.0.0/33"], ["BREWPAGE_SHARED_EGRESS_CIDRS", "::1/129"], ["BREWPAGE_SHARED_EGRESS_CIDRS", "10.0.0.0/+8"],
+  ["BREWPAGE_TRUSTED_PROXY_CIDRS", "127.0.0.1/"],
+]) {
+  test(`HTTP mode refuses to start with ${name}=${value}`, { timeout: 15_000 }, async () => {
+    // GIVEN a malformed CIDR entry.
+    const env = { PATH: process.env.PATH, BREWPAGE_TRUSTED_PROXY_CIDRS: "127.0.0.1/32", [name]: value };
+    const child = spawn(process.execPath, [HTTP_ENTRY], { env, stdio: ["ignore", "pipe", "pipe"] });
+    const stderr: Buffer[] = [];
+    child.stderr!.on("data", (chunk: Buffer) => stderr.push(chunk));
+    // WHEN the process exits.
+    const [code] = (await once(child, "exit")) as [number];
+    // THEN startup fails and names the entry.
+    assert.deepEqual({ code, message: (JSON.parse(Buffer.concat(stderr).toString()) as { message: string }).message },
+      { code: 1, message: `${name}: invalid entry ${JSON.stringify(value)}.` }, `${value} is never read as a range`);
+  });
+}
 
 test("HTTP mode refuses to start with BREWPAGE_OWNER_TOKEN set", { timeout: 15_000 }, async () => {
   // GIVEN an owner token in the environment.

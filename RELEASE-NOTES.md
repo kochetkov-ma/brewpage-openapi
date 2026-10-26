@@ -2,7 +2,7 @@
 
 ## MCP 1.14.4 — 2026-10-26
 
-- Remote mode (`dist/http.js`): a request holds its slot until the tool handler settles, not until the socket closes; a client disconnect aborts its backend calls and the `publish_file` download, and each backend call times out after 60 s. Separate light, standard and heavy pools queue a request (before its body is read) for up to 30 s instead of answering 503. Request body cap 8 -> 32 MiB so the largest site fits; run with a 512 MiB container and `--max-old-space-size=192`. `BREWPAGE_SHARED_EGRESS_CIDRS` lists platform egress ranges that skip per-IP caps and the download budget. A client disconnect logs `client_closed`. `User-Agent: brewpage-mcp/1.14.4`; pins bumped. No tool or contract change.
+- Remote mode (`dist/http.js`): a request holds its slot until the tool handler settles, not until the socket closes; a client disconnect aborts its backend calls and the `publish_file` download, and each backend call times out after 60 s. Separate light, standard and heavy pools queue a request (before its body is read) for up to 30 s instead of answering 503. Request body cap 8 -> 32 MiB so the largest site fits; run with a 512 MiB container and `--max-old-space-size=192`. `BREWPAGE_SHARED_EGRESS_CIDRS` and the daily-fetched `BREWPAGE_SHARED_EGRESS_LIST_URLS` (e.g. OpenAI connectors) list platform egress that skips per-IP caps and the download budget; malformed CIDRs fail startup. A body must arrive at ~250 KiB/s after 2 s. A client disconnect logs `client_closed`. `User-Agent: brewpage-mcp/1.14.4`; pins bumped. No tool or contract change.
 
 ## API contract 2.3.1 / MCP 1.14.3 — 2026-10-26
 

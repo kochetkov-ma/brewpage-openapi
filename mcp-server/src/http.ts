@@ -18,10 +18,9 @@ const MIB = 1024 * 1024;
 const MAX_BODY_BYTES = 32 * MIB;
 const LARGE_BODY_BYTES = 1 * MIB;
 const SMALL_BODY_BYTES = 64 * 1024;
-/** Body deadline: 2 s plus 1 s per declared MiB (a 1 MiB/s floor); unknown length gets the maximum. */
-const BODY_BASE_MS = 2_000;
-const BODY_MS_PER_MIB = 1_000;
-const BODY_TIMEOUT_MS = BODY_BASE_MS + (MAX_BODY_BYTES / MIB) * BODY_MS_PER_MIB;
+/** After a 2 s grace a body must average ~250 KiB/s (checked every second), so a trickle cannot pin a slot. */
+const BODY_GRACE_MS = 2_000;
+const BODY_MIN_BYTES_PER_MS = 256;
 /** Light = small body, not tools/call or a LIGHT_TOOLS call; own pool so writes cannot starve handshakes. */
 const MAX_LIGHT_IN_FLIGHT = 32;
 const MAX_LIGHT_PER_CLIENT = 4;
@@ -36,6 +35,13 @@ const MAX_QUEUED = 64;
 /** Read-only tools with small answers; content reads (get_page/json/kv) stay in the standard pool. */
 const LIGHT_TOOLS = new Set(["get_limits", "get_stats", "search_gallery"]);
 const BACKEND_TIMEOUT_MS = 60_000;
+/** Published egress lists (backend `openai-chatgpt-connectors` rules): daily refresh, last good set kept on failure. */
+const SHARED_LIST_REFRESH_MS = 24 * 60 * 60_000;
+const SHARED_LIST_TIMEOUT_MS = 15_000;
+const SHARED_LIST_MAX_BYTES = 1 * MIB;
+const SHARED_LIST_MIN_RANGES = 100;
+const MIN_LISTED_PREFIX_V4 = 16;
+const MIN_LISTED_PREFIX_V6 = 32;
 const MAX_SOURCE_BYTES = 20 * MIB;
 const MAX_REDIRECTS = 3;
 const SOURCE_TIMEOUT_MS = 30_000;
@@ -65,22 +71,42 @@ function fail(message: string): never {
   process.exit(1);
 }
 
-/** Comma list of CIDRs or bare IPs from env `name`; empty entries skipped, any invalid entry is fatal. */
-function parseCidrs(name: string, required: boolean): BlockList {
+interface Cidr { address: string; prefix: number; family: "ipv4" | "ipv6" }
+
+/** An IP or IP/prefix: one slash, 1-3 decimal digits, prefix within the family's range; else undefined. */
+function parseCidr(entry: string): Cidr | undefined {
+  const parts = entry.split("/");
+  const version = isIP(parts[0]);
+  const max = version === 6 ? 128 : 32;
+  const prefix = parts.length === 1 ? max : parts.length === 2 && /^\d{1,3}$/.test(parts[1]) ? Number(parts[1]) : -1;
+  if (version === 0 || prefix < 0 || prefix > max) return undefined;
+  return { address: parts[0], prefix, family: version === 6 ? "ipv6" : "ipv4" };
+}
+
+function blockList(cidrs: Cidr[]): BlockList {
   const list = new BlockList();
+  for (const { address, prefix, family } of cidrs) list.addSubnet(address, prefix, family);
+  return list;
+}
+
+/** Comma list of CIDRs or bare IPs from env `name`; empty entries skipped, any invalid entry is fatal. */
+function parseCidrs(name: string, required: boolean): Cidr[] {
   const entries = (process.env[name] ?? "").split(",").map((entry) => entry.trim()).filter((entry) => entry.length > 0);
   if (entries.length === 0 && required) fail(`${name} is required: comma list of proxy CIDRs.`);
-  for (const entry of entries) {
-    const [address, prefixText] = entry.split("/");
-    const family = isIP(address);
-    const prefix = prefixText === undefined ? (family === 6 ? 128 : 32) : Number(prefixText);
-    const maxPrefix = family === 6 ? 128 : 32;
-    if (family === 0 || !Number.isInteger(prefix) || prefix < 0 || prefix > maxPrefix) {
-      fail(`${name}: invalid entry ${JSON.stringify(entry)}.`);
-    }
-    list.addSubnet(address, prefix, family === 6 ? "ipv6" : "ipv4");
-  }
-  return list;
+  return entries.map((entry) => parseCidr(entry) ?? fail(`${name}: invalid entry ${JSON.stringify(entry)}.`));
+}
+
+/** `{prefixes: [{ipv4Prefix | ipv6Prefix}]}`; drops unparsable and over-wide prefixes, rejects a truncated or reshaped file. */
+export function parseEgressList(text: string): Cidr[] {
+  const prefixes = (JSON.parse(text) as { prefixes?: unknown } | null)?.prefixes;
+  if (!Array.isArray(prefixes)) throw new Error("no prefixes array");
+  const valid = prefixes
+    .map((entry: { ipv4Prefix?: unknown; ipv6Prefix?: unknown } | null) => entry?.ipv4Prefix ?? entry?.ipv6Prefix)
+    .map((cidr) => typeof cidr === "string" ? parseCidr(cidr) : undefined)
+    .filter((cidr): cidr is Cidr => cidr !== undefined && cidr.prefix >= (cidr.family === "ipv6" ? MIN_LISTED_PREFIX_V6 : MIN_LISTED_PREFIX_V4));
+  const invalid = prefixes.length - valid.length;
+  if (valid.length < SHARED_LIST_MIN_RANGES || invalid * 10 > prefixes.length) throw new Error(`${valid.length} valid, ${invalid} invalid prefixes`);
+  return valid;
 }
 
 function loadConfig() {
@@ -94,9 +120,10 @@ function loadConfig() {
     publicOrigin: publicOrigin.origin,
     forwardedProto: publicOrigin.protocol.replace(/:$/, ""),
     forwardedHost: publicOrigin.host,
-    trustedProxies: parseCidrs("BREWPAGE_TRUSTED_PROXY_CIDRS", true),
+    trustedProxies: blockList(parseCidrs("BREWPAGE_TRUSTED_PROXY_CIDRS", true)),
     /** Platform egress (one IP, many users): global pools only, no per-client caps or download budget. */
     sharedEgress: parseCidrs("BREWPAGE_SHARED_EGRESS_CIDRS", false),
+    sharedEgressLists: (process.env.BREWPAGE_SHARED_EGRESS_LIST_URLS ?? "").split(",").map((url) => url.trim()).filter((url) => url.length > 0),
     host: process.env.BREWPAGE_MCP_HOST || "0.0.0.0",
     port,
   };
@@ -262,8 +289,8 @@ function rpcError(res: ServerResponse, status: number, code: number, message: st
 
 type BodyFailure = "too_large" | "timeout" | "aborted" | "busy";
 
-/** Reads at most `limit` bytes within `timeoutMs`; `onLarge` (false = busy) runs once past LARGE_BODY_BYTES; never rejects. */
-function readBody(req: IncomingMessage, limit: number, timeoutMs: number, onLarge: () => boolean): Promise<Buffer | BodyFailure> {
+/** Reads at most `limit` bytes above the minimum rate; `onLarge` (false = busy) runs once past LARGE_BODY_BYTES; never rejects. */
+function readBody(req: IncomingMessage, limit: number, onLarge: () => boolean): Promise<Buffer | BodyFailure> {
   return new Promise((resolve) => {
     const chunks: Buffer[] = [];
     let size = 0;
@@ -271,10 +298,13 @@ function readBody(req: IncomingMessage, limit: number, timeoutMs: number, onLarg
     const finish = (value: Buffer | BodyFailure) => {
       if (done) return;
       done = true;
-      clearTimeout(timer);
+      clearInterval(timer);
       resolve(value);
     };
-    const timer = setTimeout(() => finish("timeout"), timeoutMs);
+    const started = Date.now();
+    const timer = setInterval(() => {
+      if (size < (Date.now() - started - BODY_GRACE_MS) * BODY_MIN_BYTES_PER_MS) finish("timeout");
+    }, 1_000);
     req.on("data", (chunk: Buffer) => {
       const before = size;
       size += chunk.length;
@@ -374,6 +404,26 @@ async function main(): Promise<void> {
   const standard = new Pool(MAX_IN_FLIGHT, MAX_PER_CLIENT);
   const heavy = new Pool(MAX_HEAVY_IN_FLIGHT, MAX_HEAVY_PER_CLIENT);
   let draining = false;
+  const listed = new Map<string, Cidr[]>();
+  let sharedEgress = blockList(config.sharedEgress);
+
+  /** Never throws: a failed fetch or parse keeps the last good set and logs a warning. */
+  async function loadEgressList(url: string): Promise<void> {
+    try {
+      const res = await fetch(url, { signal: AbortSignal.timeout(SHARED_LIST_TIMEOUT_MS), headers: { "User-Agent": REMOTE_USER_AGENT } });
+      const text = await res.text();
+      if (!res.ok || text.length > SHARED_LIST_MAX_BYTES) throw new Error(`HTTP ${res.status}, ${text.length} chars`);
+      const ranges = parseEgressList(text);
+      listed.set(url, ranges);
+      sharedEgress = blockList([...config.sharedEgress, ...[...listed.values()].flat()]);
+      log({ event: "shared_egress_list", url, ranges: ranges.length });
+    } catch (error) {
+      log({ event: "shared_egress_list_failed", url, message: error instanceof Error ? error.message : String(error) });
+    }
+  }
+  const refreshEgressLists = () => config.sharedEgressLists.forEach((url) => void loadEgressList(url));
+  refreshEgressLists();
+  setInterval(refreshEgressLists, SHARED_LIST_REFRESH_MS).unref();
 
   async function handleMcp(req: IncomingMessage, res: ServerResponse, entry: LogFields): Promise<void> {
     if (req.headers.origin !== undefined) return rpcError(res, 403, SERVER_ERROR, "Origin not allowed.");
@@ -393,11 +443,19 @@ async function main(): Promise<void> {
       rpcError(res, 503, SERVER_ERROR, "Busy, retry shortly.", { "Retry-After": "1" });
     };
     const known = Number.isFinite(declared);
-    const shared = config.sharedEgress.check(client, isIP(client) === 6 ? "ipv6" : "ipv4");
+    const shared = sharedEgress.check(client, isIP(client) === 6 ? "ipv6" : "ipv4");
     const capKey = shared ? undefined : client;
+    // Registered first: a client that leaves at any point, even while queued, aborts the call.
+    const abort = new AbortController();
+    res.once("close", () => abort.abort());
     // One slot per request, released only after the handler settles, never on socket close.
     let slot: Pool | undefined;
     const acquire = async (pool: Pool) => {
+      // A light slot is freed before waiting, so queued writes never hold handshake capacity.
+      if (slot === light) {
+        light.give(capKey);
+        slot = undefined;
+      }
       if (!(await pool.take(capKey))) return false;
       slot?.give(capKey);
       slot = pool;
@@ -406,10 +464,10 @@ async function main(): Promise<void> {
     try {
       const first = !known ? standard : declared <= SMALL_BODY_BYTES ? light : declared <= LARGE_BODY_BYTES ? standard : heavy;
       if (!(await acquire(first))) return busy();
+      if (abort.signal.aborted) return;
 
-      const timeout = known ? BODY_BASE_MS + (declared / MIB) * BODY_MS_PER_MIB : BODY_TIMEOUT_MS;
       // Unknown length that grows past 1 MiB must find a free heavy slot at once.
-      const body = await readBody(req, MAX_BODY_BYTES, timeout, () => {
+      const body = await readBody(req, MAX_BODY_BYTES, () => {
         if (slot === heavy) return true;
         if (!heavy.tryTake(capKey)) return false;
         slot?.give(capKey);
@@ -439,9 +497,7 @@ async function main(): Promise<void> {
       const isLight = rpc.method !== "tools/call" || (typeof toolName === "string" && LIGHT_TOOLS.has(toolName));
       if (toolName === "publish_file" && slot !== heavy && !(await acquire(heavy))) return busy();
       if (slot === light && !isLight && !(await acquire(standard))) return busy();
-
-      const abort = new AbortController();
-      res.once("close", () => abort.abort());
+      if (abort.signal.aborted) return;
       const forwarded = { "X-Forwarded-For": client, "X-Forwarded-Proto": config.forwardedProto, "X-Forwarded-Host": config.forwardedHost };
       const callBackend: typeof fetch = (input, init) =>
         backendFetch(input, { ...init, signal: AbortSignal.any([abort.signal, AbortSignal.timeout(BACKEND_TIMEOUT_MS)]) });
