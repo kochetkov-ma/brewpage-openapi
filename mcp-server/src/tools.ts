@@ -80,12 +80,12 @@ function ownerFailure(operation: string, status: number, data: unknown, fromEnv:
   }
   if (status === 409 && code === OLD_READ_ONLY_CODE) {
     const { createUrl, republishUrl } = data as { createUrl?: unknown; republishUrl?: unknown };
-    lines.push("Read-only old publication: cannot be updated. Publish the content anew " +
-      (typeof createUrl === "string" ? `by POSTing it to createUrl (${createUrl}): use the matching publish tool in that namespace`
-        : "with the matching publish tool in the same namespace") +
-      "; give the user the NEW URL and owner token. The old URL keeps its old content until it expires." +
-      (typeof republishUrl === "string" ? " republishUrl is browser-only: ignore it." : "") +
-      (operation === "set KV" ? " For KV, read all keys with get_kv and publish them together with publish_kv." : ""));
+    lines.push("Read-only old publication: cannot be updated. " +
+      (typeof createUrl === "string" ? `createUrl (${createUrl}) is the create endpoint for publishing the content anew in that namespace.`
+        : "The content can be published anew in the same namespace.") +
+      " A new publication gets a new URL and owner token; the old URL keeps its old content until it expires." +
+      (typeof republishUrl === "string" ? " republishUrl is a browser-only composer link." : "") +
+      (operation === "set KV" ? " A new KV store holds only the keys published to it." : ""));
   }
   return textResult(lines.join("\n"), true);
 }

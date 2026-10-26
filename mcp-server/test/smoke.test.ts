@@ -673,19 +673,19 @@ const OLD_READ_ONLY_BODY = {
 };
 const OLD_HTML_BODY = { ...OLD_READ_ONLY_BODY, republishUrl: "https://brewpage.app/?republish=public/aBcDeFgHiJ",
   createUrl: "https://brewpage.app/api/html?ns=public" };
-const VIA_TOOL = "with the matching publish tool in the same namespace";
-const viaCreateUrl = (url: string) => `by POSTing it to createUrl (${url}): use the matching publish tool in that namespace`;
+const VIA_TOOL = "The content can be published anew in the same namespace.";
+const viaCreateUrl = (url: string) => `createUrl (${url}) is the create endpoint for publishing the content anew in that namespace.`;
 
 for (const scenario of [
   { tool: "update_html", operation: "update HTML", args: { content: "x" }, body: OLD_HTML_BODY,
-    how: viaCreateUrl("https://brewpage.app/api/html?ns=public"), extra: " republishUrl is browser-only: ignore it." },
+    how: viaCreateUrl("https://brewpage.app/api/html?ns=public"), extra: " republishUrl is a browser-only composer link." },
   { tool: "republish_site", operation: "republish site", args: { entryContent: "<h1>x</h1>" },
     body: { ...OLD_READ_ONLY_BODY, createUrl: "https://brewpage.app/api/sites?ns=public" },
     how: viaCreateUrl("https://brewpage.app/api/sites?ns=public"), extra: "" },
   { tool: "update_json", operation: "update JSON", args: { json: { a: 1 } }, body: OLD_READ_ONLY_BODY, how: VIA_TOOL, extra: "" },
   { tool: "set_kv", operation: "set KV", args: { key: "k", value: "v" },
     body: { ...OLD_READ_ONLY_BODY, createUrl: "https://brewpage.app/api/kv?ns=public" }, how: viaCreateUrl("https://brewpage.app/api/kv?ns=public"),
-    extra: " For KV, read all keys with get_kv and publish them together with publish_kv." },
+    extra: " A new KV store holds only the keys published to it." },
 ]) {
   test(`${scenario.tool} turns 409 OLD_PUBLICATION_READ_ONLY into a publish-anew hint`, { timeout: 10_000 }, async (t) => {
     // GIVEN a frozen old publication.
@@ -701,8 +701,8 @@ for (const scenario of [
     }, {
       described: true, isError: true, requests: 1,
       text: `Failed to ${scenario.operation} (409): ${JSON.stringify(scenario.body)}\n` +
-        `Read-only old publication: cannot be updated. Publish the content anew ${scenario.how}; give the user the NEW URL ` +
-        "and owner token. The old URL keeps its old content until it expires." + scenario.extra,
+        `Read-only old publication: cannot be updated. ${scenario.how} A new publication gets a new URL ` +
+        "and owner token; the old URL keeps its old content until it expires." + scenario.extra,
     }, "frozen update is described, relayed verbatim and hinted once");
   });
 }
