@@ -1,5 +1,10 @@
 # Release Notes
 
+## API contract 2.4.0 — 2026-10-26
+
+- API contract version 2.4.0 is the backend-generated public snapshot exported from the clean brewpage-app source `23fe3bc7ca50911b756c3b33cdf01e02cc01e338` (branch `feat/stats-accounts-ranges`, for backend `v2.4.0`).
+- `StatsResponse` (`GET /api/stats`) adds nullable `accountsToday` (accounts created today, `tz` day) and `totalAccounts` (all-time). Additive: 47 paths and 62 operations; `get_stats` returns the raw JSON, MCP unchanged.
+
 ## MCP 1.14.4 — 2026-10-26
 
 - Remote mode (`dist/http.js`): a request holds its slot until the tool handler settles, not until the socket closes; a client disconnect aborts its backend calls and the `publish_file` download, and each backend call times out after 60 s. Separate light, standard and heavy pools queue a request (before its body is read) for up to 30 s instead of answering 503. Request body cap 8 -> 32 MiB so the largest site fits; run with a 512 MiB container and `--max-old-space-size=192`. `BREWPAGE_SHARED_EGRESS_CIDRS` and the daily-fetched `BREWPAGE_SHARED_EGRESS_LIST_URLS` (e.g. OpenAI connectors) list platform egress that skips per-IP caps and the download budget; malformed CIDRs fail startup. A body must arrive at ~250 KiB/s after 2 s. A client disconnect logs `client_closed`. `User-Agent: brewpage-mcp/1.14.4`; pins bumped. No tool or contract change.
