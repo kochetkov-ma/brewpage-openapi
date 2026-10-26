@@ -211,6 +211,10 @@ Add to `~/.claude/settings.json`:
 }
 ```
 
+### Gemini CLI
+
+`gemini extensions install https://github.com/kochetkov-ma/brewpage-openapi`
+
 ## Resources
 
 | Resource | URL |

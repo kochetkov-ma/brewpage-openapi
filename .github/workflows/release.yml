@@ -43,6 +43,7 @@ jobs:
           git rev-parse --verify "refs/tags/${RELEASE_TAG}^{commit}" >/dev/null
           git diff --exit-code "$RELEASE_TAG" HEAD -- mcp-server
           node -e 'const p=require("./mcp-server/package.json"),l=require("./mcp-server/package-lock.json"); if(l.version!==p.version || l.packages[""].version!==p.version) process.exit(1)'
+          node scripts/verify-package-identity.mjs
           echo "tag=$RELEASE_TAG" >> "$GITHUB_OUTPUT"
 
       - name: Install pinned npm with trusted publishing support
