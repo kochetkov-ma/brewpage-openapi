@@ -2,7 +2,7 @@
 
 ## API contract 2.6.0 — 2026-10-26
 
-- API contract version 2.6.0 is the backend-generated public snapshot exported from the clean brewpage-app source `698d7958da1bdf9546f9e3e252d494009b5ceb0d` (branch `feat/result-card-preview`, for backend `v2.6.0`).
+- API contract version 2.6.0 is the backend-generated public snapshot exported from the clean brewpage-app source `12b53e5a749201ea39d6a9e42a3e845f0784cd8e` (tag `v2.6.0`).
 - `HtmlUploadResponse` (`POST /api/html`) and `HtmlUpdateResponse` (`PUT /api/html/{ns}/{id}`) add optional `format`: the stored format after auto-detect (`html`, `markdown` or a code format); may differ from the requested one, absent when unknown. Additive: 47 paths and 62 operations; MCP unchanged.
 
 ## API contract 2.5.0 — 2026-10-26
