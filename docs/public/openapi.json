@@ -825,6 +825,10 @@
             "format": "date-time",
             "type": "string"
           },
+          "format": {
+            "description": "Stored format after auto-detect: html, markdown or a code format; may differ from the requested one. Absent when unknown.",
+            "type": "string"
+          },
           "hostingVersion": {
             "format": "int64",
             "type": [
@@ -975,6 +979,10 @@
           },
           "expiresAt": {
             "format": "date-time",
+            "type": "string"
+          },
+          "format": {
+            "description": "Stored format after auto-detect: html, markdown or a code format; may differ from the requested one. Absent when unknown.",
             "type": "string"
           },
           "hostingVersion": {
@@ -3250,7 +3258,7 @@
     },
     "termsOfService": "https://brewpage.app/terms",
     "title": "BrewPage API",
-    "version": "2.5.0"
+    "version": "2.6.0"
   },
   "openapi": "3.1.0",
   "paths": {
