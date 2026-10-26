@@ -1,5 +1,9 @@
 # Release Notes
 
+## MCP 1.14.1 — 2026-10-26
+
+- Security fix: `namespace`, `id` and `key` are percent-encoded as single path segments in every tool, and empty, `.` and `..` values are refused before any request, so a tool call can no longer reach a backend path outside `/api/<type>/`. Query strings are built with `URLSearchParams`. Valid inputs send the same requests. No contract change.
+
 ## MCP 1.14.0 — 2026-10-26
 
 - Stateless Streamable HTTP entry `dist/http.js` (`POST /mcp`, `/healthz`) for the remote server at `https://brewpage.app/mcp`: trusted-proxy client IP forwarding, `Origin` -> 403, SSRF-safe `publish_file` downloads, owner token env refused. The Docker image default stays stdio. `User-Agent: brewpage-mcp/1.14.0` (`(remote)` over HTTP); `server.json` and `gemini-extension.json` stamps bumped. No contract change.

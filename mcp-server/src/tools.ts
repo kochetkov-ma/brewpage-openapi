@@ -3,7 +3,7 @@ import type { ToolAnnotations } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 
 export const DEFAULT_BASE_URL = "https://brewpage.app";
-export const USER_AGENT = "brewpage-mcp/1.14.0";
+export const USER_AGENT = "brewpage-mcp/1.14.1";
 export const OWNER_TOKEN_ENV = "BREWPAGE_OWNER_TOKEN";
 
 export interface ServerOptions {
@@ -43,6 +43,24 @@ const OLD_READ_ONLY_TEXT = ` Old publications (made before 5 October 2026) are r
 const WARNING_CODES = new Set(["secret-detected", "manage-link-disabled"]);
 /** MCP type name -> REST path segment. */
 const TYPE_SEGMENTS: Record<string, string> = { html: "html", site: "sites", file: "files", json: "json", kv: "kv" };
+
+/** `/api/<segments>` with each segment encoded; empty, `.` and `..` refused (URL parsing would resolve them away). */
+export function apiPath(...segments: string[]): string {
+  for (const segment of segments) {
+    if (segment === "" || segment === "." || segment === "..") {
+      throw new Error(`Invalid path value ${JSON.stringify(segment)}: empty, "." and ".." are not allowed.`);
+    }
+  }
+  return `/api/${segments.map(encodeURIComponent).join("/")}`;
+}
+
+/** Path plus URLSearchParams query; undefined values skipped, no `?` when empty. */
+export function withQuery(path: string, params: Array<[string, string | number | undefined]>): string {
+  const query = new URLSearchParams();
+  for (const [name, value] of params) if (value !== undefined) query.append(name, String(value));
+  const qs = query.toString();
+  return qs ? `${path}?${qs}` : path;
+}
 
 /** Only the last 4 characters: tokens never reach a transcript in full. */
 function maskToken(token: string): string {
@@ -206,7 +224,7 @@ export function createServer(options: ServerOptions = {}): McpServer {
   const apiFetch = options.fetch ?? fetch;
   const server = new McpServer({
     name: "brewpage-mcp",
-    version: "1.14.0",
+    version: "1.14.1",
   });
 
   /** Caller argument first, then the configured default; `fromEnv` marks the configured one. */
@@ -328,8 +346,7 @@ export function createServer(options: ServerOptions = {}): McpServer {
     },
     async ({ content, format, namespace, password, ttlDays, filename, showTopBar, deliveryMode, ownerToken }) => {
       const effectiveNamespace = resolveNamespace(namespace);
-      const qsParams = [`ns=${encodeURIComponent(effectiveNamespace)}`, `format=${encodeURIComponent(format.toLowerCase())}`];
-      if (ttlDays !== undefined) qsParams.push(`ttl=${encodeURIComponent(String(ttlDays))}`);
+      const path = withQuery(apiPath("html"), [["ns", effectiveNamespace], ["format", format.toLowerCase()], ["ttl", ttlDays]]);
       const body: Record<string, unknown> = { content };
       if (filename) body.filename = filename;
       if (showTopBar !== undefined) body.showTopBar = showTopBar;
@@ -339,7 +356,7 @@ export function createServer(options: ServerOptions = {}): McpServer {
       if (deliveryMode) headers["X-Delivery-Mode"] = deliveryMode;
       const owner = ownerTokenFor(ownerToken).token;
       if (owner) headers["X-Owner-Token"] = owner;
-      const { ok, data } = await apiRequest("POST", `/api/html?${qsParams.join("&")}`, body, headers);
+      const { ok, data } = await apiRequest("POST", path, body, headers);
 
       if (!ok) {
         return {
@@ -394,7 +411,7 @@ export function createServer(options: ServerOptions = {}): McpServer {
       if (deliveryMode) headers["X-Delivery-Mode"] = deliveryMode;
       const owner = ownerTokenFor(ownerToken).token;
       if (owner) headers["X-Owner-Token"] = owner;
-      const res = await bpFetch(`${baseUrl}/api/files?ns=${encodeURIComponent(effectiveNamespace)}`, {
+      const res = await bpFetch(`${baseUrl}${withQuery(apiPath("files"), [["ns", effectiveNamespace]])}`, {
         method: "POST",
         headers,
         body: formData,
@@ -442,7 +459,7 @@ export function createServer(options: ServerOptions = {}): McpServer {
     async ({ type, namespace, id, ownerToken, deliveryMode, expectedVersion }) => {
       const auth = ownerTokenFor(ownerToken);
       if (!auth.token) return textResult(NO_OWNER_TOKEN, true);
-      const path = `/api/${TYPE_SEGMENTS[type]}/${encodeURIComponent(namespace)}/${encodeURIComponent(id)}/hosting`;
+      const path = apiPath(TYPE_SEGMENTS[type], namespace, id, "hosting");
       const { ok, status, data } = await apiRequest("PATCH", path, { deliveryMode, expectedVersion },
         { "X-Owner-Token": auth.token });
       if (!ok) return ownerFailure("update hosting", status, data, auth.fromEnv);
@@ -469,7 +486,7 @@ export function createServer(options: ServerOptions = {}): McpServer {
     async ({ type, namespace, id, ownerToken }) => {
       const auth = ownerTokenFor(ownerToken);
       if (!auth.token) return textResult(NO_OWNER_TOKEN, true);
-      const path = `/api/${TYPE_SEGMENTS[type]}/${encodeURIComponent(namespace)}/${encodeURIComponent(id)}`;
+      const path = apiPath(TYPE_SEGMENTS[type], namespace, id);
       const { ok, status, data } = await apiRequest("DELETE", path, undefined, { "X-Owner-Token": auth.token });
       if (!ok) return ownerFailure("delete", status, data, auth.fromEnv);
 
@@ -504,7 +521,7 @@ export function createServer(options: ServerOptions = {}): McpServer {
 
       const { ok, status, data, headers: responseHeaders } = await apiRequest(
         "GET",
-        `/api/html/${namespace}/${id}`,
+        apiPath("html", namespace, id),
         undefined,
         headers,
         "text"
@@ -559,7 +576,7 @@ export function createServer(options: ServerOptions = {}): McpServer {
       },
     },
     async ({ tz }) => {
-      const path = tz ? `/api/stats?tz=${encodeURIComponent(tz)}` : "/api/stats";
+      const path = withQuery(apiPath("stats"), [["tz", tz || undefined]]);
       const { ok, data } = await apiRequest("GET", path);
 
       if (!ok) {
@@ -651,12 +668,8 @@ export function createServer(options: ServerOptions = {}): McpServer {
       if (deliveryMode) headers["X-Delivery-Mode"] = deliveryMode;
 
       const effectiveNamespace = resolveNamespace(namespace);
-      const qsParams: string[] = [];
-      if (entry) qsParams.push(`entry=${encodeURIComponent(entry)}`);
-      qsParams.push(`ns=${encodeURIComponent(effectiveNamespace)}`);
-      if (ttlDays) qsParams.push(`ttl=${encodeURIComponent(String(ttlDays))}`);
-      const qs = qsParams.length ? `?${qsParams.join("&")}` : "";
-      const url = `${baseUrl}/api/sites${qs}`;
+      const url = baseUrl + withQuery(apiPath("sites"),
+        [["entry", entry || undefined], ["ns", effectiveNamespace], ["ttl", ttlDays || undefined]]);
       const res = await bpFetch(url, { method: "POST", headers, body: formData });
       const data = await res.json().catch(() => null);
 
@@ -760,13 +773,8 @@ export function createServer(options: ServerOptions = {}): McpServer {
       if (!auth.token) return textResult(NO_OWNER_TOKEN, true);
       const headers: Record<string, string> = { "X-Owner-Token": auth.token };
 
-      const qsParams: string[] = [];
-      if (entry) qsParams.push(`entry=${encodeURIComponent(entry)}`);
-      if (ttlDays) qsParams.push(`ttl=${encodeURIComponent(String(ttlDays))}`);
-      if (tags && tags.length) qsParams.push(`tags=${encodeURIComponent(tags.join(","))}`);
-      const qs = qsParams.length ? `?${qsParams.join("&")}` : "";
-
-      const url = `${baseUrl}/api/sites/${encodeURIComponent(namespace)}/${encodeURIComponent(id)}${qs}`;
+      const url = baseUrl + withQuery(apiPath("sites", namespace, id), [["entry", entry || undefined],
+        ["ttl", ttlDays || undefined], ["tags", tags && tags.length ? tags.join(",") : undefined]]);
       const res = await bpFetch(url, { method: "PUT", headers, body: formData });
       const data = await res.json().catch(() => null);
 
@@ -821,7 +829,7 @@ export function createServer(options: ServerOptions = {}): McpServer {
 
       const auth = ownerTokenFor(ownerToken);
       if (!auth.token) return textResult(NO_OWNER_TOKEN, true);
-      const path = `/api/html/${encodeURIComponent(namespace)}/${encodeURIComponent(id)}`;
+      const path = apiPath("html", namespace, id);
       const { ok, status, data } = await apiRequest("PUT", path, body, {
         "X-Owner-Token": auth.token,
       });
@@ -870,13 +878,8 @@ export function createServer(options: ServerOptions = {}): McpServer {
       const jsonString = typeof json === "string" ? json : JSON.stringify(json);
 
       const effectiveNamespace = resolveNamespace(namespace);
-      const qsParams: string[] = [];
-      qsParams.push(`ns=${encodeURIComponent(effectiveNamespace)}`);
-      if (ttlDays !== undefined) qsParams.push(`ttl=${encodeURIComponent(String(ttlDays))}`);
-      if (tags && tags.length) {
-        for (const t of tags) qsParams.push(`tags=${encodeURIComponent(t)}`);
-      }
-      const qs = qsParams.length ? `?${qsParams.join("&")}` : "";
+      const path = withQuery(apiPath("json"),
+        [["ns", effectiveNamespace], ["ttl", ttlDays], ...(tags ?? []).map((t): [string, string] => ["tags", t])]);
 
       const headers: Record<string, string> = { "Content-Type": "application/json" };
       if (password) headers["X-Password"] = password;
@@ -884,7 +887,7 @@ export function createServer(options: ServerOptions = {}): McpServer {
       if (owner) headers["X-Owner-Token"] = owner;
       if (deliveryMode) headers["X-Delivery-Mode"] = deliveryMode;
 
-      const res = await bpFetch(`${baseUrl}/api/json${qs}`, {
+      const res = await bpFetch(`${baseUrl}${path}`, {
         method: "POST",
         headers,
         body: jsonString,
@@ -932,7 +935,7 @@ export function createServer(options: ServerOptions = {}): McpServer {
       const headers: Record<string, string> = {};
       if (password) headers["X-Password"] = password;
 
-      const path = `/api/json/${encodeURIComponent(namespace)}/${encodeURIComponent(id)}`;
+      const path = apiPath("json", namespace, id);
       const { ok, status, data } = await apiRequest(
         "GET",
         path,
@@ -982,7 +985,7 @@ export function createServer(options: ServerOptions = {}): McpServer {
       const auth = ownerTokenFor(ownerToken);
       if (!auth.token) return textResult(NO_OWNER_TOKEN, true);
 
-      const url = `${baseUrl}/api/json/${encodeURIComponent(namespace)}/${encodeURIComponent(id)}`;
+      const url = baseUrl + apiPath("json", namespace, id);
       const res = await bpFetch(url, {
         method: "PUT",
         headers: {
@@ -1036,13 +1039,8 @@ export function createServer(options: ServerOptions = {}): McpServer {
       const body: Record<string, unknown> = { key, value };
 
       const effectiveNamespace = resolveNamespace(namespace);
-      const qsParams: string[] = [];
-      qsParams.push(`ns=${encodeURIComponent(effectiveNamespace)}`);
-      if (ttlDays !== undefined) qsParams.push(`ttl=${encodeURIComponent(String(ttlDays))}`);
-      if (tags && tags.length) {
-        for (const t of tags) qsParams.push(`tags=${encodeURIComponent(t)}`);
-      }
-      const qs = qsParams.length ? `?${qsParams.join("&")}` : "";
+      const path = withQuery(apiPath("kv"),
+        [["ns", effectiveNamespace], ["ttl", ttlDays], ...(tags ?? []).map((t): [string, string] => ["tags", t])]);
 
       const headers: Record<string, string> = {};
       if (password) headers["X-Password"] = password;
@@ -1052,7 +1050,7 @@ export function createServer(options: ServerOptions = {}): McpServer {
 
       const { ok, status, data } = await apiRequest(
         "POST",
-        `/api/kv${qs}`,
+        path,
         body,
         headers
       );
@@ -1098,7 +1096,7 @@ export function createServer(options: ServerOptions = {}): McpServer {
       const auth = ownerTokenFor(ownerToken);
       if (!auth.token) return textResult(NO_OWNER_TOKEN, true);
 
-      const path = `/api/kv/${encodeURIComponent(namespace)}/${encodeURIComponent(id)}/${encodeURIComponent(key)}`;
+      const path = apiPath("kv", namespace, id, key);
       const { ok, status, data } = await apiRequest("PUT", path, body, {
         "X-Owner-Token": auth.token,
       });
@@ -1135,7 +1133,7 @@ export function createServer(options: ServerOptions = {}): McpServer {
       const headers: Record<string, string> = {};
       if (password) headers["X-Password"] = password;
 
-      const path = `/api/kv/${encodeURIComponent(namespace)}/${encodeURIComponent(id)}/${encodeURIComponent(key)}`;
+      const path = apiPath("kv", namespace, id, key);
       const { ok, status, data } = await apiRequest(
         "GET",
         path,
@@ -1239,20 +1237,15 @@ export function createServer(options: ServerOptions = {}): McpServer {
     async ({ q, page, size, sort, mine, ownerToken }) => {
       const auth = ownerTokenFor(ownerToken);
       if (mine === true && !auth.token) return textResult(NO_OWNER_TOKEN, true);
-      const qsParams: string[] = [];
-      if (q !== undefined) qsParams.push(`q=${encodeURIComponent(q)}`);
-      if (page !== undefined) qsParams.push(`page=${encodeURIComponent(String(page))}`);
-      if (size !== undefined) qsParams.push(`size=${encodeURIComponent(String(size))}`);
-      if (sort) qsParams.push(`sort=${encodeURIComponent(sort)}`);
-      if (mine === true) qsParams.push("mine=true");
-      const qs = qsParams.length ? `?${qsParams.join("&")}` : "";
+      const path = withQuery(apiPath("gallery"), [["q", q], ["page", page], ["size", size],
+        ["sort", sort || undefined], ["mine", mine === true ? "true" : undefined]]);
 
       const headers: Record<string, string> = {};
       if (mine === true && auth.token) headers["X-Owner-Token"] = auth.token;
 
       const { ok, status, data } = await apiRequest(
         "GET",
-        `/api/gallery${qs}`,
+        path,
         undefined,
         headers
       );
@@ -1296,7 +1289,7 @@ export function createServer(options: ServerOptions = {}): McpServer {
     async ({ type, namespace, id, listed, ownerToken }) => {
       const auth = ownerTokenFor(ownerToken);
       if (!auth.token) return textResult(NO_OWNER_TOKEN, true);
-      const path = `/api/${TYPE_SEGMENTS[type]}/${encodeURIComponent(namespace)}/${encodeURIComponent(id)}/visibility`;
+      const path = apiPath(TYPE_SEGMENTS[type], namespace, id, "visibility");
       const { ok, status, data } = await apiRequest("POST", path, { listed }, { "X-Owner-Token": auth.token });
       if (!ok) return ownerFailure("set visibility", status, data, auth.fromEnv);
       const result = data as Record<string, unknown>;

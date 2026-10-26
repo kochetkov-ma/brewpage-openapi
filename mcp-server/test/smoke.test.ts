@@ -711,3 +711,34 @@ for (const scenario of [
     }, { kind: scenario.kind, privateDefault: true, hedged: false, notice: scenario.notice }, "namespace guidance matches the type");
   });
 }
+
+const TRAVERSAL_ENCODED: Record<string, string> = { "../..": "..%2F..", "%2e%2e": "%252e%252e", "a/b": "a%2Fb", "?x=1": "%3Fx%3D1", "#f": "%23f" };
+const DOT_SEGMENTS = ["..", ".", ""];
+
+for (const scenario of [
+  { tool: "get_page", method: "GET", args: (v: string) => ({ namespace: v, id: v }), url: (e: string) => `/api/html/${e}/${e}` },
+  { tool: "update_html", method: "PUT", args: (v: string) => ({ namespace: v, id: v, content: "x" }), url: (e: string) => `/api/html/${e}/${e}` },
+  { tool: "delete_resource", method: "DELETE", args: (v: string) => ({ type: "site", namespace: v, id: v }), url: (e: string) => `/api/sites/${e}/${e}` },
+  { tool: "republish_site", method: "PUT", args: (v: string) => ({ namespace: v, id: v, entryContent: "x" }), url: (e: string) => `/api/sites/${e}/${e}` },
+  { tool: "get_json", method: "GET", args: (v: string) => ({ namespace: v, id: v }), url: (e: string) => `/api/json/${e}/${e}` },
+  { tool: "update_json", method: "PUT", args: (v: string) => ({ namespace: v, id: v, json: {} }), url: (e: string) => `/api/json/${e}/${e}` },
+  { tool: "get_kv", method: "GET", args: (v: string) => ({ namespace: v, id: v, key: v }), url: (e: string) => `/api/kv/${e}/${e}/${e}` },
+  { tool: "set_kv", method: "PUT", args: (v: string) => ({ namespace: v, id: v, key: v, value: "x" }), url: (e: string) => `/api/kv/${e}/${e}/${e}` },
+  { tool: "update_hosting", method: "PATCH", args: (v: string) => ({ type: "file", namespace: v, id: v, deliveryMode: "path" }), url: (e: string) => `/api/files/${e}/${e}/hosting` },
+  { tool: "set_visibility", method: "POST", args: (v: string) => ({ type: "kv", namespace: v, id: v, listed: true }), url: (e: string) => `/api/kv/${e}/${e}/visibility` },
+]) {
+  test(`${scenario.tool} keeps traversal input inside its API path and refuses dot segments before HTTP`, { timeout: 20_000 }, async (t) => {
+    // GIVEN a configured owner token and traversal-shaped values in every path field.
+    const f = await fixture(t, { BREWPAGE_OWNER_TOKEN: ENV_TOKEN });
+    f.respond(200, NEW_RESPONSE);
+    // WHEN the tool runs with each encodable value and then with each dot segment.
+    for (const value of Object.keys(TRAVERSAL_ENCODED)) await f.call(scenario.tool, scenario.args(value));
+    const refused: string[] = [];
+    for (const value of DOT_SEGMENTS) refused.push((await f.call(scenario.tool, scenario.args(value))).content[0].text);
+    // THEN each value is one encoded segment and dot segments never reach the API.
+    assert.deepEqual({ requests: f.requests.map(({ method, url }) => `${method} ${url}`), refused }, {
+      requests: Object.values(TRAVERSAL_ENCODED).map((encoded) => `${scenario.method} ${scenario.url(encoded)}`),
+      refused: DOT_SEGMENTS.map((value) => `Invalid path value ${JSON.stringify(value)}: empty, "." and ".." are not allowed.`),
+    }, "backend URL stays under its API prefix");
+  });
+}

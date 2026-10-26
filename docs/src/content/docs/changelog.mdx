@@ -6,6 +6,10 @@ order: 5
 
 # Changelog
 
+## MCP 1.14.1 — Path encoding fix
+
+Every tool percent-encodes `namespace`, `id` and `key` as single path segments and refuses empty, `.` and `..` values before any request, so a call stays under its `/api/<type>/` path. Valid inputs are unchanged.
+
 ## MCP 1.14.0 — Remote HTTP mode
 
 `dist/http.js` serves stateless Streamable HTTP for the remote server at `https://brewpage.app/mcp`; stdio is unchanged. Each release also publishes the `ghcr.io/kochetkov-ma/brewpage-mcp` container image.
