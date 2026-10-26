@@ -109,6 +109,32 @@ export function parseEgressList(text: string): Cidr[] {
   return valid;
 }
 
+/** Comma list of https URLs from env `name`; any other entry is fatal. */
+function parseListUrls(name: string): string[] {
+  const entries = (process.env[name] ?? "").split(",").map((entry) => entry.trim()).filter((entry) => entry.length > 0);
+  for (const entry of entries) {
+    if (!URL.canParse(entry) || new URL(entry).protocol !== "https:") fail(`${name}: invalid entry ${JSON.stringify(entry)}.`);
+  }
+  return entries;
+}
+
+/** Body bytes after decompression, cancelled past `limit`: a gzip bomb never grows past it. */
+async function readCapped(res: Response, limit: number): Promise<string> {
+  if (Number(res.headers.get("content-length") ?? 0) > limit) throw new Error("list over 1 MiB");
+  const reader = res.body!.getReader();
+  const chunks: Uint8Array[] = [];
+  let size = 0;
+  for (let next = await reader.read(); !next.done; next = await reader.read()) {
+    size += next.value.length;
+    if (size > limit) {
+      await reader.cancel();
+      throw new Error("list over 1 MiB");
+    }
+    chunks.push(next.value);
+  }
+  return Buffer.concat(chunks).toString("utf8");
+}
+
 function loadConfig() {
   if (process.env[OWNER_TOKEN_ENV] !== undefined) fail(`${OWNER_TOKEN_ENV} must not be set in HTTP mode.`);
   const backendUrl = (process.env.BREWPAGE_BACKEND_URL || "http://brewpage-backend-mcp:8080").replace(/\/+$/, "");
@@ -123,7 +149,7 @@ function loadConfig() {
     trustedProxies: blockList(parseCidrs("BREWPAGE_TRUSTED_PROXY_CIDRS", true)),
     /** Platform egress (one IP, many users): global pools only, no per-client caps or download budget. */
     sharedEgress: parseCidrs("BREWPAGE_SHARED_EGRESS_CIDRS", false),
-    sharedEgressLists: (process.env.BREWPAGE_SHARED_EGRESS_LIST_URLS ?? "").split(",").map((url) => url.trim()).filter((url) => url.length > 0),
+    sharedEgressLists: parseListUrls("BREWPAGE_SHARED_EGRESS_LIST_URLS"),
     host: process.env.BREWPAGE_MCP_HOST || "0.0.0.0",
     port,
   };
@@ -410,10 +436,13 @@ async function main(): Promise<void> {
   /** Never throws: a failed fetch or parse keeps the last good set and logs a warning. */
   async function loadEgressList(url: string): Promise<void> {
     try {
-      const res = await fetch(url, { signal: AbortSignal.timeout(SHARED_LIST_TIMEOUT_MS), headers: { "User-Agent": REMOTE_USER_AGENT } });
-      const text = await res.text();
-      if (!res.ok || text.length > SHARED_LIST_MAX_BYTES) throw new Error(`HTTP ${res.status}, ${text.length} chars`);
-      const ranges = parseEgressList(text);
+      const res = await fetch(url, { redirect: "error", signal: AbortSignal.timeout(SHARED_LIST_TIMEOUT_MS),
+        headers: { "User-Agent": REMOTE_USER_AGENT } });
+      if (!res.ok) {
+        await res.body?.cancel();
+        throw new Error(`HTTP ${res.status}`);
+      }
+      const ranges = parseEgressList(await readCapped(res, SHARED_LIST_MAX_BYTES));
       listed.set(url, ranges);
       sharedEgress = blockList([...config.sharedEgress, ...[...listed.values()].flat()]);
       log({ event: "shared_egress_list", url, ranges: ranges.length });
@@ -574,7 +603,8 @@ async function main(): Promise<void> {
       log(entry);
     });
   });
-  httpServer.requestTimeout = 120_000;
+  // Whole request incl. queue wait: 30 s queue + 2 s grace + 32 MiB at the body floor (~131 s) + margin.
+  httpServer.requestTimeout = QUEUE_WAIT_MS + BODY_GRACE_MS + MAX_BODY_BYTES / BODY_MIN_BYTES_PER_MS + 5_000;
 
   const shutdown = () => {
     if (draining) return;

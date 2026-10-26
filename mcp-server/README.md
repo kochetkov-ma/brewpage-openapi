@@ -494,7 +494,7 @@ Every publish response includes an **owner token** -- the only credential that a
 |----------|---------|-------------|
 | `BREWPAGE_TRUSTED_PROXY_CIDRS` | required | Comma list of reverse-proxy CIDRs or IPs |
 | `BREWPAGE_SHARED_EGRESS_CIDRS` | empty | Comma list of platform egress CIDRs (one IP, many users): global limits only, no per-IP caps |
-| `BREWPAGE_SHARED_EGRESS_LIST_URLS` | empty | Comma list of published egress lists (`{"prefixes":[{"ipv4Prefix"}]}`, at least 100 prefixes); fetched at startup and daily, last good list kept |
+| `BREWPAGE_SHARED_EGRESS_LIST_URLS` | empty | Comma list of `https` URLs of published egress lists (`{"prefixes":[{"ipv4Prefix"}]}`, at least 100 prefixes, at most 1 MiB, no redirects); fetched at startup and daily, last good list kept |
 | `BREWPAGE_BACKEND_URL` | `http://brewpage-backend-mcp:8080` | API base URL (internal address) |
 | `BREWPAGE_PUBLIC_ORIGIN` | `https://brewpage.app` | Origin for returned links and forwarded proto/host |
 | `BREWPAGE_MCP_PORT` | `8787` | Listen port |

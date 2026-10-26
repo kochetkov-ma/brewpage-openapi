@@ -1,12 +1,16 @@
 import { test, type TestContext } from "node:test";
 import assert from "node:assert/strict";
-import { spawn } from "node:child_process";
+import { execFileSync, spawn } from "node:child_process";
 import { createServer, type IncomingHttpHeaders } from "node:http";
+import { createServer as createHttpsServer } from "node:https";
+import { gzipSync } from "node:zlib";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { connect, createServer as createTcpServer, type Socket } from "node:net";
 import { EventEmitter, once } from "node:events";
 import { createInterface } from "node:readline";
 import { fileURLToPath } from "node:url";
-import { readFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { fetchSourceSafely, isBlockedSource } from "../dist/http.js";
@@ -31,7 +35,7 @@ const PUBLISH = toolCall("publish_html", { content: "<p>x</p>" });
 
 /** Stub backend plus the built HTTP entry on ephemeral ports; `trusted` sets the proxy CIDRs.
  * Backend counts open calls; `hold` = answers wait for `backend.release()`; `shared`/`list` = shared-egress CIDRs and list body. */
-async function fixture(t: TestContext, trusted = "127.0.0.1/32", { hold = false, shared = "", list = "" } = {}) {
+async function fixture(t: TestContext, trusted = "127.0.0.1/32", { hold = false, shared = "", list = "", gzip = false, redirect = false } = {}) {
   const requests: RequestSnapshot[] = [];
   const pending: Array<() => void> = [];
   let holding = hold;
@@ -43,7 +47,6 @@ async function fixture(t: TestContext, trusted = "127.0.0.1/32", { hold = false,
     },
   };
   const api = createServer((req, res) => {
-    if (req.url === "/egress.json") return res.end(list);
     requests.push({ method: req.method!, url: req.url!, headers: req.headers });
     backend.maxOpen = Math.max(backend.maxOpen, ++backend.open);
     res.once("close", () => {
@@ -60,10 +63,11 @@ async function fixture(t: TestContext, trusted = "127.0.0.1/32", { hold = false,
   api.listen(0, "127.0.0.1");
   await once(api, "listening");
   const backendUrl = `http://127.0.0.1:${(api.address() as { port: number }).port}`;
+  const listUrl = list ? await listServer(t, list, { gzip, redirect }) : undefined;
   const child = spawn(process.execPath, [HTTP_ENTRY], {
     env: { PATH: process.env.PATH, BREWPAGE_BACKEND_URL: backendUrl, BREWPAGE_TRUSTED_PROXY_CIDRS: trusted,
       BREWPAGE_MCP_HOST: "127.0.0.1", BREWPAGE_MCP_PORT: "0", BREWPAGE_SHARED_EGRESS_CIDRS: shared,
-      BREWPAGE_SHARED_EGRESS_LIST_URLS: list ? `${backendUrl}/egress.json` : "" },
+      BREWPAGE_SHARED_EGRESS_LIST_URLS: listUrl?.url ?? "", NODE_EXTRA_CA_CERTS: listUrl?.ca ?? "" },
     stdio: ["ignore", "pipe", "inherit"],
   });
   const lines = createInterface({ input: child.stdout! });
@@ -116,6 +120,25 @@ async function fixture(t: TestContext, trusted = "127.0.0.1/32", { hold = false,
       return { socket, status };
     },
   };
+}
+
+/** HTTPS list server with a throwaway self-signed cert for 127.0.0.1 (trusted via NODE_EXTRA_CA_CERTS). */
+async function listServer(t: TestContext, body: string, { gzip = false, redirect = false }) {
+  const dir = mkdtempSync(join(tmpdir(), "bp-mcp-tls-"));
+  t.after(() => rmSync(dir, { recursive: true, force: true }));
+  execFileSync("openssl", ["req", "-x509", "-newkey", "ec", "-pkeyopt", "ec_paramgen_curve:P-256", "-nodes", "-days", "1",
+    "-keyout", join(dir, "key.pem"), "-out", join(dir, "cert.pem"), "-subj", "/CN=127.0.0.1", "-addext", "subjectAltName=IP:127.0.0.1"],
+  { stdio: "ignore" });
+  const server = createHttpsServer({ key: readFileSync(join(dir, "key.pem")), cert: readFileSync(join(dir, "cert.pem")) }, (req, res) => {
+    if (req.url === "/moved") return res.writeHead(302, { Location: "/egress.json" }).end();
+    if (!gzip) return res.end(body);
+    res.writeHead(200, { "Content-Encoding": "gzip" }).end(gzipSync(body));
+  });
+  server.listen(0, "127.0.0.1");
+  await once(server, "listening");
+  t.after(() => new Promise<void>((resolve) => server.close(() => resolve())));
+  const base = `https://127.0.0.1:${(server.address() as { port: number }).port}`;
+  return { url: `${base}${redirect ? "/moved" : "/egress.json"}`, ca: join(dir, "cert.pem") };
 }
 
 /** Raw TCP source answering `responses[path]` verbatim, so status lines can be hostile. */
@@ -212,6 +235,18 @@ test("one client trickling small bodies holds at most 4 slots; another client is
   // THEN 4 of A's requests get 503 (whichever arrived last) and B gets 200.
   assert.deepEqual({ refused: f.logs.filter(({ outcome }) => outcome === "http_503").length, other: other.status }, { refused: 4, other: 200 },
     "per-client cap keeps global slots free");
+});
+
+test("a body slower than the rate floor gets 408 after the grace period", { timeout: 15_000 }, async (t) => {
+  // GIVEN the HTTP entry.
+  const f = await fixture(t);
+  // WHEN a client declares 100 bytes and sends one.
+  const stalled = f.raw(rawPost("203.0.113.1", "{".padEnd(100)).slice(0, -99));
+  // THEN the once-a-second check cuts it at the first tick past 2 s and logs the timeout.
+  const status = await stalled.status;
+  await f.until(() => f.logs.length === 1);
+  assert.deepEqual({ status, outcome: f.logs[0].outcome }, { status: "HTTP/1.1 408 Request Timeout", outcome: "http_408" },
+    "a trickle cannot pin a slot");
 });
 
 test("a tools/call log line names only registered tools and caps the method", { timeout: 15_000 }, async (t) => {
@@ -318,14 +353,19 @@ test("a client that leaves while queued for a slot never reaches the backend", {
 });
 
 for (const scenario of [
-  { label: "a valid list", prefixes: 100, outcome: "backend", event: { event: "shared_egress_list", ranges: 100 } },
-  { label: "a truncated list", prefixes: 99, outcome: "HTTP/1.1 503 Service Unavailable",
+  { label: "a valid list", prefixes: 100, pad: 0, gzip: false, redirect: false, outcome: "backend", event: { event: "shared_egress_list", ranges: 100 } },
+  { label: "a truncated list", prefixes: 99, pad: 0, gzip: false, redirect: false, outcome: "HTTP/1.1 503 Service Unavailable",
     event: { event: "shared_egress_list_failed", message: "99 valid, 0 invalid prefixes" } },
+  { label: "a gzip bomb", prefixes: 100, pad: 2 * MIB, gzip: true, redirect: false, outcome: "HTTP/1.1 503 Service Unavailable",
+    event: { event: "shared_egress_list_failed", message: "list over 1 MiB" } },
+  { label: "a redirect", prefixes: 100, pad: 0, gzip: false, redirect: true, outcome: "HTTP/1.1 503 Service Unavailable",
+    event: { event: "shared_egress_list_failed", message: "fetch failed" } },
 ]) {
   test(`published egress list: ${scenario.label}`, { timeout: 15_000 }, async (t) => {
     // GIVEN a published list naming the caller's /24 among ${scenario.prefixes} prefixes.
     const prefixes = [{ ipv4Prefix: "198.51.100.0/24" }, ...Array.from({ length: scenario.prefixes - 1 }, (_, i) => ({ ipv4Prefix: `10.${i}.0.0/16` }))];
-    const f = await fixture(t, "127.0.0.1/32", { hold: true, list: JSON.stringify({ creationTime: "2026-10-20", prefixes }) });
+    const list = JSON.stringify({ creationTime: "2026-10-20", pad: "x".repeat(scenario.pad), prefixes });
+    const f = await fixture(t, "127.0.0.1/32", { hold: true, list, gzip: scenario.gzip, redirect: scenario.redirect });
     await f.until(() => f.events.length === 2);
     // WHEN that address sends a third concurrent write.
     const held = [f.raw(rawPost("198.51.100.50", PUBLISH)), f.raw(rawPost("198.51.100.50", PUBLISH))];
@@ -428,7 +468,7 @@ test("source address guard blocks internal ranges and allows public ones", () =>
 for (const [name, value] of [
   ["BREWPAGE_SHARED_EGRESS_CIDRS", "34.162.0.0/"], ["BREWPAGE_SHARED_EGRESS_CIDRS", "1.2.3.4/24/9"], ["BREWPAGE_SHARED_EGRESS_CIDRS", "/0x10"],
   ["BREWPAGE_SHARED_EGRESS_CIDRS", "10.0.0.0/33"], ["BREWPAGE_SHARED_EGRESS_CIDRS", "::1/129"], ["BREWPAGE_SHARED_EGRESS_CIDRS", "10.0.0.0/+8"],
-  ["BREWPAGE_TRUSTED_PROXY_CIDRS", "127.0.0.1/"],
+  ["BREWPAGE_TRUSTED_PROXY_CIDRS", "127.0.0.1/"], ["BREWPAGE_SHARED_EGRESS_LIST_URLS", "http://127.0.0.1/list.json"],
 ]) {
   test(`HTTP mode refuses to start with ${name}=${value}`, { timeout: 15_000 }, async () => {
     // GIVEN a malformed CIDR entry.
