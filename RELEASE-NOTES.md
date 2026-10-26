@@ -1,5 +1,9 @@
 # Release Notes
 
+## MCP 1.14.2 — 2026-10-26
+
+- MCP Registry: `server.json` lists the remote endpoint `https://brewpage.app/mcp` (`remotes`, `streamable-http`, no auth) beside the npm stdio package, so registry clients can connect by URL. Root `server.json` moves to schema `2025-12-11` like `mcp-server/server.json`. `User-Agent: brewpage-mcp/1.14.2`; pins bumped. No tool or contract change.
+
 ## MCP 1.14.1 — 2026-10-26
 
 - Security fix: `namespace`, `id` and `key` are percent-encoded as single path segments in every tool, and empty, `.` and `..` values are refused before any request, so a tool call can no longer reach a backend path outside `/api/<type>/`. Query strings are built with `URLSearchParams`. Valid inputs send the same requests. No contract change.

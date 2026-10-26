@@ -31,7 +31,7 @@ Edit `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS):
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@1.14.1"]
+      "args": ["-y", "brewpage-mcp@1.14.2"]
     }
   }
 }
@@ -41,14 +41,14 @@ Windows: `%APPDATA%\Claude\claude_desktop_config.json`
 
 ### Claude Code
 
-Run `claude mcp add --transport stdio --scope project brewpage -- npx -y brewpage-mcp@1.14.1`, or add this to project-root `.mcp.json`:
+Run `claude mcp add --transport stdio --scope project brewpage -- npx -y brewpage-mcp@1.14.2`, or add this to project-root `.mcp.json`:
 
 ```json
 {
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@1.14.1"]
+      "args": ["-y", "brewpage-mcp@1.14.2"]
     }
   }
 }
@@ -57,7 +57,7 @@ Run `claude mcp add --transport stdio --scope project brewpage -- npx -y brewpag
 ### Direct run
 
 ```bash
-npx -y brewpage-mcp@1.14.1
+npx -y brewpage-mcp@1.14.2
 ```
 
 ---

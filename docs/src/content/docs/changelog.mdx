@@ -6,6 +6,10 @@ order: 5
 
 # Changelog
 
+## MCP 1.14.2 — Remote endpoint in the MCP Registry
+
+The registry entry now lists `https://brewpage.app/mcp` (Streamable HTTP, no auth) next to the npm package, so clients can connect by URL. Tools are unchanged.
+
 ## MCP 1.14.1 — Path encoding fix
 
 Every tool percent-encodes `namespace`, `id` and `key` as single path segments and refuses empty, `.` and `..` values before any request, so a call stays under its `/api/<type>/` path. Valid inputs are unchanged.
