@@ -9,7 +9,88 @@ permissions:
   contents: read
 
 jobs:
+  image:
+    permissions:
+      contents: read
+      packages: write
+    if: github.event_name == 'push' || github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      IMAGE: ghcr.io/kochetkov-ma/brewpage-mcp
+    steps:
+      - uses: actions/checkout@v6.1.0
+        with:
+          fetch-depth: 0
+          ref: ${{ github.sha }}
+
+      - uses: actions/setup-node@v6.5.0
+        with:
+          node-version: '22.23.3'
+
+      - name: Validate release identity
+        id: identity
+        env:
+          RELEASE_EVENT: ${{ github.event_name }}
+          RELEASE_REF: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          VERSION=$(node -p "require('./mcp-server/package.json').version")
+          [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          RELEASE_TAG="v${VERSION}"
+          if [[ "$RELEASE_EVENT" == push && "$RELEASE_REF" != "$RELEASE_TAG" ]]; then
+            echo '::error::Release tag does not match the package manifest'
+            exit 1
+          fi
+          git rev-parse --verify "refs/tags/${RELEASE_TAG}^{commit}" >/dev/null
+          git diff --exit-code "$RELEASE_TAG" HEAD -- mcp-server
+          node scripts/verify-package-identity.mjs
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Build image
+        env:
+          VERSION: ${{ steps.identity.outputs.version }}
+        run: |
+          set -euo pipefail
+          docker build mcp-server --tag "${IMAGE}:${VERSION}" \
+            --label "org.opencontainers.image.source=https://github.com/${GITHUB_REPOSITORY}" \
+            --label "org.opencontainers.image.version=${VERSION}" \
+            --label "org.opencontainers.image.revision=${GITHUB_SHA}"
+
+      - name: Smoke-test image over HTTP
+        env:
+          VERSION: ${{ steps.identity.outputs.version }}
+        run: bash scripts/smoke-image.sh "${IMAGE}:${VERSION}" "$VERSION"
+
+      - name: Push image to GHCR
+        env:
+          VERSION: ${{ steps.identity.outputs.version }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          printf '%s' "$GHCR_TOKEN" | docker login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
+          if docker manifest inspect "${IMAGE}:${VERSION}" > "$RUNNER_TEMP/manifest.json" 2> "$RUNNER_TEMP/manifest.err"; then
+            echo "::notice::${IMAGE}:${VERSION} already exists, push skipped (tags are immutable)"
+            DIGEST=$(docker buildx imagetools inspect "${IMAGE}:${VERSION}" --format '{{.Manifest.Digest}}')
+          elif grep -qiE 'no such manifest|manifest unknown|not found' "$RUNNER_TEMP/manifest.err"; then
+            docker push "${IMAGE}:${VERSION}"
+            DIGEST=$(docker inspect --format '{{index .RepoDigests 0}}' "${IMAGE}:${VERSION}")
+            DIGEST="${DIGEST##*@}"
+          else
+            cat "$RUNNER_TEMP/manifest.err"
+            echo '::error::GHCR manifest lookup failed; push stopped'
+            exit 1
+          fi
+          [[ "$DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]]
+          {
+            echo '### brewpage-mcp image'
+            echo "- Tag: \`${IMAGE}:${VERSION}\`"
+            echo "- Digest: \`${DIGEST}\`"
+            echo "- Pin: \`${IMAGE}:${VERSION}@${DIGEST}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
   release:
+    needs: image
     permissions:
       contents: write
       id-token: write

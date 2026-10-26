@@ -3,6 +3,7 @@
 ## MCP 1.14.0 — 2026-10-26
 
 - Stateless Streamable HTTP entry `dist/http.js` (`POST /mcp`, `/healthz`) for the remote server at `https://brewpage.app/mcp`: trusted-proxy client IP forwarding, `Origin` -> 403, SSRF-safe `publish_file` downloads, owner token env refused. The Docker image default stays stdio. `User-Agent: brewpage-mcp/1.14.0` (`(remote)` over HTTP); `server.json` and `gemini-extension.json` stamps bumped. No contract change.
+- Release workflow also builds, smoke-tests and pushes `ghcr.io/kochetkov-ma/brewpage-mcp:<version>` (exact tag, before npm publish).
 
 ## API contract 2.2.0 — 2026-10-25
 

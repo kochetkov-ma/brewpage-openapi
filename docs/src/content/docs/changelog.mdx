@@ -6,6 +6,10 @@ order: 5
 
 # Changelog
 
+## MCP 1.14.0 — Remote HTTP mode
+
+`dist/http.js` serves stateless Streamable HTTP for the remote server at `https://brewpage.app/mcp`; stdio is unchanged. Each release also publishes the `ghcr.io/kochetkov-ma/brewpage-mcp` container image.
+
 ## Spec 2.2.0 — Gallery previews
 
 The spec matches backend 2.2.0 on top of the 2.1.5 wording. `GalleryItem` (`GET /api/gallery`) restores nullable `preview` (`PublicationPreviewResponse`; null while previews are off and on password rows) and nullable `format` (`type=file`: lowercase extension, else null). `PublicationPreviewResponse` adds optional `branded` (true = type card, not a page or content render; absent when false). Additive: 47 paths and 62 operations. No MCP release.
