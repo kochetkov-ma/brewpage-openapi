@@ -3258,7 +3258,7 @@
     },
     "termsOfService": "https://brewpage.app/terms",
     "title": "BrewPage API",
-    "version": "2.7.0"
+    "version": "2.8.0"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -3419,7 +3419,7 @@
                 }
               }
             },
-            "description": "Invalid request or file too large"
+            "description": "Invalid request or file too large; or PDF/Office file unreadable, password-protected or too complex"
           },
           "403": {
             "content": {
@@ -3450,6 +3450,16 @@
               }
             },
             "description": "Rate limit exceeded"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Busy; retry after Retry-After seconds"
           }
         },
         "security": [
@@ -3753,7 +3763,7 @@
                 }
               }
             },
-            "description": "Invalid request or file too large"
+            "description": "Invalid request or file too large; or PDF/Office file unreadable, password-protected or too complex"
           },
           "403": {
             "content": {
@@ -3794,6 +3804,16 @@
               }
             },
             "description": "Unsupported file type or content of no supported type"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Busy; retry after Retry-After seconds"
           }
         },
         "security": [
@@ -4142,7 +4162,7 @@
                 }
               }
             },
-            "description": "Invalid request parameters"
+            "description": "Invalid request parameters; or PDF/Office file unreadable, password-protected or too complex"
           },
           "403": {
             "content": {
@@ -4163,6 +4183,16 @@
               }
             },
             "description": "Rate limit exceeded"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Busy; retry after Retry-After seconds"
           }
         },
         "security": [
@@ -6871,7 +6901,7 @@
                 }
               }
             },
-            "description": "Invalid request, no HTML files, or limits exceeded; see GET /api/limits"
+            "description": "Invalid request, no HTML files, or limits exceeded; see GET /api/limits; or PDF/Office file unreadable, password-protected or too complex"
           },
           "403": {
             "content": {
@@ -6912,6 +6942,16 @@
               }
             },
             "description": "Rate limit exceeded"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Busy; retry after Retry-After seconds"
           }
         },
         "security": [
@@ -7217,7 +7257,7 @@
                 }
               }
             },
-            "description": "Invalid request, empty bundle or limits exceeded; see GET /api/limits"
+            "description": "Invalid request, empty bundle or limits exceeded; see GET /api/limits; or PDF/Office file unreadable, password-protected or too complex"
           },
           "403": {
             "content": {
@@ -7278,6 +7318,16 @@
               }
             },
             "description": "No servable file left: every file has an unsupported or missing extension"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Busy; retry after Retry-After seconds"
           }
         },
         "security": [
