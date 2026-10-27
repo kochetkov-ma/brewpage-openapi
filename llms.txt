@@ -20,6 +20,7 @@ Public contract snapshots, documentation and the BrewPage MCP server. The backen
 
 ## Recent contract changes
 
+- 2.8.0 (matches backend v2.8.0): `POST /api/html`, `POST /api/files`, `PUT /api/files/{ns}/{id}`, `POST /api/sites` and `PUT /api/sites/{ns}/{id}`: `400` also covers a PDF/Office file that is unreadable, password-protected or too complex; new `503` (`ErrorResponse`) when busy, retry after `Retry-After` seconds. Sites accept `.docm`, `.xlsm`, `.pptm` (`GET /api/limits`). Additive: 47 paths and 62 operations.
 - 2.7.0 (matches backend v2.7.0): `POST /api/files` and `PUT /api/files/{ns}/{id}` add notice `archive-unverified` for archives (zip, 7z, gz incl. .tar.gz, tar): check contents before opening; `GET /api/files/{ns}/{id}` sends header `X-BrewPage-Notice: archive-unverified` on archives. Additive: 47 paths and 62 operations.
 - 2.6.0 (matches backend v2.6.0): `POST /api/html` and `PUT /api/html/{ns}/{id}` responses add optional `format`: stored format after auto-detect (`html`, `markdown` or a code format); may differ from the requested one. Additive: 47 paths and 62 operations.
 - 2.5.0 (matches backend v2.5.0): `GET /api/stats` adds nullable `accountsToday` (accounts created today, `tz` day) and `totalAccounts` (all-time). Additive: 47 paths and 62 operations.

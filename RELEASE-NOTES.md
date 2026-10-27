@@ -1,5 +1,10 @@
 # Release Notes
 
+## API contract 2.8.0 — 2026-10-27
+
+- API contract version 2.8.0 is the backend-generated public snapshot exported from the clean brewpage-app source `8f9900fde0514f7739dd762d658700e5a1a037cb` (tag `v2.8.0`).
+- `POST /api/html`, `POST /api/files`, `PUT /api/files/{ns}/{id}`, `POST /api/sites` and `PUT /api/sites/{ns}/{id}`: `400` also covers a PDF/Office file that is unreadable, password-protected or too complex; new `503` (`ErrorResponse`) when busy, retry after `Retry-After` seconds. Sites accept `.docm`, `.xlsm`, `.pptm` (`GET /api/limits`). Additive: 47 paths and 62 operations; MCP unchanged.
+
 ## API contract 2.7.0 — 2026-10-27
 
 - API contract version 2.7.0 is the backend-generated public snapshot exported from the clean brewpage-app source `3a96ba73e99fc8778dea6d771d21af0c643c78f4` (tag `v2.7.0`).
