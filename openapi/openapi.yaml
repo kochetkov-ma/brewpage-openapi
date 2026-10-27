@@ -2509,7 +2509,7 @@ info:
     url: https://www.apache.org/licenses/LICENSE-2.0
   termsOfService: https://brewpage.app/terms
   title: BrewPage API
-  version: 2.8.0
+  version: 2.8.1
 openapi: 3.1.0
 paths:
   /api/files:
@@ -2638,7 +2638,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-          description: Invalid request or file too large; or PDF/Office file unreadable, password-protected or too complex
+          description: Invalid request or file too large; or PDF/Office file unreadable or password-protected
         '403':
           content:
             application/json:
@@ -2859,7 +2859,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-          description: Invalid request or file too large; or PDF/Office file unreadable, password-protected or too complex
+          description: Invalid request or file too large; or PDF/Office file unreadable or password-protected
         '403':
           content:
             application/json:
@@ -3148,7 +3148,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-          description: Invalid request parameters; or PDF/Office file unreadable, password-protected or too complex
+          description: Invalid request parameters; or PDF/Office file unreadable or password-protected
         '403':
           content:
             application/json:
@@ -4912,8 +4912,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
           description: >-
-            Invalid request, no HTML files, or limits exceeded; see GET /api/limits; or PDF/Office file unreadable,
-            password-protected or too complex
+            Invalid request, no HTML files, or limits exceeded; see GET /api/limits; or PDF/Office file unreadable or
+            password-protected
         '403':
           content:
             application/json:
@@ -5141,8 +5141,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
           description: >-
-            Invalid request, empty bundle or limits exceeded; see GET /api/limits; or PDF/Office file unreadable,
-            password-protected or too complex
+            Invalid request, empty bundle or limits exceeded; see GET /api/limits; or PDF/Office file unreadable or
+            password-protected
         '403':
           content:
             application/json:

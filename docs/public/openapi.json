@@ -3258,7 +3258,7 @@
     },
     "termsOfService": "https://brewpage.app/terms",
     "title": "BrewPage API",
-    "version": "2.8.0"
+    "version": "2.8.1"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -3419,7 +3419,7 @@
                 }
               }
             },
-            "description": "Invalid request or file too large; or PDF/Office file unreadable, password-protected or too complex"
+            "description": "Invalid request or file too large; or PDF/Office file unreadable or password-protected"
           },
           "403": {
             "content": {
@@ -3763,7 +3763,7 @@
                 }
               }
             },
-            "description": "Invalid request or file too large; or PDF/Office file unreadable, password-protected or too complex"
+            "description": "Invalid request or file too large; or PDF/Office file unreadable or password-protected"
           },
           "403": {
             "content": {
@@ -4162,7 +4162,7 @@
                 }
               }
             },
-            "description": "Invalid request parameters; or PDF/Office file unreadable, password-protected or too complex"
+            "description": "Invalid request parameters; or PDF/Office file unreadable or password-protected"
           },
           "403": {
             "content": {
@@ -6901,7 +6901,7 @@
                 }
               }
             },
-            "description": "Invalid request, no HTML files, or limits exceeded; see GET /api/limits; or PDF/Office file unreadable, password-protected or too complex"
+            "description": "Invalid request, no HTML files, or limits exceeded; see GET /api/limits; or PDF/Office file unreadable or password-protected"
           },
           "403": {
             "content": {
@@ -7257,7 +7257,7 @@
                 }
               }
             },
-            "description": "Invalid request, empty bundle or limits exceeded; see GET /api/limits; or PDF/Office file unreadable, password-protected or too complex"
+            "description": "Invalid request, empty bundle or limits exceeded; see GET /api/limits; or PDF/Office file unreadable or password-protected"
           },
           "403": {
             "content": {
