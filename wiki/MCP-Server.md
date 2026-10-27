@@ -22,6 +22,23 @@ Use BrewPage directly from Claude Desktop, Claude Code, or any MCP client.
 
 ## Install
 
+### Remote (no install)
+
+Add `https://brewpage.app/mcp` as a custom connector / remote MCP server by URL in Claude.ai, ChatGPT or any Streamable HTTP client. No auth; same 20 tools.
+
+Claude Code: `claude mcp add --transport http brewpage https://brewpage.app/mcp`, or in `.mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "brewpage": {
+      "type": "http",
+      "url": "https://brewpage.app/mcp"
+    }
+  }
+}
+```
+
 ### Claude Desktop
 
 Edit `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS):

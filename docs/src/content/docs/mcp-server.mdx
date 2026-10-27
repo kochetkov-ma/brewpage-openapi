@@ -6,11 +6,28 @@ order: 3
 
 # MCP Server
 
-Last updated: 2026-10-25
+Last updated: 2026-10-27
 
-`brewpage-mcp` 1.15.0 provides twenty tools to publish and manage HTML, Markdown, JSON, KV, files, and multi-file sites from compatible MCP clients. It runs locally over stdio and calls the BrewPage API. Requires Node.js 20 or newer.
+`brewpage-mcp` 1.15.0 provides twenty tools to publish and manage HTML, Markdown, JSON, KV, files, and multi-file sites from compatible MCP clients. It runs locally over stdio (Node.js 20 or newer) or remotely without install, and calls the BrewPage API.
 
 ## Installation
+
+### Remote (no install)
+
+Add `https://brewpage.app/mcp` as a custom connector / remote MCP server by URL in Claude.ai, ChatGPT or any Streamable HTTP client. No auth; same 20 tools.
+
+Claude Code: `claude mcp add --transport http brewpage https://brewpage.app/mcp`, or in `.mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "brewpage": {
+      "type": "http",
+      "url": "https://brewpage.app/mcp"
+    }
+  }
+}
+```
 
 ### Claude Desktop
 

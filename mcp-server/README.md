@@ -22,6 +22,23 @@ npx -y brewpage-mcp@1.15.0
 
 Requires Node.js 20 or newer. This starts the stdio server for an MCP client.
 
+### Remote (no install)
+
+Add `https://brewpage.app/mcp` as a custom connector / remote MCP server by URL in Claude.ai, ChatGPT or any Streamable HTTP client. No auth; same 20 tools.
+
+Claude Code: `claude mcp add --transport http brewpage https://brewpage.app/mcp`, or in `.mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "brewpage": {
+      "type": "http",
+      "url": "https://brewpage.app/mcp"
+    }
+  }
+}
+```
+
 ## Installation
 
 ### Claude Desktop

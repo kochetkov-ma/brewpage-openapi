@@ -181,6 +181,23 @@ Rerunning historical tag workflows that used token authentication is unsupported
 | `get_page` | Fetch a published HTML page and its content |
 | `get_stats` | Get platform-wide usage statistics |
 
+### Remote (no install)
+
+Add `https://brewpage.app/mcp` as a custom connector / remote MCP server by URL in Claude.ai, ChatGPT or any Streamable HTTP client. No auth; same 20 tools.
+
+Claude Code: `claude mcp add --transport http brewpage https://brewpage.app/mcp`, or in `.mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "brewpage": {
+      "type": "http",
+      "url": "https://brewpage.app/mcp"
+    }
+  }
+}
+```
+
 ### Claude Desktop
 
 Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
@@ -198,7 +215,7 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
 
 ### Claude Code
 
-Add to `~/.claude/settings.json`:
+Add to project-root `.mcp.json`:
 
 ```json
 {
