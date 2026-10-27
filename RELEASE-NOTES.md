@@ -1,5 +1,10 @@
 # Release Notes
 
+## API contract 2.8.1 — 2026-10-27
+
+- API contract version 2.8.1 is the backend-generated public snapshot exported from the clean brewpage-app source `d88f5f1d09768ca099cf55aee887bfc6e80efbc7` (tag `v2.8.1`).
+- `POST /api/html`, `POST /api/files`, `PUT /api/files/{ns}/{id}`, `POST /api/sites` and `PUT /api/sites/{ns}/{id}`: `400` PDF/Office case now reads unreadable or password-protected (no longer too complex). Description only: 47 paths and 62 operations; MCP unchanged.
+
 ## MCP 1.14.5 — 2026-10-27
 
 - `publish_site` and `republish_site` error hints match contract 2.8.0: 400 also covers a PDF/Office file that is unreadable, password-protected or too complex; 503 = busy, retry after `Retry-After` seconds. A failed `publish_html`, `publish_file`, `publish_site` or `republish_site` on 503 prints the `Retry-After` value. `User-Agent: brewpage-mcp/1.14.5`; pins bumped. No contract change.
