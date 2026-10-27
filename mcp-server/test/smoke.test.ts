@@ -520,6 +520,26 @@ for (const scenario of [
   });
 }
 
+const BUSY = { status: 503, error: "Service Unavailable" };
+for (const scenario of [
+  { tool: "publish_html", args: () => ({ content: "<h1>Fixture</h1>" }), text: `Failed to publish: ${JSON.stringify(BUSY)} Retry-After: 1.` },
+  { tool: "publish_file", args: (base: string) => ({ url: `${base}/source-file` }), text: `Failed to upload file: ${JSON.stringify(BUSY)} Retry-After: 1.` },
+  { tool: "publish_site", args: () => ({ entryContent: "<h1>Fixture</h1>" }), text: `Failed to publish site: ${JSON.stringify(BUSY)} Retry-After: 1.` },
+  { tool: "republish_site", args: () => ({ namespace: "public", id: "aBcDeFgHiJ", entryContent: "<h1>Fixture</h1>", ownerToken: "fixture-owner" }),
+    text: `Failed to republish site (503): ${JSON.stringify(BUSY)} Retry-After: 1.` },
+]) {
+  test(`${scenario.tool} prints Retry-After on a busy 503`, { timeout: 10_000 }, async (t) => {
+    // GIVEN a busy API answering 503 with Retry-After.
+    const f = await fixture(t);
+    f.respond(503, BUSY, { "Retry-After": "1" });
+    // WHEN the publish runs.
+    const result = await f.call(scenario.tool, scenario.args(f.baseUrl));
+    // THEN the tool error carries the server answer and the wait.
+    assert.deepEqual({ isError: result.isError, text: result.content[0].text }, { isError: true, text: scenario.text },
+      "busy answer and Retry-After are relayed exactly");
+  });
+}
+
 for (const scenario of [
   { tool: "publish_html", args: { content: "<h1>Fixture</h1>" } },
   { tool: "publish_file", args: {} },

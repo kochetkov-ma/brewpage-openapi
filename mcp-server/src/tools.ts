@@ -3,7 +3,7 @@ import type { ToolAnnotations } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 
 export const DEFAULT_BASE_URL = "https://brewpage.app";
-export const USER_AGENT = "brewpage-mcp/1.14.4";
+export const USER_AGENT = "brewpage-mcp/1.14.5";
 export const OWNER_TOKEN_ENV = "BREWPAGE_OWNER_TOKEN";
 
 export interface ServerOptions {
@@ -71,9 +71,15 @@ function textResult(text: string, isError = false) {
   return isError ? { content: [{ type: "text" as const, text }], isError: true } : { content: [{ type: "text" as const, text }] };
 }
 
+/** ` Retry-After: <value>.` for a busy 503 that sends the header, else empty. */
+function retryAfterText(status: number, headers?: Headers): string {
+  const after = status === 503 ? headers?.get("retry-after") : null;
+  return after ? ` Retry-After: ${after}.` : "";
+}
+
 /** Owner-tool failure: the server answer verbatim plus a hint for a plain wrong-token 403 or a frozen old publication. */
-function ownerFailure(operation: string, status: number, data: unknown, fromEnv: boolean) {
-  const lines = [`Failed to ${operation} (${status}): ${JSON.stringify(data)}`];
+function ownerFailure(operation: string, status: number, data: unknown, fromEnv: boolean, headers?: Headers) {
+  const lines = [`Failed to ${operation} (${status}): ${JSON.stringify(data)}${retryAfterText(status, headers)}`];
   const code = (data as { code?: unknown } | null)?.code;
   if (status === 403 && (code === undefined || code === "OWNER_AUTHORIZATION_FAILED")) {
     lines.push(`Wrong owner token for this publication. Use ownerToken from create.${fromEnv ? ` Sent: ${OWNER_TOKEN_ENV}.` : ""}`);
@@ -148,8 +154,9 @@ const SITE_LIMITS_TEXT =
   "Default limits (current values: GET /api/limits): a request is at most 25 MB; a site at most 200 files, 5 MB per file and 20 MB in total; " +
   "each path at most 380 characters. System files (.DS_Store, __MACOSX/ and similar) are skipped and never count; files with an unsupported extension " +
   "or a too-long path are skipped and listed in notices. Entry: `entry`, else root index.html, else the shallowest HTML file. " +
-  "Errors: 400 = a site limit exceeded (the message names it), invalid path or no HTML file; 413 = request over 25 MB, " +
-  "too many files and form fields, or a file name/path too long; 422 = no servable file left.";
+  "Errors: 400 = a site limit exceeded (the message names it), invalid path, no HTML file, or a PDF/Office file unreadable, " +
+  "password-protected or too complex; 413 = request over 25 MB, too many files and form fields, or a file name/path too long; " +
+  "422 = no servable file left; 503 = busy, retry after Retry-After seconds.";
 
 function hostingResponseLines(data: Record<string, unknown>): string[] {
   const fields = ["routingCohort", "deliveryMode", "requestedDeliveryMode", "effectiveDeliveryMode",
@@ -226,7 +233,7 @@ export function createServer(options: ServerOptions = {}): McpServer {
   const apiFetch = options.fetch ?? fetch;
   const server = new McpServer({
     name: "brewpage-mcp",
-    version: "1.14.4",
+    version: "1.14.5",
   });
 
   /** Caller argument first, then the configured default; `fromEnv` marks the configured one. */
@@ -358,14 +365,14 @@ export function createServer(options: ServerOptions = {}): McpServer {
       if (deliveryMode) headers["X-Delivery-Mode"] = deliveryMode;
       const owner = ownerTokenFor(ownerToken).token;
       if (owner) headers["X-Owner-Token"] = owner;
-      const { ok, data } = await apiRequest("POST", path, body, headers);
+      const { ok, status, data, headers: answerHeaders } = await apiRequest("POST", path, body, headers);
 
       if (!ok) {
         return {
           content: [
             {
               type: "text" as const,
-              text: `Failed to publish: ${JSON.stringify(data)}`,
+              text: `Failed to publish: ${JSON.stringify(data)}${retryAfterText(status, answerHeaders)}`,
             },
           ],
           isError: true,
@@ -426,7 +433,7 @@ export function createServer(options: ServerOptions = {}): McpServer {
           content: [
             {
               type: "text" as const,
-              text: `Failed to upload file: ${JSON.stringify(data)}`,
+              text: `Failed to upload file: ${JSON.stringify(data)}${retryAfterText(res.status, res.headers)}`,
             },
           ],
           isError: true,
@@ -680,7 +687,7 @@ export function createServer(options: ServerOptions = {}): McpServer {
           content: [
             {
               type: "text" as const,
-              text: `Failed to publish site: ${JSON.stringify(data)}`,
+              text: `Failed to publish site: ${JSON.stringify(data)}${retryAfterText(res.status, res.headers)}`,
             },
           ],
           isError: true,
@@ -780,7 +787,7 @@ export function createServer(options: ServerOptions = {}): McpServer {
       const res = await bpFetch(url, { method: "PUT", headers, body: formData });
       const data = await res.json().catch(() => null);
 
-      if (!res.ok) return ownerFailure("republish site", res.status, data, auth.fromEnv);
+      if (!res.ok) return ownerFailure("republish site", res.status, data, auth.fromEnv, res.headers);
 
       const site = data as Record<string, unknown>;
       const lines = [

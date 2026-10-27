@@ -17,7 +17,7 @@ Choosing a host? See how BrewPage compares with GitHub Pages, Netlify Drop, Tiin
 ## Quick Start
 
 ```bash
-npx -y brewpage-mcp@1.14.4
+npx -y brewpage-mcp@1.14.5
 ```
 
 Requires Node.js 20 or newer. This starts the stdio server for an MCP client.
@@ -33,7 +33,7 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS)
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@1.14.4"]
+      "args": ["-y", "brewpage-mcp@1.14.5"]
     }
   }
 }
@@ -44,7 +44,7 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS)
 Register a project-scoped stdio server:
 
 ```bash
-claude mcp add --transport stdio --scope project brewpage -- npx -y brewpage-mcp@1.14.4
+claude mcp add --transport stdio --scope project brewpage -- npx -y brewpage-mcp@1.14.5
 ```
 
 This writes `.mcp.json` in the project root. Use `--scope user` for user-scoped registration. See the [official Claude Code MCP guide](https://code.claude.com/docs/en/mcp).
@@ -58,7 +58,7 @@ Open **Settings > MCP** and add:
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@1.14.4"]
+      "args": ["-y", "brewpage-mcp@1.14.5"]
     }
   }
 }
@@ -72,7 +72,7 @@ Open the Cline MCP settings panel and add:
 {
   "brewpage": {
     "command": "npx",
-    "args": ["-y", "brewpage-mcp@1.14.4"]
+    "args": ["-y", "brewpage-mcp@1.14.5"]
   }
 }
 ```
@@ -80,7 +80,7 @@ Open the Cline MCP settings panel and add:
 ### Global Install
 
 ```bash
-npm install -g brewpage-mcp@1.14.4
+npm install -g brewpage-mcp@1.14.5
 brewpage-mcp
 ```
 
@@ -215,7 +215,7 @@ publish_file(url="https://example.com/diagram.png")
 
 Publish a single-page or multi-file HTML site. Pass `entryContent` for a single page or `files` (array of `{path, content}`) for a multi-file site. Supports password protection, TTL, and owner token grouping.
 
-Limits (current values from `get_limits`): a request is at most 25 MB; a site at most 200 files, 5 MB per file and 20 MB in total; each path at most 380 characters. System files such as `.DS_Store` and `__MACOSX/` are skipped and never count; files with an unsupported extension or a too-long path are skipped and reported in notices. Entry: `entry`, else root `index.html`, else the shallowest HTML file. A site limit hit answers 400 with a message naming the limit; 413 means the request is over 25 MB, has too many files and form fields, or a file name/path is too long; 422 means no servable file is left.
+Limits (current values from `get_limits`): a request is at most 25 MB; a site at most 200 files, 5 MB per file and 20 MB in total; each path at most 380 characters. System files such as `.DS_Store` and `__MACOSX/` are skipped and never count; files with an unsupported extension or a too-long path are skipped and reported in notices. Entry: `entry`, else root `index.html`, else the shallowest HTML file. A site limit hit answers 400 with a message naming the limit, as does a PDF/Office file that is unreadable, password-protected or too complex; 413 means the request is over 25 MB, has too many files and form fields, or a file name/path is too long; 422 means no servable file is left; 503 means busy: retry after `Retry-After` seconds (failed publish tools print it).
 
 Parameters: exactly one of `entryContent` (string) or non-empty `files` (array of `{path, content}`), `entry` (optional entry file path, default `index.html`), `namespace` (optional -- omit for private, unlisted content; `public` lists the site in the gallery and sitemap for Google, Bing and AI search; a site always gets its own subdomain), `password` (optional), `ttlDays` (days or a string such as `2w`; default 15; the server clamps to 1--30), `ownerToken` (optional, groups site under an existing owner), `deliveryMode` (optional; fresh sites require `subdomain`).
 
@@ -512,6 +512,10 @@ Every publish response includes an **owner token** -- the only credential that a
 - [Brewcode Plugin](https://github.com/kochetkov-ma/claude-brewcode) -- Claude Code plugin suite
 
 ## Changelog
+
+## 1.14.5 -- 2026-10-27
+
+- Site publish hints add 400 for an unreadable, password-protected or too complex PDF/Office file and 503 when busy; a failed publish on 503 prints `Retry-After`.
 
 ## 1.14.4 -- 2026-10-26
 

@@ -1,5 +1,9 @@
 # Release Notes
 
+## MCP 1.14.5 — 2026-10-27
+
+- `publish_site` and `republish_site` error hints match contract 2.8.0: 400 also covers a PDF/Office file that is unreadable, password-protected or too complex; 503 = busy, retry after `Retry-After` seconds. A failed `publish_html`, `publish_file`, `publish_site` or `republish_site` on 503 prints the `Retry-After` value. `User-Agent: brewpage-mcp/1.14.5`; pins bumped. No contract change.
+
 ## API contract 2.8.0 — 2026-10-27
 
 - API contract version 2.8.0 is the backend-generated public snapshot exported from the clean brewpage-app source `8f9900fde0514f7739dd762d658700e5a1a037cb` (tag `v2.8.0`).
