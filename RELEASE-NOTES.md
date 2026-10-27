@@ -1,5 +1,9 @@
 # Release Notes
 
+## MCP 1.15.1 — 2026-10-27
+
+- `publish_site` and `republish_site` texts match contract 2.8.5 PDF/Office errors: 400 = a PDF/Office file unreadable or password-protected (no longer too complex). `User-Agent: brewpage-mcp/1.15.1`; pins bumped. No contract change.
+
 ## API contract 2.8.5 — 2026-10-27
 
 - API contract version 2.8.5 is the backend-generated public snapshot exported from the clean brewpage-app source `977108436fecfc053f7a51afb8641182256586a7` (tag `v2.8.5`).

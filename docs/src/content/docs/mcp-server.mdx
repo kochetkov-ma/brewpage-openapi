@@ -8,7 +8,7 @@ order: 3
 
 Last updated: 2026-10-27
 
-`brewpage-mcp` 1.15.0 provides twenty tools to publish and manage HTML, Markdown, JSON, KV, files, and multi-file sites from compatible MCP clients. It runs locally over stdio (Node.js 20 or newer) or remotely without install, and calls the BrewPage API.
+`brewpage-mcp` 1.15.1 provides twenty tools to publish and manage HTML, Markdown, JSON, KV, files, and multi-file sites from compatible MCP clients. It runs locally over stdio (Node.js 20 or newer) or remotely without install, and calls the BrewPage API.
 
 ## Installation
 
@@ -38,7 +38,7 @@ Open Claude Desktop's **Settings > Developer > Edit Config** and add to `claude_
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@1.15.0"]
+      "args": ["-y", "brewpage-mcp@1.15.1"]
     }
   }
 }
@@ -49,7 +49,7 @@ Open Claude Desktop's **Settings > Developer > Edit Config** and add to `claude_
 Register a project-scoped stdio server:
 
 ```bash
-claude mcp add --transport stdio --scope project brewpage -- npx -y brewpage-mcp@1.15.0
+claude mcp add --transport stdio --scope project brewpage -- npx -y brewpage-mcp@1.15.1
 ```
 
 This writes `.mcp.json` in the project root; user-scoped registration uses `--scope user`. See the [official Claude Code MCP guide](https://code.claude.com/docs/en/mcp).
@@ -57,7 +57,7 @@ This writes `.mcp.json` in the project root; user-scoped registration uses `--sc
 ### One-liner
 
 ```bash
-npx -y brewpage-mcp@1.15.0
+npx -y brewpage-mcp@1.15.1
 ```
 
 This starts a stdio server for an MCP client, not an interactive publishing shell. Other clients can use the same `npx` command and pinned arguments.
@@ -112,7 +112,7 @@ publish_site(files=[{"path":"index.html","content":"<link rel='stylesheet' href=
 
 For sites, provide exactly one of `entryContent` or a non-empty `files` array of `{path, content}`. `entry` defaults to `index.html`. `republish_site` requires `namespace`, `id`, and `ownerToken`; it replaces the full file set, removing files absent from the new bundle. It also accepts `entry`, `ttlDays`, and `tags`; its TTL input is ignored (existing expiry is kept; a `ttl-ignored` notice is returned).
 
-Call `get_limits` before publishing a large or multi-file site. A request is at most 25 MB; a site at most 200 files, 5 MB per file and 20 MB in total; each path at most 380 characters. System files such as `.DS_Store` and `__MACOSX/` are skipped and never count; files with an unsupported extension or a too-long path are skipped and reported in notices. Without `entry`, the root `index.html` is the entry, else the shallowest HTML file. A site limit hit answers 400 with a message naming the limit, as does a PDF/Office file that is unreadable, password-protected or too complex; 413 means the request is over 25 MB, has too many files and form fields, or a file name/path is too long; 422 means no servable file is left; 503 means busy: retry after `Retry-After` seconds (failed publish tools print it).
+Call `get_limits` before publishing a large or multi-file site. A request is at most 25 MB; a site at most 200 files, 5 MB per file and 20 MB in total; each path at most 380 characters. System files such as `.DS_Store` and `__MACOSX/` are skipped and never count; files with an unsupported extension or a too-long path are skipped and reported in notices. Without `entry`, the root `index.html` is the entry, else the shallowest HTML file. A site limit hit answers 400 with a message naming the limit, as does a PDF/Office file that is unreadable or password-protected; 413 means the request is over 25 MB, has too many files and form fields, or a file name/path is too long; 422 means no servable file is left; 503 means busy: retry after `Retry-After` seconds (failed publish tools print it).
 
 ### Change Hosting
 

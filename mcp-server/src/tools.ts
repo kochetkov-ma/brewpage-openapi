@@ -2,7 +2,7 @@ import { McpServer, type ToolAnnotations } from "@modelcontextprotocol/server";
 import { z } from "zod";
 
 export const DEFAULT_BASE_URL = "https://brewpage.app";
-export const USER_AGENT = "brewpage-mcp/1.15.0";
+export const USER_AGENT = "brewpage-mcp/1.15.1";
 export const OWNER_TOKEN_ENV = "BREWPAGE_OWNER_TOKEN";
 
 export interface ServerOptions {
@@ -153,8 +153,8 @@ const SITE_LIMITS_TEXT =
   "Default limits (current values: GET /api/limits): a request is at most 25 MB; a site at most 200 files, 5 MB per file and 20 MB in total; " +
   "each path at most 380 characters. System files (.DS_Store, __MACOSX/ and similar) are skipped and never count; files with an unsupported extension " +
   "or a too-long path are skipped and listed in notices. Entry: `entry`, else root index.html, else the shallowest HTML file. " +
-  "Errors: 400 = a site limit exceeded (the message names it), invalid path, no HTML file, or a PDF/Office file unreadable, " +
-  "password-protected or too complex; 413 = request over 25 MB, too many files and form fields, or a file name/path too long; " +
+  "Errors: 400 = a site limit exceeded (the message names it), invalid path, no HTML file, or a PDF/Office file unreadable " +
+  "or password-protected; 413 = request over 25 MB, too many files and form fields, or a file name/path too long; " +
   "422 = no servable file left; 503 = busy, retry after Retry-After seconds.";
 
 function hostingResponseLines(data: Record<string, unknown>): string[] {
@@ -232,7 +232,7 @@ export function createServer(options: ServerOptions = {}): McpServer {
   const apiFetch = options.fetch ?? fetch;
   const server = new McpServer({
     name: "brewpage-mcp",
-    version: "1.15.0",
+    version: "1.15.1",
   });
 
   /** Caller argument first, then the configured default; `fromEnv` marks the configured one. */

@@ -125,6 +125,18 @@ test("tool and input descriptions state facts, not model directives or other too
   assert.deepEqual(offending, [], "directory policy: descriptions contain only neutral facts");
 });
 
+test("PDF/Office 400 hints use the contract 2.8.5 wording", { timeout: 10_000 }, async (t) => {
+  // GIVEN local MCP connected to a synthetic API.
+  const f = await fixture(t);
+  // WHEN client discovers tools.
+  const { tools } = await f.client.listTools();
+  // THEN only the site tools mention PDF/Office, as unreadable or password-protected.
+  const actual = Object.fromEntries(tools.map(({ name, description }) => [name, (description ?? "").match(/PDF\/Office[^;]*/g) ?? []]));
+  const expected = Object.fromEntries(EXPECTED_TOOL_NAMES.map((name) =>
+    [name, ["publish_site", "republish_site"].includes(name) ? ["PDF/Office file unreadable or password-protected"] : []]));
+  assert.deepEqual(actual, expected, "PDF/Office 400 wording matches the contract");
+});
+
 for (const scenario of [
   { name: "publish_html", args: { content: "<h1>Fixture</h1>" }, segment: "html", jsonBody: { content: "<h1>Fixture</h1>" } },
   { name: "publish_json", args: { json: { deliveryMode: "authored value", value: 7 } }, segment: "json", jsonBody: { deliveryMode: "authored value", value: 7 } },
