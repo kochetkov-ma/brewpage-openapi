@@ -2,7 +2,7 @@
 
 ## API contract 2.7.0 — 2026-10-27
 
-- API contract version 2.7.0 is the backend-generated public snapshot exported from the clean brewpage-app source `8fca19e3af9f88141ce9a000c3400bdd6939cf6f` (branch `feat/archive-download-notice`, for backend `v2.7.0`).
+- API contract version 2.7.0 is the backend-generated public snapshot exported from the clean brewpage-app source `3a96ba73e99fc8778dea6d771d21af0c643c78f4` (tag `v2.7.0`).
 - `POST /api/files` and `PUT /api/files/{ns}/{id}` add notice `archive-unverified` for archives (zip, 7z, gz incl. .tar.gz, tar): check contents before opening. `GET /api/files/{ns}/{id}` 200 adds header `X-BrewPage-Notice: archive-unverified` on archives. Additive: 47 paths and 62 operations; `publish_file` prints notices as sent, MCP unchanged.
 
 ## API contract 2.6.0 — 2026-10-26
