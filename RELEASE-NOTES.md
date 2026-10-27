@@ -1,5 +1,9 @@
 # Release Notes
 
+## MCP 1.15.0 — 2026-10-27
+
+- Supports MCP protocol 2026-07-28 (SDK v2); 2025-era `initialize` clients keep working. `User-Agent: brewpage-mcp/1.15.0`; pins bumped. No contract change.
+
 ## API contract 2.8.1 — 2026-10-27
 
 - API contract version 2.8.1 is the backend-generated public snapshot exported from the clean brewpage-app source `d88f5f1d09768ca099cf55aee887bfc6e80efbc7` (tag `v2.8.1`).

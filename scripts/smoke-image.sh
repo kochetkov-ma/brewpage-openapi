@@ -14,8 +14,8 @@ for (let i = 0; ; i++) {
   if (i >= 30) { console.error("healthz not ready"); process.exit(1); }
   await new Promise((r) => setTimeout(r, 1000));
 }
-const post = async (body) => {
-  const res = await fetch(base + "/mcp", { method: "POST", headers: { "Content-Type": "application/json", "Accept": "application/json, text/event-stream", "X-Forwarded-For": "203.0.113.7" }, body: JSON.stringify(body) });
+const post = async (body, extra = {}) => {
+  const res = await fetch(base + "/mcp", { method: "POST", headers: { "Content-Type": "application/json", "Accept": "application/json, text/event-stream", "X-Forwarded-For": "203.0.113.7", ...extra }, body: JSON.stringify(body) });
   return { status: res.status, json: await res.json() };
 };
 const init = await post({ jsonrpc: "2.0", id: 1, method: "initialize", params: { protocolVersion: "2025-06-18", capabilities: {}, clientInfo: { name: "smoke", version: "0" } } });
@@ -23,7 +23,11 @@ if (init.status !== 200) { console.error("initialize HTTP " + init.status); proc
 if (init.json.result.serverInfo.version !== version) { console.error("serverInfo.version " + init.json.result.serverInfo.version + " != " + version); process.exit(1); }
 const list = await post({ jsonrpc: "2.0", id: 2, method: "tools/list" });
 if (list.status !== 200 || list.json.result.tools.length !== 20) { console.error("tools/list HTTP " + list.status + ", tools " + list.json.result?.tools?.length + ", expected 20"); process.exit(1); }
-console.log("image smoke ok: serverInfo.version=" + version + " tools=20");
+const modern = "2026-07-28";
+const meta = { _meta: { "io.modelcontextprotocol/protocolVersion": modern, "io.modelcontextprotocol/clientInfo": { name: "smoke", version: "0" }, "io.modelcontextprotocol/clientCapabilities": {} } };
+const disc = await post({ jsonrpc: "2.0", id: 3, method: "server/discover", params: meta }, { "MCP-Protocol-Version": modern, "Mcp-Method": "server/discover" });
+if (disc.status !== 200 || !disc.json.result?.supportedVersions?.includes(modern)) { console.error("server/discover HTTP " + disc.status + ", supportedVersions " + JSON.stringify(disc.json.result?.supportedVersions) + ", expected " + modern); process.exit(1); }
+console.log("image smoke ok: serverInfo.version=" + version + " tools=20 discover=" + modern);
 '
 if ! docker exec "$NAME" node --input-type=module -e "$PROBE" "$VERSION"; then
   docker logs "$NAME" || true
