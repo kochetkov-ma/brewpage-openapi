@@ -6,6 +6,10 @@ order: 5
 
 # Changelog
 
+## MCP 1.14.5 — Upload error hints
+
+The site tools also explain a 400 for a PDF/Office file that is unreadable, password-protected or too complex, and a 503 when busy. A failed publish on 503 prints the `Retry-After` wait.
+
 ## MCP 1.14.4 — Sturdier remote endpoint
 
 The remote endpoint keeps each request's capacity until its tool finishes, cancels work when a client disconnects, and queues bursts briefly instead of refusing them. Requests up to 32 MiB fit the largest site upload. Tools are unchanged.
