@@ -2234,7 +2234,7 @@
       "PublishNotice": {
         "properties": {
           "code": {
-            "description": "Kebab-case, e.g. ttl-clamped, namespace-defaulted, secret-detected, manage-link-disabled, visibility-not-listable, extend-needs-profile, rotate-still-listed.",
+            "description": "Kebab-case, e.g. ttl-clamped, namespace-defaulted, secret-detected, manage-link-disabled, visibility-not-listable, extend-needs-profile, rotate-still-listed, archive-unverified (archive: check contents before opening).",
             "type": "string"
           },
           "message": {
@@ -3258,7 +3258,7 @@
     },
     "termsOfService": "https://brewpage.app/terms",
     "title": "BrewPage API",
-    "version": "2.6.0"
+    "version": "2.7.0"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -3618,7 +3618,18 @@
                 }
               }
             },
-            "description": "File content"
+            "description": "File content",
+            "headers": {
+              "X-BrewPage-Notice": {
+                "description": "Archives only: contents unverified; check before opening.",
+                "schema": {
+                  "enum": [
+                    "archive-unverified"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
           },
           "308": {
             "content": {

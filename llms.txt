@@ -20,6 +20,7 @@ Public contract snapshots, documentation and the BrewPage MCP server. The backen
 
 ## Recent contract changes
 
+- 2.7.0 (matches backend v2.7.0): `POST /api/files` and `PUT /api/files/{ns}/{id}` add notice `archive-unverified` for archives (zip, 7z, gz, tar, tgz): check contents before opening; `GET /api/files/{ns}/{id}` sends header `X-BrewPage-Notice: archive-unverified` on archives. Additive: 47 paths and 62 operations.
 - 2.6.0 (matches backend v2.6.0): `POST /api/html` and `PUT /api/html/{ns}/{id}` responses add optional `format`: stored format after auto-detect (`html`, `markdown` or a code format); may differ from the requested one. Additive: 47 paths and 62 operations.
 - 2.5.0 (matches backend v2.5.0): `GET /api/stats` adds nullable `accountsToday` (accounts created today, `tz` day) and `totalAccounts` (all-time). Additive: 47 paths and 62 operations.
 - 2.3.1 (matches backend v2.3.1): `ErrorResponse.createUrl` on `409 OLD_PUBLICATION_READ_ONLY` for every type: the same-namespace create endpoint (`/api/{html|sites|files|json|kv}?ns={ns}`); POST the content there to publish it anew. `republishUrl` (HTML only) is the browser composer. Additive: 47 paths and 62 operations.
