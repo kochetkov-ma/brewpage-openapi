@@ -687,11 +687,12 @@ for (const scenario of [
   });
 }
 
-const OLD_READ_ONLY_BODY = {
-  status: 409, error: "Conflict", message: "Made before 5 October 2026: read-only. Publish it anew; the old link keeps working.",
+const oldReadOnlyBody = (segment: string) => ({
+  status: 409, error: "Conflict",
+  message: `Made before 5 October 2026: read-only. Publish a new copy: POST /api/${segment}; the old link keeps working.`,
   code: "OLD_PUBLICATION_READ_ONLY",
-};
-const OLD_HTML_BODY = { ...OLD_READ_ONLY_BODY, republishUrl: "https://brewpage.app/?republish=public/aBcDeFgHiJ",
+});
+const OLD_HTML_BODY = { ...oldReadOnlyBody("html"), republishUrl: "https://brewpage.app/?republish=public/aBcDeFgHiJ",
   createUrl: "https://brewpage.app/api/html?ns=public" };
 const VIA_TOOL = "The content can be published anew in the same namespace.";
 const viaCreateUrl = (url: string) => `createUrl (${url}) is the create endpoint for publishing the content anew in that namespace.`;
@@ -700,11 +701,11 @@ for (const scenario of [
   { tool: "update_html", operation: "update HTML", args: { content: "x" }, body: OLD_HTML_BODY,
     how: viaCreateUrl("https://brewpage.app/api/html?ns=public"), extra: " republishUrl is a browser-only composer link." },
   { tool: "republish_site", operation: "republish site", args: { entryContent: "<h1>x</h1>" },
-    body: { ...OLD_READ_ONLY_BODY, createUrl: "https://brewpage.app/api/sites?ns=public" },
+    body: { ...oldReadOnlyBody("sites"), createUrl: "https://brewpage.app/api/sites?ns=public" },
     how: viaCreateUrl("https://brewpage.app/api/sites?ns=public"), extra: "" },
-  { tool: "update_json", operation: "update JSON", args: { json: { a: 1 } }, body: OLD_READ_ONLY_BODY, how: VIA_TOOL, extra: "" },
+  { tool: "update_json", operation: "update JSON", args: { json: { a: 1 } }, body: oldReadOnlyBody("json"), how: VIA_TOOL, extra: "" },
   { tool: "set_kv", operation: "set KV", args: { key: "k", value: "v" },
-    body: { ...OLD_READ_ONLY_BODY, createUrl: "https://brewpage.app/api/kv?ns=public" }, how: viaCreateUrl("https://brewpage.app/api/kv?ns=public"),
+    body: { ...oldReadOnlyBody("kv"), createUrl: "https://brewpage.app/api/kv?ns=public" }, how: viaCreateUrl("https://brewpage.app/api/kv?ns=public"),
     extra: " A new KV store holds only the keys published to it." },
 ]) {
   test(`${scenario.tool} turns 409 OLD_PUBLICATION_READ_ONLY into a publish-anew hint`, { timeout: 10_000 }, async (t) => {
