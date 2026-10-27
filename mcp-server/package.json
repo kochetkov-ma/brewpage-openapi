@@ -1,6 +1,6 @@
 {
   "name": "brewpage-mcp",
-  "version": "1.14.5",
+  "version": "1.15.0",
   "mcpName": "io.github.kochetkov-ma/brewpage-mcp",
   "description": "MCP server for BrewPage — publish and manage HTML, sites, KV, JSON and files from AI assistants",
   "type": "module",
@@ -22,7 +22,7 @@
     "start": "node dist/index.js",
     "start:http": "node dist/http.js",
     "dev": "tsx src/index.ts",
-    "test": "npm run build && node --import tsx --test test/smoke.test.ts test/http.test.ts",
+    "test": "npm run build && node --import tsx --test test/smoke.test.ts test/http.test.ts test/protocol.test.ts",
     "prepublishOnly": "npm run build"
   },
   "keywords": [
@@ -54,21 +54,18 @@
     "url": "https://github.com/kochetkov-ma/brewpage-openapi/issues"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "1.29.0",
-    "zod": "3.25.76"
+    "@modelcontextprotocol/node": "2.1.2",
+    "@modelcontextprotocol/server": "2.4.0",
+    "zod": "4.6.7"
   },
   "devDependencies": {
+    "@modelcontextprotocol/client": "2.4.0",
     "@types/node": "22.19.15",
     "tsx": "4.22.0",
     "typescript": "5.9.3"
   },
   "overrides": {
     "@hono/node-server": "1.19.15",
-    "body-parser": "2.3.0",
-    "fast-uri": "3.1.8",
-    "hono": "4.13.7",
-    "ip-address": "10.7.1",
-    "proxy-addr": "2.0.8",
-    "qs": "6.16.0"
+    "hono": "4.13.14"
   }
 }

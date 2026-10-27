@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { serveStdio } from "@modelcontextprotocol/server/stdio";
 import { createServer, DEFAULT_BASE_URL, OWNER_TOKEN_ENV } from "./tools.js";
 
 const OWNER_TOKEN_SHAPE = /^[A-Za-z0-9]{32}$/;
@@ -14,13 +14,5 @@ const ENV_OWNER_TOKEN = ((): string | undefined => {
   return undefined;
 })();
 
-async function main() {
-  const server = createServer({ baseUrl: process.env.BREWPAGE_URL || DEFAULT_BASE_URL, ownerToken: ENV_OWNER_TOKEN });
-  const transport = new StdioServerTransport();
-  await server.connect(transport);
-}
-
-main().catch((error) => {
-  console.error("Fatal error:", error);
-  process.exit(1);
-});
+/** Serves 2026-07-28 (server/discover) and 2025-era initialize openings from one factory. */
+serveStdio(() => createServer({ baseUrl: process.env.BREWPAGE_URL || DEFAULT_BASE_URL, ownerToken: ENV_OWNER_TOKEN }));

@@ -1,9 +1,8 @@
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import type { ToolAnnotations } from "@modelcontextprotocol/sdk/types.js";
+import { McpServer, type ToolAnnotations } from "@modelcontextprotocol/server";
 import { z } from "zod";
 
 export const DEFAULT_BASE_URL = "https://brewpage.app";
-export const USER_AGENT = "brewpage-mcp/1.14.5";
+export const USER_AGENT = "brewpage-mcp/1.15.0";
 export const OWNER_TOKEN_ENV = "BREWPAGE_OWNER_TOKEN";
 
 export interface ServerOptions {
@@ -233,7 +232,7 @@ export function createServer(options: ServerOptions = {}): McpServer {
   const apiFetch = options.fetch ?? fetch;
   const server = new McpServer({
     name: "brewpage-mcp",
-    version: "1.14.5",
+    version: "1.15.0",
   });
 
   /** Caller argument first, then the configured default; `fromEnv` marks the configured one. */
@@ -865,7 +864,7 @@ export function createServer(options: ServerOptions = {}): McpServer {
       inputSchema: {
         deliveryMode: DELIVERY_MODE_SCHEMA,
         json: z
-          .union([z.string(), z.record(z.unknown()), z.array(z.unknown())])
+          .union([z.string(), z.record(z.string(), z.unknown()), z.array(z.unknown())])
           .describe("JSON document to publish (object, array, or JSON-encoded string)"),
         namespace: z
           .string()
@@ -984,7 +983,7 @@ export function createServer(options: ServerOptions = {}): McpServer {
         namespace: z.string().describe("Document namespace"),
         id: z.string().describe("Document ID"),
         json: z
-          .union([z.string(), z.record(z.unknown()), z.array(z.unknown())])
+          .union([z.string(), z.record(z.string(), z.unknown()), z.array(z.unknown())])
           .describe("New JSON document (object, array, or JSON-encoded string)"),
         ownerToken: z.string().optional().describe(OWNER_TOKEN_DESCRIPTION),
       },

@@ -6,10 +6,8 @@ import { lookup as dnsLookup, type LookupAddress, type LookupOptions } from "nod
 import { BlockList, isIP } from "node:net";
 import { realpathSync } from "node:fs";
 import { pathToFileURL } from "node:url";
-import { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
-import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
-import type { JSONRPCMessage } from "@modelcontextprotocol/sdk/types.js";
+import { createMcpHandler, InMemoryTransport, isLegacyRequest, LATEST_PROTOCOL_VERSION, type JSONRPCMessage } from "@modelcontextprotocol/server";
+import { NodeStreamableHTTPServerTransport, toWebRequest } from "@modelcontextprotocol/node";
 import { createServer, OWNER_TOKEN_ENV, USER_AGENT } from "./tools.js";
 
 const MIB = 1024 * 1024;
@@ -57,6 +55,7 @@ const VERSION = USER_AGENT.split("/")[1];
 const REMOTE_USER_AGENT = `${USER_AGENT} (remote)`;
 const PARSE_ERROR = -32700;
 const INVALID_REQUEST = -32600;
+const METHOD_NOT_FOUND = -32601;
 const SERVER_ERROR = -32000;
 
 type LogFields = Record<string, string | number | null>;
@@ -346,17 +345,36 @@ function readBody(req: IncomingMessage, limit: number, onLarge: () => boolean): 
   });
 }
 
-/** Tool names from an in-memory handshake; logs name only these. */
+/** Tool names from an in-memory 2025 handshake (raw JSON-RPC, no client package); logs name only these. */
 async function registeredToolNames(): Promise<Set<string>> {
   const [clientSide, serverSide] = InMemoryTransport.createLinkedPair();
   const server = createServer({ baseUrl: "http://127.0.0.1:9" });
-  const client = new Client({ name: "startup", version: VERSION });
+  const answers = new Map<number, (message: JSONRPCMessage) => void>();
+  clientSide.onmessage = (message) => {
+    if ("id" in message && typeof message.id === "number") answers.get(message.id)?.(message);
+  };
+  const call = (id: number, method: string, params: Record<string, unknown>) => new Promise<JSONRPCMessage>((resolve) => {
+    answers.set(id, resolve);
+    void clientSide.send({ jsonrpc: "2.0", id, method, params });
+  });
   await server.connect(serverSide);
-  await client.connect(clientSide);
-  const { tools } = await client.listTools();
-  await client.close();
+  await clientSide.start();
+  await call(1, "initialize", { protocolVersion: LATEST_PROTOCOL_VERSION, capabilities: {}, clientInfo: { name: "startup", version: VERSION } });
+  await clientSide.send({ jsonrpc: "2.0", method: "notifications/initialized" });
+  const listed = await call(2, "tools/list", {});
+  await clientSide.close();
   await server.close();
+  const tools = ("result" in listed ? (listed.result as { tools?: Array<{ name: string }> }).tools : undefined) ?? [];
+  if (tools.length === 0) throw new Error("tools/list returned no tools");
   return new Set(tools.map(({ name }) => name));
+}
+
+/** Tool-level outcome of one JSON-RPC answer; undefined = success. */
+function rpcOutcome(outgoing: unknown): string | undefined {
+  if (outgoing === null || typeof outgoing !== "object") return undefined;
+  if ("error" in outgoing) return "rpc_error";
+  const result = (outgoing as { result?: { isError?: unknown } | null }).result;
+  return result?.isError === true ? "tool_error" : undefined;
 }
 
 /** Slot pool: global limit with a FIFO wait queue, plus a per-client cap (client undefined = shared egress, no cap). */
@@ -523,6 +541,15 @@ async function main(): Promise<void> {
       const toolName = rpc.method === "tools/call" ? rpc.params?.name : undefined;
       entry.method = typeof rpc.method === "string" ? rpc.method.slice(0, MAX_LOGGED_METHOD) : null;
       entry.tool = rpc.method === "tools/call" ? (typeof toolName === "string" && toolNames.has(toolName) ? toolName : "unknown") : null;
+      // Stateless: no server-push streams, as the 2025 GET stream (405); a refused auto-open never fails a connect.
+      if (rpc.method === "subscriptions/listen") {
+        const id = (message as { id?: unknown }).id;
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ jsonrpc: "2.0", id: typeof id === "string" || typeof id === "number" ? id : null,
+          error: { code: METHOD_NOT_FOUND, message: "subscriptions/listen is not supported by this stateless endpoint." } }));
+        entry.outcome = "rpc_error";
+        return;
+      }
       const isLight = rpc.method !== "tools/call" || (typeof toolName === "string" && LIGHT_TOOLS.has(toolName));
       if (toolName === "publish_file" && slot !== heavy && !(await acquire(heavy))) return busy();
       if (slot === light && !isLight && !(await acquire(standard))) return busy();
@@ -540,11 +567,32 @@ async function main(): Promise<void> {
           : Promise.reject(new Error("Download limit reached for this address; try again in a few minutes.")),
         fetch: callBackend,
       });
-      const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined, enableJsonResponse: true });
+      const request = await toWebRequest(req, message, { signal: abort.signal });
+      if (!(await isLegacyRequest(request, message))) {
+        // 2026-07-28 envelope: one exchange through the SDK entry; any SSE body is read to its end.
+        const modern = createMcpHandler(() => server, { legacy: "reject" });
+        try {
+          const response = await modern.fetch(request, { parsedBody: message });
+          const text = await response.text();
+          if ((response.headers.get("content-type") ?? "").startsWith("application/json")) {
+            try {
+              entry.outcome = rpcOutcome(JSON.parse(text)) ?? null;
+            } catch {
+              entry.outcome = null;
+            }
+          }
+          res.writeHead(response.status, Object.fromEntries(response.headers.entries()));
+          res.end(text);
+        } finally {
+          await modern.close();
+          await server.close();
+        }
+        return;
+      }
+      const transport = new NodeStreamableHTTPServerTransport({ sessionIdGenerator: undefined, enableJsonResponse: true });
       const send = transport.send.bind(transport);
       transport.send = (outgoing: JSONRPCMessage, options) => {
-        if ("error" in outgoing) entry.outcome = "rpc_error";
-        else if ("result" in outgoing && (outgoing.result as { isError?: unknown }).isError === true) entry.outcome = "tool_error";
+        entry.outcome = rpcOutcome(outgoing) ?? entry.outcome;
         return send(outgoing, options);
       };
       try {
