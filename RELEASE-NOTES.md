@@ -1,5 +1,10 @@
 # Release Notes
 
+## API contract 2.8.5 — 2026-10-27
+
+- API contract version 2.8.5 is the backend-generated public snapshot exported from the clean brewpage-app source `977108436fecfc053f7a51afb8641182256586a7` (tag `v2.8.5`).
+- `GET /api/publications` items (`PublicationListItemResponse`) add required boolean `readOnly`; `GET /api/{type}/{ns}/{id}/hosting` (`HostingReadResponse`) adds optional `readOnly`: an old publication refuses edits, publish a new one. `info.description` adds "Agents: remote MCP at https://brewpage.app/mcp (no auth)." Additive: 47 paths and 62 operations; MCP unchanged.
+
 ## MCP 1.15.0 — 2026-10-27
 
 - Supports MCP protocol 2026-07-28 (SDK v2); 2025-era `initialize` clients keep working. `User-Agent: brewpage-mcp/1.15.0`; pins bumped. No contract change.

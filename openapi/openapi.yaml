@@ -554,6 +554,9 @@ components:
           type: string
         ownerLink:
           type: string
+        readOnly:
+          description: 'Old publication: edits refused; publish a new one.'
+          type: boolean
         requestedDeliveryMode:
           type:
             - string
@@ -1553,6 +1556,9 @@ components:
         preview:
           oneOf:
             - $ref: '#/components/schemas/PublicationPreviewResponse'
+        readOnly:
+          description: 'Old publication: edits refused; publish a new one.'
+          type: boolean
         status:
           description: public, hidden, private, password or unavailable
           type: string
@@ -1570,6 +1576,7 @@ components:
         - id
         - listed
         - namespace
+        - readOnly
         - status
         - type
         - views
@@ -2503,13 +2510,14 @@ info:
     excluded. A private link is not a lock: anyone with it can open it; add a password to restrict. Secrets allowed;
     likely ones are flagged in notices. For a secret: private namespace + password. Retain returned links and owner
     tokens. manageUrl is private: give it only to the owner, never publish it. How BrewPage compares with GitHub Pages,
-    GitHub Gist, Netlify Drop, Cloudflare Drop, Tiiny Host and Static.app: https://brewpage.app/compare.
+    GitHub Gist, Netlify Drop, Cloudflare Drop, Tiiny Host and Static.app: https://brewpage.app/compare. Agents: remote
+    MCP at https://brewpage.app/mcp (no auth).
   license:
     name: Apache-2.0
     url: https://www.apache.org/licenses/LICENSE-2.0
   termsOfService: https://brewpage.app/terms
   title: BrewPage API
-  version: 2.8.1
+  version: 2.8.5
 openapi: 3.1.0
 paths:
   /api/files:
