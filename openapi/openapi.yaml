@@ -2517,7 +2517,7 @@ info:
     url: https://www.apache.org/licenses/LICENSE-2.0
   termsOfService: https://brewpage.app/terms
   title: BrewPage API
-  version: 2.8.5
+  version: 2.8.9
 openapi: 3.1.0
 paths:
   /api/files:
@@ -2807,6 +2807,12 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
           description: File not found or expired
+        '410':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Public publication deleted or expired
       security:
         - {}
         - OwnerToken: []
@@ -3300,6 +3306,12 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
           description: Page not found or expired
+        '410':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Public publication deleted or expired
       security:
         - {}
         - OwnerToken: []
@@ -3765,6 +3777,12 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
           description: Document not found or expired
+        '410':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Public publication deleted or expired
       security:
         - {}
         - OwnerToken: []
@@ -4061,6 +4079,12 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
           description: Store not found or expired
+        '410':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Public publication deleted or expired
       security:
         - {}
         - OwnerToken: []
@@ -4180,6 +4204,12 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
           description: Store or key not found
+        '410':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Public publication deleted or expired
       security:
         - {}
         - OwnerToken: []
@@ -5272,6 +5302,12 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
           description: Site or file not found
+        '410':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Public publication deleted or expired
       security:
         - {}
         - OwnerToken: []

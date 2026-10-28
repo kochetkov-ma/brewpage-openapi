@@ -20,6 +20,7 @@ Public contract snapshots, documentation and the BrewPage MCP server. The backen
 
 ## Recent contract changes
 
+- 2.8.9 (matches backend v2.8.9): `GET /api/html/{ns}/{id}`, `/api/json/{ns}/{id}`, `/api/kv/{ns}/{id}`, `/api/kv/{ns}/{id}/{key}`, `/api/files/{ns}/{id}` and `/api/sites/{ns}/{id}/files/{filePath}` add `410` (`ErrorResponse`): a public publication was deleted or expired. Additive: 47 paths and 62 operations.
 - 2.8.5 (matches backend v2.8.5): `GET /api/publications` items add required boolean `readOnly`; `GET /api/{type}/{ns}/{id}/hosting` adds optional `readOnly`: an old publication refuses edits, publish a new one. `info.description` points agents to the remote MCP at https://brewpage.app/mcp (no auth). Additive: 47 paths and 62 operations.
 - 2.8.1 (matches backend v2.8.1): `POST /api/html`, `POST /api/files`, `PUT /api/files/{ns}/{id}`, `POST /api/sites` and `PUT /api/sites/{ns}/{id}`: `400` PDF/Office case now reads unreadable or password-protected (no longer too complex). Description only: 47 paths and 62 operations.
 - 2.8.0 (matches backend v2.8.0): `POST /api/html`, `POST /api/files`, `PUT /api/files/{ns}/{id}`, `POST /api/sites` and `PUT /api/sites/{ns}/{id}`: `400` also covers a PDF/Office file that is unreadable, password-protected or too complex; new `503` (`ErrorResponse`) when busy, retry after `Retry-After` seconds. Sites accept `.docm`, `.xlsm`, `.pptm` (`GET /api/limits`). Additive: 47 paths and 62 operations.

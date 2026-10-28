@@ -1,5 +1,10 @@
 # Release Notes
 
+## API contract 2.8.9 — 2026-10-28
+
+- API contract version 2.8.9 is the backend-generated public snapshot exported from the clean brewpage-app source `aa90d5efb3d40ea003adc0587859efd78658b049` (tag `v2.8.9`).
+- `GET /api/html/{ns}/{id}`, `/api/json/{ns}/{id}`, `/api/kv/{ns}/{id}`, `/api/kv/{ns}/{id}/{key}`, `/api/files/{ns}/{id}` and `/api/sites/{ns}/{id}/files/{filePath}` add `410` (`ErrorResponse`): a public publication was deleted or expired. Additive: 47 paths and 62 operations; MCP unchanged.
+
 ## MCP 1.15.1 — 2026-10-27
 
 - `publish_site` and `republish_site` texts match contract 2.8.5 PDF/Office errors: 400 = a PDF/Office file unreadable or password-protected (no longer too complex). `User-Agent: brewpage-mcp/1.15.1`; pins bumped. No contract change.
