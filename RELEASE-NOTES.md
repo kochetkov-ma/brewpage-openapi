@@ -1,5 +1,10 @@
 # Release Notes
 
+## API contract 2.8.10 — 2026-10-28
+
+- API contract version 2.8.10 is the backend-generated public snapshot exported from the clean brewpage-app source `0b9a7a1c60759623eea77d09ce96a91d5a2e47b6` (tag `v2.8.10`).
+- `POST /api/files`, `/api/json`, `/api/kv` and `/api/sites` descriptions end their own sentence before the secrets rule; the `Files` tag names the 20 MB video limit. Description only: 47 paths and 62 operations; MCP unchanged.
+
 ## API contract 2.8.9 — 2026-10-28
 
 - API contract version 2.8.9 is the backend-generated public snapshot exported from the clean brewpage-app source `aa90d5efb3d40ea003adc0587859efd78658b049` (tag `v2.8.9`).

@@ -2517,7 +2517,7 @@ info:
     url: https://www.apache.org/licenses/LICENSE-2.0
   termsOfService: https://brewpage.app/terms
   title: BrewPage API
-  version: 2.8.9
+  version: 2.8.10
 openapi: 3.1.0
 paths:
   /api/files:
@@ -2563,7 +2563,7 @@ paths:
         entities under one owner. A UTF-8 .html/.htm file sent to namespace 'public' without a password is published as
         an HTML page (same rules and limits as POST /api/html): link and ownerLink point to the page, notice
         'html-file-as-page'. Any other HTML file is stored as a file and shown as source, notice 'html-file-as-source';
-        to publish such a page use POST /api/html Secrets allowed; likely ones are flagged in notices. For a secret:
+        to publish such a page use POST /api/html. Secrets allowed; likely ones are flagged in notices. For a secret:
         private namespace + password.
       operationId: upload
       parameters:
@@ -3594,8 +3594,8 @@ paths:
         - JSON
     post:
       description: >-
-        Stores any valid JSON and returns a shareable link. Reuse existing owner token to group entities under one owner
-        Secrets allowed; likely ones are flagged in notices. For a secret: private namespace + password.
+        Stores any valid JSON and returns a shareable link. Reuse existing owner token to group entities under one
+        owner. Secrets allowed; likely ones are flagged in notices. For a secret: private namespace + password.
       operationId: create
       parameters:
         - description: >-
@@ -3894,7 +3894,7 @@ paths:
     post:
       description: >-
         Creates a new store with an initial key-value pair and returns a shareable link. Reuse existing owner token to
-        group entities under one owner Secrets allowed; likely ones are flagged in notices. For a secret: private
+        group entities under one owner. Secrets allowed; likely ones are flagged in notices. For a secret: private
         namespace + password.
       operationId: createStore
       parameters:
@@ -4850,7 +4850,7 @@ paths:
     post:
       description: >-
         Upload a multi-file HTML site as a ZIP archive or as individual files with paths. Returns a link to the
-        published site Secrets allowed; likely ones are flagged in notices. For a secret: private namespace + password.
+        published site. Secrets allowed; likely ones are flagged in notices. For a secret: private namespace + password.
       operationId: uploadSite
       parameters:
         - description: >-
@@ -6335,9 +6335,9 @@ tags:
     name: Stats
   - description: Fresh, collision-free namespace suggestions
     name: Namespace
+  - description: File hosting up to 5 MB per file (video 20 MB), 1000 files per namespace
+    name: Files
   - description: Owner-only publication delivery settings
     name: Hosting Management
-  - description: File hosting up to 5 MB per file, 1000 files per namespace
-    name: Files
   - description: Abuse reports for hosted content
     name: Reports
