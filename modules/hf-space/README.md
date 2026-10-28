@@ -29,7 +29,7 @@ The `brewpage-mcp` server exposes twenty typed MCP tools; six are shown below, s
 
 ## Install
 
-The MCP server is published to npm as [`brewpage-mcp`](https://www.npmjs.com/package/brewpage-mcp) (pinned to `1.9.2`). All snippets below use `npx` to fetch and execute the pinned version on demand.
+Install the pinned MCP package shown below. All snippets use `npx` to fetch and execute that version on demand.
 
 ### Claude Desktop
 
