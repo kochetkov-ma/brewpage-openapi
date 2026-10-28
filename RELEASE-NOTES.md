@@ -1,5 +1,10 @@
 # Release Notes
 
+## API contract 2.8.16 — 2026-10-28
+
+- API contract version 2.8.16 is the backend-generated public snapshot exported from the clean brewpage-app source `daf06ffe8892d3a6535bdbdf5e3332b526b78781` (tag `v2.8.16`).
+- `GET /api/{type}/{ns}/{id}/hosting` adds optional `format`: page format (html, markdown, code formats) or file MIME type; absent for sites, JSON and KV. Additive: 47 paths and 62 operations; MCP unchanged.
+
 ## API contract 2.8.10 — 2026-10-28
 
 - API contract version 2.8.10 is the backend-generated public snapshot exported from the clean brewpage-app source `0b9a7a1c60759623eea77d09ce96a91d5a2e47b6` (tag `v2.8.10`).

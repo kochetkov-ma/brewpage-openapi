@@ -20,6 +20,7 @@ Public contract snapshots, documentation and the BrewPage MCP server. The backen
 
 ## Recent contract changes
 
+- 2.8.16 (matches backend v2.8.16): `GET /api/{type}/{ns}/{id}/hosting` adds optional `format`: page format (html, markdown, code formats) or file MIME type; absent for sites, JSON and KV. Additive: 47 paths and 62 operations.
 - 2.8.10 (matches backend v2.8.10): `POST /api/files`, `/api/json`, `/api/kv` and `/api/sites` descriptions end their own sentence before the secrets rule; the `Files` tag names the 20 MB video limit. Description only: 47 paths and 62 operations.
 - 2.8.9 (matches backend v2.8.9): `GET /api/html/{ns}/{id}`, `/api/json/{ns}/{id}`, `/api/kv/{ns}/{id}`, `/api/kv/{ns}/{id}/{key}`, `/api/files/{ns}/{id}` and `/api/sites/{ns}/{id}/files/{filePath}` add `410` (`ErrorResponse`): a public publication was deleted or expired. Additive: 47 paths and 62 operations.
 - 2.8.5 (matches backend v2.8.5): `GET /api/publications` items add required boolean `readOnly`; `GET /api/{type}/{ns}/{id}/hosting` adds optional `readOnly`: an old publication refuses edits, publish a new one. `info.description` points agents to the remote MCP at https://brewpage.app/mcp (no auth). Additive: 47 paths and 62 operations.

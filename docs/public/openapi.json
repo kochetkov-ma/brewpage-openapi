@@ -695,6 +695,13 @@
               "null"
             ]
           },
+          "format": {
+            "description": "Page format (html, markdown, code formats) or file MIME type; absent for sites, JSON and KV",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "hostingVersion": {
             "format": "int64",
             "type": [
@@ -3267,7 +3274,7 @@
     },
     "termsOfService": "https://brewpage.app/terms",
     "title": "BrewPage API",
-    "version": "2.8.10"
+    "version": "2.8.16"
   },
   "openapi": "3.1.0",
   "paths": {
