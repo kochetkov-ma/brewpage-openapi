@@ -1,5 +1,10 @@
 # Release Notes
 
+## API contract 2.8.31 — 2026-10-29
+
+- API contract version 2.8.31 is the backend-generated public snapshot exported from brewpage-app source `a83dac9b4e598536ab3a835994d32056e70371fc` (tag `v2.8.31`), clean tree.
+- `POST /api/html` response (`HtmlUploadResponse`) adds optional `title`: the stored title (`<title>`, else first heading or text; code formats: filename or a short kind such as `JS snippet`); absent when none. Additive: 47 paths and 62 operations.
+
 ## MCP 1.15.4 — 2026-10-29
 
 - `publish_html` title and description name HTML, Markdown, code or JSON and say the server detects the format when it is omitted; `update_html` texts likewise. `User-Agent: brewpage-mcp/1.15.4`; pins bumped.
