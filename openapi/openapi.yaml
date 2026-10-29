@@ -1516,7 +1516,7 @@ components:
           format: int32
           type: integer
         reach:
-          description: '`profile` when the token is active in a profile, else `token`'
+          description: '`profile` only for an X-Owner-Token active in a profile; else `token`, also without a token'
           enum:
             - token
             - profile
@@ -1860,9 +1860,9 @@ components:
       properties:
         code:
           description: >-
-            Kebab-case, e.g. ttl-clamped, namespace-defaulted, secret-detected, manage-link-disabled,
-            visibility-not-listable, extend-needs-profile, rotate-still-listed, archive-unverified (archive: check
-            contents before opening).
+            Kebab-case, e.g. ttl-clamped, namespace-defaulted, secret-detected, visibility-not-listable,
+            extend-needs-profile, rotate-still-listed, credential-published (token or manage link in public content:
+            remove it, reset it), archive-unverified (archive: check contents before opening).
           type: string
         message:
           type: string
@@ -2647,7 +2647,7 @@ info:
     url: https://www.apache.org/licenses/LICENSE-2.0
   termsOfService: https://brewpage.app/terms
   title: BrewPage API
-  version: 2.8.36
+  version: 2.8.38
 openapi: 3.1.0
 paths:
   /api/files:
@@ -4428,8 +4428,9 @@ paths:
       description: >-
         Returns the size, count, TTL and file-type limits for HTML, JSON, KV, files and sites. Sizes are bytes;
         `maxTotalBytes` counts uncompressed files, `maxArchiveExpansionBytes` every inflated ZIP byte including skipped
-        system files (`skippedFileNames`, `skippedRootFolders`), which never count toward the limits. With
-        `X-Owner-Token`: `reach`, `ownerMaxTtlDays`; an unusable token gets the anonymous answer.
+        system files (`skippedFileNames`, `skippedRootFolders`), which never count toward the limits. `reach` is always
+        sent: `profile` only for an `X-Owner-Token` active in a profile, else `token`; `ownerMaxTtlDays` only for a
+        usable `X-Owner-Token`; an unusable token gets the anonymous answer.
       operationId: getLimits
       parameters:
         - description: Optional owner token

@@ -1,5 +1,10 @@
 # Release Notes
 
+## API contract 2.8.38 — 2026-10-29
+
+- API contract version 2.8.38 is the backend-generated public snapshot exported from brewpage-app source `e5258ce8acdd3857d605d15db003bcb86ed99094` (tag `v2.8.38`; the backend source of tag `v2.8.37`, which deployed 2.8.36 images), clean tree.
+- `GET /api/limits`: `reach` is always sent (`profile` only for an `X-Owner-Token` active in a profile, else `token`, also without a token); `ownerMaxTtlDays` only for a usable token. Notice `code` examples add `credential-published` (token or manage link in public content: remove it, reset it) and drop `manage-link-disabled`. Description only: 47 paths and 62 operations.
+
 ## MCP 1.16.0 — 2026-10-29
 
 - `get_limits` accepts optional `ownerToken` (sent as `X-Owner-Token`; default `BREWPAGE_OWNER_TOKEN`, local server only), so remote `/mcp` clients also get `reach` and `ownerMaxTtlDays`. Publish results open with `SECURITY ALERT (credential-published): …` when public content holds a live BrewPage token or manage link. Wording: limits `reach`, local-only env token, MiB. `User-Agent: brewpage-mcp/1.16.0`; pins bumped.
