@@ -1,5 +1,9 @@
 # Release Notes
 
+## MCP 1.15.3 — 2026-10-29
+
+- `publish_html` `format` no longer defaults to `HTML`: omitted, no `format` is sent and the server detects HTML, Markdown, code or JSON (contract 2.8.27, notice `format-detected`); a given value passes through, `html` keeps code/JSON as HTML. `update_html` already omits it (stored format kept). `User-Agent: brewpage-mcp/1.15.3`; pins bumped.
+
 ## API contract 2.8.27 — 2026-10-29
 
 - API contract version 2.8.27 is the backend-generated public snapshot exported from brewpage-app source `0ca7bdabc1bd6edeb713f3bd6d7c9f751927b049` (tag `v2.8.27`); `backendDirty: true` only because the tag's stale `PublicOpenApiIntegrationTest` format expectation was patched for the export (main sources unchanged, fix committed upstream).

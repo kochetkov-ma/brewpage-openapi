@@ -173,7 +173,6 @@ test("omitted namespace stays generated private and omitted delivery stays absen
   // THEN established private default remains independent of hosting.
   const requestUrl = new URL(f.requests[0].url, f.baseUrl);
   assert.match(requestUrl.searchParams.get("ns") ?? "", /^priv-[a-z0-9]{6}$/, "query namespace remains a generated private slug");
-  assert.equal(requestUrl.searchParams.get("format"), "html", "default format uses the backend lowercase query value");
   assert.equal(requestUrl.searchParams.has("ttl"), false, "omitted TTL retains the backend default");
   assert.deepEqual(JSON.parse(f.requests[0].body), { content: "<p>Unlisted fixture</p>" }, "JSON contains only the supported content field");
   assert.equal(f.requests[0].headers["x-password"], undefined, "omitted password remains absent");
@@ -205,6 +204,21 @@ for (const scenario of [
     assert.equal(file.name, "transport-fixture.txt", "caller filename stays in multipart metadata");
     assert.equal(await file.text(), "fixture file bytes", "source file bytes remain exact");
     assert.equal(result.isError, undefined, "corrected file transport succeeds");
+  });
+}
+
+for (const scenario of [
+  { label: "omitted", args: {}, query: { ns: "public" } },
+  { label: "given", args: { format: "jsx" }, query: { ns: "public", format: "jsx" } },
+]) {
+  test(`publish_html sends format only when ${scenario.label}`, { timeout: 10_000 }, async (t) => {
+    // GIVEN a JSX body with or without a caller format.
+    const f = await fixture(t);
+    // WHEN publish_html runs.
+    const result = await f.call("publish_html", { content: "const App = () => <Box />;", namespace: "public", ...scenario.args });
+    // THEN an omitted format leaves detection to the server and a given one passes through.
+    assert.deepEqual({ isError: result.isError, query: Object.fromEntries(new URL(f.requests[0].url, f.baseUrl).searchParams) },
+      { isError: undefined, query: scenario.query }, "format reaches the server only when the caller sends one");
   });
 }
 

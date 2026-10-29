@@ -2,7 +2,7 @@ import { McpServer, type ToolAnnotations } from "@modelcontextprotocol/server";
 import { z } from "zod";
 
 export const DEFAULT_BASE_URL = "https://brewpage.app";
-export const USER_AGENT = "brewpage-mcp/1.15.2";
+export const USER_AGENT = "brewpage-mcp/1.15.3";
 export const OWNER_TOKEN_ENV = "BREWPAGE_OWNER_TOKEN";
 
 export interface ServerOptions {
@@ -232,7 +232,7 @@ export function createServer(options: ServerOptions = {}): McpServer {
   const apiFetch = options.fetch ?? fetch;
   const server = new McpServer({
     name: "brewpage-mcp",
-    version: "1.15.2",
+    version: "1.15.3",
   });
 
   /** Caller argument first, then the configured default; `fromEnv` marks the configured one. */
@@ -329,13 +329,13 @@ export function createServer(options: ServerOptions = {}): McpServer {
         "the result then includes deliveryModeReason and a delivery notice. Markdown raw HTML is allowlisted: scripts, styles, event handlers, forms and embeds are removed. " +
         MANAGE_URL_TEXT + " " + SECRETS,
       inputSchema: {
-        content: z.string().describe("HTML or Markdown content to publish"),
+        content: z.string().describe("HTML, Markdown, code or JSON to publish"),
         deliveryMode: DELIVERY_MODE_SCHEMA,
         format: z
           .string()
           .min(1)
-          .default("HTML")
-          .describe("Content format, default HTML. HTML or MARKDOWN; the server also maps aliases (md, text/markdown, file extensions, code languages) and detects unknown values from content, reporting the change in notices."),
+          .optional()
+          .describe("Omit: server detects html, markdown, code or JSON. `html` keeps code/JSON as HTML; also markdown/md or a code language."),
         namespace: z
           .string()
           .optional()
@@ -359,7 +359,7 @@ export function createServer(options: ServerOptions = {}): McpServer {
     },
     async ({ content, format, namespace, password, ttlDays, filename, showTopBar, deliveryMode, ownerToken }) => {
       const effectiveNamespace = resolveNamespace(namespace);
-      const path = withQuery(apiPath("html"), [["ns", effectiveNamespace], ["format", format.toLowerCase()], ["ttl", ttlDays]]);
+      const path = withQuery(apiPath("html"), [["ns", effectiveNamespace], ["format", format?.toLowerCase()], ["ttl", ttlDays]]);
       const body: Record<string, unknown> = { content };
       if (filename) body.filename = filename;
       if (showTopBar !== undefined) body.showTopBar = showTopBar;

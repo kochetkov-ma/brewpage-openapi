@@ -17,7 +17,7 @@ Choosing a host? See how BrewPage compares with GitHub Pages, Netlify Drop, Tiin
 ## Quick Start
 
 ```bash
-npx -y brewpage-mcp@1.15.2
+npx -y brewpage-mcp@1.15.3
 ```
 
 Requires Node.js 20 or newer. This starts the stdio server for an MCP client.
@@ -50,7 +50,7 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS)
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@1.15.2"]
+      "args": ["-y", "brewpage-mcp@1.15.3"]
     }
   }
 }
@@ -61,7 +61,7 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS)
 Register a project-scoped stdio server:
 
 ```bash
-claude mcp add --transport stdio --scope project brewpage -- npx -y brewpage-mcp@1.15.2
+claude mcp add --transport stdio --scope project brewpage -- npx -y brewpage-mcp@1.15.3
 ```
 
 This writes `.mcp.json` in the project root. Use `--scope user` for user-scoped registration. See the [official Claude Code MCP guide](https://code.claude.com/docs/en/mcp).
@@ -75,7 +75,7 @@ Open **Settings > MCP** and add:
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@1.15.2"]
+      "args": ["-y", "brewpage-mcp@1.15.3"]
     }
   }
 }
@@ -89,7 +89,7 @@ Open the Cline MCP settings panel and add:
 {
   "brewpage": {
     "command": "npx",
-    "args": ["-y", "brewpage-mcp@1.15.2"]
+    "args": ["-y", "brewpage-mcp@1.15.3"]
   }
 }
 ```
@@ -97,7 +97,7 @@ Open the Cline MCP settings panel and add:
 ### Global Install
 
 ```bash
-npm install -g brewpage-mcp@1.15.2
+npm install -g brewpage-mcp@1.15.3
 brewpage-mcp
 ```
 
@@ -158,7 +158,7 @@ update_hosting(type="html", namespace="public", id="aBcDeFgHiJ", ownerToken="tok
 
 Publish HTML or Markdown content to BrewPage. Returns a public URL and owner token. Markdown raw HTML is rendered through an allowlist: scripts, styles, event handlers, forms, frames/embeds and `meta`/`base`/`link` are removed; links allow `http`, `https`, `mailto`, `tel` and relative URLs, images also `data:`; a lone unknown tag such as `<author>` shows as text.
 
-Parameters: `content` (string), `format` (default `HTML`; `HTML`, `MARKDOWN` or an alias the server maps, e.g. `md`), `namespace` (optional -- **omit for private, unlisted content**; `public` lists the page in the gallery and sitemap for Google, Bing and AI search, served on the brewpage.app domain; never put secrets there), `password` (optional), `ttlDays` (days or a string such as `2w`; default 15; the server clamps to 1--30), `filename` (optional, used as title fallback), `showTopBar` (optional boolean -- adds a toolbar with filename, Download button, and theme toggle), `deliveryMode` (optional).
+Parameters: `content` (string), `format` (optional; omit to let the server detect HTML, Markdown, code or JSON; `html` keeps code/JSON as HTML; also `markdown`/`md` or a code language), `namespace` (optional -- **omit for private, unlisted content**; `public` lists the page in the gallery and sitemap for Google, Bing and AI search, served on the brewpage.app domain; never put secrets there), `password` (optional), `ttlDays` (days or a string such as `2w`; default 15; the server clamps to 1--30), `filename` (optional, used as title fallback), `showTopBar` (optional boolean -- adds a toolbar with filename, Download button, and theme toggle), `deliveryMode` (optional).
 
 The result includes `deliveryModeReason` and a `Delivery notice:` line when the server returns them (see above).
 
@@ -529,6 +529,10 @@ Every publish response includes an **owner token** -- the only credential that a
 - [Brewcode Plugin](https://github.com/kochetkov-ma/claude-brewcode) -- Claude Code plugin suite
 
 ## Changelog
+
+## 1.15.3 -- 2026-10-29
+
+- `publish_html` sends `format` only when given, so the server detects code or JSON (contract 2.8.27); pass `html` to keep HTML.
 
 ## 1.15.2 -- 2026-10-29
 
