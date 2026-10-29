@@ -36,8 +36,10 @@ const ENV_DEFAULT = `env ${OWNER_TOKEN_ENV} (local server only)`;
 const NO_OWNER_TOKEN = `No owner token: pass ownerToken (local server: or set ${OWNER_TOKEN_ENV}).`;
 const CREATE_OWNER_TOKEN_DESCRIPTION = `Optional. Default: ${ENV_DEFAULT}, else a new token per create.`;
 const OWNER_TOKEN_DESCRIPTION = `Owner token from create. Default: ${ENV_DEFAULT}.`;
+/** Backend guard checks create and update content alike. */
+const NO_PUBLIC_CREDENTIALS = "BrewPage tokens and manage links must never be in public content.";
 const SECRETS = "Secrets allowed; likely ones are flagged in notices. Private namespace + password suit secrets. " +
-  "BrewPage tokens and manage links must never be in public content.";
+  NO_PUBLIC_CREDENTIALS;
 const MANAGE_URL_TEXT = "Returns manageUrl, a private management link (grants control; not for public sharing).";
 const OLD_READ_ONLY_CODE = "OLD_PUBLICATION_READ_ONLY";
 const OLD_READ_ONLY_TEXT = ` Old publications (made before 5 October 2026) are read-only: 409 ${OLD_READ_ONLY_CODE} with createUrl to publish anew.`;
@@ -756,7 +758,7 @@ export function createServer(options: ServerOptions = {}): McpServer {
     "republish_site",
     {
       ...toolMeta("Republish site", DESTRUCTIVE),
-      description: "Republish (full-replace) an existing multi-file BrewPage site in place at the SAME URL/ID. Requires owner token. The uploaded bundle becomes the complete new file set — files absent from it are removed, new files added, matching files overwritten. Single-page: `entryContent`. Multi-page: `files` (array of `{path, content}`). Optional `entry` overrides the default `index.html`. Republishing preserves existing expiry." + OLD_READ_ONLY_TEXT + " " + SITE_LIMITS_TEXT,
+      description: "Republish (full-replace) an existing multi-file BrewPage site in place at the SAME URL/ID. Requires owner token. The uploaded bundle becomes the complete new file set — files absent from it are removed, new files added, matching files overwritten. Single-page: `entryContent`. Multi-page: `files` (array of `{path, content}`). Optional `entry` overrides the default `index.html`. Republishing preserves existing expiry." + OLD_READ_ONLY_TEXT + " " + SITE_LIMITS_TEXT + " " + NO_PUBLIC_CREDENTIALS,
       inputSchema: {
         namespace: z.string().describe("Site namespace"),
         id: z.string().describe("Site ID"),
@@ -850,7 +852,7 @@ export function createServer(options: ServerOptions = {}): McpServer {
     {
       ...toolMeta("Update page", DESTRUCTIVE),
       description: "Update an existing BrewPage HTML, Markdown, code or JSON page. Requires owner token. Returns the updated page metadata. " +
-        "The link and delivery mode never change on update; an advisory deliveryModeReason and delivery notice are included when the new content uses browser features that may not work fully on a BrewPage link." + OLD_READ_ONLY_TEXT,
+        "The link and delivery mode never change on update; an advisory deliveryModeReason and delivery notice are included when the new content uses browser features that may not work fully on a BrewPage link." + OLD_READ_ONLY_TEXT + " " + NO_PUBLIC_CREDENTIALS,
       inputSchema: {
         namespace: z.string().describe("Page namespace"),
         id: z.string().describe("Page ID"),
@@ -1011,7 +1013,7 @@ export function createServer(options: ServerOptions = {}): McpServer {
     "update_json",
     {
       ...toolMeta("Update JSON document", DESTRUCTIVE),
-      description: "Update an existing BrewPage JSON document. Requires owner token. Accepts a JSON object, array, or a JSON-encoded string." + OLD_READ_ONLY_TEXT,
+      description: "Update an existing BrewPage JSON document. Requires owner token. Accepts a JSON object, array, or a JSON-encoded string." + OLD_READ_ONLY_TEXT + " " + NO_PUBLIC_CREDENTIALS,
       inputSchema: {
         namespace: z.string().describe("Document namespace"),
         id: z.string().describe("Document ID"),
@@ -1123,7 +1125,7 @@ export function createServer(options: ServerOptions = {}): McpServer {
     "set_kv",
     {
       ...toolMeta("Set KV value", DESTRUCTIVE),
-      description: "Set or update a key in an existing BrewPage KV store. Requires owner token. The key name `hosting` is reserved." + OLD_READ_ONLY_TEXT,
+      description: "Set or update a key in an existing BrewPage KV store. Requires owner token. The key name `hosting` is reserved." + OLD_READ_ONLY_TEXT + " " + NO_PUBLIC_CREDENTIALS,
       inputSchema: {
         namespace: z.string().describe("KV store namespace"),
         id: z.string().describe("KV store ID"),
