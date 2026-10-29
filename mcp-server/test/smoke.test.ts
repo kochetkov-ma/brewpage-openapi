@@ -738,6 +738,34 @@ test("publish_kv prints the private manage link, the listing hint and warning-cl
   ], "warning, manage link and listing lines are exact");
 });
 
+const CREDENTIAL_MESSAGE = "BrewPage token or manage link in this content: hidden from gallery and search, but anyone with the link can use it. " +
+  "Remove it and reset that token (Manage: Reset management link; profile: Tokens).";
+const CREDENTIAL_ALERT = `SECURITY ALERT (credential-published): ${CREDENTIAL_MESSAGE} ` +
+  "Tell the user now: anyone with this link can use that token; they must remove it and reset it.";
+
+for (const scenario of [
+  { label: "credential notice -> security alert first, no listed line",
+    notices: [{ code: "ttl-clamped", message: "TTL clamped." }, { code: "credential-published", message: CREDENTIAL_MESSAGE }],
+    head: [CREDENTIAL_ALERT, "", "Published successfully!"],
+    relayed: [CREDENTIAL_ALERT, "Notice (ttl-clamped): TTL clamped."] },
+  { label: "no credential notice -> unchanged listed result",
+    notices: [{ code: "ttl-clamped", message: "TTL clamped." }],
+    head: ["Published successfully!", "", "URL: https://public-z9y8x7w6v5.brewpage.app/"],
+    relayed: ["Notice (ttl-clamped): TTL clamped.", "VISIBILITY: public, listed. Hide: set_visibility listed=false"] },
+]) {
+  test(`publish_html ${scenario.label}`, { timeout: 10_000 }, async (t) => {
+    // GIVEN a listed public result with the scenario's notices.
+    const f = await fixture(t);
+    f.respond(201, { ...NEW_RESPONSE, listed: true, notices: scenario.notices });
+    // WHEN the page is published.
+    const result = await f.call("publish_html", { content: "<p>Credential fixture</p>", namespace: "public" });
+    // THEN the opening lines and the relayed notice/listing lines are exact.
+    const lines = result.content[0].text.split("\n");
+    assert.deepEqual({ head: lines.slice(0, 3), relayed: lines.filter((line) => /^(WARNING|Notice|VISIBILITY|SECURITY)/.test(line)) },
+      { head: scenario.head, relayed: scenario.relayed }, "credential alert placement and listing line are exact");
+  });
+}
+
 test("owner tool 403 names the configured default token in its hint", { timeout: 10_000 }, async (t) => {
   // GIVEN a wrong configured token.
   const f = await fixture(t, { BREWPAGE_OWNER_TOKEN: ENV_TOKEN });

@@ -36,12 +36,16 @@ const ENV_DEFAULT = `env ${OWNER_TOKEN_ENV} (local server only)`;
 const NO_OWNER_TOKEN = `No owner token: pass ownerToken (local server: or set ${OWNER_TOKEN_ENV}).`;
 const CREATE_OWNER_TOKEN_DESCRIPTION = `Optional. Default: ${ENV_DEFAULT}, else a new token per create.`;
 const OWNER_TOKEN_DESCRIPTION = `Owner token from create. Default: ${ENV_DEFAULT}.`;
-const SECRETS = "Secrets allowed; likely ones are flagged in notices. Private namespace + password suit secrets.";
+const SECRETS = "Secrets allowed; likely ones are flagged in notices. Private namespace + password suit secrets. " +
+  "BrewPage tokens and manage links must never be in public content.";
 const MANAGE_URL_TEXT = "Returns manageUrl, a private management link (grants control; not for public sharing).";
 const OLD_READ_ONLY_CODE = "OLD_PUBLICATION_READ_ONLY";
 const OLD_READ_ONLY_TEXT = ` Old publications (made before 5 October 2026) are read-only: 409 ${OLD_READ_ONLY_CODE} with createUrl to publish anew.`;
 /** Notice codes the agent must relay to the user. */
-const WARNING_CODES = new Set(["secret-detected", "manage-link-disabled"]);
+const WARNING_CODES = new Set(["secret-detected"]);
+/** Live BrewPage token or manage link in public content: printed first as a security alert, never listed. */
+const CREDENTIAL_CODE = "credential-published";
+const CREDENTIAL_ALERT_TAIL = "Tell the user now: anyone with this link can use that token; they must remove it and reset it.";
 /** MCP type name -> REST path segment. */
 const TYPE_SEGMENTS: Record<string, string> = { html: "html", site: "sites", file: "files", json: "json", kv: "kv" };
 
@@ -170,13 +174,28 @@ function hostingResponseLines(data: Record<string, unknown>): string[] {
   return lines;
 }
 
-/** Server `notices` ({code, message}) on publish/update responses: each tolerated-input adjustment, verbatim. */
-function noticeLines(data: Record<string, unknown>): string[] {
+/** Server `notices` ({code, message}) on publish/update responses, well-formed only. */
+function notices(data: Record<string, unknown>): Array<{ code: string; message: string }> {
   if (!Array.isArray(data.notices)) return [];
-  return data.notices
-    .filter((n): n is { code: string; message: string } =>
-      typeof n === "object" && n !== null && typeof n.code === "string" && typeof n.message === "string")
+  return data.notices.filter((n): n is { code: string; message: string } =>
+    typeof n === "object" && n !== null && typeof n.code === "string" && typeof n.message === "string");
+}
+
+/** Each tolerated-input adjustment, verbatim; the credential alert prints separately, first. */
+function noticeLines(data: Record<string, unknown>): string[] {
+  return notices(data).filter((n) => n.code !== CREDENTIAL_CODE)
     .map((n) => `${WARNING_CODES.has(n.code) ? "WARNING" : "Notice"} (${n.code}): ${n.message}`);
+}
+
+function hasCredentialNotice(data: Record<string, unknown>): boolean {
+  return notices(data).some((n) => n.code === CREDENTIAL_CODE);
+}
+
+/** Opening lines of a result whose public content holds a live BrewPage credential, else none. */
+function credentialAlertLines(data: Record<string, unknown>): string[] {
+  const alerts = notices(data).filter((n) => n.code === CREDENTIAL_CODE)
+    .map((n) => `SECURITY ALERT (${CREDENTIAL_CODE}): ${n.message} ${CREDENTIAL_ALERT_TAIL}`);
+  return alerts.length ? [...alerts, ``] : [];
 }
 
 const SIGN_IN_HINT = "Optional: sign in free (Google or any email) at https://account.brewpage.app to never lose your pages or tokens and to mint tokens that never expire. Not needed to publish.";
@@ -187,7 +206,7 @@ function ownerLinkLines(data: Record<string, unknown>): string[] {
   if (typeof data.manageUrl === "string" && data.manageUrl.length > 0) {
     lines.push(``, `MANAGE LINK (private): ${data.manageUrl}`, `Give it to the user privately; never publish it.`);
   }
-  if (data.listed === true) lines.push(``, `VISIBILITY: public, listed. Hide: set_visibility listed=false`);
+  if (data.listed === true && !hasCredentialNotice(data)) lines.push(``, `VISIBILITY: public, listed. Hide: set_visibility listed=false`);
   return lines;
 }
 
@@ -202,6 +221,7 @@ function deliveryReasonLines(data: Record<string, unknown>): string[] {
 
 function formatUpdateResponse(data: Record<string, unknown>): string {
   const lines = [
+    ...credentialAlertLines(data),
     `Updated successfully!`,
     ``,
     `URL: ${data.link || data.url || "N/A"}`,
@@ -302,6 +322,7 @@ export function createServer(options: ServerOptions = {}): McpServer {
     listable = true
   ): string {
     const lines = [
+      ...credentialAlertLines(data),
       `Published successfully!`,
       ``,
       `URL: ${data.link || data.url || "N/A"}`,
@@ -703,6 +724,7 @@ export function createServer(options: ServerOptions = {}): McpServer {
 
       const site = data as Record<string, unknown>;
       const lines = [
+        ...credentialAlertLines(site),
         `Site published successfully!`,
         ``,
         `URL: ${site.link || "N/A"}`,
@@ -799,6 +821,7 @@ export function createServer(options: ServerOptions = {}): McpServer {
 
       const site = data as Record<string, unknown>;
       const lines = [
+        ...credentialAlertLines(site),
         `Site republished successfully (full replace)!`,
         ``,
         `URL: ${site.link || "N/A"}`,
@@ -1315,7 +1338,7 @@ export function createServer(options: ServerOptions = {}): McpServer {
       const { ok, status, data } = await apiRequest("POST", path, { listed }, { "X-Owner-Token": auth.token });
       if (!ok) return ownerFailure("set visibility", status, data, auth.fromEnv);
       const result = data as Record<string, unknown>;
-      return textResult([`LISTED: ${result.listed} · link unchanged`, ...noticeLines(result)].join("\n"));
+      return textResult([...credentialAlertLines(result), `LISTED: ${result.listed} · link unchanged`, ...noticeLines(result)].join("\n"));
     }
   );
 
