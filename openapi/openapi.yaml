@@ -2531,7 +2531,7 @@ info:
     url: https://www.apache.org/licenses/LICENSE-2.0
   termsOfService: https://brewpage.app/terms
   title: BrewPage API
-  version: 2.8.31
+  version: 2.8.32
 openapi: 3.1.0
 paths:
   /api/files:
@@ -2603,9 +2603,9 @@ paths:
           schema:
             type: string
         - description: >-
-            TTL in days (1-30); omitted or blank uses 15 days. Accepts 15, 15d, 15 days; h/w/mo/y units round up to
-            whole days. Out-of-range values are clamped and unparseable ones use the default; each adjustment is
-            reported in notices.
+            TTL in days (1-30, up to 90 with an X-Owner-Token in a profile); omitted or blank uses 15 days. Accepts 15,
+            15d, 15 days; h/w/mo/y units round up to whole days. Out-of-range values are clamped and unparseable ones
+            use the default; each adjustment is reported in notices.
           in: query
           name: ttl
           required: false
@@ -3056,9 +3056,9 @@ paths:
           schema:
             type: string
         - description: >-
-            TTL in days (1-30); omitted or blank uses 15 days. Accepts 15, 15d, 15 days; h/w/mo/y units round up to
-            whole days. Out-of-range values are clamped and unparseable ones use the default; each adjustment is
-            reported in notices.
+            TTL in days (1-30, up to 90 with an X-Owner-Token in a profile); omitted or blank uses 15 days. Accepts 15,
+            15d, 15 days; h/w/mo/y units round up to whole days. Out-of-range values are clamped and unparseable ones
+            use the default; each adjustment is reported in notices.
           in: query
           name: ttl
           required: false
@@ -3629,9 +3629,9 @@ paths:
           schema:
             type: string
         - description: >-
-            TTL in days (1-30); omitted or blank uses 15 days. Accepts 15, 15d, 15 days; h/w/mo/y units round up to
-            whole days. Out-of-range values are clamped and unparseable ones use the default; each adjustment is
-            reported in notices.
+            TTL in days (1-30, up to 90 with an X-Owner-Token in a profile); omitted or blank uses 15 days. Accepts 15,
+            15d, 15 days; h/w/mo/y units round up to whole days. Out-of-range values are clamped and unparseable ones
+            use the default; each adjustment is reported in notices.
           in: query
           name: ttl
           required: false
@@ -3929,9 +3929,9 @@ paths:
           schema:
             type: string
         - description: >-
-            TTL in days (1-30); omitted or blank uses 15 days. Accepts 15, 15d, 15 days; h/w/mo/y units round up to
-            whole days. Out-of-range values are clamped and unparseable ones use the default; each adjustment is
-            reported in notices.
+            TTL in days (1-30, up to 90 with an X-Owner-Token in a profile); omitted or blank uses 15 days. Accepts 15,
+            15d, 15 days; h/w/mo/y units round up to whole days. Out-of-range values are clamped and unparseable ones
+            use the default; each adjustment is reported in notices.
           in: query
           name: ttl
           required: false
@@ -4887,9 +4887,9 @@ paths:
           schema:
             type: string
         - description: >-
-            TTL in days (1-30); omitted or blank uses 15 days. Accepts 15, 15d, 15 days; h/w/mo/y units round up to
-            whole days. Out-of-range values are clamped and unparseable ones use the default; each adjustment is
-            reported in notices.
+            TTL in days (1-30, up to 90 with an X-Owner-Token in a profile); omitted or blank uses 15 days. Accepts 15,
+            15d, 15 days; h/w/mo/y units round up to whole days. Out-of-range values are clamped and unparseable ones
+            use the default; each adjustment is reported in notices.
           in: query
           name: ttl
           required: false

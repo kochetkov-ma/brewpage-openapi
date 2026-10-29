@@ -20,6 +20,7 @@ Public contract snapshots, documentation and the BrewPage MCP server. The backen
 
 ## Recent contract changes
 
+- 2.8.32 (matches backend v2.8.32): create `ttl` description: 1-30 days, up to 90 with an `X-Owner-Token` in a profile. Description only: 47 paths and 62 operations.
 - 2.8.31 (matches backend v2.8.31): `POST /api/html` response adds optional `title`: the stored title (`<title>`, else first heading or text; code: filename or e.g. `JS snippet`); absent when none. Additive: 47 paths and 62 operations.
 - 2.8.27 (matches backend v2.8.27): `POST /api/html` `format` description: omitted, source code or JSON is saved as its code format (notice `format-detected`). Description only: 47 paths and 62 operations.
 - 2.8.24 (matches backend v2.8.24): `POST /api/sites` and `PUT /api/sites/{ns}/{id}` responses add optional `title`: the entry page title (`<title>`, else first heading or text); absent when the entry has none. Additive: 47 paths and 62 operations.

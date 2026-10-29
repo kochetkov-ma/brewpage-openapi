@@ -1,5 +1,10 @@
 # Release Notes
 
+## API contract 2.8.32 — 2026-10-29
+
+- API contract version 2.8.32 is the backend-generated public snapshot exported from brewpage-app source `6fd3133b9602d727596faa5eca65988abc29a063` (tag `v2.8.32`), clean tree.
+- Create `ttl` query parameter description names the cap for a profile token: 1-30 days, up to 90 with an `X-Owner-Token` in a profile. Description only: 47 paths and 62 operations.
+
 ## API contract 2.8.31 — 2026-10-29
 
 - API contract version 2.8.31 is the backend-generated public snapshot exported from brewpage-app source `a83dac9b4e598536ab3a835994d32056e70371fc` (tag `v2.8.31`), clean tree.
