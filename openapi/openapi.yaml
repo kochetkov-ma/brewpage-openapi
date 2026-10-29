@@ -583,7 +583,7 @@ components:
           type: string
         expectedVersion:
           format: int64
-          maximum: 9223372036854776000
+          maximum: 9223372036854775807
           minimum: 1
           type: integer
       required:

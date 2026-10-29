@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { resolve } from 'node:path';
 import { createHash } from 'node:crypto';
+import { contractYaml } from './openapi-yaml.mjs';
 
 const require = createRequire(new URL('../docs/package.json', import.meta.url));
 const yaml = require('js-yaml');
@@ -129,7 +130,7 @@ if (!process.argv.includes('--spec')) {
   assert.deepEqual(yaml.load(readFileSync(resolve(root, 'openapi/openapi.yaml'), 'utf8')), spec,
     'Derived YAML must equal the generated JSON contract');
   assert.equal(readFileSync(resolve(root, 'openapi/openapi.yaml'), 'utf8'),
-    '# Generated from backend public JSON; do not hand-edit.\n' + yaml.dump(spec, { sortKeys: true, noRefs: true, lineWidth: 120 }),
+    contractYaml(yaml, readFileSync(specPath, 'utf8')),
     'YAML serialization must match the deterministic sync script');
   assert.equal(readFileSync(resolve(root, 'docs/public/openapi.json'), 'utf8'), readFileSync(specPath, 'utf8'),
     'Committed Scalar JSON copy must match byte for byte');
