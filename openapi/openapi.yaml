@@ -2528,7 +2528,7 @@ info:
     url: https://www.apache.org/licenses/LICENSE-2.0
   termsOfService: https://brewpage.app/terms
   title: BrewPage API
-  version: 2.8.24
+  version: 2.8.27
 openapi: 3.1.0
 paths:
   /api/files:
@@ -3063,11 +3063,11 @@ paths:
             type: string
         - description: >-
             Content format. 'html' (default) — stored as sent, except a whole page pasted from a chat is repaired (see
-            'verbatim'). 'markdown' / 'md' — rendered to styled HTML via github-markdown-css. Code/text languages stored
-            and served raw with format-specific MIME (text/csv, application/json, text/plain) plus
-            X-Content-Type-Options: nosniff; raw reads of xml answer text/plain, downloads keep text/xml: yaml, json,
-            xml, csv, tsv, log, toml, ini, sql, sh, bat, env, javascript, typescript, tsx, jsx, css, properties, docker,
-            txt
+            'verbatim'); omitted, source code or JSON is saved as its code format (notice format-detected). 'markdown' /
+            'md' — rendered to styled HTML via github-markdown-css. Code/text languages stored and served raw with
+            format-specific MIME (text/csv, application/json, text/plain) plus X-Content-Type-Options: nosniff; raw
+            reads of xml answer text/plain, downloads keep text/xml: yaml, json, xml, csv, tsv, log, toml, ini, sql, sh,
+            bat, env, javascript, typescript, tsx, jsx, css, properties, docker, txt
           in: query
           name: format
           required: false
