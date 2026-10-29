@@ -17,7 +17,7 @@ Choosing a host? See how BrewPage compares with GitHub Pages, Netlify Drop, Tiin
 ## Quick Start
 
 ```bash
-npx -y brewpage-mcp@1.15.4
+npx -y brewpage-mcp@1.15.5
 ```
 
 Requires Node.js 20 or newer. This starts the stdio server for an MCP client.
@@ -50,7 +50,7 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS)
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@1.15.4"]
+      "args": ["-y", "brewpage-mcp@1.15.5"]
     }
   }
 }
@@ -61,7 +61,7 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS)
 Register a project-scoped stdio server:
 
 ```bash
-claude mcp add --transport stdio --scope project brewpage -- npx -y brewpage-mcp@1.15.4
+claude mcp add --transport stdio --scope project brewpage -- npx -y brewpage-mcp@1.15.5
 ```
 
 This writes `.mcp.json` in the project root. Use `--scope user` for user-scoped registration. See the [official Claude Code MCP guide](https://code.claude.com/docs/en/mcp).
@@ -75,7 +75,7 @@ Open **Settings > MCP** and add:
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@1.15.4"]
+      "args": ["-y", "brewpage-mcp@1.15.5"]
     }
   }
 }
@@ -89,7 +89,7 @@ Open the Cline MCP settings panel and add:
 {
   "brewpage": {
     "command": "npx",
-    "args": ["-y", "brewpage-mcp@1.15.4"]
+    "args": ["-y", "brewpage-mcp@1.15.5"]
   }
 }
 ```
@@ -97,7 +97,7 @@ Open the Cline MCP settings panel and add:
 ### Global Install
 
 ```bash
-npm install -g brewpage-mcp@1.15.4
+npm install -g brewpage-mcp@1.15.5
 brewpage-mcp
 ```
 
@@ -442,7 +442,7 @@ get_stats()
 
 ### `get_limits`
 
-Read the current upload limits from `GET /api/limits` (no auth; with `BREWPAGE_OWNER_TOKEN` also `reach` and `ownerMaxTtlDays`). Sizes are bytes: `requestMaxBytes` plus `sites.maxFiles`, `maxFileBytes`, `maxTotalBytes` (uncompressed), `maxArchiveExpansionBytes`, `maxPathChars`, `maxPathBytes`, `maxNameBytes`, `defaultTtlDays`, `maxTtlDays`, `allowedExtensions`, `skippedFileNames` and `skippedRootFolders`. Call it before publishing a large or multi-file site.
+Read the current limits from `GET /api/limits` (no auth; with `BREWPAGE_OWNER_TOKEN` also `reach` and `ownerMaxTtlDays`). Sizes are bytes, TTLs days: `requestMaxBytes`; `html`, `json`, `kv` and `files` max size, counts and TTL default/maximum; `profileMaxTtlDays` (TTL cap for a token in a profile); `sites.maxFiles`, `maxFileBytes`, `maxTotalBytes` (uncompressed), `maxArchiveExpansionBytes`, `maxPathChars`, `maxPathBytes`, `maxNameBytes`, `defaultTtlDays`, `maxTtlDays`, `allowedExtensions`, `skippedFileNames` and `skippedRootFolders`. Call it before publishing a large or multi-file site.
 
 Parameters: none.
 
@@ -469,7 +469,7 @@ get_limits()
 | "Remove the page I published" | `delete_resource` | Requires `ownerToken` from creation |
 | "Read back the page I published" | `get_page` | Returns raw content for editing |
 | "How many pages are on BrewPage?" | `get_stats` | Returns platform totals |
-| "How big can my site be?" | `get_limits` | Current request and site limits in bytes |
+| "How big can my site be?" | `get_limits` | Current request and per-type limits (bytes, TTL days) |
 | "Store JSON state between turns" | `publish_json` | Returns short URL + owner token |
 | "Read that JSON document back" | `get_json` | By `namespace` + `id` |
 | "Update the JSON I stored" | `update_json` | Requires `ownerToken`; preserves URL |
@@ -529,6 +529,10 @@ Every publish response includes an **owner token** -- the only credential that a
 - [Brewcode Plugin](https://github.com/kochetkov-ma/claude-brewcode) -- Claude Code plugin suite
 
 ## Changelog
+
+## 1.15.5 -- 2026-10-29
+
+- `publish_html` prints the page title (`Title:`) when the server reports one; tool texts state plain size limits; `get_limits` names the per-type limits and the profile TTL cap.
 
 ## 1.15.4 -- 2026-10-29
 

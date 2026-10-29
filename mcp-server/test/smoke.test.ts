@@ -510,7 +510,7 @@ test("get_page keeps JSON HTTP errors and password headers without returning con
 
 for (const scenario of [
   { status: 200, body: { requestMaxBytes: 26214400, sites: { maxFiles: 200 } }, isError: undefined,
-    text: `BrewPage upload limits (bytes):\n\n${JSON.stringify({ requestMaxBytes: 26214400, sites: { maxFiles: 200 } }, null, 2)}` },
+    text: `BrewPage limits (sizes in bytes, TTLs in days):\n\n${JSON.stringify({ requestMaxBytes: 26214400, sites: { maxFiles: 200 } }, null, 2)}` },
   { status: 429, body: { status: 429 }, isError: true, text: `Failed to fetch limits (429): ${JSON.stringify({ status: 429 })}` },
 ]) {
   test(`get_limits reads GET /api/limits and relays a ${scenario.status} answer verbatim`, { timeout: 10_000 }, async (t) => {
@@ -579,6 +579,23 @@ for (const scenario of [
     f.respond(scenario.status, { ...NEW_RESPONSE, entryFile: "index.html", fileCount: 1, ...scenario.extra });
     // WHEN the site tool runs.
     const result = await f.call(scenario.tool, scenario.args);
+    // THEN a Title line follows ID only for a present title.
+    const lines = result.content[0].text.split("\n");
+    assert.deepEqual({ isError: result.isError, lines: lines.slice(lines.indexOf("ID: aBcDeFgHiJ"), lines.indexOf("ID: aBcDeFgHiJ") + 3) },
+      { isError: undefined, lines: scenario.lines }, "Title line sits right after ID and is never invented");
+  });
+}
+
+for (const scenario of [
+  { label: "present", extra: { title: "Fixture Page" }, lines: ["ID: aBcDeFgHiJ", "Title: Fixture Page", 'routingCohort: "new-v1"'] },
+  { label: "absent", extra: {}, lines: ["ID: aBcDeFgHiJ", 'routingCohort: "new-v1"', 'deliveryMode: "subdomain"'] },
+]) {
+  test(`publish_html prints the page title only when ${scenario.label}`, { timeout: 10_000 }, async (t) => {
+    // GIVEN an html create response with or without the optional title.
+    const f = await fixture(t);
+    f.respond(201, { ...NEW_RESPONSE, ...scenario.extra });
+    // WHEN publish_html runs.
+    const result = await f.call("publish_html", { content: "<title>Fixture Page</title>" });
     // THEN a Title line follows ID only for a present title.
     const lines = result.content[0].text.split("\n");
     assert.deepEqual({ isError: result.isError, lines: lines.slice(lines.indexOf("ID: aBcDeFgHiJ"), lines.indexOf("ID: aBcDeFgHiJ") + 3) },

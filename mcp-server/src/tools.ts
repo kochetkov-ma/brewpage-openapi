@@ -2,7 +2,7 @@ import { McpServer, type ToolAnnotations } from "@modelcontextprotocol/server";
 import { z } from "zod";
 
 export const DEFAULT_BASE_URL = "https://brewpage.app";
-export const USER_AGENT = "brewpage-mcp/1.15.4";
+export const USER_AGENT = "brewpage-mcp/1.15.5";
 export const OWNER_TOKEN_ENV = "BREWPAGE_OWNER_TOKEN";
 
 export interface ServerOptions {
@@ -232,7 +232,7 @@ export function createServer(options: ServerOptions = {}): McpServer {
   const apiFetch = options.fetch ?? fetch;
   const server = new McpServer({
     name: "brewpage-mcp",
-    version: "1.15.4",
+    version: "1.15.5",
   });
 
   /** Caller argument first, then the configured default; `fromEnv` marks the configured one. */
@@ -288,7 +288,7 @@ export function createServer(options: ServerOptions = {}): McpServer {
     return { ok: res.ok, status: res.status, data, headers: res.headers };
   }
 
-  /** `Title:` line when the server derived an entry page title; nothing otherwise. */
+  /** `Title:` line when the server returned a page or site entry title; nothing otherwise. */
   function titleLines(data: Record<string, unknown>): string[] {
     return typeof data.title === "string" && data.title ? [`Title: ${data.title}`] : [];
   }
@@ -307,7 +307,8 @@ export function createServer(options: ServerOptions = {}): McpServer {
     if (data.shortUrl) lines.push(`Short URL: ${data.shortUrl}`);
     lines.push(
       `Namespace: ${data.namespace || "N/A"}`,
-      `ID: ${data.id || "N/A"}`
+      `ID: ${data.id || "N/A"}`,
+      ...titleLines(data)
     );
     if (data.expiresAt) lines.push(`Expires: ${data.expiresAt}`);
     lines.push(...hostingResponseLines(data));
@@ -324,7 +325,7 @@ export function createServer(options: ServerOptions = {}): McpServer {
     "publish_html",
     {
       ...toolMeta("Publish HTML, Markdown, code or JSON page", ADDITIVE),
-      description: "Publish HTML, Markdown, code or JSON content to BrewPage (repository default limit 5 MiB); format omitted -> the server detects it. Returns its primary share link and owner token. Supports password protection, custom TTL, optional filename, and an opt-in top toolbar (showTopBar). " +
+      description: "Publish HTML, Markdown, code or JSON content to BrewPage (max 5 MiB); format omitted -> the server detects it. Returns its primary share link and owner token. Supports password protection, custom TTL, optional filename, and an opt-in top toolbar (showTopBar). " +
         "When deliveryMode is omitted for a `public` page, the server may publish it on its own subdomain if the page needs browser features a BrewPage link does not provide; " +
         "the result then includes deliveryModeReason and a delivery notice. Markdown raw HTML is allowlisted: scripts, styles, event handlers, forms and embeds are removed. " +
         MANAGE_URL_TEXT + " " + SECRETS,
@@ -398,7 +399,7 @@ export function createServer(options: ServerOptions = {}): McpServer {
     "publish_file",
     {
       ...toolMeta("Publish file from URL", ADDITIVE),
-      description: "Upload a file to BrewPage via URL. Repository defaults: 5 MiB for files/audio, 20 MiB for video. Returns its primary share link and owner token. Does not expose password or TTL inputs. " +
+      description: "Upload a file to BrewPage via URL. Max 5 MiB, video 20 MiB. Returns its primary share link and owner token. Does not expose password or TTL inputs. " +
         MANAGE_URL_TEXT + " " + SECRETS,
       inputSchema: {
         url: z.string().url().describe("URL of the file to upload"),
@@ -866,7 +867,7 @@ export function createServer(options: ServerOptions = {}): McpServer {
     "publish_json",
     {
       ...toolMeta("Publish JSON document", ADDITIVE),
-      description: "Publish a JSON document to BrewPage (repository default limit 1 MiB). Accepts a JSON object, array, or a JSON-encoded string containing any valid JSON, including scalars/null. Returns its primary share link and owner token. " +
+      description: "Publish a JSON document to BrewPage (max 1 MiB). Accepts a JSON object, array, or a JSON-encoded string containing any valid JSON, including scalars/null. Returns its primary share link and owner token. " +
         MANAGE_URL_TEXT + " " + SECRETS,
       inputSchema: {
         deliveryMode: DELIVERY_MODE_SCHEMA,
@@ -1028,7 +1029,7 @@ export function createServer(options: ServerOptions = {}): McpServer {
     "publish_kv",
     {
       ...toolMeta("Publish KV entry", ADDITIVE),
-      description: "Publish a key/value entry to BrewPage. Creates a KV store; the entry is addressed by (namespace, id, key). Repository defaults: 1 MiB per value, 1,000 keys per store; the key name `hosting` is reserved. Returns its primary share link and owner token. " +
+      description: "Publish a key/value entry to BrewPage. Creates a KV store; the entry is addressed by (namespace, id, key). Max 1 MiB per value, 1,000 keys per store; the key name `hosting` is reserved. Returns its primary share link and owner token. " +
         MANAGE_URL_TEXT + " " + SECRETS,
       inputSchema: {
         deliveryMode: DELIVERY_MODE_SCHEMA,
@@ -1183,8 +1184,9 @@ export function createServer(options: ServerOptions = {}): McpServer {
     "get_limits",
     {
       ...toolMeta("Get upload limits", READ_ONLY),
-      description: "Get the current BrewPage upload limits (GET /api/limits): request size, site file count, per-file and total size, " +
-        "ZIP expansion, path and name lengths, TTL default/maximum, allowed file extensions and skipped system files. Sizes are bytes. " +
+      description: "Get the current BrewPage limits (GET /api/limits): request size; per type (html, json, kv, files, sites) max size, " +
+        "counts and TTL default/maximum; profileMaxTtlDays (TTL cap for a token in a profile); site ZIP expansion, path and name lengths, " +
+        "allowed file extensions and skipped system files. Sizes are bytes, TTLs days. " +
         `With ${OWNER_TOKEN_ENV} set: also reach (token|profile) and ownerMaxTtlDays.`,
       inputSchema: {},
     },
@@ -1208,7 +1210,7 @@ export function createServer(options: ServerOptions = {}): McpServer {
         content: [
           {
             type: "text" as const,
-            text: `BrewPage upload limits (bytes):\n\n${JSON.stringify(data, null, 2)}`,
+            text: `BrewPage limits (sizes in bytes, TTLs in days):\n\n${JSON.stringify(data, null, 2)}`,
           },
         ],
       };

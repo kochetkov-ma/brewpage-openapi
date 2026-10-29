@@ -118,8 +118,8 @@ Limits depend on operation and visibility. Handle `429` and any `Retry-After` he
 | File | 5 MB | 1,000 files/ns |
 | Site | 20 MB total, 5 MB/file | 200 files/site |
 | Request | 25 MB per request | — |
-| TTL | 1–30 days (default 15) | — |
+| TTL | 1–30 days, 90 with a profile token (default 15) | — |
 
-Repository defaults use MiB; video files allow up to 20 MiB. Deployment and owner-specific TTL caps can differ. Eligible content may receive automatic TTL extensions; `expiresAt` is authoritative. Site republishing without a new TTL retains the existing expiry. A ZIP uploaded as `archive` to `/api/sites` is extracted for hosting; a ZIP sent to `/api/files` is hosted as a file.
+Sizes are MiB; video files allow up to 20 MiB; current values per type: `GET /api/limits`. Deployment and owner-specific TTL caps can differ. Eligible content may receive automatic TTL extensions; `expiresAt` is authoritative. Site republishing without a new TTL retains the existing expiry. A ZIP uploaded as `archive` to `/api/sites` is extracted for hosting; a ZIP sent to `/api/files` is hosted as a file.
 
 Unpassworded `public` HTML, sites and files are listed in the gallery and sitemap and can be indexed by search engines; private and password-protected publications carry `noindex`. JSON and KV are never listed.

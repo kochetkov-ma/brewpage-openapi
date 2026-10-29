@@ -1,5 +1,9 @@
 # Release Notes
 
+## MCP 1.15.5 — 2026-10-29
+
+- `publish_html` prints `Title: <title>` after `ID:` when the create response carries `title` (contract 2.8.31). `publish_html`, `publish_file`, `publish_json` and `publish_kv` state plain size limits instead of repository defaults. `get_limits` describes the per-type `html`/`json`/`kv`/`files` limits and `profileMaxTtlDays` that `GET /api/limits` returns from the next backend release. `User-Agent: brewpage-mcp/1.15.5`; pins bumped.
+
 ## API contract 2.8.35 — 2026-10-29
 
 - API contract version 2.8.35 is the backend-generated public snapshot exported from brewpage-app source `bbfaf28c7a36c1e19225eb97014f449836daf82c` (tag `v2.8.35`), clean tree.
