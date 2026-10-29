@@ -17,7 +17,7 @@ Choosing a host? See how BrewPage compares with GitHub Pages, Netlify Drop, Tiin
 ## Quick Start
 
 ```bash
-npx -y brewpage-mcp@1.15.1
+npx -y brewpage-mcp@1.15.2
 ```
 
 Requires Node.js 20 or newer. This starts the stdio server for an MCP client.
@@ -50,7 +50,7 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS)
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@1.15.1"]
+      "args": ["-y", "brewpage-mcp@1.15.2"]
     }
   }
 }
@@ -61,7 +61,7 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS)
 Register a project-scoped stdio server:
 
 ```bash
-claude mcp add --transport stdio --scope project brewpage -- npx -y brewpage-mcp@1.15.1
+claude mcp add --transport stdio --scope project brewpage -- npx -y brewpage-mcp@1.15.2
 ```
 
 This writes `.mcp.json` in the project root. Use `--scope user` for user-scoped registration. See the [official Claude Code MCP guide](https://code.claude.com/docs/en/mcp).
@@ -75,7 +75,7 @@ Open **Settings > MCP** and add:
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@1.15.1"]
+      "args": ["-y", "brewpage-mcp@1.15.2"]
     }
   }
 }
@@ -89,7 +89,7 @@ Open the Cline MCP settings panel and add:
 {
   "brewpage": {
     "command": "npx",
-    "args": ["-y", "brewpage-mcp@1.15.1"]
+    "args": ["-y", "brewpage-mcp@1.15.2"]
   }
 }
 ```
@@ -97,7 +97,7 @@ Open the Cline MCP settings panel and add:
 ### Global Install
 
 ```bash
-npm install -g brewpage-mcp@1.15.1
+npm install -g brewpage-mcp@1.15.2
 brewpage-mcp
 ```
 
@@ -230,7 +230,7 @@ publish_file(url="https://example.com/diagram.png")
 
 ### `publish_site`
 
-Publish a single-page or multi-file HTML site. Pass `entryContent` for a single page or `files` (array of `{path, content}`) for a multi-file site. Supports password protection, TTL, and owner token grouping.
+Publish a single-page or multi-file HTML site. Pass `entryContent` for a single page or `files` (array of `{path, content}`) for a multi-file site. Supports password protection, TTL, and owner token grouping. The result prints `Title:` (entry page title) after `ID:` when the server derives one.
 
 Limits (current values from `get_limits`): a request is at most 25 MB; a site at most 200 files, 5 MB per file and 20 MB in total; each path at most 380 characters. System files such as `.DS_Store` and `__MACOSX/` are skipped and never count; files with an unsupported extension or a too-long path are skipped and reported in notices. Entry: `entry`, else root `index.html`, else the shallowest HTML file. A site limit hit answers 400 with a message naming the limit, as does a PDF/Office file that is unreadable or password-protected; 413 means the request is over 25 MB, has too many files and form fields, or a file name/path is too long; 422 means no servable file is left; 503 means busy: retry after `Retry-After` seconds (failed publish tools print it).
 
@@ -529,6 +529,10 @@ Every publish response includes an **owner token** -- the only credential that a
 - [Brewcode Plugin](https://github.com/kochetkov-ma/claude-brewcode) -- Claude Code plugin suite
 
 ## Changelog
+
+## 1.15.2 -- 2026-10-29
+
+- `publish_site` and `republish_site` print the site's entry page title (`Title:`) when the server reports one.
 
 ## 1.15.1 -- 2026-10-27
 

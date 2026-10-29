@@ -2,7 +2,7 @@ import { McpServer, type ToolAnnotations } from "@modelcontextprotocol/server";
 import { z } from "zod";
 
 export const DEFAULT_BASE_URL = "https://brewpage.app";
-export const USER_AGENT = "brewpage-mcp/1.15.1";
+export const USER_AGENT = "brewpage-mcp/1.15.2";
 export const OWNER_TOKEN_ENV = "BREWPAGE_OWNER_TOKEN";
 
 export interface ServerOptions {
@@ -232,7 +232,7 @@ export function createServer(options: ServerOptions = {}): McpServer {
   const apiFetch = options.fetch ?? fetch;
   const server = new McpServer({
     name: "brewpage-mcp",
-    version: "1.15.1",
+    version: "1.15.2",
   });
 
   /** Caller argument first, then the configured default; `fromEnv` marks the configured one. */
@@ -286,6 +286,11 @@ export function createServer(options: ServerOptions = {}): McpServer {
     });
     const data = responseType === "text" ? await res.text() : await res.json().catch(() => null);
     return { ok: res.ok, status: res.status, data, headers: res.headers };
+  }
+
+  /** `Title:` line when the server derived an entry page title; nothing otherwise. */
+  function titleLines(data: Record<string, unknown>): string[] {
+    return typeof data.title === "string" && data.title ? [`Title: ${data.title}`] : [];
   }
 
   function formatPublishResponse(
@@ -700,6 +705,7 @@ export function createServer(options: ServerOptions = {}): McpServer {
         `URL: ${site.link || "N/A"}`,
         `Namespace: ${site.namespace || "N/A"}`,
         `ID: ${site.id || "N/A"}`,
+        ...titleLines(site),
         `Entry file: ${site.entryFile || "index.html"}`,
         `Files: ${site.fileCount || 1}`,
       ];
@@ -795,6 +801,7 @@ export function createServer(options: ServerOptions = {}): McpServer {
         `URL: ${site.link || "N/A"}`,
         `Namespace: ${site.namespace || namespace}`,
         `ID: ${site.id || id}`,
+        ...titleLines(site),
         `Entry file: ${site.entryFile || "index.html"}`,
         `Files: ${site.fileCount || 1}`,
       ];

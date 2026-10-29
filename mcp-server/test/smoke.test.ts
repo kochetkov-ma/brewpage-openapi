@@ -553,6 +553,26 @@ for (const scenario of [
 }
 
 for (const scenario of [
+  { tool: "publish_site", status: 201, args: { entryContent: "<h1>Fixture</h1>" } },
+  { tool: "republish_site", status: 200, args: { namespace: "public", id: "aBcDeFgHiJ", entryContent: "<h1>Fixture</h1>", ownerToken: "fixture-owner" } },
+].flatMap((tool) => [
+  { ...tool, label: "present", extra: { title: "Fixture Site" }, lines: ["ID: aBcDeFgHiJ", "Title: Fixture Site", "Entry file: index.html"] },
+  { ...tool, label: "absent", extra: {}, lines: ["ID: aBcDeFgHiJ", "Entry file: index.html", "Files: 1"] },
+])) {
+  test(`${scenario.tool} prints the entry page title only when ${scenario.label}`, { timeout: 10_000 }, async (t) => {
+    // GIVEN a site response with or without the optional title.
+    const f = await fixture(t);
+    f.respond(scenario.status, { ...NEW_RESPONSE, entryFile: "index.html", fileCount: 1, ...scenario.extra });
+    // WHEN the site tool runs.
+    const result = await f.call(scenario.tool, scenario.args);
+    // THEN a Title line follows ID only for a present title.
+    const lines = result.content[0].text.split("\n");
+    assert.deepEqual({ isError: result.isError, lines: lines.slice(lines.indexOf("ID: aBcDeFgHiJ"), lines.indexOf("ID: aBcDeFgHiJ") + 3) },
+      { isError: undefined, lines: scenario.lines }, "Title line sits right after ID and is never invented");
+  });
+}
+
+for (const scenario of [
   { tool: "publish_html", args: { content: "<h1>Fixture</h1>" } },
   { tool: "publish_file", args: {} },
   { tool: "publish_site", args: { entryContent: "<h1>Fixture</h1>" } },

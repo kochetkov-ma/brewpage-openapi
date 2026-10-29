@@ -1,5 +1,9 @@
 # Release Notes
 
+## MCP 1.15.2 — 2026-10-29
+
+- `publish_site` and `republish_site` print `Title: <title>` right after `ID:` when the contract 2.8.24 response carries the entry page `title`; nothing when absent. `User-Agent: brewpage-mcp/1.15.2`; pins bumped. No contract change.
+
 ## API contract 2.8.24 — 2026-10-29
 
 - API contract version 2.8.24 is the backend-generated public snapshot exported from the clean brewpage-app source `a32a3788e320933e997f980a5c0374e5ed6584fc` (tag `v2.8.24`).
