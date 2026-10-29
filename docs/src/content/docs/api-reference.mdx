@@ -47,7 +47,7 @@ Base URL: [`https://brewpage.app`](https://brewpage.app) (alias: [`https://brewd
 | **HTML** | HTML/Markdown page hosting | [`POST /api/html`](https://brewpage.app/swagger-ui/index.html#/HTML/createHtml), [`GET /api/html/{ns}/{id}`](https://brewpage.app/swagger-ui/index.html#/HTML/getHtml) |
 | **KV** | Key-value store (1000 keys/store) | [`PUT /api/kv/{ns}/{id}/{key}`](https://brewpage.app/swagger-ui/index.html#/KV/setKey), [`GET /api/kv/{ns}/{id}/{key}`](https://brewpage.app/swagger-ui/index.html#/KV/getKey) |
 | **JSON** | JSON document hosting | [`POST /api/json`](https://brewpage.app/swagger-ui/index.html#/JSON), [`GET /api/json/{ns}/{id}`](https://brewpage.app/swagger-ui/index.html#/JSON), `PUT /api/json/{ns}/{id}` |
-| **Files** | File hosting (5 MB/file) | [`POST /api/files`](https://brewpage.app/swagger-ui/index.html#/Files), [`GET /api/files/{ns}/{id}`](https://brewpage.app/swagger-ui/index.html#/Files), [`DELETE /api/files/{ns}/{id}`](https://brewpage.app/swagger-ui/index.html#/Files) |
+| **Files** | File hosting (5 MiB/file) | [`POST /api/files`](https://brewpage.app/swagger-ui/index.html#/Files), [`GET /api/files/{ns}/{id}`](https://brewpage.app/swagger-ui/index.html#/Files), [`DELETE /api/files/{ns}/{id}`](https://brewpage.app/swagger-ui/index.html#/Files) |
 | **Sites** | Multi-file HTML site hosting | [`POST /api/sites`](https://brewpage.app/swagger-ui/index.html#/Sites), [`GET /api/sites/{ns}/{id}`](https://brewpage.app/swagger-ui/index.html#/Sites), [`GET /api/sites/{ns}/{id}/files/{filePath}`](https://brewpage.app/swagger-ui/index.html#/Sites), [`DELETE /api/sites/{ns}/{id}`](https://brewpage.app/swagger-ui/index.html#/Sites) |
 | **Gallery** | Public discovery or owner-scoped listing | [`GET /api/gallery`](https://brewpage.app/swagger-ui/index.html#/Gallery) |
 | **Hosting Management** | Owner-only delivery, access and publication actions | `GET/PATCH /api/{type}/{ns}/{id}/hosting`, `POST /api/{type}/{ns}/{id}/access/revoke`, `POST /api/{type}/{ns}/{id}/{visibility,password,manage-key,extend,rotate}` |
@@ -106,12 +106,12 @@ Limits depend on operation and visibility. Handle the running API's 429 response
 
 | Resource | Max Size | Max Count |
 |----------|----------|-----------|
-| HTML page | 5 MB | — |
-| KV value | 1 MB | 1,000 keys/store |
-| JSON doc | 1 MB | 10,000 docs/namespace |
-| File | 5 MB | 1,000 files/ns |
-| Site | 20 MB total uncompressed, 5 MB/file | 200 files/site |
-| Request | 25 MB per request | — |
+| HTML page | 5 MiB | — |
+| KV value | 1 MiB | 1,000 keys/store |
+| JSON doc | 1 MiB | 10,000 docs/namespace |
+| File | 5 MiB | 1,000 files/ns |
+| Site | 20 MiB total uncompressed, 5 MiB/file | 200 files/site |
+| Request | 25 MiB per request | — |
 | TTL | 1–30 days, 90 with a profile token (default 15) | — |
 
 Sizes are MiB; video uploads allow up to 20 MiB and audio up to 5 MiB. `GET /api/limits` returns the current values per type (`html`, `json`, `kv`, `files`, `sites`) and `profileMaxTtlDays`. Content over a resource limit answers `400` with a message naming the limit. KV key counts apply per store; JSON and file counts apply per namespace. The running deployment may apply different limits or owner-specific TTL caps. Eligible content may receive automatic TTL extensions; returned `expiresAt` describes the current expiry.
@@ -132,7 +132,7 @@ Sizes are MiB; video uploads allow up to 20 MiB and audio up to 5 MiB. `GET /api
 
 `maxTotalBytes` counts uncompressed files; `maxArchiveExpansionBytes` bounds every inflated ZIP byte, skipped system files included. Files named in `skippedFileNames` or under `skippedRootFolders` are dropped and never count. Files with an unsupported extension or a too-long path are skipped and listed in the response `notices`. The entry is the `entry` parameter, else the root `index.html`, else the shallowest HTML file; without any HTML file the upload answers `400`.
 
-A site limit hit answers `400` with a message naming the limit and what to do. `413` means the request is over 25 MB, has too many multipart parts (upload a ZIP instead) or a part header (file name/path) that is too long. `422` means no servable file is left (every file has an unsupported or missing extension). A truncated or unreadable ZIP, a ZIP with non-UTF-8 file names, a password-protected ZIP or a path with a `..` segment answers `400`.
+A site limit hit answers `400` with a message naming the limit and what to do. `413` means the request is over 25 MiB, has too many multipart parts (upload a ZIP instead) or a part header (file name/path) that is too long. `422` means no servable file is left (every file has an unsupported or missing extension). A truncated or unreadable ZIP, a ZIP with non-UTF-8 file names, a password-protected ZIP or a path with a `..` segment answers `400`.
 
 Unstorable metadata is stored as the closest valid value and reported in `notices`: control characters are removed from titles, tags and file names, over-long tags are cut to fit, and NUL characters in page content are saved as U+FFFD. A value that still cannot be stored answers `400`, not `409`; `409` remains for conflicting concurrent changes and count limits. If a client aborts an upload before the body is complete, the edge answers `408` with a JSON error body; retry the upload.
 

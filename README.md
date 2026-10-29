@@ -21,11 +21,11 @@ No signup or API key required for creation. Use the exact returned primary HTTPS
 
 Key characteristics:
 
-- **HTML and Markdown pages** -- publish raw HTML or Markdown rendered to styled HTML, up to 5 MB, with instant short URLs.
-- **Multi-file sites** -- upload a ZIP archive or individual files (up to 200 files, 5 MB per file, 20 MB total; current values at `GET /api/limits`) and get a fully served static site.
+- **HTML and Markdown pages** -- publish raw HTML or Markdown rendered to styled HTML, up to 5 MiB, with instant short URLs.
+- **Multi-file sites** -- upload a ZIP archive or individual files (up to 200 files, 5 MiB per file, 20 MiB total; current values at `GET /api/limits`) and get a fully served static site.
 - **Key-value store** -- KV pairs addressed by namespace/store ID, up to 1,000 keys per store, mutable in place via the owner token.
 - **JSON documents** -- store and retrieve arbitrary JSON, up to 1 MiB per document, 10,000 documents per namespace.
-- **File hosting** -- upload any safe file type (images, PDFs, video, audio, archives, code), up to 5 MB (video 20 MB), with inline preview.
+- **File hosting** -- upload any safe file type (images, PDFs, video, audio, archives, code), up to 5 MiB (video 20 MiB), with inline preview.
 - **Visibility** -- REST omitted `?ns=` publishes privately; MCP omitted namespace generates a private namespace: unlisted and not indexed; anyone with the link can still open it. `public` lists HTML, sites and files in the gallery and sitemap, so Google, Bing and AI search can find and index them; public pages are served on the brewpage.app domain for the strongest reach (a site always gets its own subdomain). Never put secrets in a public publication. Password-protected publications, JSON and KV are never listed. `POST …/visibility {"listed":false}` hides a public publication, link unchanged.
 - **Owner tokens** -- every publish response includes an `ownerToken`. Use it to update content in place (stable URL), delete it, or list your own resources. No account needed. Optional: sign in free (Google or any email) at https://account.brewpage.app to never lose your pages or tokens and to mint tokens that never expire. Not needed to publish. Creates also return a private `manageUrl` for that one publication: give it only to the owner.
 - **TTL** -- default 15 days, ordinary maximum 30 days, configured through the REST `ttl` query parameter. Owner-specific caps and eligible automatic extensions can affect expiry; use returned `expiresAt`.
@@ -80,11 +80,11 @@ Open `link` in any browser -- no further steps required.
 
 | Resource | Description | Limits |
 |----------|-------------|--------|
-| **HTML pages** | Raw HTML or Markdown with instant short URLs | 5 MB, TTL 1--30d |
+| **HTML pages** | Raw HTML or Markdown with instant short URLs | 5 MiB, TTL 1--30d |
 | **Key-value store** | Named key-value pairs addressed by namespace/store ID | 1,000 keys/store |
 | **JSON documents** | Store and retrieve arbitrary JSON with owner-scoped listing | 1 MiB, 10,000 docs/namespace |
-| **Files** | Upload files with automatic MIME detection and inline preview | 5 MB (video 20 MB), 1,000 files/namespace |
-| **Sites** | Multi-file HTML sites via ZIP or individual files | 20 MB total, 200 files, 5 MB/file, TTL 1--30d |
+| **Files** | Upload files with automatic MIME detection and inline preview | 5 MiB (video 20 MiB), 1,000 files/namespace |
+| **Sites** | Multi-file HTML sites via ZIP or individual files | 20 MiB total, 200 files, 5 MiB/file, TTL 1--30d |
 
 Creation returns a primary link and owner token. Keep the token for management and share the link exactly. Password-protected publications are never listed. TTL and supported inputs vary by operation.
 

@@ -103,7 +103,7 @@ brewpage-mcp
 
 ## Tools
 
-Twenty tools are available. Creation returns an owner token; keep it to modify or delete the resource later. Owner tools take `ownerToken`, else `BREWPAGE_OWNER_TOKEN`. Supported password inputs use `X-Password`. Secrets allowed; likely ones are flagged in notices. For a secret: private namespace + password.
+Twenty tools are available. Creation returns an owner token; keep it to modify or delete the resource later. Owner tools take `ownerToken`, else `BREWPAGE_OWNER_TOKEN` (local server only). Supported password inputs use `X-Password`. Secrets allowed; likely ones are flagged in notices. For a secret: private namespace + password.
 
 | Tool | Purpose |
 |------|---------|
@@ -232,7 +232,7 @@ publish_file(url="https://example.com/diagram.png")
 
 Publish a single-page or multi-file HTML site. Pass `entryContent` for a single page or `files` (array of `{path, content}`) for a multi-file site. Supports password protection, TTL, and owner token grouping. The result prints `Title:` (entry page title) after `ID:` when the server derives one.
 
-Limits (current values from `get_limits`): a request is at most 25 MB; a site at most 200 files, 5 MB per file and 20 MB in total; each path at most 380 characters. System files such as `.DS_Store` and `__MACOSX/` are skipped and never count; files with an unsupported extension or a too-long path are skipped and reported in notices. Entry: `entry`, else root `index.html`, else the shallowest HTML file. A site limit hit answers 400 with a message naming the limit, as does a PDF/Office file that is unreadable or password-protected; 413 means the request is over 25 MB, has too many files and form fields, or a file name/path is too long; 422 means no servable file is left; 503 means busy: retry after `Retry-After` seconds (failed publish tools print it).
+Limits (current values from `get_limits`): a request is at most 25 MiB; a site at most 200 files, 5 MiB per file and 20 MiB in total; each path at most 380 characters. System files such as `.DS_Store` and `__MACOSX/` are skipped and never count; files with an unsupported extension or a too-long path are skipped and reported in notices. Entry: `entry`, else root `index.html`, else the shallowest HTML file. A site limit hit answers 400 with a message naming the limit, as does a PDF/Office file that is unreadable or password-protected; 413 means the request is over 25 MiB, has too many files and form fields, or a file name/path is too long; 422 means no servable file is left; 503 means busy: retry after `Retry-After` seconds (failed publish tools print it).
 
 Parameters: exactly one of `entryContent` (string) or non-empty `files` (array of `{path, content}`), `entry` (optional entry file path, default `index.html`), `namespace` (optional -- omit for private, unlisted content; `public` lists the site in the gallery and sitemap for Google, Bing and AI search; a site always gets its own subdomain), `password` (optional), `ttlDays` (days or a string such as `2w`; default 15; the server clamps to 1--30), `ownerToken` (optional, groups site under an existing owner), `deliveryMode` (optional; fresh sites require `subdomain`).
 
@@ -382,7 +382,7 @@ search_gallery(mine=true, ownerToken="tok_...", sort="date")
 
 Delete a BrewPage resource (HTML page, site, KV store, JSON document, or file) using the owner token received at creation.
 
-Parameters: `type` (`html` | `site` | `kv` | `json` | `file`), `namespace` (string), `id` (string), `ownerToken` (optional; default `BREWPAGE_OWNER_TOKEN`). Path segments are URL-encoded.
+Parameters: `type` (`html` | `site` | `kv` | `json` | `file`), `namespace` (string), `id` (string), `ownerToken` (optional; default `BREWPAGE_OWNER_TOKEN`, local server only). Path segments are URL-encoded.
 
 Example prompt:
 
@@ -412,7 +412,7 @@ Output: `LISTED: false · link unchanged`.
 
 Add an owner token to your BrewPage profile (as `publish`) with an `admin` token of that profile (`POST /api/owner-token/bind`). Output: `BOUND …ab12 · 3/20 active`; tokens are never printed in full.
 
-Parameters: `token`, `ownerToken` (admin token; optional, default `BREWPAGE_OWNER_TOKEN`).
+Parameters: `token`, `ownerToken` (admin token; optional, default `BREWPAGE_OWNER_TOKEN`, local server only).
 
 ---
 
@@ -442,7 +442,7 @@ get_stats()
 
 ### `get_limits`
 
-Read the current limits from `GET /api/limits` (no auth; with `BREWPAGE_OWNER_TOKEN` also `reach` and `ownerMaxTtlDays`). Sizes are bytes, TTLs days: `requestMaxBytes`; `html`, `json`, `kv` and `files` max size, counts and TTL default/maximum; `profileMaxTtlDays` (TTL cap for a token in a profile); `sites.maxFiles`, `maxFileBytes`, `maxTotalBytes` (uncompressed), `maxArchiveExpansionBytes`, `maxPathChars`, `maxPathBytes`, `maxNameBytes`, `defaultTtlDays`, `maxTtlDays`, `allowedExtensions`, `skippedFileNames` and `skippedRootFolders`. Call it before publishing a large or multi-file site.
+Read the current limits from `GET /api/limits` (no auth needed; sends `BREWPAGE_OWNER_TOKEN` when set, local server only). Always returns `reach`: `profile` only when the owner token is active in a profile, else `token` (also with no token); with a usable owner token also `ownerMaxTtlDays`. Sizes are bytes, TTLs days: `requestMaxBytes`; `html`, `json`, `kv` and `files` max size, counts and TTL default/maximum; `profileMaxTtlDays` (TTL cap for a token in a profile); `sites.maxFiles`, `maxFileBytes`, `maxTotalBytes` (uncompressed), `maxArchiveExpansionBytes`, `maxPathChars`, `maxPathBytes`, `maxNameBytes`, `defaultTtlDays`, `maxTtlDays`, `allowedExtensions`, `skippedFileNames` and `skippedRootFolders`. Call it before publishing a large or multi-file site.
 
 Parameters: none.
 

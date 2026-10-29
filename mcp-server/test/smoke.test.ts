@@ -671,7 +671,7 @@ for (const scenario of [
     const result = await f.call(scenario.tool, scenario.args);
     // THEN it reports the missing token without calling the API.
     assert.deepEqual({ isError: result.isError, text: result.content[0].text, requests: f.requests.length },
-      { isError: true, text: "No owner token: pass ownerToken or set BREWPAGE_OWNER_TOKEN.", requests: 0 }, "missing token is a local error");
+      { isError: true, text: "No owner token: pass ownerToken (local server: or set BREWPAGE_OWNER_TOKEN).", requests: 0 }, "missing token is a local error");
   });
 }
 

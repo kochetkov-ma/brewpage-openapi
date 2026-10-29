@@ -31,9 +31,11 @@ function toolMeta(title: string, hints: ToolAnnotations) {
   return { title, annotations: { title, ...hints } };
 }
 
-const NO_OWNER_TOKEN = `No owner token: pass ownerToken or set ${OWNER_TOKEN_ENV}.`;
-const CREATE_OWNER_TOKEN_DESCRIPTION = `Optional. Default: ${OWNER_TOKEN_ENV}, else a new token per create.`;
-const OWNER_TOKEN_DESCRIPTION = `Owner token from create. Default: ${OWNER_TOKEN_ENV}.`;
+/** Env default exists only in the local (stdio) server; remote /mcp takes ownerToken per call. */
+const ENV_DEFAULT = `env ${OWNER_TOKEN_ENV} (local server only)`;
+const NO_OWNER_TOKEN = `No owner token: pass ownerToken (local server: or set ${OWNER_TOKEN_ENV}).`;
+const CREATE_OWNER_TOKEN_DESCRIPTION = `Optional. Default: ${ENV_DEFAULT}, else a new token per create.`;
+const OWNER_TOKEN_DESCRIPTION = `Owner token from create. Default: ${ENV_DEFAULT}.`;
 const SECRETS = "Secrets allowed; likely ones are flagged in notices. Private namespace + password suit secrets.";
 const MANAGE_URL_TEXT = "Returns manageUrl, a private management link (grants control; not for public sharing).";
 const OLD_READ_ONLY_CODE = "OLD_PUBLICATION_READ_ONLY";
@@ -150,11 +152,11 @@ const DELIVERY_MODE_SCHEMA = z.enum(["path", "subdomain"]).optional().describe(
 
 /** Site upload rules shared by publish_site and republish_site; current values come from get_limits. */
 const SITE_LIMITS_TEXT =
-  "Default limits (current values: GET /api/limits): a request is at most 25 MB; a site at most 200 files, 5 MB per file and 20 MB in total; " +
+  "Default limits (current values: GET /api/limits): a request is at most 25 MiB; a site at most 200 files, 5 MiB per file and 20 MiB in total; " +
   "each path at most 380 characters. System files (.DS_Store, __MACOSX/ and similar) are skipped and never count; files with an unsupported extension " +
   "or a too-long path are skipped and listed in notices. Entry: `entry`, else root index.html, else the shallowest HTML file. " +
   "Errors: 400 = a site limit exceeded (the message names it), invalid path, no HTML file, or a PDF/Office file unreadable " +
-  "or password-protected; 413 = request over 25 MB, too many files and form fields, or a file name/path too long; " +
+  "or password-protected; 413 = request over 25 MiB, too many files and form fields, or a file name/path too long; " +
   "422 = no servable file left; 503 = busy, retry after Retry-After seconds.";
 
 function hostingResponseLines(data: Record<string, unknown>): string[] {
@@ -1187,7 +1189,7 @@ export function createServer(options: ServerOptions = {}): McpServer {
       description: "Get the current BrewPage limits (GET /api/limits): request size; per type (html, json, kv, files, sites) max size, " +
         "counts and TTL default/maximum; profileMaxTtlDays (TTL cap for a token in a profile); site ZIP expansion, path and name lengths, " +
         "allowed file extensions and skipped system files. Sizes are bytes, TTLs days. " +
-        `With ${OWNER_TOKEN_ENV} set: also reach (token|profile) and ownerMaxTtlDays.`,
+        `The answer always has reach: \`profile\` only when the owner token is active in a profile, else \`token\` (also with no token). With a usable owner token also ownerMaxTtlDays. Owner token: ${ENV_DEFAULT}.`,
       inputSchema: {},
     },
     async () => {
@@ -1248,7 +1250,7 @@ export function createServer(options: ServerOptions = {}): McpServer {
         ownerToken: z
           .string()
           .optional()
-          .describe(`Owner token; only sent as X-Owner-Token when 'mine' is true. Default: ${OWNER_TOKEN_ENV}.`),
+          .describe(`Owner token; only sent as X-Owner-Token when 'mine' is true. Default: ${ENV_DEFAULT}.`),
       },
     },
     async ({ q, page, size, sort, mine, ownerToken }) => {
@@ -1321,7 +1323,7 @@ export function createServer(options: ServerOptions = {}): McpServer {
       description: "Add an owner token to your BrewPage profile (as publish). Needs an admin token of that profile.",
       inputSchema: {
         token: z.string().describe("Owner token to add"),
-        ownerToken: z.string().optional().describe(`Admin token of the profile. Default: ${OWNER_TOKEN_ENV}.`),
+        ownerToken: z.string().optional().describe(`Admin token of the profile. Default: ${ENV_DEFAULT}.`),
       },
     },
     async ({ token, ownerToken }) => {
@@ -1343,7 +1345,7 @@ export function createServer(options: ServerOptions = {}): McpServer {
         label: z.string().optional().describe("Optional label shown in the profile"),
         scope: z.enum(["publish", "admin"]).optional().describe("publish (default) or admin (can manage tokens)"),
         expiresIn: z.enum(["30d", "90d", "1y", "never"]).optional().describe("Default: admin 90d, publish never"),
-        ownerToken: z.string().optional().describe(`Admin token of the profile. Default: ${OWNER_TOKEN_ENV}.`),
+        ownerToken: z.string().optional().describe(`Admin token of the profile. Default: ${ENV_DEFAULT}.`),
       },
     },
     async ({ label, scope, expiresIn, ownerToken }) => {
