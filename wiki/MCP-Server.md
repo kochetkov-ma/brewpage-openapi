@@ -48,7 +48,7 @@ Edit `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS):
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@1.15.3"]
+      "args": ["-y", "brewpage-mcp@1.15.4"]
     }
   }
 }
@@ -58,14 +58,14 @@ Windows: `%APPDATA%\Claude\claude_desktop_config.json`
 
 ### Claude Code
 
-Run `claude mcp add --transport stdio --scope project brewpage -- npx -y brewpage-mcp@1.15.3`, or add this to project-root `.mcp.json`:
+Run `claude mcp add --transport stdio --scope project brewpage -- npx -y brewpage-mcp@1.15.4`, or add this to project-root `.mcp.json`:
 
 ```json
 {
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@1.15.3"]
+      "args": ["-y", "brewpage-mcp@1.15.4"]
     }
   }
 }
@@ -74,7 +74,7 @@ Run `claude mcp add --transport stdio --scope project brewpage -- npx -y brewpag
 ### Direct run
 
 ```bash
-npx -y brewpage-mcp@1.15.3
+npx -y brewpage-mcp@1.15.4
 ```
 
 ---
@@ -83,7 +83,7 @@ npx -y brewpage-mcp@1.15.3
 
 | Tool | What it does |
 |------|-------------|
-| `publish_html` | Publish HTML or Markdown → URL + token |
+| `publish_html` | Publish HTML, Markdown, code or JSON → URL + token |
 | `publish_file` | Upload file from URL → URL + token |
 | `publish_site` | Publish a multi-file HTML site from HTML content (`entryContent`, `namespace?`, `password?`, `ttlDays?`) |
 | `delete_resource` | Delete with owner token (incl. sites) |

@@ -173,7 +173,7 @@ Rerunning historical tag workflows that used token authentication is unsupported
 
 | Tool | Description |
 |------|-------------|
-| `publish_html` | Publish HTML or Markdown content with optional password, TTL, filename, and top toolbar |
+| `publish_html` | Publish HTML, Markdown, code or JSON content with optional password, TTL, filename, and top toolbar |
 | `publish_file` | Upload a file from a URL |
 | `publish_site` | Publish a single-page or multi-file HTML site |
 | `delete_resource` | Delete any resource (HTML, site, KV, JSON, file) by owner token |
@@ -207,7 +207,7 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@1.15.3"]
+      "args": ["-y", "brewpage-mcp@1.15.4"]
     }
   }
 }
@@ -222,7 +222,7 @@ Add to project-root `.mcp.json`:
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@1.15.3"]
+      "args": ["-y", "brewpage-mcp@1.15.4"]
     }
   }
 }

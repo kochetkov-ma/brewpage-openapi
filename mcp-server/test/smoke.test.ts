@@ -90,7 +90,7 @@ const EXPECTED_TOOL_META: Record<string, [string, Record<string, boolean>]> = {
   delete_resource: ["Delete publication", DESTRUCTIVE], update_html: ["Update page", DESTRUCTIVE],
   update_json: ["Update JSON document", DESTRUCTIVE], set_kv: ["Set KV value", DESTRUCTIVE],
   republish_site: ["Republish site", DESTRUCTIVE],
-  publish_html: ["Publish HTML or Markdown page", ADDITIVE], publish_file: ["Publish file from URL", ADDITIVE],
+  publish_html: ["Publish HTML, Markdown, code or JSON page", ADDITIVE], publish_file: ["Publish file from URL", ADDITIVE],
   publish_site: ["Publish site", ADDITIVE], publish_json: ["Publish JSON document", ADDITIVE],
   publish_kv: ["Publish KV entry", ADDITIVE], set_visibility: ["Set gallery visibility", ADDITIVE],
   update_hosting: ["Change delivery mode", ADDITIVE], bind_token: ["Add token to profile", ADDITIVE],

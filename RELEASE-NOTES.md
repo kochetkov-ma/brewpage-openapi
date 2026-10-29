@@ -1,5 +1,9 @@
 # Release Notes
 
+## MCP 1.15.4 — 2026-10-29
+
+- `publish_html` title and description name HTML, Markdown, code or JSON and say the server detects the format when it is omitted; `update_html` texts likewise. `User-Agent: brewpage-mcp/1.15.4`; pins bumped.
+
 ## MCP 1.15.3 — 2026-10-29
 
 - `publish_html` `format` no longer defaults to `HTML`: omitted, no `format` is sent and the server detects HTML, Markdown, code or JSON (contract 2.8.27, notice `format-detected`); a given value passes through, `html` keeps code/JSON as HTML. `update_html` already omits it (stored format kept). `User-Agent: brewpage-mcp/1.15.3`; pins bumped.

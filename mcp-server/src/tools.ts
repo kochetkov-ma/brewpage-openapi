@@ -2,7 +2,7 @@ import { McpServer, type ToolAnnotations } from "@modelcontextprotocol/server";
 import { z } from "zod";
 
 export const DEFAULT_BASE_URL = "https://brewpage.app";
-export const USER_AGENT = "brewpage-mcp/1.15.3";
+export const USER_AGENT = "brewpage-mcp/1.15.4";
 export const OWNER_TOKEN_ENV = "BREWPAGE_OWNER_TOKEN";
 
 export interface ServerOptions {
@@ -232,7 +232,7 @@ export function createServer(options: ServerOptions = {}): McpServer {
   const apiFetch = options.fetch ?? fetch;
   const server = new McpServer({
     name: "brewpage-mcp",
-    version: "1.15.3",
+    version: "1.15.4",
   });
 
   /** Caller argument first, then the configured default; `fromEnv` marks the configured one. */
@@ -323,8 +323,8 @@ export function createServer(options: ServerOptions = {}): McpServer {
   server.registerTool(
     "publish_html",
     {
-      ...toolMeta("Publish HTML or Markdown page", ADDITIVE),
-      description: "Publish HTML or Markdown content to BrewPage (repository default limit 5 MiB). Returns its primary share link and owner token. Supports password protection, custom TTL, optional filename, and an opt-in top toolbar (showTopBar). " +
+      ...toolMeta("Publish HTML, Markdown, code or JSON page", ADDITIVE),
+      description: "Publish HTML, Markdown, code or JSON content to BrewPage (repository default limit 5 MiB); format omitted -> the server detects it. Returns its primary share link and owner token. Supports password protection, custom TTL, optional filename, and an opt-in top toolbar (showTopBar). " +
         "When deliveryMode is omitted for a `public` page, the server may publish it on its own subdomain if the page needs browser features a BrewPage link does not provide; " +
         "the result then includes deliveryModeReason and a delivery notice. Markdown raw HTML is allowlisted: scripts, styles, event handlers, forms and embeds are removed. " +
         MANAGE_URL_TEXT + " " + SECRETS,
@@ -823,12 +823,12 @@ export function createServer(options: ServerOptions = {}): McpServer {
     "update_html",
     {
       ...toolMeta("Update page", DESTRUCTIVE),
-      description: "Update an existing BrewPage HTML/Markdown page. Requires owner token. Returns the updated page metadata. " +
+      description: "Update an existing BrewPage HTML, Markdown, code or JSON page. Requires owner token. Returns the updated page metadata. " +
         "The link and delivery mode never change on update; an advisory deliveryModeReason and delivery notice are included when the new content uses browser features that may not work fully on a BrewPage link." + OLD_READ_ONLY_TEXT,
       inputSchema: {
         namespace: z.string().describe("Page namespace"),
         id: z.string().describe("Page ID"),
-        content: z.string().describe("New HTML or Markdown content"),
+        content: z.string().describe("New HTML, Markdown, code or JSON content"),
         ownerToken: z.string().optional().describe(OWNER_TOKEN_DESCRIPTION),
         format: z
           .string()
