@@ -2531,7 +2531,7 @@ info:
     url: https://www.apache.org/licenses/LICENSE-2.0
   termsOfService: https://brewpage.app/terms
   title: BrewPage API
-  version: 2.8.32
+  version: 2.8.35
 openapi: 3.1.0
 paths:
   /api/files:
@@ -4108,7 +4108,7 @@ paths:
         - KV
   /api/kv/{ns}/{id}/{key}:
     delete:
-      description: Removes a single key from the store; deleting the last key does not remove the store
+      description: Removes a single key from the store; deleting the last key removes the store
       operationId: deleteKey
       parameters:
         - in: path

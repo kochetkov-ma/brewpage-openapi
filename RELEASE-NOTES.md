@@ -1,5 +1,10 @@
 # Release Notes
 
+## API contract 2.8.35 — 2026-10-29
+
+- API contract version 2.8.35 is the backend-generated public snapshot exported from brewpage-app source `bbfaf28c7a36c1e19225eb97014f449836daf82c` (tag `v2.8.35`), clean tree.
+- KV `Delete key` description: deleting the last key removes the store. Description only: 47 paths and 62 operations.
+
 ## API contract 2.8.32 — 2026-10-29
 
 - API contract version 2.8.32 is the backend-generated public snapshot exported from brewpage-app source `6fd3133b9602d727596faa5eca65988abc29a063` (tag `v2.8.32`), clean tree.
