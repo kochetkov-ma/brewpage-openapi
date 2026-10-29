@@ -1,5 +1,10 @@
 # Release Notes
 
+## API contract 2.8.24 — 2026-10-29
+
+- API contract version 2.8.24 is the backend-generated public snapshot exported from the clean brewpage-app source `a32a3788e320933e997f980a5c0374e5ed6584fc` (tag `v2.8.24`).
+- `POST /api/sites` and `PUT /api/sites/{ns}/{id}` responses add optional `title`: the entry page title (`<title>`, else first heading or text); absent when the entry has none. Additive: 47 paths and 62 operations; MCP unchanged.
+
 ## API contract 2.8.16 — 2026-10-28
 
 - API contract version 2.8.16 is the backend-generated public snapshot exported from the clean brewpage-app source `daf06ffe8892d3a6535bdbdf5e3332b526b78781` (tag `v2.8.16`).

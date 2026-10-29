@@ -2056,6 +2056,9 @@ components:
           items:
             type: string
           type: array
+        title:
+          description: 'Entry page title: <title>, else first heading or text; absent if none.'
+          type: string
         totalSizeBytes:
           format: int64
           type: integer
@@ -2177,6 +2180,9 @@ components:
           items:
             type: string
           type: array
+        title:
+          description: 'Entry page title: <title>, else first heading or text; absent if none.'
+          type: string
         totalSizeBytes:
           format: int64
           type: integer
@@ -2522,7 +2528,7 @@ info:
     url: https://www.apache.org/licenses/LICENSE-2.0
   termsOfService: https://brewpage.app/terms
   title: BrewPage API
-  version: 2.8.16
+  version: 2.8.24
 openapi: 3.1.0
 paths:
   /api/files:
