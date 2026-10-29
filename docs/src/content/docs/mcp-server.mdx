@@ -6,7 +6,7 @@ order: 3
 
 # MCP Server
 
-Last updated: 2026-10-27
+Last updated: 2026-10-29
 
 `brewpage-mcp` 1.15.4 provides twenty tools to publish and manage HTML, Markdown, JSON, KV, files, and multi-file sites from compatible MCP clients. It runs locally over stdio (Node.js 20 or newer) or remotely without install, and calls the BrewPage API.
 
@@ -91,7 +91,7 @@ This starts a stdio server for an MCP client, not an interactive publishing shel
 
 All five publish tools accept optional `deliveryMode: "path" | "subdomain"`; it is sent as `X-Delivery-Mode`, without changing content bodies. Omitted namespace is private (a generated `priv-<random>` namespace): unlisted and not indexed; anyone with the link can still open it. `public` lists HTML, sites and files in the gallery and sitemap, so Google, Bing and AI search can find and index them; public pages are served on the brewpage.app domain for the strongest reach (a site always gets its own subdomain). Never put secrets in a public publication. Password-protected publications, JSON and KV are never listed.
 
-These tools wrap a subset of the backend-generated public REST contract. MCP TTL inputs take days or a string such as `2w` (default 15); the server rounds to whole days and clamps to 1–30, and owner-specific caps and eligible automatic extensions can affect actual expiry. Use returned `expiresAt`. Tolerated-input adjustments come back in the response `notices` array, printed as `Notice (code): message`; `secret-detected` and `manage-link-disabled` print as `WARNING (code): message`. A minted `manageUrl` prints as `MANAGE LINK (private): …`: give it to the user privately, never publish it. Set `BREWPAGE_OWNER_TOKEN` for a default owner token; outputs name it instead of printing it. Secrets allowed; likely ones are flagged in notices. For a secret: private namespace + password. `get_page` reads stored rendered HTML or format-specific code/text, rather than owner-only original source or a browser viewer.
+These tools wrap a subset of the backend-generated public REST contract. MCP TTL inputs take days or a string such as `2w` (default 15); the server rounds to whole days and clamps to 1–30 (up to 90 with a profile token), and owner-specific caps and eligible automatic extensions can affect actual expiry. Use returned `expiresAt`. Tolerated-input adjustments come back in the response `notices` array, printed as `Notice (code): message`; `secret-detected` and `manage-link-disabled` print as `WARNING (code): message`. A minted `manageUrl` prints as `MANAGE LINK (private): …`: give it to the user privately, never publish it. Set `BREWPAGE_OWNER_TOKEN` for a default owner token; outputs name it instead of printing it. Secrets allowed; likely ones are flagged in notices. For a secret: private namespace + password. `get_page` reads stored rendered HTML or format-specific code/text, rather than owner-only original source or a browser viewer.
 
 For a fresh publication, sites and HTML pages of format `HTML` outside `public` (including the generated unlisted namespace) always use **Dedicated subdomain**; omit `deliveryMode` there. An explicit `path` there is not rejected: the publication is created on its subdomain and the result reports `deliveryModeMatched: false`, `deliveryModeReason: "policy:subdomain-required"` and a `Delivery notice:` line. Everything else in any namespace (Markdown, code/text, files, JSON, KV, public HTML) defaults to **Promotion** (`path`) and may choose **Dedicated subdomain** (`subdomain`), including when password-protected. Markdown raw HTML is rendered through an allowlist (no scripts, styles, event handlers, forms or embeds; links `http`/`https`/`mailto`/`tel`/relative); earlier pages change only when republished. Promotion has stricter active-document restrictions. Each NEW site gets one publication-specific host for its complete bundle, preserving relative/root-relative paths; missing assets return 404 with no SPA fallback. Third-party widgets may need provider configuration.
 
@@ -103,7 +103,7 @@ When creation returns an existing publication, it keeps its actual link, cohort,
 
 ## Publish and Update
 
-Ask your assistant to publish the content, save the returned owner token, and share the returned primary link. `publish_html`, `publish_site`, `publish_json`, and `publish_kv` accept `password` and `ttlDays` (days or a string such as `2w`; default 15; clamped to 1–30). `publish_file` accepts a source `url`, optional `namespace`, `filename`, and `deliveryMode`; it does not expose base64, password, or TTL inputs.
+Ask your assistant to publish the content, save the returned owner token, and share the returned primary link. `publish_html`, `publish_site`, `publish_json`, and `publish_kv` accept `password` and `ttlDays` (days or a string such as `2w`; default 15; clamped to 1–30, up to 90 with a profile token). `publish_file` accepts a source `url`, optional `namespace`, `filename`, and `deliveryMode`; it does not expose base64, password, or TTL inputs.
 
 ```text
 publish_html(content="<h1>Report</h1>", format="HTML", ttlDays=15)

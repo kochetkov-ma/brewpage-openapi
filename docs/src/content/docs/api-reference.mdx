@@ -8,7 +8,7 @@ import ScalarApiReference from '../../components/docs/ScalarApiReference.astro';
 
 # API Reference
 
-Last updated: 2026-10-26
+Last updated: 2026-10-29
 
 Explore the [BrewPage](https://brewpage.app) REST API. This backend-generated public specification includes anonymous, password-protected and owner-only operations with their access requirements. Administrative operations are excluded from public artifacts.
 
@@ -112,7 +112,7 @@ Limits depend on operation and visibility. Handle the running API's 429 response
 | File | 5 MB | 1,000 files/ns |
 | Site | 20 MB total uncompressed, 5 MB/file | 200 files/site |
 | Request | 25 MB per request | — |
-| TTL | 1–30 days (default 15) | — |
+| TTL | 1–30 days, 90 with a profile token (default 15) | — |
 
 These are repository defaults (MiB); video uploads allow up to 20 MiB and audio up to 5 MiB. Content over a resource limit answers `400` with a message naming the limit. KV key counts apply per store; JSON and file counts apply per namespace. The running deployment may apply different limits or owner-specific TTL caps. Eligible content may receive automatic TTL extensions; returned `expiresAt` describes the current expiry.
 
