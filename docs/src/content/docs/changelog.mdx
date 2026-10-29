@@ -6,6 +6,10 @@ order: 5
 
 # Changelog
 
+## MCP 1.16.0 — get_limits takes an owner token
+
+`get_limits` accepts `ownerToken`, so remote `/mcp` clients also get `reach` and `ownerMaxTtlDays`. Results open with `SECURITY ALERT (credential-published)` when public content holds a live BrewPage token or manage link. Wording: limits reach, local-only env token, MiB.
+
 ## MCP 1.15.5 — HTML results name the page title
 
 `publish_html` prints the page title (`Title:`) when the server reports one. Tool texts state plain size limits; `get_limits` names the per-type limits and the 90-day profile TTL cap.
