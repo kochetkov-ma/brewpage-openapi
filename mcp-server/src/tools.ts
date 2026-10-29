@@ -1189,11 +1189,14 @@ export function createServer(options: ServerOptions = {}): McpServer {
       description: "Get the current BrewPage limits (GET /api/limits): request size; per type (html, json, kv, files, sites) max size, " +
         "counts and TTL default/maximum; profileMaxTtlDays (TTL cap for a token in a profile); site ZIP expansion, path and name lengths, " +
         "allowed file extensions and skipped system files. Sizes are bytes, TTLs days. " +
-        `The answer always has reach: \`profile\` only when the owner token is active in a profile, else \`token\` (also with no token). With a usable owner token also ownerMaxTtlDays. Owner token: ${ENV_DEFAULT}.`,
-      inputSchema: {},
+        `The answer always has reach: \`profile\` only when the owner token is active in a profile, else \`token\` (also with no token). With a usable owner token also ownerMaxTtlDays.`,
+      inputSchema: {
+        ownerToken: z.string().optional().describe(OWNER_TOKEN_DESCRIPTION),
+      },
     },
-    async () => {
-      const headers: Record<string, string> = defaultOwnerToken ? { "X-Owner-Token": defaultOwnerToken } : {};
+    async ({ ownerToken }) => {
+      const { token } = ownerTokenFor(ownerToken);
+      const headers: Record<string, string> = token ? { "X-Owner-Token": token } : {};
       const { ok, status, data } = await apiRequest("GET", "/api/limits", undefined, headers);
 
       if (!ok) {

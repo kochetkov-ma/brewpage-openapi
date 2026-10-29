@@ -184,6 +184,17 @@ test("trusted proxy peer forwards only the last client IP plus public proto and 
     ua: `brewpage-mcp/${PACKAGE_VERSION} (remote)`, token: undefined }, "backend request carries exactly the forwarded identity");
 });
 
+test("remote get_limits sends the ownerToken argument as X-Owner-Token", { timeout: 15_000 }, async (t) => {
+  // GIVEN a remote client with an owner token from create.
+  const f = await fixture(t);
+  const client = await f.connect();
+  // WHEN it reads limits with that token.
+  const result = await client.callTool({ name: "get_limits", arguments: { ownerToken: "fixture-owner" } }) as { isError?: boolean };
+  // THEN the backend receives exactly that token.
+  assert.deepEqual({ isError: result.isError, url: f.requests[0].url, token: f.requests[0].headers["x-owner-token"] },
+    { isError: undefined, url: "/api/limits", token: "fixture-owner" }, "remote limits call carries the argument token");
+});
+
 const XFF = { "X-Forwarded-For": "203.0.113.9" };
 for (const scenario of [
   { label: "untrusted TCP peer", trusted: "10.0.0.0/8", headers: XFF, method: "POST", body: undefined, status: 403, code: -32000, message: "Forbidden." },

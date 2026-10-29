@@ -442,9 +442,9 @@ get_stats()
 
 ### `get_limits`
 
-Read the current limits from `GET /api/limits` (no auth needed; sends `BREWPAGE_OWNER_TOKEN` when set, local server only). Always returns `reach`: `profile` only when the owner token is active in a profile, else `token` (also with no token); with a usable owner token also `ownerMaxTtlDays`. Sizes are bytes, TTLs days: `requestMaxBytes`; `html`, `json`, `kv` and `files` max size, counts and TTL default/maximum; `profileMaxTtlDays` (TTL cap for a token in a profile); `sites.maxFiles`, `maxFileBytes`, `maxTotalBytes` (uncompressed), `maxArchiveExpansionBytes`, `maxPathChars`, `maxPathBytes`, `maxNameBytes`, `defaultTtlDays`, `maxTtlDays`, `allowedExtensions`, `skippedFileNames` and `skippedRootFolders`. Call it before publishing a large or multi-file site.
+Read the current limits from `GET /api/limits` (no auth needed; an owner token goes as `X-Owner-Token`). Always returns `reach`: `profile` only when the owner token is active in a profile, else `token` (also with no token); with a usable owner token also `ownerMaxTtlDays`. Sizes are bytes, TTLs days: `requestMaxBytes`; `html`, `json`, `kv` and `files` max size, counts and TTL default/maximum; `profileMaxTtlDays` (TTL cap for a token in a profile); `sites.maxFiles`, `maxFileBytes`, `maxTotalBytes` (uncompressed), `maxArchiveExpansionBytes`, `maxPathChars`, `maxPathBytes`, `maxNameBytes`, `defaultTtlDays`, `maxTtlDays`, `allowedExtensions`, `skippedFileNames` and `skippedRootFolders`. Call it before publishing a large or multi-file site.
 
-Parameters: none.
+Parameters: `ownerToken` (optional; default `BREWPAGE_OWNER_TOKEN`, local server only).
 
 Example prompt:
 

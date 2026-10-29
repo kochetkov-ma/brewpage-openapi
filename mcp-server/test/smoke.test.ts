@@ -527,6 +527,23 @@ for (const scenario of [
 }
 
 for (const scenario of [
+  { label: "argument", env: {}, args: { ownerToken: "fixture-owner" }, owner: "fixture-owner" },
+  { label: "argument over default", env: { BREWPAGE_OWNER_TOKEN: ENV_TOKEN }, args: { ownerToken: "fixture-owner" }, owner: "fixture-owner" },
+  { label: "default", env: { BREWPAGE_OWNER_TOKEN: ENV_TOKEN }, args: {}, owner: ENV_TOKEN },
+  { label: "none", env: {}, args: {}, owner: undefined },
+]) {
+  test(`get_limits owner token: ${scenario.label}`, { timeout: 10_000 }, async (t) => {
+    // GIVEN a synthetic limits endpoint and the scenario default.
+    const f = await fixture(t, scenario.env);
+    // WHEN limits are read.
+    const result = await f.call("get_limits", scenario.args);
+    // THEN X-Owner-Token follows argument, then default, else is absent.
+    assert.deepEqual({ isError: result.isError, owner: f.requests.map(({ headers }) => headers["x-owner-token"]) },
+      { isError: undefined, owner: [scenario.owner] }, "limits owner header follows argument, then default");
+  });
+}
+
+for (const scenario of [
   { tool: "publish_html", args: { content: "<h1>Fixture</h1>" } },
   { tool: "publish_json", args: { json: { value: 7 } } },
   { tool: "publish_kv", args: { key: "k", value: "v" } },
