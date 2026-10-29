@@ -83,8 +83,9 @@ const limits = spec.paths['/api/limits']?.get;
 assert.equal(limits?.operationId, 'getLimits', 'Upload limits are published as GET /api/limits');
 assert.equal(limits.responses['200'].content['application/json'].schema.$ref, '#/components/schemas/LimitsResponse',
   'Limits answer with the LimitsResponse DTO');
-assert.deepEqual(Object.keys(schemas.LimitsResponse.properties).sort(), ['ownerMaxTtlDays', 'reach', 'requestMaxBytes', 'sites'],
-  'Limits expose the request size, site limits and the optional owner reach and TTL cap');
+assert.deepEqual(Object.keys(schemas.LimitsResponse.properties).sort(), ['files', 'html', 'json', 'kv', 'ownerMaxTtlDays',
+  'profileMaxTtlDays', 'reach', 'requestMaxBytes', 'sites'],
+  'Limits expose the request size, per-type limits, profile TTL cap and the optional owner reach and TTL cap');
 assert.deepEqual(Object.keys(schemas.SiteLimitsResponse.properties).sort(), ['allowedExtensions', 'defaultTtlDays',
   'maxArchiveExpansionBytes', 'maxFileBytes', 'maxFiles', 'maxNameBytes', 'maxPathBytes', 'maxPathChars', 'maxTotalBytes',
   'maxTtlDays', 'skippedFileNames', 'skippedRootFolders'], 'Site limits expose exactly the user-facing fields');

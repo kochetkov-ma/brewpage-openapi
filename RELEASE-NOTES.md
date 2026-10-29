@@ -4,6 +4,12 @@
 
 - `publish_html` prints `Title: <title>` after `ID:` when the create response carries `title` (contract 2.8.31). `publish_html`, `publish_file`, `publish_json` and `publish_kv` state plain size limits instead of repository defaults. `get_limits` describes the per-type `html`/`json`/`kv`/`files` limits and `profileMaxTtlDays` that `GET /api/limits` returns from the next backend release. `User-Agent: brewpage-mcp/1.15.5`; pins bumped.
 
+## API contract 2.8.36 — 2026-10-29
+
+- API contract version 2.8.36 is the backend-generated public snapshot exported from brewpage-app source `aae0ce5722501863cf58f5cf81aad7e0c6c036d8` (tag `v2.8.36`), clean tree.
+- `HtmlUploadResponse`, `FileUploadResponse`, `SiteUploadResponse` add optional owner-only `updated` (true when the upload replaced the owner's stored page or site). `HtmlUploadResponse.title` description adds JSON: root title or name.
+- `GET /api/limits`: `LimitsResponse` adds required `html`, `json`, `kv`, `files` (new `HtmlLimitsResponse`, `JsonLimitsResponse`, `KvLimitsResponse`, `FileLimitsResponse`) and `profileMaxTtlDays`; summary and description name every type. Additive: 47 paths and 62 operations.
+
 ## API contract 2.8.35 — 2026-10-29
 
 - API contract version 2.8.35 is the backend-generated public snapshot exported from brewpage-app source `bbfaf28c7a36c1e19225eb97014f449836daf82c` (tag `v2.8.35`), clean tree.

@@ -20,6 +20,7 @@ Public contract snapshots, documentation and the BrewPage MCP server. The backen
 
 ## Recent contract changes
 
+- 2.8.36 (matches backend v2.8.36): html/file/site create responses add optional owner-only `updated` (upload replaced your stored page or site); html `title` description adds JSON root title or name; `GET /api/limits` adds per-type `html`, `json`, `kv`, `files` limits and `profileMaxTtlDays`. Additive: 47 paths and 62 operations.
 - 2.8.35 (matches backend v2.8.35): KV `Delete key` description: deleting the last key removes the store. Description only: 47 paths and 62 operations.
 - 2.8.32 (matches backend v2.8.32): create `ttl` description: 1-30 days, up to 90 with an `X-Owner-Token` in a profile. Description only: 47 paths and 62 operations.
 - 2.8.31 (matches backend v2.8.31): `POST /api/html` response adds optional `title`: the stored title (`<title>`, else first heading or text; code: filename or e.g. `JS snippet`); absent when none. Additive: 47 paths and 62 operations.
