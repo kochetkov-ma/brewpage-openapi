@@ -84,12 +84,20 @@ function retryAfterText(status: number, headers?: Headers): string {
   return after ? ` Retry-After: ${after}.` : "";
 }
 
-/** Owner-tool failure: the server answer verbatim plus a hint for a plain wrong-token 403 or a frozen old publication. */
+/** Create tool for each content update: a 404 update means the row is gone, so the agent publishes anew. */
+const PUBLISH_TOOL_FOR: Record<string, string> = {
+  "update HTML": "publish_html", "republish site": "publish_site", "update JSON": "publish_json", "set KV": "publish_kv",
+};
+
+/** Owner-tool failure: the server answer verbatim plus a hint for a wrong-token 403, a missing row or a frozen old publication. */
 function ownerFailure(operation: string, status: number, data: unknown, fromEnv: boolean, headers?: Headers) {
   const lines = [`Failed to ${operation} (${status}): ${JSON.stringify(data)}${retryAfterText(status, headers)}`];
   const code = (data as { code?: unknown } | null)?.code;
   if (status === 403 && (code === undefined || code === "OWNER_AUTHORIZATION_FAILED")) {
     lines.push(`Wrong owner token for this publication. Use ownerToken from create.${fromEnv ? ` Sent: ${OWNER_TOKEN_ENV}.` : ""}`);
+  }
+  if (status === 404 && PUBLISH_TOOL_FOR[operation]) {
+    lines.push(`Use the ${PUBLISH_TOOL_FOR[operation]} tool to publish a new copy.`);
   }
   if (status === 409 && code === OLD_READ_ONLY_CODE) {
     const { createUrl, republishUrl } = data as { createUrl?: unknown; republishUrl?: unknown };
