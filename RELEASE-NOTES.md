@@ -1,5 +1,10 @@
 # Release Notes
 
+## API contract 2.8.47 — 2026-10-30
+
+- API contract version 2.8.47 is the backend-generated public snapshot exported from brewpage-app source `f027fe2d0f985a191a367a4e601cdbbdc9cb035d` (tag `v2.8.47`), clean tree.
+- `ErrorResponse` adds optional `accountUrl` (write 429 without an account: free account with higher limits). `PUT /api/json/{ns}/{id}` and `PUT /api/kv/{ns}/{id}/{key}` document 429. Additive: 47 paths and 62 operations.
+
 ## MCP 1.16.3 — 2026-10-30
 
 - Create `ownerToken` description: the token from the first create keeps publications under one owner; the owner-token banner adds that it goes as `ownerToken` on later publishes and updates; `publish_site` says static HTML, CSS and JS (incl. built bundles) run in the browser, PHP and other server code never run. Gemini context: save `ownerToken` privately, never in chat. Contract 2.8.45. `User-Agent: brewpage-mcp/1.16.3`; pins bumped.

@@ -49,6 +49,10 @@
       },
       "ErrorResponse": {
         "properties": {
+          "accountUrl": {
+            "description": "Write 429 without an account: free account with higher limits",
+            "type": "string"
+          },
           "code": {
             "description": "Machine-readable reason, e.g. OWNER_AUTHORIZATION_FAILED, OWNER_TOKEN_REVOKED, OWNER_TOKEN_EXPIRED, ADMIN_TOKEN_REQUIRED, OLD_PUBLICATION_READ_ONLY, PUBLICATION_UNAVAILABLE, ROTATE_LIMITED.",
             "type": "string"
@@ -3437,7 +3441,7 @@
     },
     "termsOfService": "https://brewpage.app/terms",
     "title": "BrewPage API",
-    "version": "2.8.45"
+    "version": "2.8.47"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -5423,6 +5427,16 @@
               }
             },
             "description": "Old publication is read-only (code: OLD_PUBLICATION_READ_ONLY); publish anew via createUrl"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Rate limit exceeded; without an account the body carries accountUrl (free account, higher limits)"
           }
         },
         "security": [
@@ -6110,6 +6124,16 @@
               }
             },
             "description": "Key limit exceeded, or old publication is read-only (code: OLD_PUBLICATION_READ_ONLY; publish anew via createUrl)"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Rate limit exceeded; without an account the body carries accountUrl (free account, higher limits)"
           }
         },
         "security": [
