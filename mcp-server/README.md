@@ -176,7 +176,7 @@ publish_html(content="<h1>Report</h1>...", format="HTML", ttlDays=15)
 
 Update an existing HTML or Markdown page in place, preserving its short URL. Requires the original `ownerToken` returned at creation.
 
-Parameters: `namespace` (string), `id` (string), `content` (string, the new body), `ownerToken` (string), `format` (optional HTML/Markdown alias or supported code language such as `json`, `yaml`, or `typescript`; omitted preserves the stored format).
+Parameters: `namespace` (string), `id` (string), `content` (string, the new body), `ownerToken` (string), `format` (optional HTML/Markdown alias or supported code language such as `json`, `yaml`, or `typescript`; omitted preserves the stored format), `tags` (optional; replace the stored tags, `[]` clears, omitted keeps them).
 
 An update never changes the link or delivery mode; an advisory `deliveryModeReason` and `Delivery notice:` line are printed when the server returns them.
 
@@ -250,7 +250,7 @@ publish_site(files=[{"path": "index.html", "content": "..."}, {"path": "style.cs
 
 Replace an owned site's complete file set at the same ID and primary link. Files absent from the new bundle are removed; matching files are overwritten and new files added. Hosting stays unchanged. The `publish_site` limits and status codes apply.
 
-Parameters: `namespace`, `id`, `ownerToken`, exactly one of `entryContent` or a non-empty `files` array of `{path, content}`, optional `entry` (default `index.html`), `ttlDays` (ignored; existing expiry is preserved and a `ttl-ignored` notice is returned), and `tags`.
+Parameters: `namespace`, `id`, `ownerToken`, exactly one of `entryContent` or a non-empty `files` array of `{path, content}`, optional `entry` (default `index.html`), `ttlDays` (ignored; existing expiry is preserved and a `ttl-ignored` notice is returned), and `tags` (optional; replace the stored tags, `[]` clears, omitted keeps them).
 
 ```text
 republish_site(namespace="public", id="aBcDeFgHiJ", ownerToken="tok_...", files=[{"path":"index.html","content":"<h1>Updated site</h1>"}])

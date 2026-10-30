@@ -858,6 +858,44 @@ for (const scenario of [
   });
 }
 
+for (const scenario of [
+  { tool: "update_html", args: { content: "x" }, status: 200 },
+  { tool: "republish_site", args: { entryContent: "<h1>x</h1>" }, status: 200 },
+].flatMap((tool) => [
+  { ...tool, label: "omitted", tags: undefined, sent: null },
+  { ...tool, label: "given", tags: ["x", "y"], sent: "x,y" },
+  { ...tool, label: "empty", tags: [], sent: "" },
+])) {
+  test(`${scenario.tool} sends tags only when ${scenario.label}`, { timeout: 10_000 }, async (t) => {
+    // GIVEN an owner update with omitted, given or empty tags.
+    const f = await fixture(t);
+    f.respond(scenario.status, { ...NEW_RESPONSE, entryFile: "index.html", fileCount: 1 });
+    // WHEN the update runs.
+    const result = await f.call(scenario.tool, { namespace: "public", id: "aBcDeFgHiJ", ownerToken: "fixture-owner", ...scenario.args, tags: scenario.tags });
+    // THEN omitted keeps stored tags (no param), given replaces them, empty clears them.
+    assert.deepEqual({ isError: result.isError, tags: new URL(f.requests[0].url, f.baseUrl).searchParams.get("tags") },
+      { isError: undefined, tags: scenario.sent }, "tags query mirrors the caller's choice");
+  });
+}
+
+const RATE_LIMITED = { status: 429, error: "Too Many Requests", retryAfterSeconds: 60 };
+for (const scenario of [
+  { tool: "update_html", args: { namespace: "public", id: "aBcDeFgHiJ", content: "x", ownerToken: "fixture-owner" }, prefix: "Failed to update HTML (429): " },
+  { tool: "set_kv", args: { namespace: "public", id: "aBcDeFgHiJ", key: "k", value: "v", ownerToken: "fixture-owner" }, prefix: "Failed to set KV (429): " },
+  { tool: "publish_kv", args: { key: "k", value: "v" }, prefix: "Failed to publish KV (429): " },
+]) {
+  test(`${scenario.tool} prints Retry-After on a 429`, { timeout: 10_000 }, async (t) => {
+    // GIVEN a rate-limited API answering 429 with Retry-After and retryAfterSeconds.
+    const f = await fixture(t);
+    f.respond(429, RATE_LIMITED, { "Retry-After": "60" });
+    // WHEN the write runs.
+    const result = await f.call(scenario.tool, scenario.args);
+    // THEN the tool error carries the server answer verbatim and the wait.
+    assert.deepEqual({ isError: result.isError, text: result.content[0].text },
+      { isError: true, text: `${scenario.prefix}${JSON.stringify(RATE_LIMITED)} Retry-After: 60.` }, "429 answer and Retry-After are relayed exactly");
+  });
+}
+
 const PRIVATE_RESPONSE = { ...NEW_RESPONSE, namespace: "priv-synthetic", access: "unlisted" };
 const LISTED_PRIVATE = "Private: not listed. Anyone with the link can open it. Use namespace public to list it in the gallery and sitemap.";
 for (const scenario of [

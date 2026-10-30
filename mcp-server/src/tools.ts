@@ -78,9 +78,9 @@ function textResult(text: string, isError = false) {
   return isError ? { content: [{ type: "text" as const, text }], isError: true } : { content: [{ type: "text" as const, text }] };
 }
 
-/** ` Retry-After: <value>.` for a busy 503 that sends the header, else empty. */
+/** ` Retry-After: <value>.` for a 429 or busy 503 that sends the header, else empty. */
 function retryAfterText(status: number, headers?: Headers): string {
-  const after = status === 503 ? headers?.get("retry-after") : null;
+  const after = status === 429 || status === 503 ? headers?.get("retry-after") : null;
   return after ? ` Retry-After: ${after}.` : "";
 }
 
@@ -507,9 +507,9 @@ export function createServer(options: ServerOptions = {}): McpServer {
       const auth = ownerTokenFor(ownerToken);
       if (!auth.token) return textResult(NO_OWNER_TOKEN, true);
       const path = apiPath(TYPE_SEGMENTS[type], namespace, id, "hosting");
-      const { ok, status, data } = await apiRequest("PATCH", path, { deliveryMode, expectedVersion },
+      const { ok, status, data, headers: answerHeaders } = await apiRequest("PATCH", path, { deliveryMode, expectedVersion },
         { "X-Owner-Token": auth.token });
-      if (!ok) return ownerFailure("update hosting", status, data, auth.fromEnv);
+      if (!ok) return ownerFailure("update hosting", status, data, auth.fromEnv, answerHeaders);
       return {
         content: [{ type: "text" as const, text: formatUpdateResponse(data as Record<string, unknown>) }],
       };
@@ -534,8 +534,8 @@ export function createServer(options: ServerOptions = {}): McpServer {
       const auth = ownerTokenFor(ownerToken);
       if (!auth.token) return textResult(NO_OWNER_TOKEN, true);
       const path = apiPath(TYPE_SEGMENTS[type], namespace, id);
-      const { ok, status, data } = await apiRequest("DELETE", path, undefined, { "X-Owner-Token": auth.token });
-      if (!ok) return ownerFailure("delete", status, data, auth.fromEnv);
+      const { ok, status, data, headers: answerHeaders } = await apiRequest("DELETE", path, undefined, { "X-Owner-Token": auth.token });
+      if (!ok) return ownerFailure("delete", status, data, auth.fromEnv, answerHeaders);
 
       return {
         content: [
@@ -788,7 +788,7 @@ export function createServer(options: ServerOptions = {}): McpServer {
         tags: z
           .array(z.string())
           .optional()
-          .describe("Optional tags (replaces the site's existing tags)"),
+          .describe("Optional tags; replace the site's stored tags. Omit to keep them."),
       },
     },
     async ({ namespace, id, ownerToken, entryContent, files, entry, ttlDays, tags }) => {
@@ -824,7 +824,7 @@ export function createServer(options: ServerOptions = {}): McpServer {
       const headers: Record<string, string> = { "X-Owner-Token": auth.token };
 
       const url = baseUrl + withQuery(apiPath("sites", namespace, id), [["entry", entry || undefined],
-        ["ttl", ttlDays || undefined], ["tags", tags && tags.length ? tags.join(",") : undefined]]);
+        ["ttl", ttlDays || undefined], ["tags", tags?.join(",")]]);
       const res = await bpFetch(url, { method: "PUT", headers, body: formData });
       const data = await res.json().catch(() => null);
 
@@ -873,20 +873,24 @@ export function createServer(options: ServerOptions = {}): McpServer {
           .describe(
             "Content format. Accepts (case-insensitive on html/markdown): 'html', 'markdown'/'md', or a code language — yaml, json, xml, csv, tsv, log, toml, ini, sql, sh, bat, env, javascript, typescript, tsx, jsx, css, properties, docker, txt. Omit to preserve the stored format."
           ),
+        tags: z
+          .array(z.string())
+          .optional()
+          .describe("Optional tags; replace the page's stored tags ([] clears). Omit to keep them."),
       },
     },
-    async ({ namespace, id, content, ownerToken, format }) => {
+    async ({ namespace, id, content, ownerToken, format, tags }) => {
       const body: Record<string, unknown> = { content };
       if (format) body.format = format;
 
       const auth = ownerTokenFor(ownerToken);
       if (!auth.token) return textResult(NO_OWNER_TOKEN, true);
-      const path = apiPath("html", namespace, id);
-      const { ok, status, data } = await apiRequest("PUT", path, body, {
+      const path = withQuery(apiPath("html", namespace, id), [["tags", tags?.join(",")]]);
+      const { ok, status, data, headers: answerHeaders } = await apiRequest("PUT", path, body, {
         "X-Owner-Token": auth.token,
       });
 
-      if (!ok) return ownerFailure("update HTML", status, data, auth.fromEnv);
+      if (!ok) return ownerFailure("update HTML", status, data, auth.fromEnv, answerHeaders);
 
       return {
         content: [
@@ -951,7 +955,7 @@ export function createServer(options: ServerOptions = {}): McpServer {
           content: [
             {
               type: "text" as const,
-              text: `Failed to publish JSON (${res.status}): ${JSON.stringify(data)}`,
+              text: `Failed to publish JSON (${res.status}): ${JSON.stringify(data)}${retryAfterText(res.status, res.headers)}`,
             },
           ],
           isError: true,
@@ -1048,7 +1052,7 @@ export function createServer(options: ServerOptions = {}): McpServer {
       });
       const data = await res.json().catch(() => null);
 
-      if (!res.ok) return ownerFailure("update JSON", res.status, data, auth.fromEnv);
+      if (!res.ok) return ownerFailure("update JSON", res.status, data, auth.fromEnv, res.headers);
 
       return {
         content: [
@@ -1100,7 +1104,7 @@ export function createServer(options: ServerOptions = {}): McpServer {
       if (owner) headers["X-Owner-Token"] = owner;
       if (deliveryMode) headers["X-Delivery-Mode"] = deliveryMode;
 
-      const { ok, status, data } = await apiRequest(
+      const { ok, status, data, headers: answerHeaders } = await apiRequest(
         "POST",
         path,
         body,
@@ -1112,7 +1116,7 @@ export function createServer(options: ServerOptions = {}): McpServer {
           content: [
             {
               type: "text" as const,
-              text: `Failed to publish KV (${status}): ${JSON.stringify(data)}`,
+              text: `Failed to publish KV (${status}): ${JSON.stringify(data)}${retryAfterText(status, answerHeaders)}`,
             },
           ],
           isError: true,
@@ -1149,11 +1153,11 @@ export function createServer(options: ServerOptions = {}): McpServer {
       if (!auth.token) return textResult(NO_OWNER_TOKEN, true);
 
       const path = apiPath("kv", namespace, id, key);
-      const { ok, status, data } = await apiRequest("PUT", path, body, {
+      const { ok, status, data, headers: answerHeaders } = await apiRequest("PUT", path, body, {
         "X-Owner-Token": auth.token,
       });
 
-      if (!ok) return ownerFailure("set KV", status, data, auth.fromEnv);
+      if (!ok) return ownerFailure("set KV", status, data, auth.fromEnv, answerHeaders);
 
       return {
         content: [
@@ -1346,8 +1350,8 @@ export function createServer(options: ServerOptions = {}): McpServer {
       const auth = ownerTokenFor(ownerToken);
       if (!auth.token) return textResult(NO_OWNER_TOKEN, true);
       const path = apiPath(TYPE_SEGMENTS[type], namespace, id, "visibility");
-      const { ok, status, data } = await apiRequest("POST", path, { listed }, { "X-Owner-Token": auth.token });
-      if (!ok) return ownerFailure("set visibility", status, data, auth.fromEnv);
+      const { ok, status, data, headers: answerHeaders } = await apiRequest("POST", path, { listed }, { "X-Owner-Token": auth.token });
+      if (!ok) return ownerFailure("set visibility", status, data, auth.fromEnv, answerHeaders);
       const result = data as Record<string, unknown>;
       return textResult([...credentialAlertLines(result), `LISTED: ${result.listed} · link unchanged`, ...noticeLines(result)].join("\n"));
     }
@@ -1366,8 +1370,8 @@ export function createServer(options: ServerOptions = {}): McpServer {
     async ({ token, ownerToken }) => {
       const auth = ownerTokenFor(ownerToken);
       if (!auth.token) return textResult(NO_OWNER_TOKEN, true);
-      const { ok, status, data } = await apiRequest("POST", "/api/owner-token/bind", { token }, { "X-Owner-Token": auth.token });
-      if (!ok) return textResult(`Failed to bind token (${status}): ${JSON.stringify(data)}`, true);
+      const { ok, status, data, headers: answerHeaders } = await apiRequest("POST", "/api/owner-token/bind", { token }, { "X-Owner-Token": auth.token });
+      if (!ok) return textResult(`Failed to bind token (${status}): ${JSON.stringify(data)}${retryAfterText(status, answerHeaders)}`, true);
       const result = data as Record<string, unknown>;
       return textResult(`BOUND ${maskToken(token)} · ${result.active}/${result.max} active`);
     }
@@ -1388,9 +1392,9 @@ export function createServer(options: ServerOptions = {}): McpServer {
     async ({ label, scope, expiresIn, ownerToken }) => {
       const auth = ownerTokenFor(ownerToken);
       if (!auth.token) return textResult(NO_OWNER_TOKEN, true);
-      const { ok, status, data } = await apiRequest("POST", "/api/owner-token/mint", { label, scope, expiresIn },
+      const { ok, status, data, headers: answerHeaders } = await apiRequest("POST", "/api/owner-token/mint", { label, scope, expiresIn },
         { "X-Owner-Token": auth.token });
-      if (!ok) return textResult(`Failed to mint token (${status}): ${JSON.stringify(data)}`, true);
+      if (!ok) return textResult(`Failed to mint token (${status}): ${JSON.stringify(data)}${retryAfterText(status, answerHeaders)}`, true);
       const result = data as Record<string, unknown>;
       return textResult([
         `MINTED · ${result.scope} · expires ${result.expiresAt ?? "never"}`,
