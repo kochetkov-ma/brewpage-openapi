@@ -34,7 +34,7 @@ function toolMeta(title: string, hints: ToolAnnotations) {
 /** Env default exists only in the local (stdio) server; remote /mcp takes ownerToken per call. */
 const ENV_DEFAULT = `env ${OWNER_TOKEN_ENV} (local server only)`;
 const NO_OWNER_TOKEN = `No owner token: pass ownerToken (local server: or set ${OWNER_TOKEN_ENV}).`;
-const CREATE_OWNER_TOKEN_DESCRIPTION = `Optional. Default: ${ENV_DEFAULT}, else a new token per create.`;
+const CREATE_OWNER_TOKEN_DESCRIPTION = `Optional; the ownerToken from your first create keeps publications under one owner. Default: ${ENV_DEFAULT}, else a new token per create.`;
 const OWNER_TOKEN_DESCRIPTION = `Owner token from create. Default: ${ENV_DEFAULT}.`;
 /** Backend guard checks create and update content alike. */
 const NO_PUBLIC_CREDENTIALS = "BrewPage tokens and manage links must never be in public content.";
@@ -287,7 +287,7 @@ export function createServer(options: ServerOptions = {}): McpServer {
       `OWNER TOKEN: ${shown}`,
       `===================================`,
       ``,
-      `IMPORTANT: Save your owner token! You need it to ${purpose}. It cannot be recovered if lost.`,
+      `IMPORTANT: Save your owner token! You need it to ${purpose}. It cannot be recovered if lost. Pass it as ownerToken on later publishes and updates.`,
       ...(token !== sent && token !== defaultOwnerToken ? [SIGN_IN_HINT] : []),
     ];
   }
@@ -645,7 +645,8 @@ export function createServer(options: ServerOptions = {}): McpServer {
     "publish_site",
     {
       ...toolMeta("Publish site", ADDITIVE),
-      description: "Publish an HTML site to BrewPage. Single-page: `entryContent`. Multi-page: `files` (array of `{path, content}`). Optional `entry` overrides default `index.html`. Returns its primary share link and owner token. " + SITE_LIMITS_TEXT +
+      description: "Publish an HTML site to BrewPage. Single-page: `entryContent`. Multi-page: `files` (array of `{path, content}`). Optional `entry` overrides default `index.html`. Returns its primary share link and owner token. " +
+        "Static sites: HTML, CSS and JS (incl. built React/Vue/TypeScript bundles) run in the browser; PHP and other server code never run. " + SITE_LIMITS_TEXT +
         " " + MANAGE_URL_TEXT + " " + SECRETS,
       inputSchema: {
         deliveryMode: DELIVERY_MODE_SCHEMA,
