@@ -20,6 +20,7 @@ Public contract snapshots, documentation and the BrewPage MCP server. The backen
 
 ## Recent contract changes
 
+- 2.8.48 (matches backend v2.8.48): `tags` on `PUT /api/html/{ns}/{id}` and `PUT /api/sites/{ns}/{id}` (sent replaces, empty clears, omitted keeps); 429 on every write route with `Retry-After` = `retryAfterSeconds`; short-link read summaries. Additive: 47 paths and 62 operations.
 - 2.8.47 (matches backend v2.8.47): `ErrorResponse.accountUrl` (write 429 without an account: free account sign-up, higher limits); 429 documented on `PUT /api/json/{ns}/{id}` and `PUT /api/kv/{ns}/{id}/{key}`. Additive: 47 paths and 62 operations.
 - 2.8.45 (matches backend v2.8.45): `ownerToken` descriptions (html, file, site, json, kv create responses) and the API description: save it privately, send it as `X-Owner-Token` on later publishes and updates; notice code `owner-token-new`. Description only: 47 paths and 62 operations.
 - 2.8.39 (matches backend v2.8.39): version only, no contract change: 47 paths and 62 operations.

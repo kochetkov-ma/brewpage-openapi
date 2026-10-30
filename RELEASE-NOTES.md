@@ -1,5 +1,10 @@
 # Release Notes
 
+## API contract 2.8.48 — 2026-10-30
+
+- API contract version 2.8.48 is the backend-generated public snapshot exported from brewpage-app source `01be2a6fd9962ad2cdbd6dcc1f1612e4db275034` (tag `v2.8.48`), clean tree.
+- `PUT /api/html/{ns}/{id}` adds query `tags` and `PUT /api/sites/{ns}/{id}` documents it: sent tags replace the stored ones (empty clears), omitted keeps them. 429 documented on every write route (create, update, delete, owner-token, hosting, access revoke): wait `Retry-After` (= `ErrorResponse.retryAfterSeconds`). Short-link reads `/{ns}/{id}` and `/{ns}/{id}/{sub}` get summaries. Additive: 47 paths and 62 operations.
+
 ## MCP 1.16.4 — 2026-10-30
 
 - Owner update tools (`update_html`, `republish_site`, `update_json`, `set_kv`) answer a 404 with the server body plus which publish tool makes a new copy; `delete_resource` relays the 404 unchanged. Contract 2.8.47 (`ErrorResponse.accountUrl` on a write 429 without an account; error bodies are relayed verbatim, so agents see it). `User-Agent: brewpage-mcp/1.16.4`; pins bumped.

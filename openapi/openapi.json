@@ -83,6 +83,7 @@
             ]
           },
           "retryAfterSeconds": {
+            "description": "Seconds to wait; same as Retry-After",
             "format": "int64",
             "type": "integer"
           },
@@ -3441,7 +3442,7 @@
     },
     "termsOfService": "https://brewpage.app/terms",
     "title": "BrewPage API",
-    "version": "2.8.47"
+    "version": "2.8.48"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -3632,7 +3633,7 @@
                 }
               }
             },
-            "description": "Rate limit exceeded"
+            "description": "Rate limited: wait Retry-After (= retryAfterSeconds); no account: accountUrl, free sign-up with higher limits"
           },
           "503": {
             "content": {
@@ -3713,6 +3714,16 @@
               }
             },
             "description": "File not found or expired"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Rate limited: wait Retry-After (= retryAfterSeconds)"
           }
         },
         "security": [
@@ -3997,6 +4008,16 @@
               }
             },
             "description": "Unsupported file type or content of no supported type"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Rate limited: wait Retry-After (= retryAfterSeconds); no account: accountUrl, free sign-up with higher limits"
           },
           "503": {
             "content": {
@@ -4375,7 +4396,7 @@
                 }
               }
             },
-            "description": "Rate limit exceeded"
+            "description": "Rate limited: wait Retry-After (= retryAfterSeconds); no account: accountUrl, free sign-up with higher limits"
           },
           "503": {
             "content": {
@@ -4456,6 +4477,16 @@
               }
             },
             "description": "Page not found or expired"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Rate limited: wait Retry-After (= retryAfterSeconds)"
           }
         },
         "security": [
@@ -4640,6 +4671,16 @@
             }
           },
           {
+            "description": "Comma-separated tags; replace the stored tags (empty clears). Omit to keep them",
+            "example": "demo,test",
+            "in": "query",
+            "name": "tags",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
             "in": "header",
             "name": "User-Agent",
             "required": false,
@@ -4786,6 +4827,16 @@
               }
             },
             "description": "Old publication is read-only (code: OLD_PUBLICATION_READ_ONLY); publish anew via createUrl (API) or republishUrl (browser)"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Rate limited: wait Retry-After (= retryAfterSeconds); no account: accountUrl, free sign-up with higher limits"
           }
         },
         "security": [
@@ -5141,7 +5192,7 @@
                 }
               }
             },
-            "description": "Rate limit exceeded"
+            "description": "Rate limited: wait Retry-After (= retryAfterSeconds); no account: accountUrl, free sign-up with higher limits"
           }
         },
         "security": [
@@ -5212,6 +5263,16 @@
               }
             },
             "description": "Document not found or expired"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Rate limited: wait Retry-After (= retryAfterSeconds)"
           }
         },
         "security": [
@@ -5436,7 +5497,7 @@
                 }
               }
             },
-            "description": "Rate limit exceeded; without an account the body carries accountUrl (free account, higher limits)"
+            "description": "Rate limited: wait Retry-After (= retryAfterSeconds); no account: accountUrl, free sign-up with higher limits"
           }
         },
         "security": [
@@ -5616,7 +5677,7 @@
                 }
               }
             },
-            "description": "Rate limit exceeded"
+            "description": "Rate limited: wait Retry-After (= retryAfterSeconds); no account: accountUrl, free sign-up with higher limits"
           }
         },
         "security": [
@@ -5687,6 +5748,16 @@
               }
             },
             "description": "Store not found or expired"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Rate limited: wait Retry-After (= retryAfterSeconds)"
           }
         },
         "security": [
@@ -5880,6 +5951,16 @@
               }
             },
             "description": "Store or key not found"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Rate limited: wait Retry-After (= retryAfterSeconds)"
           }
         },
         "security": [
@@ -6133,7 +6214,7 @@
                 }
               }
             },
-            "description": "Rate limit exceeded; without an account the body carries accountUrl (free account, higher limits)"
+            "description": "Rate limited: wait Retry-After (= retryAfterSeconds); no account: accountUrl, free sign-up with higher limits"
           }
         },
         "security": [
@@ -6319,6 +6400,16 @@
               }
             },
             "description": "Active token limit"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Rate limited: wait Retry-After (= retryAfterSeconds); no account: accountUrl, free sign-up with higher limits"
           }
         },
         "security": [
@@ -6392,6 +6483,16 @@
               }
             },
             "description": "Active token limit"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Rate limited: wait Retry-After (= retryAfterSeconds); no account: accountUrl, free sign-up with higher limits"
           }
         },
         "security": [
@@ -6455,6 +6556,16 @@
               }
             },
             "description": "Not a token of this profile"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Rate limited: wait Retry-After (= retryAfterSeconds); no account: accountUrl, free sign-up with higher limits"
           }
         },
         "security": [
@@ -6508,6 +6619,16 @@
               }
             },
             "description": "Header token not admin, not in a profile, revoked or expired"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Rate limited: wait Retry-After (= retryAfterSeconds); no account: accountUrl, free sign-up with higher limits"
           }
         },
         "security": [
@@ -7194,7 +7315,7 @@
                 }
               }
             },
-            "description": "Rate limit exceeded"
+            "description": "Rate limited: wait Retry-After (= retryAfterSeconds); no account: accountUrl, free sign-up with higher limits"
           },
           "503": {
             "content": {
@@ -7275,6 +7396,16 @@
               }
             },
             "description": "Site not found"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Rate limited: wait Retry-After (= retryAfterSeconds)"
           }
         },
         "security": [
@@ -7390,7 +7521,7 @@
             }
           },
           {
-            "description": "Comma-separated tags",
+            "description": "Comma-separated tags; replace the stored tags (empty clears). Omit to keep them",
             "example": "demo,portfolio",
             "in": "query",
             "name": "tags",
@@ -7571,6 +7702,16 @@
               }
             },
             "description": "No servable file left: every file has an unsupported or missing extension"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Rate limited: wait Retry-After (= retryAfterSeconds); no account: accountUrl, free sign-up with higher limits"
           },
           "503": {
             "content": {
@@ -7907,6 +8048,16 @@
               }
             },
             "description": "Publication unavailable"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Rate limited: wait Retry-After (= retryAfterSeconds); no account: accountUrl, free sign-up with higher limits"
           }
         },
         "security": [
@@ -8018,7 +8169,7 @@
                 }
               }
             },
-            "description": "Rate limit exceeded"
+            "description": "Rate limited: wait Retry-After (= retryAfterSeconds); no account: accountUrl, free sign-up with higher limits"
           }
         },
         "security": [
@@ -8232,6 +8383,16 @@
             },
             "description": "Publication unavailable"
           },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Rate limited: wait Retry-After (= retryAfterSeconds); no account: accountUrl, free sign-up with higher limits"
+          },
           "503": {
             "content": {
               "application/json": {
@@ -8352,7 +8513,7 @@
                 }
               }
             },
-            "description": "Rate limit exceeded"
+            "description": "Rate limited: wait Retry-After (= retryAfterSeconds); no account: accountUrl, free sign-up with higher limits"
           }
         },
         "security": [
@@ -8481,7 +8642,7 @@
                 }
               }
             },
-            "description": "Rate limit exceeded"
+            "description": "Rate limited: wait Retry-After (= retryAfterSeconds); no account: accountUrl, free sign-up with higher limits"
           }
         },
         "security": [
@@ -8601,7 +8762,7 @@
                 }
               }
             },
-            "description": "Rate limit exceeded, or ROTATE_LIMITED: at most 3 link changes a day"
+            "description": "Rate limited: wait Retry-After (= retryAfterSeconds); no account: accountUrl, free sign-up with higher limits; or ROTATE_LIMITED: at most 3 link changes a day"
           },
           "503": {
             "content": {
@@ -8722,7 +8883,7 @@
                 }
               }
             },
-            "description": "Rate limit exceeded"
+            "description": "Rate limited: wait Retry-After (= retryAfterSeconds); no account: accountUrl, free sign-up with higher limits"
           }
         },
         "security": [
@@ -9060,6 +9221,7 @@
     },
     "/{ns}/{id}": {
       "get": {
+        "description": "Serves the publication behind the link: page, site, file, JSON or KV. 410 for a deleted public publication; otherwise 404.",
         "operationId": "resolve",
         "parameters": [
           {
@@ -9185,6 +9347,7 @@
             "Password": []
           }
         ],
+        "summary": "Open short link",
         "tags": [
           "Short Links"
         ]
@@ -9192,6 +9355,7 @@
     },
     "/{ns}/{id}/{sub}": {
       "get": {
+        "description": "Serves a site file or KV value under the link. Any miss is 404.",
         "operationId": "resolveWithSub",
         "parameters": [
           {
@@ -9299,6 +9463,7 @@
             "Password": []
           }
         ],
+        "summary": "Open short-link sub-path",
         "tags": [
           "Short Links"
         ]

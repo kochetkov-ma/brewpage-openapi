@@ -61,7 +61,7 @@ for (const name of ['deliveryModeReason', 'deliveryNotice']) {
   assert.ok(!schemas.HostingProjection.required.includes(name), `Hosting ${name} is omitted when nothing applies`);
 }
 const hostingPatch = spec.paths['/api/{type}/{ns}/{id}/hosting'].patch;
-assert.deepEqual(Object.keys(hostingPatch.responses).sort(), ['200', '400', '403', '404', '503'],
+assert.deepEqual(Object.keys(hostingPatch.responses).sort(), ['200', '400', '403', '404', '429', '503'],
   'Hosting PATCH reports mismatches in 200, never as a version conflict');
 assert.ok(hostingPatch.parameters.find((parameter) => parameter.name === 'type').schema.enum.includes('sites'),
   'Hosting PATCH routes sites to the tolerant mode-locked answer');
