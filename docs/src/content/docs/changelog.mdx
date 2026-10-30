@@ -6,6 +6,10 @@ order: 5
 
 # Changelog
 
+## MCP 1.16.4 — publish-tool hint on a 404 update
+
+Owner update tools (`update_html`, `republish_site`, `update_json`, `set_kv`) answer a 404 with the server body plus which publish tool makes a new copy; `delete_resource` relays the 404 unchanged.
+
 ## MCP 1.16.3 — owner token reuse, static sites
 
 Create `ownerToken` description: the token from the first create keeps publications under one owner; the owner-token banner adds that it goes as `ownerToken` on later publishes and updates; `publish_site` says static HTML, CSS and JS (incl. built bundles) run in the browser, PHP and other server code never run. Gemini context: save `ownerToken` privately, never in chat.
