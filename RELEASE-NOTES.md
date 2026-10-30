@@ -1,5 +1,9 @@
 # Release Notes
 
+## MCP 1.16.5 — 2026-10-30
+
+- `update_html` takes optional `tags` (sent as `?tags=a,b`); `update_html` and `republish_site` tags replace the stored tags, `[]` clears them, omitted keeps them. A 429 on any write prints the server's `Retry-After` beside the verbatim body (`retryAfterSeconds`). Contract 2.8.48. `User-Agent: brewpage-mcp/1.16.5`; pins bumped.
+
 ## API contract 2.8.48 — 2026-10-30
 
 - API contract version 2.8.48 is the backend-generated public snapshot exported from brewpage-app source `01be2a6fd9962ad2cdbd6dcc1f1612e4db275034` (tag `v2.8.48`), clean tree.

@@ -106,7 +106,7 @@ Upload report.md to brewpage.app
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@1.16.4"]
+      "args": ["-y", "brewpage-mcp@1.16.5"]
     }
   }
 }
@@ -118,7 +118,7 @@ Upload report.md to brewpage.app
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@1.16.4"]
+      "args": ["-y", "brewpage-mcp@1.16.5"]
     }
   }
 }
