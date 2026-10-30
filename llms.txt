@@ -20,6 +20,7 @@ Public contract snapshots, documentation and the BrewPage MCP server. The backen
 
 ## Recent contract changes
 
+- 2.8.39 (matches backend v2.8.39): version only, no contract change: 47 paths and 62 operations.
 - 2.8.38 (matches backend v2.8.38): `GET /api/limits` `reach` always sent (`profile` only for an `X-Owner-Token` active in a profile, else `token`); notice code `credential-published` (token or manage link in public content: remove it, reset it). Description only: 47 paths and 62 operations.
 - 2.8.36 (matches backend v2.8.36): html/file/site create responses add optional owner-only `updated` (upload replaced your stored page or site); html `title` description adds JSON root title or name; `GET /api/limits` adds per-type `html`, `json`, `kv`, `files` limits and `profileMaxTtlDays`. Additive: 47 paths and 62 operations.
 - 2.8.35 (matches backend v2.8.35): KV `Delete key` description: deleting the last key removes the store. Description only: 47 paths and 62 operations.

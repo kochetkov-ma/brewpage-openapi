@@ -1,5 +1,9 @@
 # Release Notes
 
+## API contract 2.8.39 — 2026-10-30
+
+- API contract version 2.8.39 is the backend-generated public snapshot exported from brewpage-app source `c0b2a51c2a6a8288e230f9d907a3e150319fe6c5` (tag `v2.8.39`), clean tree. Version only: no path, operation, parameter or schema change; 47 paths and 62 operations.
+
 ## MCP 1.16.1 — 2026-10-30
 
 - `update_html`, `update_json`, `set_kv` and `republish_site` state that BrewPage tokens and manage links must never be in public content, as the create tools do. `User-Agent: brewpage-mcp/1.16.1`; pins bumped.

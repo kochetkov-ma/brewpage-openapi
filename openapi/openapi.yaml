@@ -2647,7 +2647,7 @@ info:
     url: https://www.apache.org/licenses/LICENSE-2.0
   termsOfService: https://brewpage.app/terms
   title: BrewPage API
-  version: 2.8.38
+  version: 2.8.39
 openapi: 3.1.0
 paths:
   /api/files:
