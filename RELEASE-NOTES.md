@@ -1,5 +1,9 @@
 # Release Notes
 
+## MCP 1.16.2 — 2026-10-30
+
+- `ttlDays` description names the 90-day cap with an owner token in a profile. `User-Agent: brewpage-mcp/1.16.2`; pins bumped.
+
 ## API contract 2.8.39 — 2026-10-30
 
 - API contract version 2.8.39 is the backend-generated public snapshot exported from brewpage-app source `c0b2a51c2a6a8288e230f9d907a3e150319fe6c5` (tag `v2.8.39`), clean tree. Version only: no path, operation, parameter or schema change; 47 paths and 62 operations.

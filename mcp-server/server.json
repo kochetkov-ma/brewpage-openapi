@@ -9,13 +9,13 @@
     "subfolder": "mcp-server"
   },
   "websiteUrl": "https://brewpage.app",
-  "version": "1.16.1",
+  "version": "1.16.2",
   "packages": [
     {
       "registryType": "npm",
       "registryBaseUrl": "https://registry.npmjs.org",
       "identifier": "brewpage-mcp",
-      "version": "1.16.1",
+      "version": "1.16.2",
       "transport": {
         "type": "stdio"
       },
