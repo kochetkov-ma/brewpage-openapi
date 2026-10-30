@@ -146,7 +146,7 @@ const DATA_NAMESPACE_DESCRIPTION =
 
 const TTL_SCHEMA = z.union([z.number().positive(), z.string().min(1).max(32)]).optional().describe(
   "Requested TTL: days as a number, or a string such as '2w', '36h' or '1 month' (default 15 days). " +
-  "The server rounds to whole days and clamps to the allowed range (1-30 by default; owner caps differ), reporting each adjustment in notices; the returned expiresAt is the actual expiry."
+  "The server rounds to whole days and clamps to the allowed range (1-30; up to 90 with an owner token in a profile), reporting each adjustment in notices; the returned expiresAt is the actual expiry."
 );
 
 const DELIVERY_MODE_SCHEMA = z.enum(["path", "subdomain"]).optional().describe(
