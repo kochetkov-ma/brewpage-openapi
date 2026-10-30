@@ -79,7 +79,7 @@ Limits: **5 MiB/file**, **1,000 files/namespace**
 | Serve site file | `GET` | `/api/sites/{ns}/{id}/files/{filePath}` |
 | Delete site | `DELETE` | `/api/sites/{ns}/{id}` |
 
-**Query params (upload):** `ns` (omitted: private), `tags` (comma-separated), `ttl` (1-30 days), `entry` (override entry file)
+**Query params (upload):** `ns` (omitted: private), `tags` (comma-separated), `ttl` (1-30 days, 90 with a profile token), `entry` (override entry file)
 **Headers:** `X-Password` (protection), `X-Owner-Token` (owner grouping / info / delete)
 **Response (201):** `id`, `namespace`, `entryFile`, `link`, `ownerLink`, `fileCount`, `totalSizeBytes`, `expiresAt`, `tags`, `ownerToken`
 **Limits:** `GET /api/limits` (bytes). Entry: `entry`, else root `index.html`, else the shallowest HTML file. System files (`.DS_Store`, `__MACOSX/`, ...) are skipped and never count.

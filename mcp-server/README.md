@@ -158,7 +158,7 @@ update_hosting(type="html", namespace="public", id="aBcDeFgHiJ", ownerToken="tok
 
 Publish HTML, Markdown, code or JSON content to BrewPage; with `format` omitted the server detects it. Returns a public URL and owner token. Markdown raw HTML is rendered through an allowlist: scripts, styles, event handlers, forms, frames/embeds and `meta`/`base`/`link` are removed; links allow `http`, `https`, `mailto`, `tel` and relative URLs, images also `data:`; a lone unknown tag such as `<author>` shows as text.
 
-Parameters: `content` (string), `format` (optional; omit to let the server detect HTML, Markdown, code or JSON; `html` keeps code/JSON as HTML; also `markdown`/`md` or a code language), `namespace` (optional -- **omit for private, unlisted content**; `public` lists the page in the gallery and sitemap for Google, Bing and AI search, served on the brewpage.app domain; never put secrets there), `password` (optional), `ttlDays` (days or a string such as `2w`; default 15; the server clamps to 1--30), `filename` (optional, used as title fallback), `showTopBar` (optional boolean -- adds a toolbar with filename, Download button, and theme toggle), `deliveryMode` (optional).
+Parameters: `content` (string), `format` (optional; omit to let the server detect HTML, Markdown, code or JSON; `html` keeps code/JSON as HTML; also `markdown`/`md` or a code language), `namespace` (optional -- **omit for private, unlisted content**; `public` lists the page in the gallery and sitemap for Google, Bing and AI search, served on the brewpage.app domain; never put secrets there), `password` (optional), `ttlDays` (days or a string such as `2w`; default 15; the server clamps to 1--30, up to 90 with an owner token in a profile), `filename` (optional, used as title fallback), `showTopBar` (optional boolean -- adds a toolbar with filename, Download button, and theme toggle), `deliveryMode` (optional).
 
 The result includes `deliveryModeReason` and a `Delivery notice:` line when the server returns them (see above).
 
@@ -234,7 +234,7 @@ Publish a single-page or multi-file HTML site. Pass `entryContent` for a single 
 
 Limits (current values from `get_limits`): a request is at most 25 MiB; a site at most 200 files, 5 MiB per file and 20 MiB in total; each path at most 380 characters. System files such as `.DS_Store` and `__MACOSX/` are skipped and never count; files with an unsupported extension or a too-long path are skipped and reported in notices. Entry: `entry`, else root `index.html`, else the shallowest HTML file. A site limit hit answers 400 with a message naming the limit, as does a PDF/Office file that is unreadable or password-protected; 413 means the request is over 25 MiB, has too many files and form fields, or a file name/path is too long; 422 means no servable file is left; 503 means busy: retry after `Retry-After` seconds (failed publish tools print it).
 
-Parameters: exactly one of `entryContent` (string) or non-empty `files` (array of `{path, content}`), `entry` (optional entry file path, default `index.html`), `namespace` (optional -- omit for private, unlisted content; `public` lists the site in the gallery and sitemap for Google, Bing and AI search; a site always gets its own subdomain), `password` (optional), `ttlDays` (days or a string such as `2w`; default 15; the server clamps to 1--30), `ownerToken` (optional, groups site under an existing owner), `deliveryMode` (optional; fresh sites require `subdomain`).
+Parameters: exactly one of `entryContent` (string) or non-empty `files` (array of `{path, content}`), `entry` (optional entry file path, default `index.html`), `namespace` (optional -- omit for private, unlisted content; `public` lists the site in the gallery and sitemap for Google, Bing and AI search; a site always gets its own subdomain), `password` (optional), `ttlDays` (days or a string such as `2w`; default 15; the server clamps to 1--30, up to 90 with an owner token in a profile), `ownerToken` (optional, groups site under an existing owner), `deliveryMode` (optional; fresh sites require `subdomain`).
 
 Example prompt:
 
@@ -264,7 +264,7 @@ republish_site(namespace="public", id="aBcDeFgHiJ", ownerToken="tok_...", files=
 
 Publish a JSON document to BrewPage. Returns a public URL and owner token. The body may be passed as a JSON string or as a structured object.
 
-Parameters: `json` (string, object, or array), `namespace` (optional -- omit for private content; `public` is the shared public namespace; JSON is never listed or indexed, anyone with the link can open it), `password` (optional), `ttlDays` (days or a string such as `2w`; default 15; the server clamps to 1--30), `tags` (optional `string[]`), `ownerToken` (optional existing owner), `deliveryMode` (optional).
+Parameters: `json` (string, object, or array), `namespace` (optional -- omit for private content; `public` is the shared public namespace; JSON is never listed or indexed, anyone with the link can open it), `password` (optional), `ttlDays` (days or a string such as `2w`; default 15; the server clamps to 1--30, up to 90 with an owner token in a profile), `tags` (optional `string[]`), `ownerToken` (optional existing owner), `deliveryMode` (optional).
 
 Example prompt:
 
@@ -314,7 +314,7 @@ update_json(namespace="public", id="aBcDeFgHiJ", json={"mode": "dark", "version"
 
 Create a new KV (key/value) entry. Returns a public URL and owner token. The KV entry is addressed by `(namespace, id, key)`; this tool creates the entry and emits the generated `id` along with the owner token.
 
-Parameters: `key` (string), `value` (string), `namespace` (optional -- omit for private content; `public` is the shared public namespace; KV is never listed or indexed, anyone with the link can open it), `password` (optional), `ttlDays` (days or a string such as `2w`; default 15; the server clamps to 1--30), `tags` (optional `string[]`), `ownerToken` (optional existing owner), `deliveryMode` (optional).
+Parameters: `key` (string), `value` (string), `namespace` (optional -- omit for private content; `public` is the shared public namespace; KV is never listed or indexed, anyone with the link can open it), `password` (optional), `ttlDays` (days or a string such as `2w`; default 15; the server clamps to 1--30, up to 90 with an owner token in a profile), `tags` (optional `string[]`), `ownerToken` (optional existing owner), `deliveryMode` (optional).
 
 Example prompt:
 

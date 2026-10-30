@@ -74,7 +74,7 @@ The server wraps a subset of REST operations in twenty tools — read `mcp-serve
 
 Use the exact returned primary `link`, including root slashes. Send API passwords as `X-Password` and owner authority as `X-Owner-Token` to the configured apex API origin; never send owner tokens to publication hosts. NEW browser password access uses the trusted unlock gateway, without query-password links. HTML API reads return stored rendered HTML or code/text with format-specific MIME; the owner-only source endpoint returns original authored content. Share URLs may provide a viewer.
 
-Limits: HTML 5 MiB; KV values/JSON documents 1 MiB; files/audio 5 MiB, video 20 MiB; sites 20 MiB total, 200 files, 5 MiB per file; requests 25 MiB. Read current values from `GET https://brewpage.app/api/limits` (MCP `get_limits`). TTL defaults to 15 days; ordinary maximum 30 days, with owner-specific caps and possible eligible automatic extensions. Treat returned expiresAt and API validation as authoritative. SDK/CLI modules are proposals, not released clients.
+Limits: HTML 5 MiB; KV values/JSON documents 1 MiB; files/audio 5 MiB, video 20 MiB; sites 20 MiB total, 200 files, 5 MiB per file; requests 25 MiB. Read current values from `GET https://brewpage.app/api/limits` (MCP `get_limits`). TTL defaults to 15 days; ordinary maximum 30 days (90 with an owner token in a profile), with owner-specific caps and possible eligible automatic extensions. Treat returned expiresAt and API validation as authoritative. SDK/CLI modules are proposals, not released clients.
 
 The repository contract/docs license is Apache-2.0; the independently packaged MCP server is MIT. The backend platform remains proprietary.
 
