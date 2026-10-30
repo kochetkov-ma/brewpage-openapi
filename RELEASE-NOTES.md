@@ -1,5 +1,9 @@
 # Release Notes
 
+## MCP 1.16.1 — 2026-10-30
+
+- `update_html`, `update_json`, `set_kv` and `republish_site` state that BrewPage tokens and manage links must never be in public content, as the create tools do. `User-Agent: brewpage-mcp/1.16.1`; pins bumped.
+
 ## API contract 2.8.38 — 2026-10-29
 
 - API contract version 2.8.38 is the backend-generated public snapshot exported from brewpage-app source `e5258ce8acdd3857d605d15db003bcb86ed99094` (tag `v2.8.38`; the backend source of tag `v2.8.37`, which deployed 2.8.36 images), clean tree.
