@@ -1,5 +1,9 @@
 # Release Notes
 
+## MCP 1.16.3 — 2026-10-30
+
+- Create `ownerToken` description: the token from the first create keeps publications under one owner; the owner-token banner adds that it goes as `ownerToken` on later publishes and updates; `publish_site` says static HTML, CSS and JS (incl. built bundles) run in the browser, PHP and other server code never run. Gemini context: save `ownerToken` privately, never in chat. Contract 2.8.45. `User-Agent: brewpage-mcp/1.16.3`; pins bumped.
+
 ## API contract 2.8.45 — 2026-10-30
 
 - API contract version 2.8.45 is the backend-generated public snapshot exported from brewpage-app source `33063ca1e6b66078d31a5fc1a3a978628fb59926` (tag `v2.8.45`), clean tree.
