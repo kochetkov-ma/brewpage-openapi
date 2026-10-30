@@ -1,5 +1,10 @@
 # Release Notes
 
+## API contract 2.8.45 — 2026-10-30
+
+- API contract version 2.8.45 is the backend-generated public snapshot exported from brewpage-app source `33063ca1e6b66078d31a5fc1a3a978628fb59926` (tag `v2.8.45`), clean tree.
+- `ownerToken` descriptions in `HtmlUploadResponse`, `FileUploadResponse`, `SiteUploadResponse`, `JsonCreateResponse` and `KvCreateStoreResponse` and the API description: save it privately, send it as `X-Owner-Token` on later publishes and updates. Notice `code` examples add `owner-token-new`. Description only: 47 paths and 62 operations.
+
 ## MCP 1.16.2 — 2026-10-30
 
 - `ttlDays` description names the 90-day cap with an owner token in a profile. `User-Agent: brewpage-mcp/1.16.2`; pins bumped.

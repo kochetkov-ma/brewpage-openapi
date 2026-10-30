@@ -267,8 +267,8 @@ components:
           type: string
         ownerToken:
           description: >-
-            Secret token required for delete operation. Store it safely -- cannot be recovered. Absent when an existing
-            publication of another owner was returned (result.extras.isOwner false)
+            Owner token: save it privately (cannot be recovered); send it as X-Owner-Token on later publishes and
+            updates. Absent when an existing publication of another owner was returned (result.extras.isOwner false)
           type: string
         requestedDeliveryMode:
           type:
@@ -865,7 +865,9 @@ components:
           description: API URL for programmatic access (update/delete)
           type: string
         ownerToken:
-          description: Secret token required for update and delete operations. Store it safely -- cannot be recovered
+          description: >-
+            Owner token: save it privately (cannot be recovered); send it as X-Owner-Token on later publishes and
+            updates
           type: string
         requestedDeliveryMode:
           type:
@@ -995,7 +997,9 @@ components:
           description: API URL for programmatic access (update/delete)
           type: string
         ownerToken:
-          description: Secret token required for update and delete operations. Store it safely -- cannot be recovered
+          description: >-
+            Owner token: save it privately (cannot be recovered); send it as X-Owner-Token on later publishes and
+            updates
           type: string
         requestedDeliveryMode:
           type:
@@ -1262,7 +1266,9 @@ components:
           description: API URL for programmatic access (upsert/delete)
           type: string
         ownerToken:
-          description: Secret token required for upsert and delete operations. Store it safely -- cannot be recovered
+          description: >-
+            Owner token: save it privately (cannot be recovered); send it as X-Owner-Token on later publishes and
+            updates
           type: string
         requestedDeliveryMode:
           type:
@@ -1861,8 +1867,9 @@ components:
         code:
           description: >-
             Kebab-case, e.g. ttl-clamped, namespace-defaulted, secret-detected, visibility-not-listable,
-            extend-needs-profile, rotate-still-listed, credential-published (token or manage link in public content:
-            remove it, reset it), archive-unverified (archive: check contents before opening).
+            extend-needs-profile, rotate-still-listed, owner-token-new (save the new ownerToken, reuse it),
+            credential-published (token or manage link in public content: remove it, reset it), archive-unverified
+            (archive: check contents before opening).
           type: string
         message:
           type: string
@@ -2280,7 +2287,9 @@ components:
           description: API URL for programmatic access (info, delete)
           type: string
         ownerToken:
-          description: Secret token required for info and delete operations. Store it safely -- cannot be recovered
+          description: >-
+            Owner token: save it privately (cannot be recovered); send it as X-Owner-Token on later publishes and
+            updates
           type: string
         requestedDeliveryMode:
           type:
@@ -2638,16 +2647,16 @@ info:
     Free instant hosting for HTML, Markdown, JSON, key-value stores, files and sites. Omitted ns: private. MCP omission:
     a generated private namespace. Send ns=public for gallery & search; password, hidden and private publications are
     excluded. A private link is not a lock: anyone with it can open it; add a password to restrict. Secrets allowed;
-    likely ones are flagged in notices. For a secret: private namespace + password. Retain returned links and owner
-    tokens. manageUrl is private: give it only to the owner, never publish it. How BrewPage compares with GitHub Pages,
-    GitHub Gist, Netlify Drop, Cloudflare Drop, Tiiny Host and Static.app: https://brewpage.app/compare. Agents: remote
-    MCP at https://brewpage.app/mcp (no auth).
+    likely ones are flagged in notices. For a secret: private namespace + password. Retain returned links. Save
+    ownerToken privately; send it as X-Owner-Token on later publishes and updates. manageUrl is private: give it only to
+    the owner, never publish it. How BrewPage compares with GitHub Pages, GitHub Gist, Netlify Drop, Cloudflare Drop,
+    Tiiny Host and Static.app: https://brewpage.app/compare. Agents: remote MCP at https://brewpage.app/mcp (no auth).
   license:
     name: Apache-2.0
     url: https://www.apache.org/licenses/LICENSE-2.0
   termsOfService: https://brewpage.app/terms
   title: BrewPage API
-  version: 2.8.39
+  version: 2.8.45
 openapi: 3.1.0
 paths:
   /api/files:
