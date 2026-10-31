@@ -897,7 +897,7 @@ for (const scenario of [
 }
 
 const PRIVATE_RESPONSE = { ...NEW_RESPONSE, namespace: "priv-synthetic", access: "unlisted" };
-const LISTED_PRIVATE = "Private: not listed. Anyone with the link can open it. Use namespace public to list it in the gallery and sitemap.";
+const LISTED_PRIVATE = "Private: not listed. Anyone with the link can open it. To be found, send namespace=public: gallery + Google, Bing & AI search.";
 for (const scenario of [
   { tool: "publish_html", args: { content: "x" }, kind: "domain", notice: LISTED_PRIVATE },
   { tool: "publish_file", args: {}, kind: "domain", notice: LISTED_PRIVATE },
@@ -914,11 +914,11 @@ for (const scenario of [
     const text = (tools.find(({ name }) => name === scenario.tool)!.inputSchema.properties!.namespace as { description: string }).description;
     const result = await f.call(scenario.tool, { ...scenario.args, ...(scenario.tool === "publish_file" ? { url: `${f.baseUrl}/source-file` } : {}) });
     // THEN the description states the type's public reach without hedges and the notice fits the type.
-    const kind = text.includes("served right on the brewpage.app domain") ? "domain"
+    const kind = text.includes("served on the brewpage.app domain itself") ? "domain"
       : text.includes("A site always gets its own subdomain.") ? "site"
       : text.includes("JSON and KV are never listed in the gallery or indexed") ? "data" : "none";
     assert.deepEqual({
-      kind, privateDefault: /Omit \(default\): private\./.test(text), hedged: /eligib|may permit|secure|qualif/i.test(text),
+      kind, privateDefault: /Omit \(default\): private[.,]/.test(text), hedged: /eligib|may permit|secure|qualif/i.test(text),
       notice: result.content[0].text.split("\n").find((line) => line.startsWith("Private:")),
     }, { kind: scenario.kind, privateDefault: true, hedged: false, notice: scenario.notice }, "namespace guidance matches the type");
   });

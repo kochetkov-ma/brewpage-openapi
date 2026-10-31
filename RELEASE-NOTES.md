@@ -1,5 +1,14 @@
 # Release Notes
 
+## MCP 1.16.6 — 2026-10-31
+
+- `publish_html`, `publish_file` and `publish_site` descriptions lead with `namespace=public` to be found (gallery + Google, Bing & AI search; omitted: private); the `namespace` input names what to publish publicly (docs, guides, demos, portfolios, reports, landing pages) and the generated `priv-*` default; the private result line says how to be found. Shorter texts, no new facts. Contract 2.8.52. `User-Agent: brewpage-mcp/1.16.6`; pins bumped.
+
+## API contract 2.8.52 — 2026-10-31
+
+- API contract version 2.8.52 is the backend-generated public snapshot exported from brewpage-app source `7c88ec3978d78569d0aaedfc016d002a2c05e531` (`main`, ahead of tag `v2.8.51`; ships with the next backend release), clean tree.
+- API description leads with `ns=public` to be found (gallery + Google, Bing & AI search); create `ns` on `/api/html`, `/api/files`, `/api/sites` opens with what to publish publicly. `createUrl` documented on update 404s; site `entry` parameter reordered. Description only: 47 paths and 62 operations.
+
 ## MCP 1.16.5 — 2026-10-30
 
 - `update_html` takes optional `tags` (sent as `?tags=a,b`); `update_html` and `republish_site` tags replace the stored tags, `[]` clears them, omitted keeps them. A 429 on any write prints the server's `Retry-After` beside the verbatim body (`retryAfterSeconds`). Contract 2.8.48. `User-Agent: brewpage-mcp/1.16.5`; pins bumped.

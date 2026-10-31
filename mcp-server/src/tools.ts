@@ -2,7 +2,7 @@ import { McpServer, type ToolAnnotations } from "@modelcontextprotocol/server";
 import { z } from "zod";
 
 export const DEFAULT_BASE_URL = "https://brewpage.app";
-export const USER_AGENT = "brewpage-mcp/1.16.5";
+export const USER_AGENT = "brewpage-mcp/1.16.6";
 export const OWNER_TOKEN_ENV = "BREWPAGE_OWNER_TOKEN";
 
 export interface ServerOptions {
@@ -129,21 +129,23 @@ function resolveNamespace(namespace?: string): string {
 }
 
 const UNLISTED_NOTICE = "Private: not listed. Anyone with the link can open it.";
-const LISTABLE_HINT = " Use namespace public to list it in the gallery and sitemap.";
+const LISTABLE_HINT = " To be found, send namespace=public: gallery + Google, Bing & AI search.";
 
 const PROTECTED_UNLISTED_NOTICE = "Password: link + password. Not listed.";
 
 const PUBLIC_NAMESPACE_LEAD =
-  "namespace=public: listed in the public gallery and the sitemap, so Google, Bing and AI search can find and index it " +
-  "and people can discover it. Suits anything meant to be found or shared: docs, guides, demos, portfolios, reports, landing pages. ";
+  "Send namespace=public for anything meant to be found or shared (docs, guides, demos, portfolios, reports, landing pages): " +
+  "listed in the public gallery and sitemap, so Google, Bing and AI search index it and people discover it. ";
 const PUBLIC_NAMESPACE_TAIL =
   " Anyone can find and read a public page, so it is unsuitable for secrets, tokens or personal data. " +
-  "Omit (default): private. Unlisted and not indexed; anyone who has the link can still open it. ";
+  "Omit (default): private, a generated priv-* namespace; unlisted, not indexed; the link still opens it. ";
+/** Tool-description lead for listable publish tools. */
+const PUBLIC_HINT = "Send namespace=public to be found: gallery + Google, Bing & AI search. Omitted: private. ";
 const NAMESPACE_FORMAT = "Lowercase only: 1-32 of a-z, 0-9, hyphen.";
 /** `namespace` for publish_html and publish_file. */
 const NAMESPACE_DESCRIPTION = PUBLIC_NAMESPACE_LEAD +
-  "Public pages are served right on the brewpage.app domain, which gives them the strongest reach in search; " +
-  "a page whose code needs its own origin (cookies, storage) gets its own subdomain automatically." +
+  "Public pages are served on the brewpage.app domain itself, for the strongest search reach; " +
+  "code that needs its own origin (cookies, storage) gets its own subdomain automatically." +
   PUBLIC_NAMESPACE_TAIL + NAMESPACE_FORMAT;
 const SITE_NAMESPACE_DESCRIPTION = PUBLIC_NAMESPACE_LEAD + "A site always gets its own subdomain." +
   PUBLIC_NAMESPACE_TAIL + NAMESPACE_FORMAT;
@@ -166,9 +168,9 @@ const DELIVERY_MODE_SCHEMA = z.enum(["path", "subdomain"]).optional().describe(
 
 /** Site upload rules shared by publish_site and republish_site; current values come from get_limits. */
 const SITE_LIMITS_TEXT =
-  "Default limits (current values: GET /api/limits): a request is at most 25 MiB; a site at most 200 files, 5 MiB per file and 20 MiB in total; " +
-  "each path at most 380 characters. System files (.DS_Store, __MACOSX/ and similar) are skipped and never count; files with an unsupported extension " +
-  "or a too-long path are skipped and listed in notices. Entry: `entry`, else root index.html, else the shallowest HTML file. " +
+  "Default limits (current: GET /api/limits): request 25 MiB; site 200 files, 5 MiB per file, 20 MiB total; " +
+  "path 380 characters. System files (.DS_Store, __MACOSX/ and similar) are skipped and never count; files with an unsupported extension " +
+  "or too-long path are skipped and listed in notices. Entry: `entry`, else root index.html, else the shallowest HTML file. " +
   "Errors: 400 = a site limit exceeded (the message names it), invalid path, no HTML file, or a PDF/Office file unreadable " +
   "or password-protected; 413 = request over 25 MiB, too many files and form fields, or a file name/path too long; " +
   "422 = no servable file left; 503 = busy, retry after Retry-After seconds.";
@@ -264,7 +266,7 @@ export function createServer(options: ServerOptions = {}): McpServer {
   const apiFetch = options.fetch ?? fetch;
   const server = new McpServer({
     name: "brewpage-mcp",
-    version: "1.16.5",
+    version: "1.16.6",
   });
 
   /** Caller argument first, then the configured default; `fromEnv` marks the configured one. */
@@ -358,9 +360,10 @@ export function createServer(options: ServerOptions = {}): McpServer {
     "publish_html",
     {
       ...toolMeta("Publish HTML, Markdown, code or JSON page", ADDITIVE),
-      description: "Publish HTML, Markdown, code or JSON content to BrewPage (max 5 MiB); format omitted -> the server detects it. Returns its primary share link and owner token. Supports password protection, custom TTL, optional filename, and an opt-in top toolbar (showTopBar). " +
-        "When deliveryMode is omitted for a `public` page, the server may publish it on its own subdomain if the page needs browser features a BrewPage link does not provide; " +
-        "the result then includes deliveryModeReason and a delivery notice. Markdown raw HTML is allowlisted: scripts, styles, event handlers, forms and embeds are removed. " +
+      description: "Publish HTML, Markdown, code or JSON to BrewPage (max 5 MiB). " + PUBLIC_HINT +
+        "Format omitted -> server detects it. Returns its primary share link and owner token. Optional password, TTL, filename, top toolbar (showTopBar). " +
+        "A `public` page without deliveryMode may get its own subdomain if it needs browser features a BrewPage link lacks; " +
+        "the result then has deliveryModeReason and a delivery notice. Markdown raw HTML is allowlisted: scripts, styles, event handlers, forms, embeds removed. " +
         MANAGE_URL_TEXT + " " + SECRETS,
       inputSchema: {
         content: z.string().describe("HTML, Markdown, code or JSON to publish"),
@@ -432,7 +435,7 @@ export function createServer(options: ServerOptions = {}): McpServer {
     "publish_file",
     {
       ...toolMeta("Publish file from URL", ADDITIVE),
-      description: "Upload a file to BrewPage via URL. Max 5 MiB, video 20 MiB. Returns its primary share link and owner token. Does not expose password or TTL inputs. " +
+      description: "Upload a file from a URL. " + PUBLIC_HINT + "Max 5 MiB, video 20 MiB; no password or TTL. Returns its primary share link and owner token. " +
         MANAGE_URL_TEXT + " " + SECRETS,
       inputSchema: {
         url: z.string().url().describe("URL of the file to upload"),
@@ -653,8 +656,8 @@ export function createServer(options: ServerOptions = {}): McpServer {
     "publish_site",
     {
       ...toolMeta("Publish site", ADDITIVE),
-      description: "Publish an HTML site to BrewPage. Single-page: `entryContent`. Multi-page: `files` (array of `{path, content}`). Optional `entry` overrides default `index.html`. Returns its primary share link and owner token. " +
-        "Static sites: HTML, CSS and JS (incl. built React/Vue/TypeScript bundles) run in the browser; PHP and other server code never run. " + SITE_LIMITS_TEXT +
+      description: "Publish an HTML site to BrewPage. " + PUBLIC_HINT + "Single-page: `entryContent`. Multi-page: `files` (`{path, content}` array). Optional `entry` overrides `index.html`. Returns its primary share link and owner token. " +
+        "Static only: HTML, CSS, JS (incl. built React/Vue bundles) run in the browser; server code (PHP etc.) never runs. " + SITE_LIMITS_TEXT +
         " " + MANAGE_URL_TEXT + " " + SECRETS,
       inputSchema: {
         deliveryMode: DELIVERY_MODE_SCHEMA,

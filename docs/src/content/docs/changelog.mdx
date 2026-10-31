@@ -6,6 +6,10 @@ order: 5
 
 # Changelog
 
+## MCP 1.16.6 — sharper public namespace guidance
+
+`publish_html`, `publish_file` and `publish_site` descriptions lead with `namespace=public` to be found (gallery + Google, Bing & AI search; omitted: private); the `namespace` input names what to publish publicly (docs, guides, demos, portfolios, reports, landing pages) and the generated `priv-*` default; the private result line says how to be found. Shorter texts, no new facts.
+
 ## MCP 1.16.5 — update tags, Retry-After on 429
 
 `update_html` takes optional `tags` (sent as `?tags=a,b`); `update_html` and `republish_site` tags replace the stored tags, `[]` clears them, omitted keeps them. A 429 on any write prints the server's `Retry-After` beside the verbatim body (`retryAfterSeconds`).
