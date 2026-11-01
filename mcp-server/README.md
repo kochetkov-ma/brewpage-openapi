@@ -17,7 +17,7 @@ Choosing a host? See how BrewPage compares with GitHub Pages, Netlify Drop, Tiin
 ## Quick Start
 
 ```bash
-npx -y brewpage-mcp@1.16.6
+npx -y brewpage-mcp@1.16.7
 ```
 
 Requires Node.js 20 or newer. This starts the stdio server for an MCP client.
@@ -50,7 +50,7 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS)
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@1.16.6"]
+      "args": ["-y", "brewpage-mcp@1.16.7"]
     }
   }
 }
@@ -61,7 +61,7 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS)
 Register a project-scoped stdio server:
 
 ```bash
-claude mcp add --transport stdio --scope project brewpage -- npx -y brewpage-mcp@1.16.6
+claude mcp add --transport stdio --scope project brewpage -- npx -y brewpage-mcp@1.16.7
 ```
 
 This writes `.mcp.json` in the project root. Use `--scope user` for user-scoped registration. See the [official Claude Code MCP guide](https://code.claude.com/docs/en/mcp).
@@ -75,7 +75,7 @@ Open **Settings > MCP** and add:
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@1.16.6"]
+      "args": ["-y", "brewpage-mcp@1.16.7"]
     }
   }
 }
@@ -89,7 +89,7 @@ Open the Cline MCP settings panel and add:
 {
   "brewpage": {
     "command": "npx",
-    "args": ["-y", "brewpage-mcp@1.16.6"]
+    "args": ["-y", "brewpage-mcp@1.16.7"]
   }
 }
 ```
@@ -97,7 +97,7 @@ Open the Cline MCP settings panel and add:
 ### Global Install
 
 ```bash
-npm install -g brewpage-mcp@1.16.6
+npm install -g brewpage-mcp@1.16.7
 brewpage-mcp
 ```
 
@@ -529,6 +529,10 @@ Every publish response includes an **owner token** -- the only credential that a
 - [Brewcode Plugin](https://github.com/kochetkov-ma/claude-brewcode) -- Claude Code plugin suite
 
 ## Changelog
+
+## 1.16.7 -- 2026-11-01
+
+- Owner tools answer a 404 `WRONG_RESOURCE_TYPE` (this id lives under another type) with the server body plus the `resourceUrl` to repeat the write at, instead of the publish-anew hint. Contract 2.8.58.
 
 ## 1.16.6 -- 2026-10-31
 

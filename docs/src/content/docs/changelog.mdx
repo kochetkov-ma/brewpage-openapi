@@ -6,6 +6,10 @@ order: 5
 
 # Changelog
 
+## MCP 1.16.7 — wrong-type write names the right route
+
+Owner tools answer a 404 `WRONG_RESOURCE_TYPE` (this id lives under another type) with the server body plus the `resourceUrl` to repeat the write at, instead of the publish-anew hint. Contract 2.8.58.
+
 ## MCP 1.16.6 — sharper public namespace guidance
 
 `publish_html`, `publish_file` and `publish_site` descriptions lead with `namespace=public` to be found (gallery + Google, Bing & AI search; omitted: private); the `namespace` input names what to publish publicly (docs, guides, demos, portfolios, reports, landing pages) and the generated `priv-*` default; the private result line says how to be found. Shorter texts, no new facts.

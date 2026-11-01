@@ -1,5 +1,9 @@
 # Release Notes
 
+## MCP 1.16.7 — 2026-11-01
+
+- Owner tools answer a 404 `WRONG_RESOURCE_TYPE` (this id lives under another type) with the server body plus the `resourceUrl` to repeat the write at, instead of the publish-anew hint. Contract 2.8.58. `User-Agent: brewpage-mcp/1.16.7`; pins bumped.
+
 ## API contract 2.8.58 — 2026-11-01
 
 - API contract version 2.8.58 is the backend-generated public snapshot exported from brewpage-app source `254ae0d2fba62bf98d62d6765216d1d7f00e7222` (tag `v2.8.58`), clean tree.

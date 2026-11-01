@@ -837,23 +837,32 @@ for (const scenario of [
 }
 
 const goneBody = (segment: string) => ({ status: 404, error: "Not Found", message: `Not found or expired. Publish a new copy with POST /api/${segment}.` });
+const wrongTypeBody = (method: string, type: string, route: string) => ({ status: 404, error: "Not Found",
+  message: `Wrong type: this id is ${type}. Use ${method} ${route}.`, code: "WRONG_RESOURCE_TYPE", resourceUrl: `https://brewpage.app${route}` });
 for (const scenario of [
   { tool: "update_html", operation: "update HTML", args: { content: "x" }, segment: "html", hint: "\nUse the publish_html tool to publish a new copy." },
   { tool: "republish_site", operation: "republish site", args: { entryContent: "<h1>x</h1>" }, segment: "sites", hint: "\nUse the publish_site tool to publish a new copy." },
   { tool: "update_json", operation: "update JSON", args: { json: { a: 1 } }, segment: "json", hint: "\nUse the publish_json tool to publish a new copy." },
   { tool: "set_kv", operation: "set KV", args: { key: "k", value: "v" }, segment: "kv", hint: "\nUse the publish_kv tool to publish a new copy." },
   { tool: "delete_resource", operation: "delete", args: { type: "html" }, segment: "html", hint: "" },
-]) {
-  test(`${scenario.tool} 404 relays the server answer plus its publish-tool hint`, { timeout: 10_000 }, async (t) => {
+].map((row) => ({ ...row, body: goneBody(row.segment) as Record<string, unknown> })).concat([
+  { tool: "update_html", operation: "update HTML", args: { content: "x" }, segment: "html",
+    body: wrongTypeBody("PUT", "json", "/api/json/public/aBcDeFgHiJ"),
+    hint: "\nWrong type for this id: repeat the write at resourceUrl (https://brewpage.app/api/json/public/aBcDeFgHiJ)." },
+  { tool: "delete_resource", operation: "delete", args: { type: "html" }, segment: "html",
+    body: wrongTypeBody("DELETE", "kv", "/api/kv/public/aBcDeFgHiJ"),
+    hint: "\nWrong type for this id: repeat the write at resourceUrl (https://brewpage.app/api/kv/public/aBcDeFgHiJ)." },
+])) {
+  test(`${scenario.tool} 404 ${scenario.body.code ?? "gone"} relays the server answer plus its hint`, { timeout: 10_000 }, async (t) => {
     // GIVEN a deleted or expired publication.
     const f = await fixture(t);
-    f.respond(404, goneBody(scenario.segment));
+    f.respond(404, scenario.body);
     // WHEN its owner writes to it.
     const result = await f.call(scenario.tool, { namespace: "public", id: "aBcDeFgHiJ", ownerToken: "fixture-owner", ...scenario.args });
-    // THEN the server body is relayed verbatim, an update (not a delete) names its publish tool, nothing is retried.
+    // THEN body relayed verbatim; wrong type names resourceUrl, else an update names its publish tool; no retry.
     assert.deepEqual({ isError: result.isError, text: result.content[0].text, requests: f.requests.length }, {
       isError: true, requests: 1,
-      text: `Failed to ${scenario.operation} (404): ${JSON.stringify(goneBody(scenario.segment))}${scenario.hint}`,
+      text: `Failed to ${scenario.operation} (404): ${JSON.stringify(scenario.body)}${scenario.hint}`,
     }, "404 relay and publish-tool hint are exact");
   });
 }

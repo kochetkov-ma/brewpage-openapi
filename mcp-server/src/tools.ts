@@ -2,7 +2,7 @@ import { McpServer, type ToolAnnotations } from "@modelcontextprotocol/server";
 import { z } from "zod";
 
 export const DEFAULT_BASE_URL = "https://brewpage.app";
-export const USER_AGENT = "brewpage-mcp/1.16.6";
+export const USER_AGENT = "brewpage-mcp/1.16.7";
 export const OWNER_TOKEN_ENV = "BREWPAGE_OWNER_TOKEN";
 
 export interface ServerOptions {
@@ -42,6 +42,7 @@ const SECRETS = "Secrets allowed; likely ones are flagged in notices. Private na
   NO_PUBLIC_CREDENTIALS;
 const MANAGE_URL_TEXT = "Returns manageUrl, a private management link (grants control; not for public sharing).";
 const OLD_READ_ONLY_CODE = "OLD_PUBLICATION_READ_ONLY";
+const WRONG_TYPE_CODE = "WRONG_RESOURCE_TYPE";
 const OLD_READ_ONLY_TEXT = ` Old publications (made before 5 October 2026) are read-only: 409 ${OLD_READ_ONLY_CODE} with createUrl to publish anew.`;
 /** Notice codes the agent must relay to the user. */
 const WARNING_CODES = new Set(["secret-detected"]);
@@ -89,14 +90,17 @@ const PUBLISH_TOOL_FOR: Record<string, string> = {
   "update HTML": "publish_html", "republish site": "publish_site", "update JSON": "publish_json", "set KV": "publish_kv",
 };
 
-/** Owner-tool failure: the server answer verbatim plus a hint for a wrong-token 403, a missing row or a frozen old publication. */
+/** Owner-tool failure: server answer verbatim plus a hint for wrong-token 403, wrong-type or missing row, frozen old publication. */
 function ownerFailure(operation: string, status: number, data: unknown, fromEnv: boolean, headers?: Headers) {
   const lines = [`Failed to ${operation} (${status}): ${JSON.stringify(data)}${retryAfterText(status, headers)}`];
   const code = (data as { code?: unknown } | null)?.code;
   if (status === 403 && (code === undefined || code === "OWNER_AUTHORIZATION_FAILED")) {
     lines.push(`Wrong owner token for this publication. Use ownerToken from create.${fromEnv ? ` Sent: ${OWNER_TOKEN_ENV}.` : ""}`);
   }
-  if (status === 404 && PUBLISH_TOOL_FOR[operation]) {
+  const resourceUrl = (data as { resourceUrl?: unknown } | null)?.resourceUrl;
+  if (status === 404 && code === WRONG_TYPE_CODE && typeof resourceUrl === "string") {
+    lines.push(`Wrong type for this id: repeat the write at resourceUrl (${resourceUrl}).`);
+  } else if (status === 404 && PUBLISH_TOOL_FOR[operation]) {
     lines.push(`Use the ${PUBLISH_TOOL_FOR[operation]} tool to publish a new copy.`);
   }
   if (status === 409 && code === OLD_READ_ONLY_CODE) {
@@ -266,7 +270,7 @@ export function createServer(options: ServerOptions = {}): McpServer {
   const apiFetch = options.fetch ?? fetch;
   const server = new McpServer({
     name: "brewpage-mcp",
-    version: "1.16.6",
+    version: "1.16.7",
   });
 
   /** Caller argument first, then the configured default; `fromEnv` marks the configured one. */
