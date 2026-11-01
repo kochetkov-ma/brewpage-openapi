@@ -41,7 +41,8 @@ components:
         code:
           description: >-
             Machine-readable reason, e.g. OWNER_AUTHORIZATION_FAILED, OWNER_TOKEN_REVOKED, OWNER_TOKEN_EXPIRED,
-            ADMIN_TOKEN_REQUIRED, OLD_PUBLICATION_READ_ONLY, PUBLICATION_UNAVAILABLE, ROTATE_LIMITED.
+            ADMIN_TOKEN_REQUIRED, OLD_PUBLICATION_READ_ONLY, WRONG_RESOURCE_TYPE, PUBLICATION_UNAVAILABLE,
+            ROTATE_LIMITED.
           type: string
         createUrl:
           description: >-
@@ -57,6 +58,9 @@ components:
           type: string
         republishUrl:
           description: 'With OLD_PUBLICATION_READ_ONLY on an HTML page: browser composer to publish it anew.'
+          type: string
+        resourceUrl:
+          description: 'With WRONG_RESOURCE_TYPE: API URL of this id''s real type; repeat the write there.'
           type: string
         result:
           oneOf:
@@ -2662,7 +2666,7 @@ info:
     url: https://www.apache.org/licenses/LICENSE-2.0
   termsOfService: https://brewpage.app/terms
   title: BrewPage API
-  version: 2.8.52
+  version: 2.8.58
 openapi: 3.1.0
 paths:
   /api/files:

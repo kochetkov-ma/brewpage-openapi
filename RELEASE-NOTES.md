@@ -1,5 +1,10 @@
 # Release Notes
 
+## API contract 2.8.58 — 2026-11-01
+
+- API contract version 2.8.58 is the backend-generated public snapshot exported from brewpage-app source `254ae0d2fba62bf98d62d6765216d1d7f00e7222` (tag `v2.8.58`), clean tree.
+- `ErrorResponse` adds optional `resourceUrl` and `code` example `WRONG_RESOURCE_TYPE`: a write to the wrong type route whose id your owner credential owns under another type answers 404 with the full URL of the right route. Additive: 47 paths and 62 operations.
+
 ## MCP 1.16.6 — 2026-10-31
 
 - `publish_html`, `publish_file` and `publish_site` descriptions lead with `namespace=public` to be found (gallery + Google, Bing & AI search; omitted: private); the `namespace` input names what to publish publicly (docs, guides, demos, portfolios, reports, landing pages) and the generated `priv-*` default; the private result line says how to be found. Shorter texts, no new facts. Contract 2.8.52. `User-Agent: brewpage-mcp/1.16.6`; pins bumped.
