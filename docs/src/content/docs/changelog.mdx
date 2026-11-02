@@ -6,6 +6,10 @@ order: 5
 
 # Changelog
 
+## MCP 1.16.8 — identified file downloads
+
+Local `publish_file` source downloads send the `brewpage-mcp` User-Agent, like every BrewPage call. No tool or contract change.
+
 ## MCP 1.16.7 — wrong-type write names the right route
 
 Owner tools answer a 404 `WRONG_RESOURCE_TYPE` (this id lives under another type) with the server body plus the `resourceUrl` to repeat the write at, instead of the publish-anew hint. Contract 2.8.58.

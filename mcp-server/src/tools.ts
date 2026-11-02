@@ -2,7 +2,7 @@ import { McpServer, type ToolAnnotations } from "@modelcontextprotocol/server";
 import { z } from "zod";
 
 export const DEFAULT_BASE_URL = "https://brewpage.app";
-export const USER_AGENT = "brewpage-mcp/1.16.7";
+export const USER_AGENT = "brewpage-mcp/1.16.8";
 export const OWNER_TOKEN_ENV = "BREWPAGE_OWNER_TOKEN";
 
 export interface ServerOptions {
@@ -253,9 +253,9 @@ function formatUpdateResponse(data: Record<string, unknown>): string {
   return lines.join("\n");
 }
 
-/** Stdio source download: plain fetch; a non-2xx answer becomes the tool error. */
+/** Stdio source download: plain fetch with the client User-Agent; a non-2xx answer becomes the tool error. */
 async function plainFetchSource(url: string): Promise<Blob> {
-  const res = await fetch(url);
+  const res = await fetch(url, { headers: { "User-Agent": USER_AGENT } });
   if (!res.ok) throw new Error(`Failed to fetch file from URL: ${res.status} ${res.statusText}`);
   return res.blob();
 }
@@ -270,7 +270,7 @@ export function createServer(options: ServerOptions = {}): McpServer {
   const apiFetch = options.fetch ?? fetch;
   const server = new McpServer({
     name: "brewpage-mcp",
-    version: "1.16.7",
+    version: "1.16.8",
   });
 
   /** Caller argument first, then the configured default; `fromEnv` marks the configured one. */

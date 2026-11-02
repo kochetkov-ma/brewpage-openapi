@@ -1,5 +1,9 @@
 # Release Notes
 
+## MCP 1.16.8 — 2026-11-02
+
+- Local (stdio) `publish_file` source downloads send the identifying User-Agent, like every BrewPage call (was the Node default). No tool or contract change. `User-Agent: brewpage-mcp/1.16.8`; pins bumped.
+
 ## MCP 1.16.7 — 2026-11-01
 
 - Owner tools answer a 404 `WRONG_RESOURCE_TYPE` (this id lives under another type) with the server body plus the `resourceUrl` to repeat the write at, instead of the publish-anew hint. Contract 2.8.58. `User-Agent: brewpage-mcp/1.16.7`; pins bumped.

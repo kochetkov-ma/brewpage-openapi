@@ -527,10 +527,10 @@ for (const scenario of [
 }
 
 for (const scenario of [
-  { label: "argument", env: {}, args: { ownerToken: "fixture-owner" }, owner: "fixture-owner" },
+  { label: "argument", env: {} as Record<string, string>, args: { ownerToken: "fixture-owner" }, owner: "fixture-owner" },
   { label: "argument over default", env: { BREWPAGE_OWNER_TOKEN: ENV_TOKEN }, args: { ownerToken: "fixture-owner" }, owner: "fixture-owner" },
   { label: "default", env: { BREWPAGE_OWNER_TOKEN: ENV_TOKEN }, args: {}, owner: ENV_TOKEN },
-  { label: "none", env: {}, args: {}, owner: undefined },
+  { label: "none", env: {} as Record<string, string>, args: {}, owner: undefined },
 ]) {
   test(`get_limits owner token: ${scenario.label}`, { timeout: 10_000 }, async (t) => {
     // GIVEN a synthetic limits endpoint and the scenario default.
@@ -544,22 +544,25 @@ for (const scenario of [
 }
 
 for (const scenario of [
-  { tool: "publish_html", args: { content: "<h1>Fixture</h1>" } },
-  { tool: "publish_json", args: { json: { value: 7 } } },
-  { tool: "publish_kv", args: { key: "k", value: "v" } },
-  { tool: "publish_site", args: { entryContent: "<h1>Fixture</h1>" } },
-  { tool: "update_json", args: { namespace: "public", id: "aBcDeFgHiJ", json: { value: 7 }, ownerToken: "fixture-owner" } },
-  { tool: "republish_site", args: { namespace: "public", id: "aBcDeFgHiJ", entryContent: "<h1>Fixture</h1>", ownerToken: "fixture-owner" } },
-  { tool: "get_limits", args: {} },
+  { tool: "publish_html", args: () => ({ content: "<h1>Fixture</h1>" }) },
+  { tool: "publish_json", args: () => ({ json: { value: 7 } }) },
+  { tool: "publish_kv", args: () => ({ key: "k", value: "v" }) },
+  { tool: "publish_site", args: () => ({ entryContent: "<h1>Fixture</h1>" }) },
+  { tool: "update_json", args: () => ({ namespace: "public", id: "aBcDeFgHiJ", json: { value: 7 }, ownerToken: "fixture-owner" }) },
+  { tool: "republish_site", args: () => ({ namespace: "public", id: "aBcDeFgHiJ", entryContent: "<h1>Fixture</h1>", ownerToken: "fixture-owner" }) },
+  { tool: "get_limits", args: () => ({}) },
+  { tool: "get_page", args: () => ({ namespace: "public", id: "aBcDeFgHiJ" }) },
+  { tool: "delete_resource", args: () => ({ type: "site", namespace: "public", id: "aBcDeFgHiJ", ownerToken: "fixture-owner" }) },
+  { tool: "publish_file", args: (base: string) => ({ url: `${base}/source-file` }), requests: 2 },
 ]) {
   test(`${scenario.tool} identifies the client with the package User-Agent`, { timeout: 10_000 }, async (t) => {
     // GIVEN a synthetic API.
     const f = await fixture(t);
-    // WHEN the tool calls BrewPage.
-    await f.call(scenario.tool, scenario.args);
-    // THEN every API request carries the versioned agent name.
-    assert.deepEqual(f.requests.map((request) => request.headers["user-agent"]), [`brewpage-mcp/${PACKAGE_VERSION}`],
-      "one API request with the identifying User-Agent");
+    // WHEN the tool calls BrewPage (publish_file also downloads its source first).
+    await f.call(scenario.tool, scenario.args(f.baseUrl));
+    // THEN every request carries the versioned agent name.
+    assert.deepEqual(f.requests.map((request) => request.headers["user-agent"]),
+      Array(scenario.requests ?? 1).fill(`brewpage-mcp/${PACKAGE_VERSION}`), "every request carries the identifying User-Agent");
   });
 }
 
