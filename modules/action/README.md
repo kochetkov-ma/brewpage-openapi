@@ -4,11 +4,11 @@
 > This folder is a reference snapshot, not a git submodule (no-submodules strategy, locked 2026-05-20). Development is coordinated from `brewpage-openapi` via the `action-engineer` subagent (`.claude/agents/action-engineer.md`).
 > Note: separate dev repo keeps `@v1` semantics clean for Actions Marketplace.
 
-**Status:** RELEASED -- the action is listed on the [GitHub Marketplace](https://github.com/marketplace/actions/publish-to-brewpage); use it by `uses: kochetkov-ma/brewpage-action@v1`. Current release `v1.2.0`; major ref `@v1` points to it.
+**Status:** RELEASED -- the action is listed on the [GitHub Marketplace](https://github.com/marketplace/actions/publish-to-brewpage); use it by `uses: kochetkov-ma/brewpage-action@v1.2.4`. Current release `v1.2.4`; major ref `@v1` points to it.
 
 **Intent.** Publish CI artefacts -- HTML reports, Playwright reports, generated docs, build outputs -- to BrewPage from GitHub Actions. One step, one live URL as a job output.
 
-**Channel.** GitHub Marketplace + the dev repo by ref: `uses: kochetkov-ma/brewpage-action@v1`. Listing: https://github.com/marketplace/actions/publish-to-brewpage.
+**Channel.** GitHub Marketplace + the dev repo by ref: `uses: kochetkov-ma/brewpage-action@v1.2.4`. Listing: https://github.com/marketplace/actions/publish-to-brewpage.
 
 **Architecture.** A `node24` TypeScript action (`runs.using: node24`, `main: dist/index.js`, committed bundle). NOT a composite action. It calls the BrewPage REST API directly via native `fetch`/`FormData`/`Blob` (Node 24) -- zero HTTP dependencies; the only runtime dependency is `@actions/core`. It does NOT depend on `brewpage-cli` or `npx brewpage`.
 
@@ -43,7 +43,7 @@
 
 **Usage.**
 ```yaml
-- uses: kochetkov-ma/brewpage-action@v1
+- uses: kochetkov-ma/brewpage-action@v1.2.4
   with:
     path: ./playwright-report
     kind: site
