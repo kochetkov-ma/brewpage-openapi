@@ -199,3 +199,25 @@ test(`HTTP refuses a ${MODERN} subscriptions/listen stream in-band without calli
     error: { code: -32601, message: "subscriptions/listen is not supported by this stateless endpoint." } }, upstream: 0 },
   "listen is refused in-band; nothing reaches the API");
 });
+
+for (const row of [
+  { era: MODERN, method: "resources/list", status: 404 },
+  { era: MODERN, method: "prompts/list", status: 404 },
+  { era: "2025-11-25", method: "resources/list", status: 200 },
+  { era: "2025-11-25", method: "prompts/list", status: 200 },
+] as const) {
+  test(`HTTP ${row.era} answers undeclared ${row.method} with -32601 on HTTP ${row.status}`, { timeout: 15_000 }, async (t) => {
+    // GIVEN the HTTP entry, which declares only the tools capability.
+    const api = await backend(t);
+    const url = await httpEntry(t, api.url);
+    // WHEN a client of this era calls a method the server never declared.
+    const modern = row.era === MODERN;
+    const res = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json", Accept: "application/json, text/event-stream",
+      "X-Forwarded-For": CLIENT_IP, "MCP-Protocol-Version": row.era, ...(modern ? { "Mcp-Method": row.method } : {}) },
+    body: JSON.stringify({ jsonrpc: "2.0", id: 7, method: row.method, params: modern ? envelope(MODERN) : {} }) });
+    // THEN 2026-07-28 Streamable HTTP mandates 404 + -32601, the stateless 2025 era answers it in-band on 200.
+    assert.deepEqual({ status: res.status, body: await res.json(), upstream: api.requests.length },
+      { status: row.status, body: { jsonrpc: "2.0", id: 7, error: { code: -32601, message: "Method not found" } }, upstream: 0 },
+      `${row.era} ${row.method}: HTTP status and JSON-RPC error`);
+  });
+}
