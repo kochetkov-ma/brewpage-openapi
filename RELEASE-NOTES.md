@@ -1,5 +1,15 @@
 # Release Notes
 
+## MCP 1.16.10 — 2026-11-05
+
+- `publish_html`, `publish_file` and `update_html` texts state the format order: `format`, known file name extension, then for files the source's Content-Type, then the content, otherwise a plain file. `publish_file`: HTML and Markdown become pages in any namespace. `update_html`: a whole HTML document makes a Markdown page an HTML page. No input or HTTP change. Contract 2.10.2. `User-Agent: brewpage-mcp/1.16.10`; pins bumped.
+
+## API contract 2.10.2 (re-export) — 2026-11-05
+
+- Re-exported from brewpage-app source `35f8fbef4c9cfdc9df58642dbbbe845b94d2c857` (tag `v2.10.2`), clean tree; the earlier 2.10.2 snapshot predated the tagged file changes. 47 paths and 62 operations.
+- `POST /api/files`: HTML and Markdown become pages in any namespace, with or without a password; `format`, then known extension, then declared part type, then content. `POST` and `PUT /api/files` add `format`; `PUT` over a file row makes it a page at the same address. `GET /api/files` does not list such pages (`GET /api/publications` does). `PUT /api/html` with `format` omitted keeps the stored format, except a whole HTML document makes a Markdown page an HTML page. Notices `markdown-file-as-page`, `charset-guessed`, `html-file-as-source`.
+- Live behaviour the generated contract does not name yet (backend annotations own it): notice `file-format-applied` (a file published as the code format `format` named), `?dl=1` on `GET /api/html/{ns}/{id}` (HTML or Markdown page source as an attachment), and the last step of the order (nothing matches: an inert file).
+
 ## API contract 2.10.2 — 2026-11-05
 
 - API contract version 2.10.2 is the backend-generated public snapshot exported from brewpage-app source `1d9a15a82f2e80eaf9bb973fea9f5d1ad82836a3` (`main`, ships with backend v2.10.2), clean tree.

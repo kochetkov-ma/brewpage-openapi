@@ -2,7 +2,7 @@ import { McpServer, type ToolAnnotations } from "@modelcontextprotocol/server";
 import { z } from "zod";
 
 export const DEFAULT_BASE_URL = "https://brewpage.app";
-export const USER_AGENT = "brewpage-mcp/1.16.9";
+export const USER_AGENT = "brewpage-mcp/1.16.10";
 export const OWNER_TOKEN_ENV = "BREWPAGE_OWNER_TOKEN";
 
 export interface ServerOptions {
@@ -270,7 +270,7 @@ export function createServer(options: ServerOptions = {}): McpServer {
   const apiFetch = options.fetch ?? fetch;
   const server = new McpServer({
     name: "brewpage-mcp",
-    version: "1.16.9",
+    version: "1.16.10",
   });
 
   /** Caller argument first, then the configured default; `fromEnv` marks the configured one. */
@@ -365,7 +365,7 @@ export function createServer(options: ServerOptions = {}): McpServer {
     {
       ...toolMeta("Publish HTML, Markdown, code or JSON page", ADDITIVE),
       description: "Publish HTML, Markdown, code or JSON to BrewPage (max 5 MiB). " + PUBLIC_HINT +
-        "Format omitted -> server detects it. Returns its primary share link and owner token. Optional password, TTL, filename, top toolbar (showTopBar). " +
+        "Format order: `format`, then a known filename extension, else the server detects it. Returns its primary share link and owner token. Optional password, TTL, filename, top toolbar (showTopBar). " +
         "A `public` page without deliveryMode may get its own subdomain if it needs browser features a BrewPage link lacks; " +
         "the result then has deliveryModeReason and a delivery notice. Markdown raw HTML is allowlisted: scripts, styles, event handlers, forms, embeds removed. " +
         MANAGE_URL_TEXT + " " + SECRETS,
@@ -376,7 +376,7 @@ export function createServer(options: ServerOptions = {}): McpServer {
           .string()
           .min(1)
           .optional()
-          .describe("Omit: server detects html, markdown, code or JSON. `html` keeps code/JSON as HTML; also markdown/md or a code language."),
+          .describe("Omit: a known filename extension decides, else the server detects html, markdown, code or JSON. `html` keeps code/JSON as HTML; also markdown/md or a code language. A whole HTML document sent as markdown becomes an HTML page."),
         namespace: z
           .string()
           .optional()
@@ -390,7 +390,7 @@ export function createServer(options: ServerOptions = {}): McpServer {
           .string()
           .max(200)
           .optional()
-          .describe("Optional original filename (≤200 chars). Used as title fallback when no <title>/<h1>; immutable on update."),
+          .describe("Optional original filename (≤200 chars). Without `format`, a known extension sets the format (.md stays Markdown, even a whole HTML document). Used as title fallback when no <title>/<h1>; immutable on update."),
         showTopBar: z
           .boolean()
           .optional()
@@ -440,6 +440,8 @@ export function createServer(options: ServerOptions = {}): McpServer {
     {
       ...toolMeta("Publish file from URL", ADDITIVE),
       description: "Upload a file from a URL. " + PUBLIC_HINT + "Max 5 MiB, video 20 MiB; no password or TTL. Returns its primary share link and owner token. " +
+        "HTML and Markdown files become pages in any namespace and the link opens the page: a known file name extension decides, then the source's Content-Type, then the content; `.txt` and anything unclear stay files. " +
+        "An HTML file over the page limit or in no readable encoding stays a file shown as source (notice html-file-as-source). " +
         MANAGE_URL_TEXT + " " + SECRETS,
       inputSchema: {
         url: z.string().url().describe("URL of the file to upload"),
@@ -448,7 +450,7 @@ export function createServer(options: ServerOptions = {}): McpServer {
           .string()
           .optional()
           .describe(NAMESPACE_DESCRIPTION),
-        filename: z.string().optional().describe("Custom filename (optional)"),
+        filename: z.string().optional().describe("Custom filename (optional); replaces the URL's name, so its extension decides whether the file becomes a page"),
         ownerToken: z.string().optional().describe(CREATE_OWNER_TOKEN_DESCRIPTION),
       },
     },
@@ -868,6 +870,7 @@ export function createServer(options: ServerOptions = {}): McpServer {
     {
       ...toolMeta("Update page", DESTRUCTIVE),
       description: "Update an existing BrewPage HTML, Markdown, code or JSON page. Requires owner token. Returns the updated page metadata. " +
+        "Format omitted keeps the stored format, except a whole HTML document makes a Markdown page an HTML page. " +
         "The link and delivery mode never change on update; an advisory deliveryModeReason and delivery notice are included when the new content uses browser features that may not work fully on a BrewPage link." + OLD_READ_ONLY_TEXT + " " + NO_PUBLIC_CREDENTIALS,
       inputSchema: {
         namespace: z.string().describe("Page namespace"),
@@ -878,7 +881,7 @@ export function createServer(options: ServerOptions = {}): McpServer {
           .string()
           .optional()
           .describe(
-            "Content format. Accepts (case-insensitive on html/markdown): 'html', 'markdown'/'md', or a code language — yaml, json, xml, csv, tsv, log, toml, ini, sql, sh, bat, env, javascript, typescript, tsx, jsx, css, properties, docker, txt. Omit to preserve the stored format."
+            "Content format. Accepts (case-insensitive on html/markdown): 'html', 'markdown'/'md', or a code language — yaml, json, xml, csv, tsv, log, toml, ini, sql, sh, bat, env, javascript, typescript, tsx, jsx, css, properties, docker, txt. Omit to preserve the stored format, except a whole HTML document makes a Markdown page an HTML page."
           ),
         tags: z
           .array(z.string())

@@ -17,7 +17,7 @@ Choosing a host? See how BrewPage compares with GitHub Pages, Netlify Drop, Tiin
 ## Quick Start
 
 ```bash
-npx -y brewpage-mcp@1.16.9
+npx -y brewpage-mcp@1.16.10
 ```
 
 Requires Node.js 20 or newer. This starts the stdio server for an MCP client.
@@ -50,7 +50,7 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS)
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@1.16.9"]
+      "args": ["-y", "brewpage-mcp@1.16.10"]
     }
   }
 }
@@ -61,7 +61,7 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS)
 Register a project-scoped stdio server:
 
 ```bash
-claude mcp add --transport stdio --scope project brewpage -- npx -y brewpage-mcp@1.16.9
+claude mcp add --transport stdio --scope project brewpage -- npx -y brewpage-mcp@1.16.10
 ```
 
 This writes `.mcp.json` in the project root. Use `--scope user` for user-scoped registration. See the [official Claude Code MCP guide](https://code.claude.com/docs/en/mcp).
@@ -75,7 +75,7 @@ Open **Settings > MCP** and add:
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@1.16.9"]
+      "args": ["-y", "brewpage-mcp@1.16.10"]
     }
   }
 }
@@ -89,7 +89,7 @@ Open the Cline MCP settings panel and add:
 {
   "brewpage": {
     "command": "npx",
-    "args": ["-y", "brewpage-mcp@1.16.9"]
+    "args": ["-y", "brewpage-mcp@1.16.10"]
   }
 }
 ```
@@ -97,7 +97,7 @@ Open the Cline MCP settings panel and add:
 ### Global Install
 
 ```bash
-npm install -g brewpage-mcp@1.16.9
+npm install -g brewpage-mcp@1.16.10
 brewpage-mcp
 ```
 
@@ -108,9 +108,9 @@ Twenty tools are available. Creation returns an owner token; keep it to modify o
 | Tool | Purpose |
 |------|---------|
 | `publish_html` | Publish HTML, Markdown, code or JSON |
-| `update_html` | Replace page content; omitted format preserves stored format |
+| `update_html` | Replace page content; omitted format preserves stored format, except a whole HTML document makes a Markdown page an HTML page |
 | `get_page` | Fetch raw page content |
-| `publish_file` | Fetch a source URL and upload the file |
+| `publish_file` | Fetch a source URL and upload the file; HTML and Markdown become pages |
 | `publish_site` | Publish a single page or complete multi-file site bundle |
 | `republish_site` | Replace the complete site bundle at the same ID/link |
 | `publish_json` | Publish a JSON object, array, or JSON-encoded string |
@@ -176,7 +176,7 @@ publish_html(content="<h1>Report</h1>...", format="HTML", ttlDays=15)
 
 Update an existing HTML or Markdown page in place, preserving its short URL. Requires the original `ownerToken` returned at creation.
 
-Parameters: `namespace` (string), `id` (string), `content` (string, the new body), `ownerToken` (string), `format` (optional HTML/Markdown alias or supported code language such as `json`, `yaml`, or `typescript`; omitted preserves the stored format), `tags` (optional; replace the stored tags, `[]` clears, omitted keeps them).
+Parameters: `namespace` (string), `id` (string), `content` (string, the new body), `ownerToken` (string), `format` (optional HTML/Markdown alias or supported code language such as `json`, `yaml`, or `typescript`; omitted preserves the stored format, except that a whole HTML document makes a Markdown page an HTML page), `tags` (optional; replace the stored tags, `[]` clears, omitted keeps them).
 
 An update never changes the link or delivery mode; an advisory `deliveryModeReason` and `Delivery notice:` line are printed when the server returns them.
 
@@ -215,6 +215,8 @@ get_page(namespace="public", id="aBcDeFgHiJ")
 Upload a file to BrewPage by fetching it from a URL. Returns a public URL and owner token. Supports images, PDFs, video, audio, code files, and archives.
 
 Parameters: `url` (string, the source URL to fetch), `namespace` (optional -- omit to keep the file private: unlisted and not indexed, anyone with the link can open it; `public` lists the file in the gallery and sitemap for Google, Bing and AI search), `filename` (optional custom filename), `deliveryMode` (optional). This tool does not expose base64, password, or TTL inputs.
+
+An HTML or Markdown file becomes a page in any namespace and the returned link opens the page (notice `html-file-as-page` or `markdown-file-as-page`). A known file name extension decides, then the source's Content-Type, then the content; `.txt` and anything unclear stay files. An HTML file over the page limit or in no readable encoding stays a file shown as source (notice `html-file-as-source`). A file read in a guessed encoding is saved as UTF-8 (notice `charset-guessed`).
 
 Example prompt:
 
@@ -530,9 +532,13 @@ Every publish response includes an **owner token** -- the only credential that a
 
 ## Changelog
 
+## 1.16.10 -- 2026-11-05
+
+- `publish_html`, `publish_file` and `update_html` texts state the format order: `format`, known file name extension, then for files the source's Content-Type, then the content. `publish_file`: HTML and Markdown become pages in any namespace. `update_html`: a whole HTML document makes a Markdown page an HTML page. Contract 2.10.2. `User-Agent: brewpage-mcp/1.16.10`.
+
 ## 1.16.9 -- 2026-11-05
 
-- A publish result without an owner token (`result.extras.isOwner` false) prints a neutral line instead of naming another owner. Contract 2.9.6. `User-Agent: brewpage-mcp/1.16.9`.
+- A publish result without an owner token (`result.extras.isOwner` false) prints a neutral line instead of naming another owner. Contract 2.9.6. `User-Agent: brewpage-mcp/1.16.10`.
 
 ## 1.16.8 -- 2026-11-02
 

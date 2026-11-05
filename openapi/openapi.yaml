@@ -773,8 +773,9 @@ components:
           type: string
         filename:
           description: >-
-            Optional original filename used as the tab title fallback and download basename. Trimmed; rejected if it
-            contains path separators or control characters, length > 200, or bare name shorter than 4 chars
+            Optional original filename used as the tab title fallback and download basename; without 'format' a known
+            extension decides the format. Trimmed; rejected if it contains path separators or control characters, length
+            > 200, or bare name shorter than 4 chars
           type:
             - string
             - 'null'
@@ -2671,7 +2672,9 @@ openapi: 3.1.0
 paths:
   /api/files:
     get:
-      description: Returns files owned by the given token. Empty list without token
+      description: >-
+        Returns files owned by the given token. Empty list without token. Files published as pages are listed by GET
+        /api/publications
       operationId: list_1
       parameters:
         - description: 'Namespace. Omitted: private. `public` = gallery & search. Lowercase only.'
@@ -2709,11 +2712,14 @@ paths:
       description: >-
         Stores a file via multipart upload and returns a download link. Only safe file types accepted; a missing or
         wrong extension is corrected from the content and reported in notices. Reuse existing owner token to group
-        entities under one owner. A UTF-8 .html/.htm file sent to namespace 'public' without a password is published as
-        an HTML page (same rules and limits as POST /api/html): link and ownerLink point to the page, notice
-        'html-file-as-page'. Any other HTML file is stored as a file and shown as source, notice 'html-file-as-source';
-        to publish such a page use POST /api/html. Secrets allowed; likely ones are flagged in notices. For a secret:
-        private namespace + password.
+        entities under one owner. An HTML or Markdown file is published as a page in any namespace, with or without a
+        password (same rules and limits as POST /api/html). 'format' decides; without one a known extension, then the
+        declared part type, then the content. '.txt' without 'format' stays a text file. A whole HTML document sent as
+        'markdown' is an HTML page. Any readable encoding is stored as UTF-8, notice 'charset-guessed' when no usable
+        charset was named. link and ownerLink point to the page, notice 'html-file-as-page' or 'markdown-file-as-page'.
+        An HTML file over the page size limit or that no encoding reads is stored as a file and shown as source, notice
+        'html-file-as-source'. Secrets allowed; likely ones are flagged in notices. For a secret: private namespace +
+        password.
       operationId: upload
       parameters:
         - description: >-
@@ -2733,6 +2739,12 @@ paths:
           example: demo,test
           in: query
           name: tags
+          required: false
+          schema:
+            type: string
+        - description: 'Format of a page published from this file: decides over the file name. Unknown values are ignored.'
+          in: query
+          name: format
           required: false
           schema:
             type: string
@@ -2830,8 +2842,8 @@ paths:
   /api/files/{ns}/{id}:
     delete:
       description: >-
-        Permanently removes the file from storage. For an HTML file published as a page in 'public', deletes that page
-        (same owner token)
+        Permanently removes the file from storage. For an HTML file published as a page, deletes that page (same owner
+        token or management key)
       operationId: delete_2
       parameters:
         - in: path
@@ -2881,7 +2893,7 @@ paths:
     get:
       description: >-
         Returns file inline for previewable types (images, PDF, media) or as attachment. Add ?dl=1 to force download. An
-        HTML file published as a page in 'public' redirects to GET /api/html/public/{id}.
+        HTML file published as a page redirects to GET /api/html/{ns}/{id}.
       operationId: download
       parameters:
         - in: path
@@ -2950,7 +2962,7 @@ paths:
             '*/*':
               schema:
                 type: object
-          description: 'HTML file published as a page; Location: /api/html/public/{id} (query string kept)'
+          description: 'HTML file published as a page; Location: /api/html/{ns}/{id} (query string kept)'
         '403':
           content:
             application/json:
@@ -2979,8 +2991,9 @@ paths:
     put:
       description: >-
         Replaces the file content (multipart 'file'); same type rules and limits as upload. Keeps link, password, TTL
-        and tags. For an HTML file published as a page in 'public', replaces that page (UTF-8 .html/.htm, same rules as
-        PUT /api/html).
+        and tags. For an HTML file published as a page, replaces that page (same rules as PUT /api/html). HTML or
+        Markdown over an existing file makes it a page at the same address, keeping owner, password, TTL, tags and
+        views.
       operationId: replaceFile
       parameters:
         - in: path
@@ -2997,6 +3010,12 @@ paths:
         - description: 'Ignored: updates keep the original expiry; a supplied value is reported in notices (ttl-ignored).'
           in: query
           name: ttl
+          required: false
+          schema:
+            type: string
+        - description: 'Format of a page published from this file: decides over the file name. Unknown values are ignored.'
+          in: query
+          name: format
           required: false
           schema:
             type: string
@@ -3219,7 +3238,8 @@ paths:
             'md' — rendered to styled HTML via github-markdown-css. Code/text languages stored and served raw with
             format-specific MIME (text/csv, application/json, text/plain) plus X-Content-Type-Options: nosniff; raw
             reads of xml answer text/plain, downloads keep text/xml: yaml, json, xml, csv, tsv, log, toml, ini, sql, sh,
-            bat, env, javascript, typescript, tsx, jsx, css, properties, docker, txt
+            bat, env, javascript, typescript, tsx, jsx, css, properties, docker, txt. Decides over a filename extension;
+            unknown values are ignored. A whole HTML document sent as 'markdown' is published as an HTML page.
           in: query
           name: format
           required: false
@@ -3510,8 +3530,9 @@ paths:
         - description: >-
             Optional new content format on republish. Accepts 'html', 'markdown'/'md', or any code format (yaml, json,
             xml, csv, tsv, log, toml, ini, sql, sh, bat, env, javascript, typescript, tsx, jsx, css, properties, docker,
-            txt). When omitted, the row's stored format is preserved. Body field 'format' on HtmlUpdateRequest takes
-            precedence over the query param when both are present.
+            txt). When omitted, the row's stored format is preserved, except that a whole HTML document makes a Markdown
+            page an HTML page. Body field 'format' on HtmlUpdateRequest takes precedence over the query param when both
+            are present.
           in: query
           name: format
           required: false
