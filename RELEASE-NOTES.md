@@ -1,5 +1,10 @@
 # Release Notes
 
+## API contract 2.10.2 — 2026-11-05
+
+- API contract version 2.10.2 is the backend-generated public snapshot exported from brewpage-app source `1d9a15a82f2e80eaf9bb973fea9f5d1ad82836a3` (`main`, ships with backend v2.10.2), clean tree.
+- `StatsResponse` (`GET /api/stats`): `accountsToday` and `totalAccounts` exclude deleted accounts; `totalAccounts` is the current count, no longer all-time. Description only: 47 paths and 62 operations; MCP unchanged.
+
 ## MCP 1.16.9 — 2026-11-05
 
 - A publish result without an owner token (`result.extras.isOwner` false) prints a neutral line: no owner token returned, so this call cannot edit or delete it; nothing is said about other owners. Contract 2.9.6. `User-Agent: brewpage-mcp/1.16.9`; pins bumped.

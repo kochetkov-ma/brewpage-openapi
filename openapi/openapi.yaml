@@ -2401,7 +2401,7 @@ components:
     StatsResponse:
       properties:
         accountsToday:
-          description: Accounts created today
+          description: Accounts created today, deleted ones excluded
           format: int64
           type:
             - integer
@@ -2446,7 +2446,7 @@ components:
             - integer
             - 'null'
         totalAccounts:
-          description: All-time account count
+          description: Current account count, deleted ones excluded
           format: int64
           type:
             - integer
@@ -2666,7 +2666,7 @@ info:
     url: https://www.apache.org/licenses/LICENSE-2.0
   termsOfService: https://brewpage.app/terms
   title: BrewPage API
-  version: 2.9.6
+  version: 2.10.2
 openapi: 3.1.0
 paths:
   /api/files:
