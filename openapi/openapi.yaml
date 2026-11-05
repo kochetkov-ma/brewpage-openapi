@@ -155,7 +155,9 @@ components:
         - size
       type: object
     FileUpdateResponse:
-      description: Replace result. For an HTML file published as a page (notice 'html-file-as-page') the page was replaced
+      description: >-
+        Replace result. For a file published as a page (notice 'html-file-as-page', 'markdown-file-as-page' or
+        'file-format-applied') the page was replaced
       properties:
         contentType:
           description: Detected MIME type of the new content
@@ -198,8 +200,8 @@ components:
       type: object
     FileUploadResponse:
       description: >-
-        Upload result. For an HTML file published as a page (notice 'html-file-as-page') id, link and ownerLink belong
-        to that page; manage it via /api/html
+        Upload result. For a file published as a page (notice 'html-file-as-page', 'markdown-file-as-page' or
+        'file-format-applied') id, link and ownerLink belong to that page; manage it via /api/html
       properties:
         access:
           description: >-
@@ -211,7 +213,7 @@ components:
             - protected
           type: string
         contentType:
-          description: Detected MIME type (e.g. image/png); text/html for an HTML file published as a page
+          description: Detected MIME type (e.g. image/png); the page type (text/html, text/markdown) for a file published as a page
           type: string
         deliveryMode:
           type:
@@ -2667,7 +2669,7 @@ info:
     url: https://www.apache.org/licenses/LICENSE-2.0
   termsOfService: https://brewpage.app/terms
   title: BrewPage API
-  version: 2.10.2
+  version: 2.10.3
 openapi: 3.1.0
 paths:
   /api/files:
@@ -2713,10 +2715,12 @@ paths:
         Stores a file via multipart upload and returns a download link. Only safe file types accepted; a missing or
         wrong extension is corrected from the content and reported in notices. Reuse existing owner token to group
         entities under one owner. An HTML or Markdown file is published as a page in any namespace, with or without a
-        password (same rules and limits as POST /api/html). 'format' decides; without one a known extension, then the
-        declared part type, then the content. '.txt' without 'format' stays a text file. A whole HTML document sent as
+        password (same rules and limits as POST /api/html). 'format' decides; without one a known extension, then a
+        specific declared part type (text/html, text/markdown, application/json, text/csv), then a content guess;
+        otherwise it stays an inert file. '.txt' without 'format' stays a text file. A whole HTML document sent as
         'markdown' is an HTML page. Any readable encoding is stored as UTF-8, notice 'charset-guessed' when no usable
-        charset was named. link and ownerLink point to the page, notice 'html-file-as-page' or 'markdown-file-as-page'.
+        charset was named. link and ownerLink point to the page, notice 'html-file-as-page' or 'markdown-file-as-page';
+        a code format chosen by 'format' or the declared type is published the same way, notice 'file-format-applied'.
         An HTML file over the page size limit or that no encoding reads is stored as a file and shown as source, notice
         'html-file-as-source'. Secrets allowed; likely ones are flagged in notices. For a secret: private namespace +
         password.
@@ -2799,8 +2803,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/FileUploadResponse'
           description: >-
-            File uploaded, or HTML file published as a page. Header X-Existing-Resource: 1 when an existing publication
-            with the same content was returned
+            File uploaded, or HTML or Markdown file published as a page. Header X-Existing-Resource: 1 when an existing
+            publication with the same content was returned
         '400':
           content:
             application/json:
@@ -2842,8 +2846,8 @@ paths:
   /api/files/{ns}/{id}:
     delete:
       description: >-
-        Permanently removes the file from storage. For an HTML file published as a page, deletes that page (same owner
-        token or management key)
+        Permanently removes the file from storage. For an HTML or Markdown file published as a page, deletes that page
+        (same owner token or management key)
       operationId: delete_2
       parameters:
         - in: path
@@ -2893,7 +2897,7 @@ paths:
     get:
       description: >-
         Returns file inline for previewable types (images, PDF, media) or as attachment. Add ?dl=1 to force download. An
-        HTML file published as a page redirects to GET /api/html/{ns}/{id}.
+        HTML or Markdown file published as a page redirects to GET /api/html/{ns}/{id}.
       operationId: download
       parameters:
         - in: path
@@ -2962,7 +2966,7 @@ paths:
             '*/*':
               schema:
                 type: object
-          description: 'HTML file published as a page; Location: /api/html/{ns}/{id} (query string kept)'
+          description: 'HTML or Markdown file published as a page; Location: /api/html/{ns}/{id} (query string kept)'
         '403':
           content:
             application/json:
@@ -2991,9 +2995,9 @@ paths:
     put:
       description: >-
         Replaces the file content (multipart 'file'); same type rules and limits as upload. Keeps link, password, TTL
-        and tags. For an HTML file published as a page, replaces that page (same rules as PUT /api/html). HTML or
-        Markdown over an existing file makes it a page at the same address, keeping owner, password, TTL, tags and
-        views.
+        and tags. For an HTML or Markdown file published as a page, replaces that page (same rules as PUT /api/html).
+        HTML or Markdown over an existing file makes it a page at the same address, keeping owner, password, TTL, tags
+        and views.
       operationId: replaceFile
       parameters:
         - in: path
@@ -3462,6 +3466,16 @@ paths:
           name: X-Owner-Token
           required: false
           schema:
+            type: string
+        - description: >-
+            Download instead of view: an HTML or Markdown page's source, or a code page's content, as an attachment
+            named after its stored format
+          in: query
+          name: dl
+          schema:
+            enum:
+              - '1'
+              - 'true'
             type: string
       responses:
         '200':

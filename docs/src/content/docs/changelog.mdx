@@ -10,6 +10,10 @@ order: 5
 
 `publish_html`, `publish_file` and `update_html` state the format order. `publish_file`: HTML and Markdown become pages in any namespace. `update_html`: a whole HTML document makes a Markdown page an HTML page. Contract 2.10.2.
 
+## API contract 2.10.3 — format order in the contract
+
+The generated contract now names the whole file format order, notice `file-format-applied` and `?dl=1` on `GET /api/html/{ns}/{id}`, which were live since 2.10.2. 47 paths and 62 operations.
+
 ## API contract 2.10.2 — files and pages
 
 `POST /api/files` publishes HTML and Markdown as pages in any namespace, with or without a password, by one format order: `format`, known extension, specific declared type, content guess, otherwise an inert file. `POST` and `PUT /api/files` take `format`; `PUT` over a file row converts it to a page at the same address. `GET /api/files` does not list such pages; `GET /api/publications` does. `PUT /api/html` with `format` omitted keeps the stored format, except a whole HTML document makes a Markdown page an HTML page. `?dl=1` on `GET /api/html/{ns}/{id}` downloads an HTML or Markdown page's source as an attachment. Notices: `markdown-file-as-page`, `file-format-applied` (published as a code format chosen by `format` or the declared type), `charset-guessed` (no usable charset named, read by guess, saved as UTF-8), `html-file-as-source` (over the page limit or no readable encoding, kept as a file).
