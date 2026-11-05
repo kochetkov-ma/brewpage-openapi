@@ -8,7 +8,7 @@
 
 - Re-exported from brewpage-app source `35f8fbef4c9cfdc9df58642dbbbe845b94d2c857` (tag `v2.10.2`), clean tree; the earlier 2.10.2 snapshot predated the tagged file changes. 47 paths and 62 operations.
 - `POST /api/files`: HTML and Markdown become pages in any namespace, with or without a password; `format`, then known extension, then declared part type, then content. `POST` and `PUT /api/files` add `format`; `PUT` over a file row makes it a page at the same address. `GET /api/files` does not list such pages (`GET /api/publications` does). `PUT /api/html` with `format` omitted keeps the stored format, except a whole HTML document makes a Markdown page an HTML page. Notices `markdown-file-as-page`, `charset-guessed`, `html-file-as-source`.
-- Live behaviour the generated contract does not name yet (backend annotations own it): notice `file-format-applied` (a file published as the code format `format` named), `?dl=1` on `GET /api/html/{ns}/{id}` (HTML or Markdown page source as an attachment), and the last step of the order (nothing matches: an inert file).
+- Live behaviour the generated contract does not name yet (backend annotations added on `main`; re-export after the next tag): notice `file-format-applied` (a file published as a code format chosen by `format` or the declared type), `?dl=1` on `GET /api/html/{ns}/{id}` (HTML or Markdown page source as an attachment), and the last step of the order (nothing matches: an inert file).
 
 ## API contract 2.10.2 — 2026-11-05
 
