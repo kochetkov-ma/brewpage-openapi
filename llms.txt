@@ -20,6 +20,7 @@ Public contract snapshots, documentation and the BrewPage MCP server. The backen
 
 ## Recent contract changes
 
+- 2.9.6 (backend v2.9.6, next release): `PublicationResult` code `warned` and action `created_warned` removed (such creates answer `success`/`created`); `ownerToken`, `manageUrl`, `visibilityUrl` absent when `result.extras.isOwner` is false. 47 paths and 62 operations.
 - 2.8.58 (matches backend v2.8.58): `ErrorResponse.resourceUrl` and code `WRONG_RESOURCE_TYPE` (404 on a write to the wrong type route when your owner credential owns that id under another type; repeat the write at `resourceUrl`). Additive: 47 paths and 62 operations.
 - 2.8.52 (backend `main` 7c88ec39, next release): sharper `ns=public` guidance in the API description and create `ns`; `createUrl` on update 404s. Description only: 47 paths and 62 operations.
 - 2.8.48 (matches backend v2.8.48): `tags` on `PUT /api/html/{ns}/{id}` and `PUT /api/sites/{ns}/{id}` (sent replaces, empty clears, omitted keeps); 429 on every write route with `Retry-After` = `retryAfterSeconds`; short-link read summaries. Additive: 47 paths and 62 operations.

@@ -360,7 +360,7 @@
             "type": "string"
           },
           "ownerToken": {
-            "description": "Owner token: save it privately (cannot be recovered); send it as X-Owner-Token on later publishes and updates. Absent when an existing publication of another owner was returned (result.extras.isOwner false)",
+            "description": "Owner token: save it privately (cannot be recovered); send it as X-Owner-Token on later publishes and updates. Absent when result.extras.isOwner is false",
             "type": "string"
           },
           "requestedDeliveryMode": {
@@ -2249,7 +2249,6 @@
               "created_missing_assets",
               "updated",
               "merged",
-              "created_warned",
               "unavailable",
               "rate_limited",
               "rejected"
@@ -2260,7 +2259,6 @@
             "enum": [
               "success",
               "duplicate",
-              "warned",
               "failed"
             ],
             "type": "string"
@@ -2937,7 +2935,7 @@
             "type": "boolean"
           },
           "manageUrl": {
-            "description": "Private manage link, shown once. Absent: old publication or foreign duplicate.",
+            "description": "Private manage link, shown once. Absent: old publication, or result.extras.isOwner is false.",
             "type": "string"
           },
           "managementLink": {
@@ -3007,7 +3005,7 @@
             "type": "string"
           },
           "visibilityUrl": {
-            "description": "Owner: POST {\"listed\":false|true} here to hide or show. Link unchanged. Absent for a foreign duplicate.",
+            "description": "Owner: POST {\"listed\":false|true} here to hide or show. Link unchanged. Absent when result.extras.isOwner is false.",
             "type": "string"
           }
         },
@@ -3446,7 +3444,7 @@
     },
     "termsOfService": "https://brewpage.app/terms",
     "title": "BrewPage API",
-    "version": "2.8.58"
+    "version": "2.9.6"
   },
   "openapi": "3.1.0",
   "paths": {

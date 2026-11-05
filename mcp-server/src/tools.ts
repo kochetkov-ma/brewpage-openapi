@@ -287,12 +287,12 @@ export function createServer(options: ServerOptions = {}): McpServer {
     return apiFetch(url, { ...init, headers });
   }
 
-  /** Owner token banner; the configured default is named, never repeated; none for a foreign existing publication.
+  /** Owner token banner; the configured default is named, never repeated; none when result.extras.isOwner is false.
    * Sign-in hint only for a token minted by this call (not `sent`, not the configured default). */
   function ownerTokenLines(data: Record<string, unknown>, purpose: string, sent?: string): string[] {
     const token = data.ownerToken;
     const extras = (data.result as { extras?: { isOwner?: unknown } } | null | undefined)?.extras;
-    if (extras?.isOwner === false) return [``, `No owner token: an existing publication of another owner was returned.`];
+    if (extras?.isOwner === false) return [``, `No owner token returned for this publication; it cannot be edited or deleted with this call.`];
     if (typeof token !== "string" || token.length === 0) return [];
     const shown = defaultOwnerToken !== undefined && token === defaultOwnerToken ? `${OWNER_TOKEN_ENV} (not repeated)` : token;
     return [

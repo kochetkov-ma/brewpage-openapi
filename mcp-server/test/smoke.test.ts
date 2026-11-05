@@ -781,8 +781,8 @@ test("owner tool 403 names the configured default token in its hint", { timeout:
 });
 
 for (const scenario of [
-  { label: "foreign duplicate", extra: { ownerToken: undefined, result: { code: "duplicate", action: "merged", extras: { isOwner: false } } },
-    lines: ["No owner token: an existing publication of another owner was returned."] },
+  { label: "not-owner result", extra: { ownerToken: undefined, result: { code: "duplicate", action: "merged", extras: { isOwner: false } } },
+    lines: ["No owner token returned for this publication; it cannot be edited or deleted with this call."] },
   { label: "own duplicate", extra: { result: { code: "duplicate", action: "merged", extras: { isOwner: true } } }, lines: ["OWNER TOKEN: fixture-owner"] },
   { label: "absent token", extra: { ownerToken: undefined }, lines: [] },
 ]) {

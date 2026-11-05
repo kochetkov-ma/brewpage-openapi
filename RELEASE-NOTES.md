@@ -1,5 +1,10 @@
 # Release Notes
 
+## API contract 2.9.6 — 2026-11-05
+
+- API contract version 2.9.6 is the backend-generated public snapshot exported from brewpage-app source `79723936d1aa8d05525d5fe75a9b75afd8ae0d1b` (branch `fix/site-repost-keeps-content`, ships with backend v2.9.6), clean tree.
+- `PublicationResult` enums drop `warned` (code) and `created_warned` (action): such creates answer as an ordinary `success`/`created`. `ownerToken`, `manageUrl` and `visibilityUrl` are absent when `result.extras.isOwner` is false. 47 paths and 62 operations.
+
 ## MCP 1.16.8 — 2026-11-02
 
 - Local (stdio) `publish_file` source downloads send the identifying User-Agent, like every BrewPage call (was the Node default). No tool or contract change. `User-Agent: brewpage-mcp/1.16.8`; pins bumped.
