@@ -1,5 +1,9 @@
 # Release Notes
 
+## MCP 1.16.9 — 2026-11-05
+
+- A publish result without an owner token (`result.extras.isOwner` false) prints a neutral line: no owner token returned, so this call cannot edit or delete it; nothing is said about other owners. Contract 2.9.6. `User-Agent: brewpage-mcp/1.16.9`; pins bumped.
+
 ## API contract 2.9.6 — 2026-11-05
 
 - API contract version 2.9.6 is the backend-generated public snapshot exported from brewpage-app source `79723936d1aa8d05525d5fe75a9b75afd8ae0d1b` (branch `fix/site-repost-keeps-content`, ships with backend v2.9.6), clean tree.
