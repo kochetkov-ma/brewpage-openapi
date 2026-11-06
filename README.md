@@ -16,6 +16,7 @@
 <p>
 <a href="https://glama.ai/mcp/servers/kochetkov-ma/brewpage-openapi"><img height="18" alt="kochetkov-ma/brewpage-openapi MCP server" src="https://glama.ai/mcp/servers/kochetkov-ma/brewpage-openapi/badges/score.svg"></a>
 <a href="https://mcprush.com/to/brewpage-mcp?ref=badge"><picture><source media="(prefers-color-scheme: light)" srcset="https://mcprush.com/badge/brewpage-mcp/score.svg?theme=light"><img height="18" alt="Brewpage MCP on mcprush" src="https://mcprush.com/badge/brewpage-mcp/score.svg"></picture></a>
+<a href="https://appside.build/mcp-servers/brewpage-openapi/"><img height="18" alt="Verified on Appside" src="https://appside.build/mcp-servers/brewpage-openapi/badge.svg"></a>
 </p>
 
 > This repository is the **open-source public layer** of [BrewPage](https://brewpage.app) --
