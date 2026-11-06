@@ -100,6 +100,14 @@ See [API Cheatsheet](API-Cheatsheet) · [Code Snippets](Code-Snippets)
 | **Skill Docs** | [Publishing skill docs](https://doc-claude.brewcode.app/brewdoc/skills/publish/) |
 | **Brewcode Plugin** | [github.com/kochetkov-ma/claude-brewcode](https://github.com/kochetkov-ma/claude-brewcode) |
 | **Brewcode Site** | [brewcode.app](https://brewcode.app) |
-| **GitHub Action** | [github.com/kochetkov-ma/brewpage-action](https://github.com/kochetkov-ma/brewpage-action) |
-| **Cookbook** | [github.com/kochetkov-ma/brewpage-cookbook](https://github.com/kochetkov-ma/brewpage-cookbook) |
 | **brewdoc CLI** (document-to-Markdown) | [pypi.org/project/brewdoc](https://pypi.org/project/brewdoc/) · [source](https://github.com/kochetkov-ma/brewdoc) |
+| **API guide** | [brewpage.app/api](https://brewpage.app/api) |
+| **GitHub Action** | [brewpage-action](https://github.com/kochetkov-ma/brewpage-action) · [Marketplace](https://github.com/marketplace/actions/publish-to-brewpage) |
+| **Cookbook** | [brewpage-cookbook](https://github.com/kochetkov-ma/brewpage-cookbook) |
+| **Obsidian plugin** | [brewpage-obsidian](https://github.com/kochetkov-ma/brewpage-obsidian) · [Obsidian community](https://community.obsidian.md/plugins/brewpage-publisher) |
+| **Browser extension** | [brewpage-browser-extension](https://github.com/kochetkov-ma/brewpage-browser-extension) |
+| **Codex plugin** | [brewpage-codex-plugin](https://github.com/kochetkov-ma/brewpage-codex-plugin) |
+| **Publishing plugins, n8n node** | [brewpage-publish-plugins](https://github.com/kochetkov-ma/brewpage-publish-plugins) · [n8n-nodes-brewpage](https://www.npmjs.com/package/n8n-nodes-brewpage) |
+| **LangChain tools** | [langchain-brewpage](https://github.com/kochetkov-ma/langchain-brewpage) · [PyPI](https://pypi.org/project/langchain-brewpage/) |
+| **LlamaIndex tool spec** | [llama-index-tools-brewpage](https://github.com/kochetkov-ma/llama-index-tools-brewpage) · [PyPI](https://pypi.org/project/llama-index-tools-brewpage/) |
+| **Support** | [info@brewpage.app](mailto:info@brewpage.app) |

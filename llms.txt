@@ -97,6 +97,13 @@ Docs: https://kochetkov-ma.github.io/brewpage-openapi/
 
 - BrewPage GitHub Action (publish CI artifacts to BrewPage from a workflow): https://github.com/kochetkov-ma/brewpage-action
 - BrewPage Cookbook (interactive recipes for AI artifact workflows): https://github.com/kochetkov-ma/brewpage-cookbook
+- BrewPage Obsidian plugin (publish notes): https://github.com/kochetkov-ma/brewpage-obsidian
+- BrewPage browser extension (publish pages, selections and files): https://github.com/kochetkov-ma/brewpage-browser-extension
+- BrewPage Codex plugin (publishing skill and remote MCP): https://github.com/kochetkov-ma/brewpage-codex-plugin
+- BrewPage publishing plugins for AI coding tools and the n8n node: https://github.com/kochetkov-ma/brewpage-publish-plugins (npm: https://www.npmjs.com/package/n8n-nodes-brewpage)
+- LangChain tools: https://github.com/kochetkov-ma/langchain-brewpage (PyPI: https://pypi.org/project/langchain-brewpage/)
+- LlamaIndex tool spec: https://github.com/kochetkov-ma/llama-index-tools-brewpage (PyPI: https://pypi.org/project/llama-index-tools-brewpage/)
+- Support: info@brewpage.app
 - brewdoc CLI (fast, deterministic document-to-Markdown conversion for agent systems): https://pypi.org/project/brewdoc/
 - brewdoc CLI source: https://github.com/kochetkov-ma/brewdoc
 - brewcode.app (tools, content and methodology for developers who use AI with purpose): https://brewcode.app

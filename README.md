@@ -1,11 +1,22 @@
 # BrewPage API -- Open Source Public Layer
 
-[![npm](https://img.shields.io/npm/v/brewpage-mcp?label=brewpage-mcp)](https://www.npmjs.com/package/brewpage-mcp)
-[![GitHub Stars](https://img.shields.io/github/stars/kochetkov-ma/brewpage-openapi)](https://github.com/kochetkov-ma/brewpage-openapi/stargazers)
-[![OpenAPI](https://img.shields.io/badge/OpenAPI-3.1-green?logo=openapiinitiative)](openapi/openapi.yaml)
-[![License](https://img.shields.io/badge/License-Apache%202.0-blue)](LICENSE)
-[![MCP Server](https://img.shields.io/badge/MCP-brewpage--mcp-gold)](mcp-server/)
-[![Brewpage MCP server](https://mcprush.com/badge/brewpage-mcp/card.svg)](https://mcprush.com/to/brewpage-mcp?ref=badge)
+<p>
+<a href="https://www.npmjs.com/package/brewpage-mcp"><img height="18" alt="npm brewpage-mcp" src="https://img.shields.io/npm/v/brewpage-mcp?label=brewpage-mcp"></a>
+<a href="https://www.npmjs.com/package/n8n-nodes-brewpage"><img height="18" alt="npm n8n-nodes-brewpage" src="https://img.shields.io/npm/v/n8n-nodes-brewpage?label=n8n-nodes-brewpage"></a>
+<a href="https://pypi.org/project/langchain-brewpage/"><img height="18" alt="PyPI langchain-brewpage" src="https://img.shields.io/pypi/v/langchain-brewpage?label=langchain-brewpage"></a>
+<a href="https://pypi.org/project/llama-index-tools-brewpage/"><img height="18" alt="PyPI llama-index-tools-brewpage" src="https://img.shields.io/pypi/v/llama-index-tools-brewpage?label=llama-index-tools-brewpage"></a>
+<a href="https://github.com/marketplace/actions/publish-to-brewpage"><img height="18" alt="GitHub Marketplace: Publish to BrewPage" src="https://img.shields.io/badge/Marketplace-Publish%20to%20BrewPage-purple?logo=github"></a>
+<a href="https://github.com/kochetkov-ma/brewpage-openapi/blob/main/openapi/openapi.yaml"><img height="18" alt="OpenAPI 3.1" src="https://img.shields.io/badge/OpenAPI-3.1-green?logo=openapiinitiative"></a>
+<a href="https://github.com/kochetkov-ma/brewpage-openapi/tree/main/mcp-server"><img height="18" alt="MCP server brewpage-mcp" src="https://img.shields.io/badge/MCP-brewpage--mcp-gold"></a>
+<a href="https://github.com/kochetkov-ma/brewpage-openapi/blob/main/LICENSE"><img height="18" alt="License Apache-2.0" src="https://img.shields.io/badge/License-Apache%202.0-blue"></a>
+<a href="https://github.com/kochetkov-ma/brewpage-openapi/actions/workflows/docs.yml"><img height="18" alt="Deploy Docs" src="https://github.com/kochetkov-ma/brewpage-openapi/actions/workflows/docs.yml/badge.svg"></a>
+<a href="https://github.com/kochetkov-ma/brewpage-openapi/actions/workflows/release.yml"><img height="18" alt="Release" src="https://github.com/kochetkov-ma/brewpage-openapi/actions/workflows/release.yml/badge.svg"></a>
+<a href="https://github.com/kochetkov-ma/brewpage-openapi"><img height="18" alt="GitHub stars" src="https://img.shields.io/github/stars/kochetkov-ma/brewpage-openapi"></a>
+</p>
+<p>
+<a href="https://glama.ai/mcp/servers/kochetkov-ma/brewpage-openapi"><img height="18" alt="kochetkov-ma/brewpage-openapi MCP server" src="https://glama.ai/mcp/servers/kochetkov-ma/brewpage-openapi/badges/score.svg"></a>
+<a href="https://mcprush.com/to/brewpage-mcp?ref=badge"><picture><source media="(prefers-color-scheme: light)" srcset="https://mcprush.com/badge/brewpage-mcp/score.svg?theme=light"><img height="18" alt="Brewpage MCP on mcprush" src="https://mcprush.com/badge/brewpage-mcp/score.svg"></picture></a>
+</p>
 
 > This repository is the **open-source public layer** of [BrewPage](https://brewpage.app) --
 > a proprietary HTML/KV/JSON/file hosting platform.
@@ -246,12 +257,24 @@ Add to project-root `.mcp.json`:
 | Claude skill | https://github.com/kochetkov-ma/claude-brewcode/tree/main/skills/brewpage-publish |
 | Brewcode plugin suite | https://github.com/kochetkov-ma/claude-brewcode |
 | Brewcode site | https://brewcode.app |
-| GitHub Action (publish CI artifacts to BrewPage) | https://github.com/kochetkov-ma/brewpage-action |
-| BrewPage Cookbook (interactive recipes) | https://github.com/kochetkov-ma/brewpage-cookbook |
 | brewdoc CLI (document-to-Markdown conversion for agent systems) | https://pypi.org/project/brewdoc/ |
 | brewdoc CLI source | https://github.com/kochetkov-ma/brewdoc |
 | Wiki | https://github.com/kochetkov-ma/brewpage-openapi/wiki |
 | Releases | https://github.com/kochetkov-ma/brewpage-openapi/releases |
+
+## Related
+
+- [brewpage.app](https://brewpage.app): the hosting service; [API guide](https://brewpage.app/api); [OpenAPI docs](https://kochetkov-ma.github.io/brewpage-openapi/)
+- [brewpage-action](https://github.com/kochetkov-ma/brewpage-action): GitHub Action that publishes CI artifacts ([Marketplace](https://github.com/marketplace/actions/publish-to-brewpage))
+- [brewpage-cookbook](https://github.com/kochetkov-ma/brewpage-cookbook): interactive recipes published on BrewPage
+- [brewpage-obsidian](https://github.com/kochetkov-ma/brewpage-obsidian): Obsidian plugin that publishes notes ([Obsidian community](https://community.obsidian.md/plugins/brewpage-publisher))
+- [brewpage-browser-extension](https://github.com/kochetkov-ma/brewpage-browser-extension): browser extension that publishes pages, selections and files
+- [brewpage-codex-plugin](https://github.com/kochetkov-ma/brewpage-codex-plugin): Codex plugin with the publishing skill and remote MCP
+- [brewpage-publish-plugins](https://github.com/kochetkov-ma/brewpage-publish-plugins): publishing plugins for AI coding tools and the n8n node ([npm](https://www.npmjs.com/package/n8n-nodes-brewpage))
+- [langchain-brewpage](https://github.com/kochetkov-ma/langchain-brewpage): LangChain tools ([PyPI](https://pypi.org/project/langchain-brewpage/))
+- [llama-index-tools-brewpage](https://github.com/kochetkov-ma/llama-index-tools-brewpage): LlamaIndex tool spec ([PyPI](https://pypi.org/project/llama-index-tools-brewpage/))
+
+Support: [info@brewpage.app](mailto:info@brewpage.app)
 
 BrewPage is described using [schema.org/SoftwareApplication](https://schema.org/SoftwareApplication) structured data on the platform homepage.
 
