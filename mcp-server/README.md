@@ -8,7 +8,7 @@ MCP server for [BrewPage](https://brewpage.app) -- publish and manage HTML, KV, 
 
 ## What is BrewPage
 
-[BrewPage](https://brewpage.app) is a free instant hosting platform designed for AI agents and developers. One `POST` request publishes HTML, Markdown, a multi-file site, a JSON document, or a binary file and returns its primary HTTPS link -- no account needed, no API keys, no infrastructure setup. Every resource carries an **owner token** returned at creation time: use it to update content in place, delete the resource, or authenticate list operations across sessions. `brewpage-mcp` exposes this API as twenty typed MCP tools so any compatible agent -- Claude, Codex, Gemini, Cursor, Cline -- can publish, update, fetch, and manage BrewPage HTML, JSON, KV, and file content without leaving the conversation.
+[BrewPage](https://brewpage.app) is a free instant hosting platform designed for AI agents and developers. One `POST` request publishes HTML, Markdown, a multi-file site, a JSON document, or a binary file and returns its primary HTTPS link -- no account needed, no API keys, no infrastructure setup. Every resource carries an **owner token** returned at creation time: use it to update content in place, delete the resource, or authenticate list operations across sessions. `brewpage-mcp` exposes this API as twenty-one typed MCP tools so any compatible agent -- Claude, Codex, Gemini, Cursor, Cline -- can publish, update, fetch, and manage BrewPage HTML, JSON, KV, and file content without leaving the conversation.
 
 Optional: sign in free (Google or any email) at https://account.brewpage.app to never lose your pages or tokens and to mint tokens that never expire. Not needed to publish.
 
@@ -17,14 +17,14 @@ Choosing a host? See how BrewPage compares with GitHub Pages, Netlify Drop, Tiin
 ## Quick Start
 
 ```bash
-npx -y brewpage-mcp@1.16.10
+npx -y brewpage-mcp@1.17.0
 ```
 
 Requires Node.js 20 or newer. This starts the stdio server for an MCP client.
 
 ### Remote (no install)
 
-Add `https://brewpage.app/mcp` as a custom connector / remote MCP server by URL in Claude.ai, ChatGPT or any Streamable HTTP client. No auth; same 20 tools.
+Add `https://brewpage.app/mcp` as a custom connector / remote MCP server by URL in Claude.ai, ChatGPT or any Streamable HTTP client. No auth; same 21 tools.
 
 Claude Code: `claude mcp add --transport http brewpage https://brewpage.app/mcp`, or in `.mcp.json`:
 
@@ -50,7 +50,7 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS)
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@1.16.10"]
+      "args": ["-y", "brewpage-mcp@1.17.0"]
     }
   }
 }
@@ -61,7 +61,7 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS)
 Register a project-scoped stdio server:
 
 ```bash
-claude mcp add --transport stdio --scope project brewpage -- npx -y brewpage-mcp@1.16.10
+claude mcp add --transport stdio --scope project brewpage -- npx -y brewpage-mcp@1.17.0
 ```
 
 This writes `.mcp.json` in the project root. Use `--scope user` for user-scoped registration. See the [official Claude Code MCP guide](https://code.claude.com/docs/en/mcp).
@@ -75,7 +75,7 @@ Open **Settings > MCP** and add:
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@1.16.10"]
+      "args": ["-y", "brewpage-mcp@1.17.0"]
     }
   }
 }
@@ -89,7 +89,7 @@ Open the Cline MCP settings panel and add:
 {
   "brewpage": {
     "command": "npx",
-    "args": ["-y", "brewpage-mcp@1.16.10"]
+    "args": ["-y", "brewpage-mcp@1.17.0"]
   }
 }
 ```
@@ -97,13 +97,13 @@ Open the Cline MCP settings panel and add:
 ### Global Install
 
 ```bash
-npm install -g brewpage-mcp@1.16.10
+npm install -g brewpage-mcp@1.17.0
 brewpage-mcp
 ```
 
 ## Tools
 
-Twenty tools are available. Creation returns an owner token; keep it to modify or delete the resource later. Owner tools take `ownerToken`, else `BREWPAGE_OWNER_TOKEN` (local server only). Supported password inputs use `X-Password`. Secrets allowed; likely ones are flagged in notices. For a secret: private namespace + password.
+Twenty-one tools are available. Creation returns an owner token; keep it to modify or delete the resource later. Owner tools take `ownerToken`, else `BREWPAGE_OWNER_TOKEN` (local server only). Supported password inputs use `X-Password`. Secrets allowed; likely ones are flagged in notices. For a secret: private namespace + password.
 
 | Tool | Purpose |
 |------|---------|
@@ -122,6 +122,7 @@ Twenty tools are available. Creation returns an owner token; keep it to modify o
 | `update_hosting` | Change eligible delivery mode with owner token and hosting version |
 | `delete_resource` | Delete an HTML page, site, JSON document, KV store or file |
 | `set_visibility` | Hide or show a public publication in the gallery and sitemap; link unchanged |
+| `set_title` | Rename an HTML page or site; the title stays on republish; link unchanged |
 | `bind_token` | Add an owner token to your profile (admin token) |
 | `mint_token` | Mint a profile token, shown once (admin token) |
 | `search_gallery` | Browse public content or list owned resources |
@@ -410,6 +411,20 @@ Output: `LISTED: false · link unchanged`.
 
 ---
 
+### `set_title`
+
+Rename an HTML page or site: the title shown in the gallery, profile, search and link cards (`POST /api/{html|sites}/{ns}/{id}/title`). The new title stays when you republish; the link stays the same. Works when the publication's owner token is in a BrewPage profile: sign in at https://account.brewpage.app, then `bind_token`; otherwise 403 with a hint.
+
+Parameters: `type` (`html` | `site`), `namespace`, `id`, `title` (optional: 1-200 characters, one line; empty string restores the title from the content; omitted shows the current title), `ownerToken` (optional).
+
+```
+set_title(type="html", namespace="public", id="aBcDeFgHiJ", title="Trip notes")
+```
+
+Output: `TITLE: Trip notes · set by owner, kept on republish · link unchanged` (after a reset: `· from the content`).
+
+---
+
 ### `bind_token`
 
 Add an owner token to your BrewPage profile (as `publish`) with an `admin` token of that profile (`POST /api/owner-token/bind`). Output: `BOUND …ab12 · 3/20 active`; tokens are never printed in full.
@@ -531,6 +546,10 @@ Every publish response includes an **owner token** -- the only credential that a
 - [Brewcode Plugin](https://github.com/kochetkov-ma/claude-brewcode) -- Claude Code plugin suite
 
 ## Changelog
+
+## 1.17.0 -- 2026-11-09
+
+- New tool `set_title`: rename an HTML page or site you own (owner token in a BrewPage profile); the title shows in the gallery, profile, search and link cards and stays when you republish. Empty title restores the one from the content. Twenty-one tools. `User-Agent: brewpage-mcp/1.17.0`.
 
 ## 1.16.10 -- 2026-11-05
 

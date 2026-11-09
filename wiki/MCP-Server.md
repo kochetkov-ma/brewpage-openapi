@@ -24,7 +24,7 @@ Use BrewPage directly from Claude Desktop, Claude Code, or any MCP client.
 
 ### Remote (no install)
 
-Add `https://brewpage.app/mcp` as a custom connector / remote MCP server by URL in Claude.ai, ChatGPT or any Streamable HTTP client. No auth; same 20 tools.
+Add `https://brewpage.app/mcp` as a custom connector / remote MCP server by URL in Claude.ai, ChatGPT or any Streamable HTTP client. No auth; same 21 tools.
 
 Claude Code: `claude mcp add --transport http brewpage https://brewpage.app/mcp`, or in `.mcp.json`:
 
@@ -48,7 +48,7 @@ Edit `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS):
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@1.16.10"]
+      "args": ["-y", "brewpage-mcp@1.17.0"]
     }
   }
 }
@@ -58,14 +58,14 @@ Windows: `%APPDATA%\Claude\claude_desktop_config.json`
 
 ### Claude Code
 
-Run `claude mcp add --transport stdio --scope project brewpage -- npx -y brewpage-mcp@1.16.10`, or add this to project-root `.mcp.json`:
+Run `claude mcp add --transport stdio --scope project brewpage -- npx -y brewpage-mcp@1.17.0`, or add this to project-root `.mcp.json`:
 
 ```json
 {
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@1.16.10"]
+      "args": ["-y", "brewpage-mcp@1.17.0"]
     }
   }
 }
@@ -74,7 +74,7 @@ Run `claude mcp add --transport stdio --scope project brewpage -- npx -y brewpag
 ### Direct run
 
 ```bash
-npx -y brewpage-mcp@1.16.10
+npx -y brewpage-mcp@1.17.0
 ```
 
 ---
@@ -88,6 +88,7 @@ npx -y brewpage-mcp@1.16.10
 | `publish_site` | Publish a multi-file HTML site from HTML content (`entryContent`, `namespace?`, `password?`, `ttlDays?`) |
 | `delete_resource` | Delete with owner token (incl. sites) |
 | `set_visibility` | Hide or show a public publication; link unchanged |
+| `set_title` | Rename an HTML page or site; kept on republish |
 | `bind_token` | Add a token to your profile (admin token) |
 | `mint_token` | Mint a profile token, shown once (admin token) |
 | `get_page` | Fetch the API's rendered HTML or raw code response; original authored source is owner-only |

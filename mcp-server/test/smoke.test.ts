@@ -10,7 +10,7 @@ import { StdioClientTransport } from "@modelcontextprotocol/client/stdio";
 const EXPECTED_TOOL_NAMES = [
   "publish_html", "publish_file", "delete_resource", "get_page", "get_stats", "publish_site",
   "republish_site", "update_html", "publish_json", "get_json", "update_json", "publish_kv",
-  "set_kv", "get_kv", "search_gallery", "update_hosting", "get_limits", "set_visibility", "bind_token", "mint_token",
+  "set_kv", "get_kv", "search_gallery", "update_hosting", "get_limits", "set_visibility", "set_title", "bind_token", "mint_token",
 ];
 
 const PACKAGE_VERSION = (JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8")) as { version: string }).version;
@@ -65,7 +65,7 @@ async function fixture(t: TestContext, env: Record<string, string> = {}) {
   };
 }
 
-test("MCP exposes exactly 20 tools and optional create-only delivery choice", { timeout: 10_000 }, async (t) => {
+test("MCP exposes exactly 21 tools and optional create-only delivery choice", { timeout: 10_000 }, async (t) => {
   // GIVEN local MCP connected to a synthetic API.
   const f = await fixture(t);
   // WHEN client discovers tools.
@@ -94,7 +94,7 @@ const EXPECTED_TOOL_META: Record<string, [string, Record<string, boolean>]> = {
   publish_site: ["Publish site", ADDITIVE], publish_json: ["Publish JSON document", ADDITIVE],
   publish_kv: ["Publish KV entry", ADDITIVE], set_visibility: ["Set gallery visibility", ADDITIVE],
   update_hosting: ["Change delivery mode", ADDITIVE], bind_token: ["Add token to profile", ADDITIVE],
-  mint_token: ["Mint profile token", ADDITIVE],
+  mint_token: ["Mint profile token", ADDITIVE], set_title: ["Rename page or site", ADDITIVE],
 };
 
 test("every tool carries a title and its exact safety hints", { timeout: 10_000 }, async (t) => {
@@ -681,6 +681,7 @@ for (const scenario of [
   { tool: "update_html", args: { namespace: "public", id: "aBcDeFgHiJ", content: "x" } },
   { tool: "delete_resource", args: { type: "site", namespace: "public", id: "aBcDeFgHiJ" } },
   { tool: "set_visibility", args: { type: "html", namespace: "public", id: "aBcDeFgHiJ", listed: false } },
+  { tool: "set_title", args: { type: "html", namespace: "public", id: "aBcDeFgHiJ", title: "Trip notes" } },
   { tool: "bind_token", args: { token: "fixture-bound-token" } },
   { tool: "search_gallery", args: { mine: true } },
 ]) {
@@ -702,6 +703,18 @@ for (const scenario of [
     response: { listed: false, access: "public", link: NEW_RESPONSE.link, notices: [{ code: "visibility-not-listable", message: "Not listable." }] },
     request: { method: "POST", url: "/api/files/public/aBcDeFgHiJ/visibility", body: '{"listed":false}' },
     text: "LISTED: false · link unchanged\nNotice (visibility-not-listable): Not listable." },
+  { tool: "set_title", args: { type: "html", namespace: "public", id: "aBcDeFgHiJ", title: "Trip notes" }, status: 200,
+    response: { title: "Trip notes", custom: true, notices: [{ code: "secret-detected", message: "Possible secret." }] },
+    request: { method: "POST", url: "/api/html/public/aBcDeFgHiJ/title", body: '{"title":"Trip notes"}' },
+    text: "TITLE: Trip notes · set by owner, kept on republish · link unchanged\nWARNING (secret-detected): Possible secret." },
+  { tool: "set_title", args: { type: "site", namespace: "my-ns", id: "aBcDeFgHiJ", title: "" }, status: 200,
+    response: { title: "Docs home", custom: false },
+    request: { method: "POST", url: "/api/sites/my-ns/aBcDeFgHiJ/title", body: '{"title":""}' },
+    text: "TITLE: Docs home · from the content · link unchanged" },
+  { tool: "set_title", args: { type: "site", namespace: "my-ns", id: "aBcDeFgHiJ" }, status: 200,
+    response: { title: "My docs", custom: true },
+    request: { method: "POST", url: "/api/sites/my-ns/aBcDeFgHiJ/title", body: "{}" },
+    text: "TITLE: My docs · set by owner, kept on republish · link unchanged" },
   { tool: "bind_token", args: { token: "fixture-bound-token-0123456789ab" }, status: 200, response: { bound: true, id: "x", active: 3, max: 10 },
     request: { method: "POST", url: "/api/owner-token/bind", body: '{"token":"fixture-bound-token-0123456789ab"}' }, text: "BOUND …89ab · 3/10 active" },
   { tool: "mint_token", args: { label: "ci", scope: "admin", expiresIn: "90d" }, status: 201,
@@ -779,6 +792,25 @@ test("owner tool 403 names the configured default token in its hint", { timeout:
   assert.equal(result.content[0].text, 'Failed to update HTML (403): {"code":"OWNER_AUTHORIZATION_FAILED"}\n' +
     "Wrong owner token for this publication. Use ownerToken from create. Sent: BREWPAGE_OWNER_TOKEN.", "403 hint is exact");
 });
+
+for (const scenario of [
+  { label: "no profile owns the publication", response: { code: "OWNER_AUTHORIZATION_FAILED", message: "Rename needs a profile" },
+    hint: "\nRename needs a profile: sign in at https://account.brewpage.app, add this publication's owner token with bind_token, then retry." },
+  { label: "wrong token", response: { code: "OWNER_AUTHORIZATION_FAILED", message: "Owner authorization failed" },
+    hint: "\nWrong owner token for this publication. Use ownerToken from create." },
+  { label: "title refused", response: { message: "content rejected", result: { code: "failed", action: "rejected" } }, hint: "" },
+]) {
+  test(`set_title 403 hint for ${scenario.label}`, { timeout: 10_000 }, async (t) => {
+    // GIVEN a 403 answer to a rename.
+    const f = await fixture(t);
+    f.respond(403, scenario.response);
+    // WHEN the owner renames the page.
+    const result = await f.call("set_title", { type: "html", namespace: "public", id: "aBcDeFgHiJ", title: "x", ownerToken: "fixture-owner" });
+    // THEN the server body is verbatim and the hint matches the cause.
+    assert.deepEqual({ text: result.content[0].text, isError: result.isError },
+      { text: `Failed to set title (403): ${JSON.stringify(scenario.response)}${scenario.hint}`, isError: true }, "403 hint follows the cause");
+  });
+}
 
 for (const scenario of [
   { label: "not-owner result", extra: { ownerToken: undefined, result: { code: "duplicate", action: "merged", extras: { isOwner: false } } },
@@ -950,6 +982,7 @@ for (const scenario of [
   { tool: "set_kv", method: "PUT", args: (v: string) => ({ namespace: v, id: v, key: v, value: "x" }), url: (e: string) => `/api/kv/${e}/${e}/${e}` },
   { tool: "update_hosting", method: "PATCH", args: (v: string) => ({ type: "file", namespace: v, id: v, deliveryMode: "path" }), url: (e: string) => `/api/files/${e}/${e}/hosting` },
   { tool: "set_visibility", method: "POST", args: (v: string) => ({ type: "kv", namespace: v, id: v, listed: true }), url: (e: string) => `/api/kv/${e}/${e}/visibility` },
+  { tool: "set_title", method: "POST", args: (v: string) => ({ type: "site", namespace: v, id: v, title: "x" }), url: (e: string) => `/api/sites/${e}/${e}/title` },
 ]) {
   test(`${scenario.tool} keeps traversal input inside its API path and refuses dot segments before HTTP`, { timeout: 20_000 }, async (t) => {
     // GIVEN a configured owner token and traversal-shaped values in every path field.

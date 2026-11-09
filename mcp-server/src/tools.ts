@@ -2,7 +2,7 @@ import { McpServer, type ToolAnnotations } from "@modelcontextprotocol/server";
 import { z } from "zod";
 
 export const DEFAULT_BASE_URL = "https://brewpage.app";
-export const USER_AGENT = "brewpage-mcp/1.16.10";
+export const USER_AGENT = "brewpage-mcp/1.17.0";
 export const OWNER_TOKEN_ENV = "BREWPAGE_OWNER_TOKEN";
 
 export interface ServerOptions {
@@ -43,6 +43,8 @@ const SECRETS = "Secrets allowed; likely ones are flagged in notices. Private na
 const MANAGE_URL_TEXT = "Returns manageUrl, a private management link (grants control; not for public sharing).";
 const OLD_READ_ONLY_CODE = "OLD_PUBLICATION_READ_ONLY";
 const WRONG_TYPE_CODE = "WRONG_RESOURCE_TYPE";
+/** 403 message of a rename on a publication no profile owns. */
+const RENAME_NEEDS_PROFILE = "Rename needs a profile";
 const OLD_READ_ONLY_TEXT = ` Old publications (made before 5 October 2026) are read-only: 409 ${OLD_READ_ONLY_CODE} with createUrl to publish anew.`;
 /** Notice codes the agent must relay to the user. */
 const WARNING_CODES = new Set(["secret-detected"]);
@@ -90,11 +92,13 @@ const PUBLISH_TOOL_FOR: Record<string, string> = {
   "update HTML": "publish_html", "republish site": "publish_site", "update JSON": "publish_json", "set KV": "publish_kv",
 };
 
-/** Owner-tool failure: server answer verbatim plus a hint for wrong-token 403, wrong-type or missing row, frozen old publication. */
+/** Owner-tool failure: server answer verbatim plus a hint for wrong-token or no-profile 403, wrong type/missing row, frozen old row. */
 function ownerFailure(operation: string, status: number, data: unknown, fromEnv: boolean, headers?: Headers) {
   const lines = [`Failed to ${operation} (${status}): ${JSON.stringify(data)}${retryAfterText(status, headers)}`];
-  const code = (data as { code?: unknown } | null)?.code;
-  if (status === 403 && (code === undefined || code === "OWNER_AUTHORIZATION_FAILED")) {
+  const { code, message, result } = (data ?? {}) as { code?: unknown; message?: unknown; result?: unknown };
+  if (status === 403 && code === "OWNER_AUTHORIZATION_FAILED" && message === RENAME_NEEDS_PROFILE) {
+    lines.push("Rename needs a profile: sign in at https://account.brewpage.app, add this publication's owner token with bind_token, then retry.");
+  } else if (status === 403 && (code === "OWNER_AUTHORIZATION_FAILED" || (code === undefined && result === undefined))) {
     lines.push(`Wrong owner token for this publication. Use ownerToken from create.${fromEnv ? ` Sent: ${OWNER_TOKEN_ENV}.` : ""}`);
   }
   const resourceUrl = (data as { resourceUrl?: unknown } | null)?.resourceUrl;
@@ -270,7 +274,7 @@ export function createServer(options: ServerOptions = {}): McpServer {
   const apiFetch = options.fetch ?? fetch;
   const server = new McpServer({
     name: "brewpage-mcp",
-    version: "1.16.10",
+    version: "1.17.0",
   });
 
   /** Caller argument first, then the configured default; `fromEnv` marks the configured one. */
@@ -1364,6 +1368,34 @@ export function createServer(options: ServerOptions = {}): McpServer {
       if (!ok) return ownerFailure("set visibility", status, data, auth.fromEnv, answerHeaders);
       const result = data as Record<string, unknown>;
       return textResult([...credentialAlertLines(result), `LISTED: ${result.listed} · link unchanged`, ...noticeLines(result)].join("\n"));
+    }
+  );
+
+  server.registerTool(
+    "set_title",
+    {
+      ...toolMeta("Rename page or site", ADDITIVE),
+      description: "Rename an HTML page or site: the title shown in the gallery, profile, search and link cards. " +
+        "Works when the publication's owner token is in a BrewPage profile (free sign-in at https://account.brewpage.app). " +
+        "The new title stays when you republish. Link unchanged.",
+      inputSchema: {
+        type: z.enum(["html", "site"]).describe("Publication type"),
+        namespace: z.string().describe("Publication namespace"),
+        id: z.string().describe("Publication ID"),
+        title: z.string().optional().describe("New title, 1-200 characters, one line. Empty string: back to the title from the content. Omit: show the current title."),
+        ownerToken: z.string().optional().describe(OWNER_TOKEN_DESCRIPTION),
+      },
+    },
+    async ({ type, namespace, id, title, ownerToken }) => {
+      const auth = ownerTokenFor(ownerToken);
+      if (!auth.token) return textResult(NO_OWNER_TOKEN, true);
+      const path = apiPath(TYPE_SEGMENTS[type], namespace, id, "title");
+      const { ok, status, data, headers: answerHeaders } = await apiRequest("POST", path, title === undefined ? {} : { title },
+        { "X-Owner-Token": auth.token });
+      if (!ok) return ownerFailure("set title", status, data, auth.fromEnv, answerHeaders);
+      const result = data as Record<string, unknown>;
+      const source = result.custom === true ? "set by owner, kept on republish" : "from the content";
+      return textResult([...credentialAlertLines(result), `TITLE: ${result.title} · ${source} · link unchanged`, ...noticeLines(result)].join("\n"));
     }
   );
 
