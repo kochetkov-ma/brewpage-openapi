@@ -1,5 +1,14 @@
 # Release Notes
 
+## MCP 1.17.0 — 2026-11-09
+
+- New tool `set_title`: rename an HTML page or site you own. The title shows in the gallery, your profile, search and link cards, and stays when you republish; an empty title brings back the one from the page. Needs the owner token in a BrewPage profile (free sign-in at account.brewpage.app). Twenty-one tools. Contract 2.16.0. `User-Agent: brewpage-mcp/1.17.0`; pins bumped.
+
+## API contract 2.16.0 — 2026-11-09
+
+- Exported from brewpage-app source `7f07be765e5ffd17bf60411a748bb9cd67e3e146` (branch `feat/owner-title-views-help-perf`, ships with backend v2.16.0), clean tree. 48 paths and 63 operations.
+- New `setTitle` (`POST /api/{type}/{ns}/{id}/title`, `type` = `html` or `sites`): owners whose token is in a profile rename a page or site; body `TitleRequest` `{"title"}` (1-200 characters, one line; empty restores the title from the content; omitted reports it), answer `TitleResponse` `{"title","custom"}` plus optional `notices`. The owner title survives republish. Errors: 400 `TITLE_INVALID`, 403 (also when no profile owns the publication), 404, 409 `OLD_PUBLICATION_READ_ONLY`, 429, 503. `ErrorResponse.code` lists `TITLE_INVALID`; `info.contact` adds `info@brewpage.app`.
+
 ## MCP 1.16.10 — 2026-11-05
 
 - `publish_html`, `publish_file` and `update_html` texts state the format order: `format`, known file name extension, then for files the source's Content-Type, then the content, otherwise a plain file. `publish_file`: HTML and Markdown become pages in any namespace. `update_html`: a whole HTML document makes a Markdown page an HTML page. No input or HTTP change. Contract 2.10.2. `User-Agent: brewpage-mcp/1.16.10`; pins bumped.

@@ -164,7 +164,7 @@ test("HTTP initialize reports the package version and lists 20 annotated tools",
   const { tools } = await client.listTools();
   // THEN identity, tool count and annotations match the directory contract.
   assert.deepEqual(client.getServerVersion(), { name: "brewpage-mcp", version: PACKAGE_VERSION }, "serverInfo carries the package version");
-  assert.equal(tools.length, 20, "all 20 tools are exposed over HTTP");
+  assert.equal(tools.length, 21, "all 21 tools are exposed over HTTP");
   assert.deepEqual(tools.filter((tool) => typeof tool.annotations?.readOnlyHint !== "boolean" || typeof tool.title !== "string")
     .map(({ name }) => name), [], "every tool has a title and readOnlyHint");
   assert.equal(f.requests.length, 0, "discovery never calls the backend");
@@ -340,7 +340,7 @@ test("a write burst never holds light slots: another client's tools/list answers
   const tools = ((await res.json()) as { result: { tools: unknown[] } }).result.tools.length;
   burst.forEach(({ socket }) => socket.destroy());
   // THEN it is served from the light pool while the writes wait.
-  assert.deepEqual({ status: res.status, tools, backendOpen: f.backend.open }, { status: 200, tools: 20, backendOpen: 8 },
+  assert.deepEqual({ status: res.status, tools, backendOpen: f.backend.open }, { status: 200, tools: 21, backendOpen: 8 },
     "queued writes released their light slots");
 });
 

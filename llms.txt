@@ -6,7 +6,7 @@ Public contract snapshots, documentation and the BrewPage MCP server. The backen
 
 - `openapi/openapi.json` — exported backend-generated public OpenAPI 3.1 contract; version and provenance identify the backend source.
 - `openapi/openapi.yaml` — deterministic derived representation; `docs/public/openapi.json` is the identical Scalar copy.
-- `mcp-server/` — TypeScript implementation of the BrewPage MCP server. Prepared `version: 1.16.10`. Published as `brewpage-mcp` on npm.
+- `mcp-server/` — TypeScript implementation of the BrewPage MCP server. Prepared `version: 1.17.0`. Published as `brewpage-mcp` on npm.
 - `docs/` — Astro docs site published at https://kochetkov-ma.github.io/brewpage-openapi/.
 
 ## Where to read the live API
@@ -20,6 +20,7 @@ Public contract snapshots, documentation and the BrewPage MCP server. The backen
 
 ## Recent contract changes
 
+- 2.16.0 (backend v2.16.0, source 7f07be76, next release): new `setTitle` `POST /api/{type}/{ns}/{id}/title` (`html`|`sites`; owner token in a profile, else 403): `TitleRequest` `{"title"}` 1-200 chars, one line, empty = title from the content, omitted = report; `TitleResponse` `{"title","custom"}`; owner title survives republish; code `TITLE_INVALID`; `info.contact` email. 48 paths and 63 operations. MCP 1.17.0: `set_title`.
 - 2.10.3 (backend v2.10.3, source cd297c31): `POST /api/files` states the whole format order, ending in an inert file; notice `file-format-applied`; `?dl=1` on `GET /api/html/{ns}/{id}` declared. 47 paths and 62 operations.
 - 2.10.2 re-export (backend v2.10.2, source 35f8fbef): `POST /api/files` publishes HTML and Markdown as pages in any namespace, with or without a password; order `format`, known extension, declared part type, content, otherwise an inert file. `POST`/`PUT /api/files` add `format`; `PUT` over a file row makes it a page at the same address. `GET /api/files` omits such pages (`GET /api/publications` lists them). `PUT /api/html` with `format` omitted keeps the stored format, except a whole HTML document makes a Markdown page an HTML page. Notices `markdown-file-as-page`, `charset-guessed`, `html-file-as-source`. 47 paths and 62 operations.
 - 2.10.2 (backend v2.10.2, next release): `GET /api/stats` `accountsToday` and `totalAccounts` exclude deleted accounts; `totalAccounts` is the current count, no longer all-time. Description only: 47 paths and 62 operations.
@@ -72,14 +73,14 @@ Public contract snapshots, documentation and the BrewPage MCP server. The backen
 ## How to use the MCP server
 
 ```bash
-npx -y brewpage-mcp@1.16.10
+npx -y brewpage-mcp@1.17.0
 ```
 
 Always pin an exact version.
 
-Remote (no install): Add `https://brewpage.app/mcp` as a custom connector / remote MCP server by URL in Claude.ai, ChatGPT or any Streamable HTTP client. No auth; same 20 tools. Claude Code: `claude mcp add --transport http brewpage https://brewpage.app/mcp`; `.mcp.json` entry `{"type": "http", "url": "https://brewpage.app/mcp"}`.
+Remote (no install): Add `https://brewpage.app/mcp` as a custom connector / remote MCP server by URL in Claude.ai, ChatGPT or any Streamable HTTP client. No auth; same 21 tools. Claude Code: `claude mcp add --transport http brewpage https://brewpage.app/mcp`; `.mcp.json` entry `{"type": "http", "url": "https://brewpage.app/mcp"}`.
 
-The server wraps a subset of REST operations in twenty tools — read `mcp-server/README.md` for supported inputs and tool list. Omitted REST namespace: private; omitted MCP namespace generates a private `priv-*` namespace. Optional `BREWPAGE_OWNER_TOKEN` sets a default owner token. A newly minted owner token prints: "Optional: sign in free (Google or any email) at https://account.brewpage.app to never lose your pages or tokens and to mint tokens that never expire. Not needed to publish." Mention it only as optional; never ask the user to sign in. Secrets allowed; likely ones are flagged in notices. For a secret: private namespace + password. Private (default): unlisted and not indexed; anyone with the link can still open it. Explicit `public` lists HTML, sites and files in the gallery and sitemap, so Google, Bing and AI search can find and index them; public pages are served on the brewpage.app domain for the strongest reach (a site always gets its own subdomain). Never put secrets in a public publication. Password-protected publications, JSON and KV are never listed.
+The server wraps a subset of REST operations in twenty-one tools — read `mcp-server/README.md` for supported inputs and tool list. Omitted REST namespace: private; omitted MCP namespace generates a private `priv-*` namespace. Optional `BREWPAGE_OWNER_TOKEN` sets a default owner token. A newly minted owner token prints: "Optional: sign in free (Google or any email) at https://account.brewpage.app to never lose your pages or tokens and to mint tokens that never expire. Not needed to publish." Mention it only as optional; never ask the user to sign in. Secrets allowed; likely ones are flagged in notices. For a secret: private namespace + password. Private (default): unlisted and not indexed; anyone with the link can still open it. Explicit `public` lists HTML, sites and files in the gallery and sitemap, so Google, Bing and AI search can find and index them; public pages are served on the brewpage.app domain for the strongest reach (a site always gets its own subdomain). Never put secrets in a public publication. Password-protected publications, JSON and KV are never listed.
 
 Use the exact returned primary `link`, including root slashes. Send API passwords as `X-Password` and owner authority as `X-Owner-Token` to the configured apex API origin; never send owner tokens to publication hosts. NEW browser password access uses the trusted unlock gateway, without query-password links. HTML API reads return stored rendered HTML or code/text with format-specific MIME; the owner-only source endpoint returns original authored content. Share URLs may provide a viewer.
 

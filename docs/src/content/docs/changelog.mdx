@@ -6,6 +6,14 @@ order: 5
 
 # Changelog
 
+## MCP 1.17.0 — rename pages and sites
+
+New tool `set_title`: rename an HTML page or site you own. The title shows in the gallery, your profile, search and link cards, and stays when you republish; an empty title brings back the one from the page. Needs the owner token in a BrewPage profile. Twenty-one tools. Contract 2.16.0.
+
+## API contract 2.16.0 — rename
+
+New `POST /api/{type}/{ns}/{id}/title` (`setTitle`, `html` or `sites`): owners whose token is in a profile set a title of 1-200 characters that survives republish; an empty title restores the one from the content. Answer `{"title","custom"}`; error code `TITLE_INVALID`. 48 paths and 63 operations.
+
 ## MCP 1.16.10 — file format order
 
 `publish_html`, `publish_file` and `update_html` state the format order. `publish_file`: HTML and Markdown become pages in any namespace. `update_html`: a whole HTML document makes a Markdown page an HTML page. Contract 2.10.2.
