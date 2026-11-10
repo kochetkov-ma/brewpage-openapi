@@ -1,5 +1,14 @@
 # Release Notes
 
+## MCP 1.18.1 — 2026-11-10
+
+- After publishing, the assistant gives you the management link together with the page link, so you can edit or delete the publication later. The publish result says so next to `MANAGE LINK (private)`: anyone who has that link can edit or delete the publication, so it is never posted publicly. Text only: no tool or input change. Twenty-five tools. Contract 2.20.5. `User-Agent: brewpage-mcp/1.18.1`; pins bumped.
+
+## API contract 2.20.5 — 2026-11-10
+
+- Exported from brewpage-app source `239543114f4e2c35236d0e556e4fe578b3105e4f` (ships with backend v2.20.5), clean tree. 54 paths and 74 operations. Description only: no path, field or code changed.
+- `manageUrl` on create answers (HTML, file, site, JSON, KV) is described as the management link: give it to the user with the link; it is private, never post it publicly. `ownerToken`: keep it, send it as `X-Owner-Token` on later publishes and updates, show it to the user on request. The API description says the same.
+
 ## MCP 1.18.0 — 2026-11-10
 
 - Custom domains: put one HTML page or one site on a domain you own, such as `www.example.com` or `example.com`. Free, 5 per profile; the owner token must be in a BrewPage profile (free sign-in at account.brewpage.app). New tools: `set_domain` connects the domain and returns the DNS records to create at your DNS provider; `check_domain` checks DNS and reports the status (`pending_dns`, `verifying`, `active`); `list_domains` lists the profile's domains; `remove_domain` removes one and frees its slot. `publish_html` and `publish_site` take an optional `domain`. HTTPS is issued automatically and the BrewPage link keeps working. Twenty-five tools. Contract 2.19.0. `User-Agent: brewpage-mcp/1.18.0`; pins bumped.

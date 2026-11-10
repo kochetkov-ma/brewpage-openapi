@@ -6,6 +6,14 @@ order: 5
 
 # Changelog
 
+## MCP 1.18.1 — management link for the user
+
+After publishing, the assistant gives you the management link together with the page link, so you can edit or delete the publication later. The link is private: anyone who has it can edit or delete the publication, so it is never posted publicly. No tool or input change. Contract 2.20.5.
+
+## API contract 2.20.5 — management link wording
+
+`manageUrl` on create answers is described as the management link: give it to the user with the link; private, never post it publicly. `ownerToken`: keep it, send it as `X-Owner-Token` on later publishes and updates, show it to the user on request. Description only: 54 paths and 74 operations.
+
 ## MCP 1.18.0 — custom domains
 
 Four new tools put a page or site on a domain you own. `set_domain` connects the domain and returns the DNS records to create at your DNS provider; `check_domain` reports the status until it is `active`; `list_domains` lists the profile's domains; `remove_domain` frees a slot. `publish_html` and `publish_site` take an optional `domain`. Free, 5 per profile, with the owner token in a BrewPage profile. Twenty-five tools. Contract 2.19.0.
