@@ -73,7 +73,7 @@ Owner mutations use the original token returned at creation, or the management k
 | Header | `X-Owner-Token: tok_xxx` |
 | Header | `X-Manage-Key: bpm_xxx` (key from `manageUrl`, after `#k=`) |
 
-`manageUrl` is private: give it only to the owner, never publish it. A token active in a profile also manages the profile's publications. Old publications are read-only: content writes answer `409 OLD_PUBLICATION_READ_ONLY` with `createUrl`: POST the content there to publish it anew (HTML also adds `republishUrl`, the browser composer); delete and Hide still work.
+`manageUrl` is the private management link: give it to the user with the link, never post it publicly. A token active in a profile also manages the profile's publications. Old publications are read-only: content writes answer `409 OLD_PUBLICATION_READ_ONLY` with `createUrl`: POST the content there to publish it anew (HTML also adds `republishUrl`, the browser composer); delete and Hide still work.
 
 Programmatic protected reads:
 

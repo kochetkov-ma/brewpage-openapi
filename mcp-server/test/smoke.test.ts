@@ -825,7 +825,7 @@ test("publish_kv prints the private manage link, the listing hint and warning-cl
     "WARNING (secret-detected): Possible secret (API key/token?). Anyone with the link can read it.",
     "Notice (ttl-clamped): TTL clamped.",
     "MANAGE LINK (private): https://brewpage.app/manage/kv/public/aBcDeFgHiJ#k=bpm_fixture",
-    "Give it to the user privately; never publish it.",
+    "Give it to the user with the link: anyone who has it can edit or delete this publication. Never post it publicly.",
     "VISIBILITY: public, listed. Hide: set_visibility listed=false",
   ], "warning, manage link and listing lines are exact");
 });

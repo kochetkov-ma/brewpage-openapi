@@ -310,7 +310,7 @@ const SIGN_IN_HINT = "Optional: sign in free (Google or any email) at https://ac
 function ownerLinkLines(data: Record<string, unknown>): string[] {
   const lines: string[] = [];
   if (typeof data.manageUrl === "string" && data.manageUrl.length > 0) {
-    lines.push(``, `MANAGE LINK (private): ${data.manageUrl}`, `Give it to the user privately; never publish it.`);
+    lines.push(``, `MANAGE LINK (private): ${data.manageUrl}`, `Give it to the user with the link: anyone who has it can edit or delete this publication. Never post it publicly.`);
   }
   if (data.listed === true && !hasCredentialNotice(data)) lines.push(``, `VISIBILITY: public, listed. Hide: set_visibility listed=false`);
   return lines;
