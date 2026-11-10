@@ -1,6 +1,6 @@
 {
   "backendBuildVersion": "2.19.0",
-  "backendCommit": "ef61fa4d9e982a6fc6efdda9a23891eeb506998d",
+  "backendCommit": "b123c7e6834ef77c2dcdbb47d6446f9086a3640e",
   "backendDirty": false,
   "backendSourceSha256": "74d0514bb04a4f43eca768a08c2ae2b65a06bb42462fd90b0477559c9f84cb15",
   "exporter": ".codex/scripts/export-openapi.py",
