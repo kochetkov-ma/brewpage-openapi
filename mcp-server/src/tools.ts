@@ -79,7 +79,7 @@ const DOMAIN_PROBLEMS: Record<string, string> = {
   RESOLVER_UNAVAILABLE: "DNS did not answer; retried automatically",
   PUBLICATION_GONE: "the publication is gone: set the domain on another one",
 };
-const DOMAIN_NEXT_CREATE = "Next: ask the user to create exactly these records at their DNS provider (`host` is the name DNS panels ask for; other records stay). Then call check_domain.";
+const DOMAIN_NEXT_CREATE = "Next: ask the user to add exactly these records at their DNS provider and change nothing else (keep MX/email records); `host` is the name DNS panels ask for. Then call check_domain. BrewPage also checks on its own and issues HTTPS automatically.";
 
 /** One custom domain (`DomainItem`): status, `records[]` verbatim and the next step. */
 function domainLines(item: Record<string, unknown>): string[] {
@@ -95,6 +95,7 @@ function domainLines(item: Record<string, unknown>): string[] {
   if (typeof url === "string" && url) lines.push(`Domain URL: ${url}`);
   const shown = item.attachedTo as { type?: unknown; namespace?: unknown; id?: unknown; link?: unknown } | null | undefined;
   lines.push(shown && typeof shown === "object" ? `Shows: ${shown.type} ${shown.namespace}/${shown.id} · ${shown.link}` : `Shows: no publication yet`);
+  if (typeof item.provider === "string" && item.provider) lines.push(`DNS provider: ${item.provider}`);
   if (item.deliveryModeChanged === true) lines.push(`The publication moved to its own BrewPage subdomain (a custom domain needs it); its BrewPage link keeps working.`);
   if (typeof item.detached === "string" && item.detached) lines.push(`Earlier domain ${item.detached} stays in the profile, not attached.`);
   for (const [field, label] of [["checkedAt", "Checked"], ["nextCheckAt", "Next automatic check"], ["graceEndsAt", "Shown until"]]) {
@@ -103,6 +104,7 @@ function domainLines(item: Record<string, unknown>): string[] {
   lines.push(`DNS records (records[], verbatim):`, ...records.map((record) => `  ${JSON.stringify(record)}`));
   if (records.some((record) => record.optional === true)) lines.push(`A row with "optional":true is an alternative to the A record: one of the two is enough.`);
   if (records.some((record) => record.type === "AAAA")) lines.push(`An AAAA row is a record to delete, not to create.`);
+  if (item.provider === "cloudflare") lines.push(`Cloudflare: Proxy status "DNS only" on the CNAME or A record.`);
   if (item.suspended === true) return lines;
   if (item.status === "pending_dns") lines.push(DOMAIN_NEXT_CREATE);
   if (item.status === "verifying") lines.push(`Next: DNS is found and HTTPS is being issued. Call check_domain again shortly.`);
@@ -124,13 +126,13 @@ function publishDomainLines(data: Record<string, unknown>, requested?: string): 
 function domainHints(data: unknown, byHostname: boolean): string[] {
   const { code, limit, used } = (data ?? {}) as { code?: unknown; limit?: unknown; used?: unknown };
   if (code === "DOMAIN_NEEDS_ACCOUNT") {
-    return ["Custom domains need a free BrewPage account: sign in at https://account.brewpage.app, add this owner token to the profile (bind_token), then retry."];
+    return ["Custom domains need a free BrewPage account: sign in at https://account.brewpage.app and add this token to your profile (bind_token), then retry."];
   }
   if (code === "DOMAIN_LIMIT" && typeof limit === "number" && limit > 0) {
     return [`The profile uses ${typeof used === "number" ? used : limit} of ${limit} custom domains: remove_domain frees one; a hostname already in the profile moves here with set_domain.`];
   }
   if (code === "ADMIN_TOKEN_REQUIRED") {
-    return ["Needs an admin token of the profile." + (byHostname ? " With an owner token of the publication, pass type, namespace and id instead of hostname." : "")];
+    return ["Custom domains need an admin token from a free BrewPage profile." + (byHostname ? " With an owner token of the publication, pass type, namespace and id instead of hostname." : "")];
   }
   if (code === "DOMAIN_CHECK_TOO_SOON") return ["Checked a moment ago: wait, then call check_domain again."];
   if (code === "DOMAIN_NOT_FOUND") return ["No custom domain there: list_domains shows the profile's domains; set_domain connects one."];

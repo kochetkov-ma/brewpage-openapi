@@ -32,13 +32,13 @@ const DOMAIN_RECORDS = [
 const DOMAIN_ITEM = {
   hostname: "www.example.com", displayHostname: "www.example.com", apex: false, status: "pending_dns", suspended: false, problem: "TXT_MISSING",
   records: DOMAIN_RECORDS, serving: false, attachedTo: { type: "html", namespace: "public", id: "aBcDeFgHiJ", link: NEW_RESPONSE.link },
-  createdAt: "2026-11-10T00:00:00Z",
+  provider: "cloudflare", createdAt: "2026-11-10T00:00:00Z",
 };
-const DOMAIN_NEXT_CREATE = "Next: ask the user to create exactly these records at their DNS provider (`host` is the name DNS panels ask for; other records stay). Then call check_domain.";
+const DOMAIN_NEXT_CREATE = "Next: ask the user to add exactly these records at their DNS provider and change nothing else (keep MX/email records); `host` is the name DNS panels ask for. Then call check_domain. BrewPage also checks on its own and issues HTTPS automatically.";
 const DOMAIN_PENDING_LINES = [
   "Domain: www.example.com", "Status: pending_dns", "Problem: TXT_MISSING (the TXT record is not visible yet)", "Serving: false",
-  `Shows: html public/aBcDeFgHiJ · ${NEW_RESPONSE.link}`, "DNS records (records[], verbatim):",
-  ...DOMAIN_RECORDS.map((record) => `  ${JSON.stringify(record)}`), DOMAIN_NEXT_CREATE,
+  `Shows: html public/aBcDeFgHiJ · ${NEW_RESPONSE.link}`, "DNS provider: cloudflare", "DNS records (records[], verbatim):",
+  ...DOMAIN_RECORDS.map((record) => `  ${JSON.stringify(record)}`), 'Cloudflare: Proxy status "DNS only" on the CNAME or A record.', DOMAIN_NEXT_CREATE,
 ];
 const DOMAIN_ACTIVE_ITEM = { hostname: "www.example.com", displayHostname: "www.example.com", apex: false, status: "active", suspended: false,
   records: DOMAIN_RECORDS.map((record) => ({ ...record, state: "ok" })), serving: true, url: "https://www.example.com/",
@@ -1094,7 +1094,7 @@ const DOMAIN_REFUSALS: DomainRefusal[] = [
   { tool: "set_domain", args: DOMAIN_SET_ARGS, response: DOMAIN_LIMIT, headers: NO_HEADERS, prefix: "Failed to set domain (409): ",
     tail: "\nThe profile uses 5 of 5 custom domains: remove_domain frees one; a hostname already in the profile moves here with set_domain." },
   { tool: "set_domain", args: DOMAIN_SET_ARGS, response: DOMAIN_NEEDS_ACCOUNT, headers: NO_HEADERS, prefix: "Failed to set domain (403): ",
-    tail: "\nCustom domains need a free BrewPage account: sign in at https://account.brewpage.app, add this owner token to the profile (bind_token), then retry." },
+    tail: "\nCustom domains need a free BrewPage account: sign in at https://account.brewpage.app and add this token to your profile (bind_token), then retry." },
   { tool: "set_domain", args: DOMAIN_SET_ARGS, response: RATE_LIMITED, headers: { "Retry-After": "60" }, prefix: "Failed to set domain (429): ", tail: " Retry-After: 60." },
   { tool: "set_domain", args: DOMAIN_SET_ARGS, response: DOMAIN_NOT_ELIGIBLE, headers: NO_HEADERS, prefix: "Failed to set domain (409): ", tail: "" },
   { tool: "set_domain", args: DOMAIN_SET_ARGS, response: { status: 403, code: "OWNER_AUTHORIZATION_FAILED" }, headers: NO_HEADERS, prefix: "Failed to set domain (403): ",
@@ -1103,9 +1103,9 @@ const DOMAIN_REFUSALS: DomainRefusal[] = [
     prefix: "Failed to check domain (429): ", tail: " Retry-After: 30.\nChecked a moment ago: wait, then call check_domain again." },
   { tool: "check_domain", args: { hostname: "www.example.com", ownerToken: "fixture-owner" }, response: ADMIN_TOKEN_REQUIRED, headers: NO_HEADERS,
     prefix: "Failed to check domain (403): ",
-    tail: "\nNeeds an admin token of the profile. With an owner token of the publication, pass type, namespace and id instead of hostname." },
+    tail: "\nCustom domains need an admin token from a free BrewPage profile. With an owner token of the publication, pass type, namespace and id instead of hostname." },
   { tool: "list_domains", args: { ownerToken: "fixture-owner" }, response: ADMIN_TOKEN_REQUIRED, headers: NO_HEADERS,
-    prefix: "Failed to list domains (403): ", tail: "\nNeeds an admin token of the profile." },
+    prefix: "Failed to list domains (403): ", tail: "\nCustom domains need an admin token from a free BrewPage profile." },
   { tool: "remove_domain", args: { hostname: "www.example.com", ownerToken: "fixture-owner" }, response: DOMAIN_NOT_FOUND, headers: NO_HEADERS,
     prefix: "Failed to remove domain (404): ", tail: "\nNo custom domain there: list_domains shows the profile's domains; set_domain connects one." },
 ];
@@ -1170,7 +1170,7 @@ for (const scenario of PUBLISH_DOMAIN_TOOLS.flatMap((target) => [
     const request = f.requests[0];
     const url = new URL(request.url, f.baseUrl);
     const relayed = result.content[0].text.split("\n").filter((line) =>
-      /^(Notice \(domain-|CUSTOM DOMAIN|Domain:|Status:|Problem:|Serving:|Shows:|DNS records| {2}\{|Next:)/.test(line));
+      /^(Notice \(domain-|CUSTOM DOMAIN|Domain:|Status:|Problem:|Serving:|Shows:|DNS provider|DNS records| {2}\{|Cloudflare:|Next:)/.test(line));
     assert.deepEqual({ isError: result.isError, method: request.method, path: url.pathname, domain: url.searchParams.get("domain"),
       inBody: request.body.includes("example.com"), relayed },
     { isError: undefined, method: "POST", path: scenario.path, domain: scenario.domain ?? null, inBody: false, relayed: scenario.relayed },
