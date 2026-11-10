@@ -605,7 +605,7 @@ Every publish response includes an **owner token** -- the only credential that a
 
 ## Changelog
 
-## 1.18.0 -- unreleased
+## 1.18.0 -- 2026-11-10
 
 - Custom domains: four new tools. `set_domain` connects a domain you own to an HTML page or site and returns the DNS records to create at your DNS provider; `check_domain` checks DNS and reports the status (`pending_dns`, `verifying`, `active`); `list_domains` lists the profile's domains; `remove_domain` removes one and frees its slot. `publish_html` and `publish_site` take an optional `domain`. Free, 5 per profile; the owner token must be in a BrewPage profile (free sign-in at account.brewpage.app). Twenty-five tools. `User-Agent: brewpage-mcp/1.18.0`.
 
