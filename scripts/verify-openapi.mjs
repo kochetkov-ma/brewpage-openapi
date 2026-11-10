@@ -83,9 +83,23 @@ const limits = spec.paths['/api/limits']?.get;
 assert.equal(limits?.operationId, 'getLimits', 'Upload limits are published as GET /api/limits');
 assert.equal(limits.responses['200'].content['application/json'].schema.$ref, '#/components/schemas/LimitsResponse',
   'Limits answer with the LimitsResponse DTO');
-assert.deepEqual(Object.keys(schemas.LimitsResponse.properties).sort(), ['files', 'html', 'json', 'kv', 'ownerMaxTtlDays',
-  'profileMaxTtlDays', 'reach', 'requestMaxBytes', 'sites'],
-  'Limits expose the request size, per-type limits, profile TTL cap and the optional owner reach and TTL cap');
+assert.deepEqual(Object.keys(schemas.LimitsResponse.properties).sort(), ['customDomains', 'files', 'html', 'json', 'kv',
+  'ownerMaxTtlDays', 'profileMaxTtlDays', 'reach', 'requestMaxBytes', 'sites'],
+  'Limits expose the request size, per-type limits, profile TTL cap, optional owner reach and TTL cap, optional custom domains');
+const domainOperations = Object.values(spec.paths).flatMap((item) => Object.values(item))
+  .filter((operation) => operation?.tags?.includes('Custom Domains')).map((operation) => operation.operationId).sort();
+assert.deepEqual(domainOperations, ['addDomain', 'attachDomain', 'checkDomain', 'checkPublicationDomain', 'detachDomain', 'getDomain',
+  'getPublicationDomain', 'listDomains', 'removeDomain', 'removePublicationDomain', 'setPublicationDomain'],
+  'Custom Domains publishes its eleven operations');
+assert.deepEqual(schemas.DomainItem.properties.status.enum, ['pending_dns', 'verifying', 'active', 'lost'],
+  'A custom domain moves through pending_dns, verifying, active and lost');
+assert.equal(schemas.DomainItem.properties.records.items.$ref, '#/components/schemas/DomainRecord',
+  'A custom domain answer lists its DNS records');
+for (const [path, schema] of [['/api/html', 'HtmlUploadResponse'], ['/api/sites', 'SiteUploadResponse']]) {
+  assert.equal(spec.paths[path].post.parameters.find((parameter) => parameter.name === 'domain')?.in, 'query',
+    `POST ${path} takes the optional domain parameter`);
+  assert.ok(!schemas[schema].required.includes('customDomain'), `${schema} omits customDomain when no domain was set`);
+}
 assert.deepEqual(Object.keys(schemas.SiteLimitsResponse.properties).sort(), ['allowedExtensions', 'defaultTtlDays',
   'maxArchiveExpansionBytes', 'maxFileBytes', 'maxFiles', 'maxNameBytes', 'maxPathBytes', 'maxPathChars', 'maxTotalBytes',
   'maxTtlDays', 'skippedFileNames', 'skippedRootFolders'], 'Site limits expose exactly the user-facing fields');

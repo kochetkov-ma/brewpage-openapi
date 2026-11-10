@@ -9,6 +9,54 @@
         },
         "type": "object"
       },
+      "AddDomainRequest": {
+        "description": "Add a hostname to the profile without a publication.",
+        "properties": {
+          "hostname": {
+            "description": "Hostname to add, e.g. www.example.com or example.com; Unicode names accepted",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "hostname"
+        ],
+        "type": "object"
+      },
+      "AttachDomainRequest": {
+        "description": "Publication to show on a profile hostname.",
+        "properties": {
+          "id": {
+            "description": "Id of the publication",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "ns": {
+            "description": "Namespace of the publication",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "type": {
+            "description": "html or site (sites accepted)",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "ns",
+          "type"
+        ],
+        "type": "object"
+      },
       "BindRequest": {
         "properties": {
           "token": {
@@ -47,6 +95,222 @@
         ],
         "type": "object"
       },
+      "CustomDomainsBlock": {
+        "description": "Custom domains for this caller; present only when custom domains are available",
+        "properties": {
+          "enabled": {
+            "description": "Always true when present",
+            "type": "boolean"
+          },
+          "limit": {
+            "description": "Hostnames the caller's profile may hold (profile grant or the default)",
+            "format": "int32",
+            "type": "integer"
+          },
+          "used": {
+            "description": "Hostnames the profile holds; absent when no profile resolves and on /api/limits",
+            "format": "int32",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "enabled",
+          "limit"
+        ],
+        "type": "object"
+      },
+      "DomainAttachedTo": {
+        "description": "Publication a custom domain shows.",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "link": {
+            "description": "BrewPage link of the publication; keeps working next to the custom domain",
+            "type": "string"
+          },
+          "namespace": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "type": {
+            "description": "html or site (the {type} path segment of /api/publications/{type}/{ns}/{id}; sites also accepts site and sites)",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "link",
+          "namespace",
+          "type"
+        ],
+        "type": "object"
+      },
+      "DomainItem": {
+        "description": "A custom domain of a profile and what to do next: create the `records[]` in DNS, then call the check route until `status` is `active`.",
+        "properties": {
+          "apex": {
+            "description": "true when the hostname is the registered domain itself (example.com): routing uses an A or ALIAS record instead of CNAME",
+            "type": "boolean"
+          },
+          "attachedTo": {
+            "description": "Publication shown on this hostname; absent when none is attached or it is gone",
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/DomainAttachedTo"
+              }
+            ]
+          },
+          "checkedAt": {
+            "description": "Last DNS check",
+            "format": "date-time",
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "deliveryModeChanged": {
+            "description": "Set answers only: true when the publication moved from its BrewPage path address to its own subdomain (required for a custom domain)",
+            "type": "boolean"
+          },
+          "detached": {
+            "description": "Set answers only: hostname that was on this publication before; it stays in the profile, unattached",
+            "type": "string"
+          },
+          "displayHostname": {
+            "description": "Unicode form for display",
+            "type": "string"
+          },
+          "graceEndsAt": {
+            "description": "While lost: when the hostname is released if DNS stays broken",
+            "format": "date-time",
+            "type": "string"
+          },
+          "hostname": {
+            "description": "Hostname in ASCII (A-label), lowercase, e.g. www.example.com",
+            "type": "string"
+          },
+          "nextCheckAt": {
+            "description": "Next automatic DNS check; absent while checks are paused",
+            "format": "date-time",
+            "type": "string"
+          },
+          "problem": {
+            "description": "What blocks progress now, absent when nothing does: TXT_MISSING, TXT_WRONG, ROUTING_MISSING, ROUTING_WRONG, FOREIGN_AAAA, CAA_BLOCKS (fix the matching row of records[]), DOMAIN_TAKEN (this hostname is not available), QUEUE_FULL (DNS is right, verification waits its turn; retried automatically), CERT_PENDING (certificate on its way), CERT_FAILED (certificate could not be issued; check DNS, then check again), DNS_LOST (records stayed broken past the grace period; restore them and check again), CHECK_PAUSED (checks paused after long failure; the check route resumes them), RESOLVER_UNAVAILABLE (DNS did not answer; retried), PUBLICATION_GONE (attach another publication), NOT_ELIGIBLE_<reason> (the publication cannot take a custom domain; reasons as ErrorResponse.reason)",
+            "type": "string"
+          },
+          "provider": {
+            "description": "DNS provider once known: cloudflare, godaddy, namecheap, porkbun, squarespace, ionos, hostinger, ovh, route53, other",
+            "type": "string"
+          },
+          "records": {
+            "description": "DNS records to create, in order: TXT for ownership, then CNAME (subdomain) or A plus optional ALIAS (apex)",
+            "items": {
+              "$ref": "#/components/schemas/DomainRecord"
+            },
+            "type": "array"
+          },
+          "serving": {
+            "description": "true when visitors see the publication on this hostname now",
+            "type": "boolean"
+          },
+          "status": {
+            "description": "pending_dns (create the records), verifying (DNS found, certificate being issued), active (serving) or lost (DNS changed after activation; still serving until graceEndsAt, fix the records)",
+            "enum": [
+              "pending_dns",
+              "verifying",
+              "active",
+              "lost"
+            ],
+            "type": "string"
+          },
+          "suspended": {
+            "description": "true when BrewPage suspended this domain: it does not serve and cannot be checked, moved or removed",
+            "type": "boolean"
+          },
+          "url": {
+            "description": "https://<hostname>/ while serving",
+            "type": "string"
+          }
+        },
+        "required": [
+          "apex",
+          "createdAt",
+          "displayHostname",
+          "hostname",
+          "records",
+          "serving",
+          "status",
+          "suspended"
+        ],
+        "type": "object"
+      },
+      "DomainListResponse": {
+        "description": "Custom domains of a profile.",
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/DomainItem"
+            },
+            "type": "array"
+          },
+          "limit": {
+            "description": "Hostnames the profile may hold",
+            "format": "int32",
+            "type": "integer"
+          },
+          "used": {
+            "description": "Hostnames the profile holds",
+            "format": "int32",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "limit",
+          "used"
+        ],
+        "type": "object"
+      },
+      "DomainRecord": {
+        "description": "One DNS record to create at your DNS provider exactly as given; AAAA and CAA rows appear only when they need fixing. Always take values from here, never hard-code them.",
+        "properties": {
+          "host": {
+            "description": "Name as DNS panels ask for it, relative to the registered domain: www, _brewpage.www or @",
+            "type": "string"
+          },
+          "name": {
+            "description": "Full DNS name, e.g. _brewpage.www.example.com",
+            "type": "string"
+          },
+          "optional": {
+            "description": "true on the ALIAS (flattened CNAME) alternative to the apex A record: create one of the two",
+            "type": "boolean"
+          },
+          "state": {
+            "description": "From the last check: ok, missing, wrong (another value found), foreign (AAAA record pointing elsewhere: delete it), blocked (CAA record forbids the certificate: add this one) or unknown (not checked yet, or DNS did not answer)",
+            "type": "string"
+          },
+          "type": {
+            "description": "TXT (ownership), CNAME, A or ALIAS (routing), AAAA (delete it) or CAA (add it)",
+            "type": "string"
+          },
+          "value": {
+            "description": "Value to publish (AAAA: the record found, to delete); absent while not known yet, then use the optional ALIAS row",
+            "type": "string"
+          }
+        },
+        "required": [
+          "host",
+          "name",
+          "state",
+          "type"
+        ],
+        "type": "object"
+      },
       "ErrorResponse": {
         "properties": {
           "accountUrl": {
@@ -69,6 +333,10 @@
             "type": "integer"
           },
           "message": {
+            "type": "string"
+          },
+          "reason": {
+            "description": "With NOT_ELIGIBLE: why the publication cannot take a custom domain: OWNERSHIP (the profile does not manage it), OLD (publish it again), RETIRED, TYPE (only HTML pages and sites), FORMAT (only format html), PASSWORD (remove the password), EXPIRED or MODE",
             "type": "string"
           },
           "republishUrl": {
@@ -104,6 +372,11 @@
           "timestamp": {
             "format": "date-time",
             "type": "string"
+          },
+          "used": {
+            "description": "With DOMAIN_LIMIT: custom domains the profile already uses (`limit` = how many it may hold)",
+            "format": "int32",
+            "type": "integer"
           }
         },
         "required": [
@@ -591,6 +864,38 @@
         ],
         "type": "object"
       },
+      "HostingCustomDomain": {
+        "description": "Custom domain on the hosting answer of a publication.",
+        "properties": {
+          "displayHostname": {
+            "description": "Unicode form for display",
+            "type": "string"
+          },
+          "hostname": {
+            "description": "Hostname in ASCII (A-label), lowercase",
+            "type": "string"
+          },
+          "serving": {
+            "description": "true when visitors see the publication on this hostname now",
+            "type": "boolean"
+          },
+          "status": {
+            "description": "pending_dns, verifying, active or lost (as DomainItem.status)",
+            "type": "string"
+          },
+          "url": {
+            "description": "https://<hostname>/ while serving",
+            "type": "string"
+          }
+        },
+        "required": [
+          "displayHostname",
+          "hostname",
+          "serving",
+          "status"
+        ],
+        "type": "object"
+      },
       "HostingProjection": {
         "properties": {
           "access": {
@@ -693,6 +998,28 @@
           "createdAt": {
             "format": "date-time",
             "type": "string"
+          },
+          "customDomain": {
+            "description": "This publication's custom domain in that profile; absent without one. Details: GET /api/publications/{type}/{ns}/{id}/domain",
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/HostingCustomDomain"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "customDomains": {
+            "description": "Custom domains of the publication's profile (`used` only when the owner proof names a profile); absent when custom domains are not available",
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/CustomDomainsBlock"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "deliveryMode": {
             "type": [
@@ -1035,6 +1362,14 @@
               "protected"
             ],
             "type": "string"
+          },
+          "customDomain": {
+            "description": "With `domain`: the custom domain set on the new publication; create its `records[]` in DNS. Absent otherwise.",
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/DomainItem"
+              }
+            ]
           },
           "deliveryMode": {
             "type": [
@@ -1915,6 +2250,14 @@
       },
       "LimitsResponse": {
         "properties": {
+          "customDomains": {
+            "description": "Custom domains: `limit` of the token's profile when `reach` is `profile`, else the default; absent when custom domains are not available",
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/CustomDomainsBlock"
+              }
+            ]
+          },
           "files": {
             "$ref": "#/components/schemas/FileLimitsResponse"
           },
@@ -2119,6 +2462,38 @@
         ],
         "type": "object"
       },
+      "PublicationDomain": {
+        "description": "Custom domain on a publication list item.",
+        "properties": {
+          "displayHostname": {
+            "description": "Unicode form for display",
+            "type": "string"
+          },
+          "hostname": {
+            "description": "Hostname in ASCII (A-label), lowercase",
+            "type": "string"
+          },
+          "problem": {
+            "description": "As DomainItem.problem; absent when nothing blocks progress",
+            "type": "string"
+          },
+          "status": {
+            "description": "pending_dns, verifying, active or lost (as DomainItem.status)",
+            "type": "string"
+          },
+          "suspended": {
+            "description": "true when BrewPage suspended this domain",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "displayHostname",
+          "hostname",
+          "status",
+          "suspended"
+        ],
+        "type": "object"
+      },
       "PublicationListItemResponse": {
         "properties": {
           "claimed": {
@@ -2128,6 +2503,14 @@
           "createdAt": {
             "format": "date-time",
             "type": "string"
+          },
+          "customDomain": {
+            "description": "Custom domain of this publication in the caller's profile; absent without one",
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/PublicationDomain"
+              }
+            ]
           },
           "expiresAt": {
             "format": "date-time",
@@ -2196,6 +2579,14 @@
       },
       "PublicationListResponse": {
         "properties": {
+          "customDomains": {
+            "description": "Custom domains of the caller's profile (`used` only when a profile resolves); absent when custom domains are not available",
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/CustomDomainsBlock"
+              }
+            ]
+          },
           "items": {
             "items": {
               "$ref": "#/components/schemas/PublicationListItemResponse"
@@ -2561,6 +2952,22 @@
         ],
         "type": "object"
       },
+      "SetDomainRequest": {
+        "description": "Set a hostname on this publication (adds it to the profile or moves an own one).",
+        "properties": {
+          "hostname": {
+            "description": "Hostname to connect, e.g. www.example.com or example.com; Unicode names accepted",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "hostname"
+        ],
+        "type": "object"
+      },
       "SiteFileInfo": {
         "properties": {
           "contentType": {
@@ -2876,6 +3283,14 @@
               "protected"
             ],
             "type": "string"
+          },
+          "customDomain": {
+            "description": "With `domain`: the custom domain set on the new publication; create its `records[]` in DNS. Absent otherwise.",
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/DomainItem"
+              }
+            ]
           },
           "deliveryMode": {
             "type": [
@@ -3479,10 +3894,588 @@
     },
     "termsOfService": "https://brewpage.app/terms",
     "title": "BrewPage API",
-    "version": "2.16.0"
+    "version": "2.19.0"
   },
   "openapi": "3.1.0",
   "paths": {
+    "/api/domains": {
+      "get": {
+        "description": "Lists every custom domain of the profile with `limit` and `used`.",
+        "operationId": "listDomains",
+        "parameters": [
+          {
+            "description": "Admin token of your BrewPage profile",
+            "in": "header",
+            "name": "X-Owner-Token",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DomainListResponse"
+                }
+              }
+            },
+            "description": "The profile's custom domains"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Missing token, or ADMIN_TOKEN_REQUIRED: not an admin token of a profile; OWNER_TOKEN_REVOKED or OWNER_TOKEN_EXPIRED"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "FEATURE_DISABLED: custom domains are not available right now"
+          }
+        },
+        "security": [
+          {
+            "OwnerToken": []
+          }
+        ],
+        "summary": "Custom domains of the profile",
+        "tags": [
+          "Custom Domains"
+        ]
+      },
+      "post": {
+        "description": "Adds a hostname to the profile without showing a publication yet (attach one later with PUT /api/domains/{hostname}/attachment). Create the DNS `records[]` of the answer, then call POST /api/domains/{hostname}/check until `status` is `active`.",
+        "operationId": "addDomain",
+        "parameters": [
+          {
+            "description": "Admin token of your BrewPage profile",
+            "in": "header",
+            "name": "X-Owner-Token",
+            "required": true
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddDomainRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DomainItem"
+                }
+              }
+            },
+            "description": "Already in the profile; same body as 201"
+          },
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DomainItem"
+                }
+              }
+            },
+            "description": "Added to the profile"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "INVALID_HOSTNAME: not a valid hostname; DOMAIN_NOT_ALLOWED: this hostname cannot be used"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Missing token, or ADMIN_TOKEN_REQUIRED: not an admin token of a profile; OWNER_TOKEN_REVOKED or OWNER_TOKEN_EXPIRED; ACCOUNT_RESTRICTED or ACCOUNT_BLOCKED: this account cannot add domains now"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "FEATURE_DISABLED: custom domains are not available right now"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "DOMAIN_LIMIT: the profile already holds all its custom domains (`limit`, `used`); remove or move one"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Rate limited: wait Retry-After (= retryAfterSeconds)"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "DOMAIN_INTAKE_PAUSED: adding custom domains is paused; try again later"
+          }
+        },
+        "security": [
+          {
+            "OwnerToken": []
+          }
+        ],
+        "summary": "Add a hostname to the profile",
+        "tags": [
+          "Custom Domains"
+        ]
+      }
+    },
+    "/api/domains/{hostname}": {
+      "delete": {
+        "description": "Removes the hostname from the profile; the slot is free at once. Remove its DNS records afterwards if you no longer need them.",
+        "operationId": "removeDomain",
+        "parameters": [
+          {
+            "description": "Hostname, e.g. www.example.com (Unicode or ASCII form)",
+            "in": "path",
+            "name": "hostname",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Admin token of your BrewPage profile",
+            "in": "header",
+            "name": "X-Owner-Token",
+            "required": true
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Removed"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Missing token, or ADMIN_TOKEN_REQUIRED: not an admin token of a profile; OWNER_TOKEN_REVOKED or OWNER_TOKEN_EXPIRED; ACCOUNT_RESTRICTED or ACCOUNT_BLOCKED: this account cannot add domains now"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "DOMAIN_NOT_FOUND: the hostname is not in this profile; FEATURE_DISABLED: custom domains are not available right now"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "DOMAIN_SUSPENDED: this domain is suspended"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Rate limited: wait Retry-After (= retryAfterSeconds)"
+          }
+        },
+        "security": [
+          {
+            "OwnerToken": []
+          }
+        ],
+        "summary": "Remove a hostname from the profile",
+        "tags": [
+          "Custom Domains"
+        ]
+      },
+      "get": {
+        "description": "Reads one custom domain of the profile as last checked; POST /api/domains/{hostname}/check refreshes it.",
+        "operationId": "getDomain",
+        "parameters": [
+          {
+            "description": "Hostname, e.g. www.example.com (Unicode or ASCII form)",
+            "in": "path",
+            "name": "hostname",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Admin token of your BrewPage profile",
+            "in": "header",
+            "name": "X-Owner-Token",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DomainItem"
+                }
+              }
+            },
+            "description": "The custom domain"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Missing token, or ADMIN_TOKEN_REQUIRED: not an admin token of a profile; OWNER_TOKEN_REVOKED or OWNER_TOKEN_EXPIRED"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "DOMAIN_NOT_FOUND: the hostname is not in this profile; FEATURE_DISABLED: custom domains are not available right now"
+          }
+        },
+        "security": [
+          {
+            "OwnerToken": []
+          }
+        ],
+        "summary": "One custom domain of the profile",
+        "tags": [
+          "Custom Domains"
+        ]
+      }
+    },
+    "/api/domains/{hostname}/attachment": {
+      "delete": {
+        "description": "Stops showing the publication on this hostname; the hostname stays in the profile with its slot and DNS state, ready to attach another one.",
+        "operationId": "detachDomain",
+        "parameters": [
+          {
+            "description": "Hostname, e.g. www.example.com (Unicode or ASCII form)",
+            "in": "path",
+            "name": "hostname",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Admin token of your BrewPage profile",
+            "in": "header",
+            "name": "X-Owner-Token",
+            "required": true
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Detached, or nothing was attached"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Missing token, or ADMIN_TOKEN_REQUIRED: not an admin token of a profile; OWNER_TOKEN_REVOKED or OWNER_TOKEN_EXPIRED"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "DOMAIN_NOT_FOUND: the hostname is not in this profile; FEATURE_DISABLED: custom domains are not available right now"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Rate limited: wait Retry-After (= retryAfterSeconds)"
+          }
+        },
+        "security": [
+          {
+            "OwnerToken": []
+          }
+        ],
+        "summary": "Detach the publication",
+        "tags": [
+          "Custom Domains"
+        ]
+      },
+      "put": {
+        "description": "Shows an HTML page or site of yours on this hostname; body `{type, ns, id}`. The hostname is added to the profile when it is not there yet (201) or moved from its current publication (200). The admin token must also prove ownership of the publication (its owner token in this profile, or a profile token that reaches it). Same rules and next steps as PUT /api/publications/{type}/{ns}/{id}/domain.",
+        "operationId": "attachDomain",
+        "parameters": [
+          {
+            "description": "Hostname, e.g. www.example.com (Unicode or ASCII form)",
+            "in": "path",
+            "name": "hostname",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Admin token of your BrewPage profile",
+            "in": "header",
+            "name": "X-Owner-Token",
+            "required": true
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AttachDomainRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DomainItem"
+                }
+              }
+            },
+            "description": "Moved here or already shown; same body as 201"
+          },
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DomainItem"
+                }
+              }
+            },
+            "description": "Added to the profile and shown on this publication"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Missing type, ns or id; INVALID_HOSTNAME: not a valid hostname; DOMAIN_NOT_ALLOWED: this hostname cannot be used"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Missing token, or ADMIN_TOKEN_REQUIRED: not an admin token of a profile; OWNER_TOKEN_REVOKED or OWNER_TOKEN_EXPIRED; OWNER_AUTHORIZATION_FAILED: wrong token; OWNER_TOKEN_REVOKED or OWNER_TOKEN_EXPIRED; ACCOUNT_RESTRICTED or ACCOUNT_BLOCKED: this account cannot add domains now"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "PUBLICATION_UNAVAILABLE: missing or expired publication (outside public also for a wrong token); FEATURE_DISABLED: custom domains are not available right now"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "NOT_ELIGIBLE: the publication cannot take a custom domain (`reason`); DOMAIN_LIMIT: the profile already holds all its custom domains (`limit`, `used`); remove or move one; DOMAIN_SUSPENDED: this domain is suspended"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Rate limited: wait Retry-After (= retryAfterSeconds)"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "DOMAIN_INTAKE_PAUSED: adding custom domains is paused; try again later; HOSTING_CREATION_PAUSED: address changes are briefly unavailable; retry after Retry-After"
+          }
+        },
+        "security": [
+          {
+            "OwnerToken": []
+          }
+        ],
+        "summary": "Show a publication on this hostname",
+        "tags": [
+          "Custom Domains"
+        ]
+      }
+    },
+    "/api/domains/{hostname}/check": {
+      "post": {
+        "description": "Runs a DNS check now and returns the updated state; call it after creating the records in `records[]`. BrewPage also checks on its own (`nextCheckAt`) and resumes paused checks (CHECK_PAUSED) on this call. Checks are spaced: a repeat too soon answers 429 DOMAIN_CHECK_TOO_SOON; wait Retry-After.",
+        "operationId": "checkDomain",
+        "parameters": [
+          {
+            "description": "Hostname, e.g. www.example.com (Unicode or ASCII form)",
+            "in": "path",
+            "name": "hostname",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Admin token of your BrewPage profile",
+            "in": "header",
+            "name": "X-Owner-Token",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DomainItem"
+                }
+              }
+            },
+            "description": "Checked; the updated custom domain"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Missing token, or ADMIN_TOKEN_REQUIRED: not an admin token of a profile; OWNER_TOKEN_REVOKED or OWNER_TOKEN_EXPIRED; ACCOUNT_RESTRICTED or ACCOUNT_BLOCKED: this account cannot add domains now"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "DOMAIN_NOT_FOUND: the hostname is not in this profile; FEATURE_DISABLED: custom domains are not available right now"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "DOMAIN_SUSPENDED: this domain is suspended"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Rate limited: wait Retry-After (= retryAfterSeconds); or DOMAIN_CHECK_TOO_SOON: checked a moment ago, wait Retry-After"
+          }
+        },
+        "security": [
+          {
+            "OwnerToken": []
+          }
+        ],
+        "summary": "Check DNS of a custom domain now",
+        "tags": [
+          "Custom Domains"
+        ]
+      }
+    },
     "/api/files": {
       "get": {
         "description": "Returns files owned by the given token. Empty list without token. Files published as pages are listed by GET /api/publications",
@@ -4305,6 +5298,14 @@
             "name": "verbatim",
             "schema": {
               "type": "boolean"
+            }
+          },
+          {
+            "description": "Custom domain to connect to the new publication, e.g. www.example.com or example.com (query parameter or form/multipart field). Needs an X-Owner-Token added to a free BrewPage profile; works for HTML pages of format html and for sites, without a password. The publication is always created; on success the answer carries `customDomain` with the DNS `records[]` to create, then call POST /api/publications/{type}/{ns}/{id}/domain/check until `status` is `active`. Otherwise one notice says why it was not set: domain-needs-account, domain-limit-reached, domain-not-eligible, domain-invalid, domain-account-restricted, domain-profile-ambiguous or domain-unavailable. Updates ignore it (notice domain-ignored): use PUT /api/publications/{type}/{ns}/{id}/domain.",
+            "in": "query",
+            "name": "domain",
+            "schema": {
+              "type": "string"
             }
           },
           {
@@ -6834,6 +7835,450 @@
         ]
       }
     },
+    "/api/publications/{type}/{ns}/{id}/domain": {
+      "delete": {
+        "description": "Removes the custom domain your profile holds on this publication from the profile; the slot is free at once and the BrewPage link keeps working. 204 also when none is set.",
+        "operationId": "removePublicationDomain",
+        "parameters": [
+          {
+            "description": "html (pages of format html) or site; only these take a custom domain",
+            "in": "path",
+            "name": "type",
+            "required": true,
+            "schema": {
+              "enum": [
+                "html",
+                "site"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "ns",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Owner token in a free BrewPage profile: the publication's own token added to the profile, or a profile token that reaches the publication",
+            "in": "header",
+            "name": "X-Owner-Token",
+            "required": true
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Removed, or none was set"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "OWNER_AUTHORIZATION_FAILED: wrong token; OWNER_TOKEN_REVOKED or OWNER_TOKEN_EXPIRED; DOMAIN_NEEDS_ACCOUNT: custom domains need a free BrewPage account; sign in at account.brewpage.app and add this token to your profile; ACCOUNT_RESTRICTED or ACCOUNT_BLOCKED: this account cannot add domains now"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "PUBLICATION_UNAVAILABLE: missing or expired publication (outside public also for a wrong token); FEATURE_DISABLED: custom domains are not available right now"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "DOMAIN_SUSPENDED: this domain is suspended; DOMAIN_PROFILE_AMBIGUOUS: the token is in several profiles; use a profile's admin token"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Rate limited: wait Retry-After (= retryAfterSeconds)"
+          }
+        },
+        "security": [
+          {
+            "OwnerToken": []
+          }
+        ],
+        "summary": "Remove this publication's custom domain",
+        "tags": [
+          "Custom Domains"
+        ]
+      },
+      "get": {
+        "description": "Reads the custom domain your profile holds on this publication: status, problem and the DNS `records[]` with their state from the last check.",
+        "operationId": "getPublicationDomain",
+        "parameters": [
+          {
+            "description": "html (pages of format html) or site; only these take a custom domain",
+            "in": "path",
+            "name": "type",
+            "required": true,
+            "schema": {
+              "enum": [
+                "html",
+                "site"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "ns",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Owner token in a free BrewPage profile: the publication's own token added to the profile, or a profile token that reaches the publication",
+            "in": "header",
+            "name": "X-Owner-Token",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DomainItem"
+                }
+              }
+            },
+            "description": "The custom domain"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "OWNER_AUTHORIZATION_FAILED: wrong token; OWNER_TOKEN_REVOKED or OWNER_TOKEN_EXPIRED; DOMAIN_NEEDS_ACCOUNT: custom domains need a free BrewPage account; sign in at account.brewpage.app and add this token to your profile"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "DOMAIN_NOT_FOUND: no custom domain on this publication; PUBLICATION_UNAVAILABLE: missing or expired publication (outside public also for a wrong token); FEATURE_DISABLED: custom domains are not available right now"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "DOMAIN_PROFILE_AMBIGUOUS: the token is in several profiles; use a profile's admin token"
+          },
+          "410": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Publication unavailable; owner credentials valid"
+          }
+        },
+        "security": [
+          {
+            "OwnerToken": []
+          }
+        ],
+        "summary": "Custom domain of this publication",
+        "tags": [
+          "Custom Domains"
+        ]
+      },
+      "put": {
+        "description": "Connects a hostname you own (www.example.com or example.com) to this HTML page or site: adds it to your profile, or moves it here when your profile already holds it. Works for HTML pages of format html and for sites, without a password; a page on a BrewPage path address moves to its own subdomain (`deliveryModeChanged`), and its BrewPage link keeps working. A hostname that was on this publication before stays in your profile, unattached (`detached`). Next: create exactly the DNS records in `records[]` at your DNS provider, call POST /api/publications/{type}/{ns}/{id}/domain/check, and repeat until `status` is `active` (`serving` true, `url` set).",
+        "operationId": "setPublicationDomain",
+        "parameters": [
+          {
+            "description": "html (pages of format html) or site; only these take a custom domain",
+            "in": "path",
+            "name": "type",
+            "required": true,
+            "schema": {
+              "enum": [
+                "html",
+                "site"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "ns",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Owner token in a free BrewPage profile: the publication's own token added to the profile, or a profile token that reaches the publication",
+            "in": "header",
+            "name": "X-Owner-Token",
+            "required": true
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetDomainRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DomainItem"
+                }
+              }
+            },
+            "description": "Moved here or already set; same body as 201"
+          },
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DomainItem"
+                }
+              }
+            },
+            "description": "Added to the profile and set on this publication"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "INVALID_HOSTNAME: not a valid hostname; DOMAIN_NOT_ALLOWED: this hostname cannot be used"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "OWNER_AUTHORIZATION_FAILED: wrong token; OWNER_TOKEN_REVOKED or OWNER_TOKEN_EXPIRED; DOMAIN_NEEDS_ACCOUNT: custom domains need a free BrewPage account; sign in at account.brewpage.app and add this token to your profile; ACCOUNT_RESTRICTED or ACCOUNT_BLOCKED: this account cannot add domains now"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "PUBLICATION_UNAVAILABLE: missing or expired publication (outside public also for a wrong token); FEATURE_DISABLED: custom domains are not available right now"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "NOT_ELIGIBLE: the publication cannot take a custom domain (`reason`); DOMAIN_LIMIT: the profile already holds all its custom domains (`limit`, `used`); remove or move one; DOMAIN_SUSPENDED: this domain is suspended; DOMAIN_PROFILE_AMBIGUOUS: the token is in several profiles; use a profile's admin token"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Rate limited: wait Retry-After (= retryAfterSeconds)"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "DOMAIN_INTAKE_PAUSED: adding custom domains is paused; try again later; HOSTING_CREATION_PAUSED: address changes are briefly unavailable; retry after Retry-After"
+          }
+        },
+        "security": [
+          {
+            "OwnerToken": []
+          }
+        ],
+        "summary": "Set a custom domain on this publication",
+        "tags": [
+          "Custom Domains"
+        ]
+      }
+    },
+    "/api/publications/{type}/{ns}/{id}/domain/check": {
+      "post": {
+        "description": "Runs a DNS check now and returns the updated state; call it after creating the records in `records[]`. BrewPage also checks on its own (`nextCheckAt`) and resumes paused checks (CHECK_PAUSED) on this call. Checks are spaced: a repeat too soon answers 429 DOMAIN_CHECK_TOO_SOON; wait Retry-After.",
+        "operationId": "checkPublicationDomain",
+        "parameters": [
+          {
+            "description": "html (pages of format html) or site; only these take a custom domain",
+            "in": "path",
+            "name": "type",
+            "required": true,
+            "schema": {
+              "enum": [
+                "html",
+                "site"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "ns",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Owner token in a free BrewPage profile: the publication's own token added to the profile, or a profile token that reaches the publication",
+            "in": "header",
+            "name": "X-Owner-Token",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DomainItem"
+                }
+              }
+            },
+            "description": "Checked; the updated custom domain"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "OWNER_AUTHORIZATION_FAILED: wrong token; OWNER_TOKEN_REVOKED or OWNER_TOKEN_EXPIRED; DOMAIN_NEEDS_ACCOUNT: custom domains need a free BrewPage account; sign in at account.brewpage.app and add this token to your profile; ACCOUNT_RESTRICTED or ACCOUNT_BLOCKED: this account cannot add domains now"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "DOMAIN_NOT_FOUND: no custom domain on this publication; PUBLICATION_UNAVAILABLE: missing or expired publication (outside public also for a wrong token); FEATURE_DISABLED: custom domains are not available right now"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "DOMAIN_SUSPENDED: this domain is suspended; DOMAIN_PROFILE_AMBIGUOUS: the token is in several profiles; use a profile's admin token"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Rate limited: wait Retry-After (= retryAfterSeconds); or DOMAIN_CHECK_TOO_SOON: checked a moment ago, wait Retry-After"
+          }
+        },
+        "security": [
+          {
+            "OwnerToken": []
+          }
+        ],
+        "summary": "Check DNS of this publication's custom domain now",
+        "tags": [
+          "Custom Domains"
+        ]
+      }
+    },
     "/api/publications/{type}/{ns}/{id}/preview/{variant}.webp": {
       "get": {
         "description": "Real content of password rows for the owner (X-Owner-Token or X-Manage-Key); others get the public variant",
@@ -7271,6 +8716,14 @@
             "description": "Entry HTML file path (.html or .htm). Default: index.html, else the shallowest HTML file; a missing or non-HTML entry falls back to it and is reported in notices",
             "in": "query",
             "name": "entry",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Custom domain to connect to the new publication, e.g. www.example.com or example.com (query parameter or form/multipart field). Needs an X-Owner-Token added to a free BrewPage profile; works for HTML pages of format html and for sites, without a password. The publication is always created; on success the answer carries `customDomain` with the DNS `records[]` to create, then call POST /api/publications/{type}/{ns}/{id}/domain/check until `status` is `active`. Otherwise one notice says why it was not set: domain-needs-account, domain-limit-reached, domain-not-eligible, domain-invalid, domain-account-restricted, domain-profile-ambiguous or domain-unavailable. Updates ignore it (notice domain-ignored): use PUT /api/publications/{type}/{ns}/{id}/domain.",
+            "in": "query",
+            "name": "domain",
             "schema": {
               "type": "string"
             }
@@ -9714,6 +11167,10 @@
     {
       "description": "Owner list and stats",
       "name": "Publications"
+    },
+    {
+      "description": "Serve an HTML page or a site on your own domain, free with a BrewPage profile. Set the hostname, create the DNS records the answer lists, call check until the status is active.",
+      "name": "Custom Domains"
     },
     {
       "description": "Social previews: per-content OpenGraph image (1200×630 JPEG; .png is a legacy URL alias) and OG meta stub for social bots",

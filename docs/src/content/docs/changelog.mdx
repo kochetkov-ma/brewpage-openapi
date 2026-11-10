@@ -6,6 +6,10 @@ order: 5
 
 # Changelog
 
+## API contract 2.19.0 — custom domains (unreleased)
+
+New tag `Custom Domains`, 11 operations: show one HTML page or one site on a hostname you own, free with a BrewPage profile. `PUT /api/publications/{type}/{ns}/{id}/domain` (`setPublicationDomain`, body `{"hostname"}`) answers a `DomainItem` with the DNS `records[]` to create at your DNS provider; `POST …/domain/check` moves `status` from `pending_dns` to `verifying` to `active`. Also `GET` and `DELETE` on the same path, and the profile routes under `/api/domains` (admin token). `POST /api/html` and `POST /api/sites` take an optional `domain` and answer `customDomain`. Additions only: 54 paths and 74 operations.
+
 ## MCP 1.17.0 — rename pages and sites
 
 New tool `set_title`: rename an HTML page or site you own. The title shows in the gallery, your profile, search and link cards, and stays when you republish; an empty title brings back the one from the page. Needs the owner token in a BrewPage profile. Twenty-one tools. Contract 2.16.0.
