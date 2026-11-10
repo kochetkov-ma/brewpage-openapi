@@ -1,8 +1,8 @@
 {
   "backendBuildVersion": "2.19.0",
-  "backendCommit": "2265766da3289c9183aee353ce0e830012dc0adc",
+  "backendCommit": "ef61fa4d9e982a6fc6efdda9a23891eeb506998d",
   "backendDirty": false,
-  "backendSourceSha256": "e9cbb76110a4cab7deb80ae5e3bf9ac149c8ed5f073f5c40d61afdc65dcc8f19",
+  "backendSourceSha256": "74d0514bb04a4f43eca768a08c2ae2b65a06bb42462fd90b0477559c9f84cb15",
   "exporter": ".codex/scripts/export-openapi.py",
   "jsonSha256": "9c4580629d89f15aead890cf25a9a16d0d63eaeace1b706480372d668d182050",
   "locale": "en",
