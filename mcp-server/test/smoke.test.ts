@@ -11,6 +11,7 @@ const EXPECTED_TOOL_NAMES = [
   "publish_html", "publish_file", "delete_resource", "get_page", "get_stats", "publish_site",
   "republish_site", "update_html", "publish_json", "get_json", "update_json", "publish_kv",
   "set_kv", "get_kv", "search_gallery", "update_hosting", "get_limits", "set_visibility", "set_title", "bind_token", "mint_token",
+  "set_domain", "list_domains", "check_domain", "remove_domain",
 ];
 
 const PACKAGE_VERSION = (JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8")) as { version: string }).version;
@@ -23,6 +24,51 @@ const NEW_RESPONSE = {
   deliveryMode: "subdomain", requestedDeliveryMode: "subdomain", effectiveDeliveryMode: "subdomain",
   deliveryModeMatched: true, hostingVersion: 1, modeLocked: false, access: "public",
 };
+
+const DOMAIN_RECORDS = [
+  { type: "TXT", name: "_brewpage.www.example.com", host: "_brewpage.www", value: "bp-verify=fixture123", state: "missing" },
+  { type: "CNAME", name: "www.example.com", host: "www", value: "domains.brewpage.app", state: "missing" },
+];
+const DOMAIN_ITEM = {
+  hostname: "www.example.com", displayHostname: "www.example.com", apex: false, status: "pending_dns", suspended: false, problem: "TXT_MISSING",
+  records: DOMAIN_RECORDS, serving: false, attachedTo: { type: "html", namespace: "public", id: "aBcDeFgHiJ", link: NEW_RESPONSE.link },
+  createdAt: "2026-11-10T00:00:00Z",
+};
+const DOMAIN_NEXT_CREATE = "Next: ask the user to create exactly these records at their DNS provider (`host` is the name DNS panels ask for; other records stay). Then call check_domain.";
+const DOMAIN_PENDING_LINES = [
+  "Domain: www.example.com", "Status: pending_dns", "Problem: TXT_MISSING (the TXT record is not visible yet)", "Serving: false",
+  `Shows: html public/aBcDeFgHiJ · ${NEW_RESPONSE.link}`, "DNS records (records[], verbatim):",
+  ...DOMAIN_RECORDS.map((record) => `  ${JSON.stringify(record)}`), DOMAIN_NEXT_CREATE,
+];
+const DOMAIN_ACTIVE_ITEM = { hostname: "www.example.com", displayHostname: "www.example.com", apex: false, status: "active", suspended: false,
+  records: DOMAIN_RECORDS.map((record) => ({ ...record, state: "ok" })), serving: true, url: "https://www.example.com/",
+  attachedTo: DOMAIN_ITEM.attachedTo, createdAt: "2026-11-10T00:00:00Z" };
+const DOMAIN_ACTIVE_LINES = [
+  "Domain: www.example.com", "Status: active", "Serving: true", "Domain URL: https://www.example.com/",
+  `Shows: html public/aBcDeFgHiJ · ${NEW_RESPONSE.link}`, "DNS records (records[], verbatim):",
+  ...DOMAIN_ACTIVE_ITEM.records.map((record) => `  ${JSON.stringify(record)}`),
+  "Live: the domain shows the publication over HTTPS. The BrewPage link keeps working.",
+];
+const DOMAIN_APEX_RECORDS = [
+  { type: "TXT", name: "_brewpage.example.com", host: "_brewpage", value: "bp-verify=fixture456", state: "ok" },
+  { type: "A", name: "example.com", host: "@", value: "203.0.113.10", state: "ok" },
+  { type: "ALIAS", name: "example.com", host: "@", value: "domains.brewpage.app", state: "unknown", optional: true },
+];
+const DOMAIN_APEX_ITEM = { hostname: "xn--bcher-kva.example", displayHostname: "bücher.example", apex: true, status: "verifying", suspended: false,
+  records: DOMAIN_APEX_RECORDS, serving: false, attachedTo: { type: "site", namespace: "my-ns", id: "aBcDeFgHiJ", link: "https://my-ns-site.brewpage.app/" },
+  checkedAt: "2026-11-10T00:01:00Z", nextCheckAt: "2026-11-10T00:06:00Z", createdAt: "2026-11-10T00:00:00Z",
+  deliveryModeChanged: true, detached: "old.example.com" };
+const DOMAIN_APEX_LINES = [
+  "Domain: xn--bcher-kva.example (bücher.example)", "Status: verifying", "Serving: false", "Shows: site my-ns/aBcDeFgHiJ · https://my-ns-site.brewpage.app/",
+  "The publication moved to its own BrewPage subdomain (a custom domain needs it); its BrewPage link keeps working.",
+  "Earlier domain old.example.com stays in the profile, not attached.",
+  "Checked: 2026-11-10T00:01:00Z", "Next automatic check: 2026-11-10T00:06:00Z", "DNS records (records[], verbatim):",
+  ...DOMAIN_APEX_RECORDS.map((record) => `  ${JSON.stringify(record)}`),
+  'A row with "optional":true is an alternative to the A record: one of the two is enough.',
+  "Next: DNS is found and HTTPS is being issued. Call check_domain again shortly.",
+];
+const DOMAIN_PUBLICATION = { type: "html", namespace: "public", id: "aBcDeFgHiJ" };
+const DOMAIN_REMOVED_TAIL = " · slot free · BrewPage link unchanged\nIts DNS records can be deleted at the DNS provider.";
 
 interface RequestSnapshot { method: string; url: string; headers: IncomingHttpHeaders; body: string }
 
@@ -65,7 +111,7 @@ async function fixture(t: TestContext, env: Record<string, string> = {}) {
   };
 }
 
-test("MCP exposes exactly 21 tools and optional create-only delivery choice", { timeout: 10_000 }, async (t) => {
+test("MCP exposes exactly 25 tools and optional create-only delivery choice", { timeout: 10_000 }, async (t) => {
   // GIVEN local MCP connected to a synthetic API.
   const f = await fixture(t);
   // WHEN client discovers tools.
@@ -95,6 +141,8 @@ const EXPECTED_TOOL_META: Record<string, [string, Record<string, boolean>]> = {
   publish_kv: ["Publish KV entry", ADDITIVE], set_visibility: ["Set gallery visibility", ADDITIVE],
   update_hosting: ["Change delivery mode", ADDITIVE], bind_token: ["Add token to profile", ADDITIVE],
   mint_token: ["Mint profile token", ADDITIVE], set_title: ["Rename page or site", ADDITIVE],
+  set_domain: ["Connect custom domain", ADDITIVE], list_domains: ["List custom domains", READ_ONLY],
+  check_domain: ["Check custom domain DNS", ADDITIVE], remove_domain: ["Remove custom domain", DESTRUCTIVE],
 };
 
 test("every tool carries a title and its exact safety hints", { timeout: 10_000 }, async (t) => {
@@ -684,6 +732,10 @@ for (const scenario of [
   { tool: "set_title", args: { type: "html", namespace: "public", id: "aBcDeFgHiJ", title: "Trip notes" } },
   { tool: "bind_token", args: { token: "fixture-bound-token" } },
   { tool: "search_gallery", args: { mine: true } },
+  { tool: "set_domain", args: { ...DOMAIN_PUBLICATION, hostname: "www.example.com" } },
+  { tool: "list_domains", args: {} },
+  { tool: "check_domain", args: { hostname: "www.example.com" } },
+  { tool: "remove_domain", args: DOMAIN_PUBLICATION },
 ]) {
   test(`${scenario.tool} without any owner token fails before HTTP`, { timeout: 10_000 }, async (t) => {
     // GIVEN no argument and no configured default.
@@ -721,6 +773,30 @@ for (const scenario of [
     response: { token: "MintedToken0123456789abcdefABCDE", id: "x", scope: "admin", expiresAt: "2027-01-22T00:00:00Z" },
     request: { method: "POST", url: "/api/owner-token/mint", body: '{"label":"ci","scope":"admin","expiresIn":"90d"}' },
     text: "MINTED · admin · expires 2027-01-22T00:00:00Z\n\n===================================\nNEW TOKEN (shown once): MintedToken0123456789abcdefABCDE\n===================================\n\nSave it now; it cannot be shown again. Never publish it." },
+  { tool: "set_domain", args: { ...DOMAIN_PUBLICATION, hostname: "www.example.com" }, status: 201, response: DOMAIN_ITEM,
+    request: { method: "PUT", url: "/api/publications/html/public/aBcDeFgHiJ/domain", body: '{"hostname":"www.example.com"}' },
+    text: ["Custom domain connected.", "", ...DOMAIN_PENDING_LINES].join("\n") },
+  { tool: "set_domain", args: { type: "site", namespace: "my-ns", id: "aBcDeFgHiJ", hostname: "bücher.example" }, status: 200, response: DOMAIN_APEX_ITEM,
+    request: { method: "PUT", url: "/api/publications/site/my-ns/aBcDeFgHiJ/domain", body: '{"hostname":"bücher.example"}' },
+    text: ["Custom domain set: it was already in the profile (moved here or unchanged).", "", ...DOMAIN_APEX_LINES].join("\n") },
+  { tool: "list_domains", args: {}, status: 200, response: { limit: 5, used: 2, items: [DOMAIN_ACTIVE_ITEM, DOMAIN_APEX_ITEM] },
+    request: { method: "GET", url: "/api/domains", body: "" },
+    text: ["Custom domains: 2 of 5 used", "", ...DOMAIN_ACTIVE_LINES, "", ...DOMAIN_APEX_LINES].join("\n") },
+  { tool: "list_domains", args: {}, status: 200, response: { limit: 5, used: 0, items: [] },
+    request: { method: "GET", url: "/api/domains", body: "" },
+    text: "Custom domains: 0 of 5 used\n\nNone yet: set_domain connects one to an HTML page or site." },
+  { tool: "check_domain", args: { type: "site", namespace: "my-ns", id: "aBcDeFgHiJ" }, status: 200, response: DOMAIN_ITEM,
+    request: { method: "POST", url: "/api/publications/site/my-ns/aBcDeFgHiJ/domain/check", body: "" },
+    text: ["DNS checked.", "", ...DOMAIN_PENDING_LINES].join("\n") },
+  { tool: "check_domain", args: { hostname: "www.example.com" }, status: 200, response: DOMAIN_ACTIVE_ITEM,
+    request: { method: "POST", url: "/api/domains/www.example.com/check", body: "" },
+    text: ["DNS checked.", "", ...DOMAIN_ACTIVE_LINES].join("\n") },
+  { tool: "remove_domain", args: DOMAIN_PUBLICATION, status: 204, response: {},
+    request: { method: "DELETE", url: "/api/publications/html/public/aBcDeFgHiJ/domain", body: "" },
+    text: `No custom domain on html public/aBcDeFgHiJ now${DOMAIN_REMOVED_TAIL}` },
+  { tool: "remove_domain", args: { hostname: "bücher.example" }, status: 204, response: {},
+    request: { method: "DELETE", url: "/api/domains/b%C3%BCcher.example", body: "" },
+    text: `Custom domain removed: bücher.example${DOMAIN_REMOVED_TAIL}` },
 ]) {
   test(`${scenario.tool} maps to ${scenario.request.method} ${scenario.request.url} and never echoes the admin token`, { timeout: 10_000 }, async (t) => {
     // GIVEN a configured admin/owner default token and a server answer.
@@ -983,6 +1059,9 @@ for (const scenario of [
   { tool: "update_hosting", method: "PATCH", args: (v: string) => ({ type: "file", namespace: v, id: v, deliveryMode: "path" }), url: (e: string) => `/api/files/${e}/${e}/hosting` },
   { tool: "set_visibility", method: "POST", args: (v: string) => ({ type: "kv", namespace: v, id: v, listed: true }), url: (e: string) => `/api/kv/${e}/${e}/visibility` },
   { tool: "set_title", method: "POST", args: (v: string) => ({ type: "site", namespace: v, id: v, title: "x" }), url: (e: string) => `/api/sites/${e}/${e}/title` },
+  { tool: "set_domain", method: "PUT", args: (v: string) => ({ type: "html", namespace: v, id: v, hostname: "www.example.com" }), url: (e: string) => `/api/publications/html/${e}/${e}/domain` },
+  { tool: "check_domain", method: "POST", args: (v: string) => ({ hostname: v }), url: (e: string) => `/api/domains/${e}/check` },
+  { tool: "remove_domain", method: "DELETE", args: (v: string) => ({ type: "site", namespace: v, id: v }), url: (e: string) => `/api/publications/site/${e}/${e}/domain` },
 ]) {
   test(`${scenario.tool} keeps traversal input inside its API path and refuses dot segments before HTTP`, { timeout: 20_000 }, async (t) => {
     // GIVEN a configured owner token and traversal-shaped values in every path field.
@@ -999,3 +1078,116 @@ for (const scenario of [
     }, "backend URL stays under its API prefix");
   });
 }
+
+const DOMAIN_LIMIT = { status: 409, error: "Conflict", message: "This profile already uses all 5 custom domains. Remove or move one.", code: "DOMAIN_LIMIT", limit: 5, used: 5 };
+const DOMAIN_NEEDS_ACCOUNT = { status: 403, error: "Forbidden", code: "DOMAIN_NEEDS_ACCOUNT",
+  message: "Custom domains need a free BrewPage account. Sign in, add this token to your profile, then set the domain." };
+const DOMAIN_TOO_SOON = { status: 429, error: "Too Many Requests", message: "Checked a moment ago. Try again in 30 seconds.", code: "DOMAIN_CHECK_TOO_SOON", retryAfterSeconds: 30 };
+const DOMAIN_NOT_ELIGIBLE = { status: 409, error: "Conflict", code: "NOT_ELIGIBLE", reason: "PASSWORD",
+  message: "Custom domain not set: not available with a password. Remove the password to use a custom domain." };
+const ADMIN_TOKEN_REQUIRED = { status: 403, error: "Forbidden", message: "Admin token required", code: "ADMIN_TOKEN_REQUIRED" };
+const DOMAIN_NOT_FOUND = { status: 404, error: "Not Found", message: "No such custom domain here.", code: "DOMAIN_NOT_FOUND" };
+const DOMAIN_SET_ARGS = { ...DOMAIN_PUBLICATION, hostname: "www.example.com", ownerToken: "fixture-owner" };
+const NO_HEADERS: Record<string, string> = {};
+interface DomainRefusal { tool: string; args: Record<string, unknown>; response: { status: number; code?: string }; headers: Record<string, string>; prefix: string; tail: string }
+const DOMAIN_REFUSALS: DomainRefusal[] = [
+  { tool: "set_domain", args: DOMAIN_SET_ARGS, response: DOMAIN_LIMIT, headers: NO_HEADERS, prefix: "Failed to set domain (409): ",
+    tail: "\nThe profile uses 5 of 5 custom domains: remove_domain frees one; a hostname already in the profile moves here with set_domain." },
+  { tool: "set_domain", args: DOMAIN_SET_ARGS, response: DOMAIN_NEEDS_ACCOUNT, headers: NO_HEADERS, prefix: "Failed to set domain (403): ",
+    tail: "\nCustom domains need a free BrewPage account: sign in at https://account.brewpage.app, add this owner token to the profile (bind_token), then retry." },
+  { tool: "set_domain", args: DOMAIN_SET_ARGS, response: RATE_LIMITED, headers: { "Retry-After": "60" }, prefix: "Failed to set domain (429): ", tail: " Retry-After: 60." },
+  { tool: "set_domain", args: DOMAIN_SET_ARGS, response: DOMAIN_NOT_ELIGIBLE, headers: NO_HEADERS, prefix: "Failed to set domain (409): ", tail: "" },
+  { tool: "set_domain", args: DOMAIN_SET_ARGS, response: { status: 403, code: "OWNER_AUTHORIZATION_FAILED" }, headers: NO_HEADERS, prefix: "Failed to set domain (403): ",
+    tail: "\nWrong owner token for this publication. Use ownerToken from create." },
+  { tool: "check_domain", args: { ...DOMAIN_PUBLICATION, ownerToken: "fixture-owner" }, response: DOMAIN_TOO_SOON, headers: { "Retry-After": "30" },
+    prefix: "Failed to check domain (429): ", tail: " Retry-After: 30.\nChecked a moment ago: wait, then call check_domain again." },
+  { tool: "check_domain", args: { hostname: "www.example.com", ownerToken: "fixture-owner" }, response: ADMIN_TOKEN_REQUIRED, headers: NO_HEADERS,
+    prefix: "Failed to check domain (403): ",
+    tail: "\nNeeds an admin token of the profile. With an owner token of the publication, pass type, namespace and id instead of hostname." },
+  { tool: "list_domains", args: { ownerToken: "fixture-owner" }, response: ADMIN_TOKEN_REQUIRED, headers: NO_HEADERS,
+    prefix: "Failed to list domains (403): ", tail: "\nNeeds an admin token of the profile." },
+  { tool: "remove_domain", args: { hostname: "www.example.com", ownerToken: "fixture-owner" }, response: DOMAIN_NOT_FOUND, headers: NO_HEADERS,
+    prefix: "Failed to remove domain (404): ", tail: "\nNo custom domain there: list_domains shows the profile's domains; set_domain connects one." },
+];
+
+for (const scenario of DOMAIN_REFUSALS) {
+  test(`${scenario.tool} relays ${scenario.response.status} ${scenario.response.code ?? "rate limit"} verbatim plus its next step`, { timeout: 10_000 }, async (t) => {
+    // GIVEN a custom-domain refusal from the API.
+    const f = await fixture(t);
+    f.respond(scenario.response.status, scenario.response, scenario.headers);
+    // WHEN the domain tool runs.
+    const result = await f.call(scenario.tool, scenario.args);
+    // THEN the server answer is verbatim, followed by Retry-After and the hint for that code.
+    assert.deepEqual({ isError: result.isError, text: result.content[0].text, requests: f.requests.length },
+      { isError: true, text: `${scenario.prefix}${JSON.stringify(scenario.response)}${scenario.tail}`, requests: 1 }, "domain refusal mapping is exact");
+  });
+}
+
+for (const scenario of [
+  { tool: "check_domain", label: "no address", args: {} },
+  { tool: "check_domain", label: "hostname and publication", args: { ...DOMAIN_PUBLICATION, hostname: "www.example.com" } },
+  { tool: "check_domain", label: "partial publication", args: { type: "html", namespace: "public" } },
+  { tool: "remove_domain", label: "no address", args: {} },
+  { tool: "remove_domain", label: "hostname and id", args: { hostname: "www.example.com", id: "aBcDeFgHiJ" } },
+]) {
+  test(`${scenario.tool} with ${scenario.label} fails before HTTP`, { timeout: 10_000 }, async (t) => {
+    // GIVEN an owner token and arguments that name neither one hostname nor one publication.
+    const f = await fixture(t, { BREWPAGE_OWNER_TOKEN: ENV_TOKEN });
+    // WHEN the domain tool runs.
+    const result = await f.call(scenario.tool, scenario.args);
+    // THEN it explains both address forms without calling the API.
+    assert.deepEqual({ isError: result.isError, text: result.content[0].text, requests: f.requests.length }, { isError: true, requests: 0,
+      text: "Provide either `hostname` (admin token of the profile) or `type`, `namespace` and `id` (an owner token in the profile)." },
+    "ambiguous domain address is a local error");
+  });
+}
+
+const DOMAIN_NOT_SET = "CUSTOM DOMAIN: www.example.com was not set; the publication is live at its BrewPage link.";
+const NEEDS_ACCOUNT_NOTICE = { code: "domain-needs-account",
+  message: "Custom domain not set: it needs a free BrewPage account. Sign in at account.brewpage.app, add this token to your profile, then set the domain." };
+const LIMIT_NOTICE = { code: "domain-limit-reached", message: "Custom domain not set: this profile already uses all 5 custom domains. Remove or move one." };
+const PUBLISH_DOMAIN_TOOLS = [
+  { tool: "publish_html", args: { content: "<h1>Fixture</h1>" }, path: "/api/html" },
+  { tool: "publish_site", args: { entryContent: "<h1>Fixture</h1>" }, path: "/api/sites" },
+];
+
+for (const scenario of PUBLISH_DOMAIN_TOOLS.flatMap((target) => [
+  { ...target, label: "returned customDomain", domain: "www.example.com", extra: { customDomain: DOMAIN_ITEM }, relayed: ["CUSTOM DOMAIN", ...DOMAIN_PENDING_LINES] },
+  { ...target, label: "domain-needs-account notice", domain: "www.example.com", extra: { notices: [NEEDS_ACCOUNT_NOTICE] },
+    relayed: [`Notice (${NEEDS_ACCOUNT_NOTICE.code}): ${NEEDS_ACCOUNT_NOTICE.message}`, `${DOMAIN_NOT_SET} The domain notice above says why. set_domain connects it later.`] },
+  { ...target, label: "domain-limit-reached notice", domain: "www.example.com", extra: { notices: [LIMIT_NOTICE] },
+    relayed: [`Notice (${LIMIT_NOTICE.code}): ${LIMIT_NOTICE.message}`, `${DOMAIN_NOT_SET} The domain notice above says why. set_domain connects it later.`] },
+  { ...target, label: "answer without domain fields", domain: "www.example.com", extra: {}, relayed: [`${DOMAIN_NOT_SET} set_domain connects it later.`] },
+  { ...target, label: "no domain argument", domain: undefined, extra: {}, relayed: [] },
+])) {
+  test(`${scenario.tool} domain argument: ${scenario.label}`, { timeout: 10_000 }, async (t) => {
+    // GIVEN a create answer with the scenario's domain fields.
+    const f = await fixture(t);
+    f.respond(201, { ...NEW_RESPONSE, ...scenario.extra });
+    // WHEN the publication is created with or without `domain`.
+    const result = await f.call(scenario.tool, { ...scenario.args, namespace: "public", ...(scenario.domain ? { domain: scenario.domain } : {}) });
+    // THEN `domain` travels only as a query parameter and the domain lines are exact.
+    const request = f.requests[0];
+    const url = new URL(request.url, f.baseUrl);
+    const relayed = result.content[0].text.split("\n").filter((line) =>
+      /^(Notice \(domain-|CUSTOM DOMAIN|Domain:|Status:|Problem:|Serving:|Shows:|DNS records| {2}\{|Next:)/.test(line));
+    assert.deepEqual({ isError: result.isError, method: request.method, path: url.pathname, domain: url.searchParams.get("domain"),
+      inBody: request.body.includes("example.com"), relayed },
+    { isError: undefined, method: "POST", path: scenario.path, domain: scenario.domain ?? null, inBody: false, relayed: scenario.relayed },
+    "create request and custom-domain lines are exact");
+  });
+}
+
+test("only publish_html and publish_site take the optional domain argument", { timeout: 10_000 }, async (t) => {
+  // GIVEN local MCP connected to a synthetic API.
+  const f = await fixture(t);
+  // WHEN client discovers tools.
+  const { tools } = await f.client.listTools();
+  // THEN `domain` is an optional string on the two create tools that can take a custom domain.
+  const actual = Object.fromEntries(tools.filter(({ name }) => name.startsWith("publish_")).map(({ name, inputSchema }) =>
+    [name, { type: (inputSchema.properties!.domain as { type?: string } | undefined)?.type ?? null, required: inputSchema.required?.includes("domain") ?? false }]));
+  assert.deepEqual(actual, {
+    publish_html: { type: "string", required: false }, publish_site: { type: "string", required: false },
+    publish_file: { type: null, required: false }, publish_json: { type: null, required: false }, publish_kv: { type: null, required: false },
+  }, "domain argument placement matches the API");
+});

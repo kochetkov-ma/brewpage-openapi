@@ -31,7 +31,7 @@ const MAX_HEAVY_PER_CLIENT = 1;
 const QUEUE_WAIT_MS = 30_000;
 const MAX_QUEUED = 64;
 /** Read-only tools with small answers; content reads (get_page/json/kv) stay in the standard pool. */
-const LIGHT_TOOLS = new Set(["get_limits", "get_stats", "search_gallery"]);
+const LIGHT_TOOLS = new Set(["get_limits", "get_stats", "search_gallery", "list_domains"]);
 const BACKEND_TIMEOUT_MS = 60_000;
 /** Published egress lists (backend `openai-chatgpt-connectors` rules): daily refresh, last good set kept on failure. */
 const SHARED_LIST_REFRESH_MS = 24 * 60 * 60_000;
