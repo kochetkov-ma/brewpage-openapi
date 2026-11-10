@@ -6,7 +6,7 @@
 
 ## API contract 2.20.5 — 2026-11-10
 
-- Exported from brewpage-app source `239543114f4e2c35236d0e556e4fe578b3105e4f` (ships with backend v2.20.5), clean tree. 54 paths and 74 operations. Description only: no path, field or code changed.
+- Exported from brewpage-app source `890210aa30b8f5f05bfd61fe9519bae8c8884b10` (ships with backend v2.20.5), clean tree. 54 paths and 74 operations. Description only: no path, field or code changed.
 - `manageUrl` on create answers (HTML, file, site, JSON, KV) is described as the management link: give it to the user with the link; it is private, never post it publicly. `ownerToken`: keep it, send it as `X-Owner-Token` on later publishes and updates, show it to the user on request. The API description says the same.
 
 ## MCP 1.18.0 — 2026-11-10
