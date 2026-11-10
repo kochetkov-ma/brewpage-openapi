@@ -8,13 +8,13 @@ order: 3
 
 Last updated: 2026-10-29
 
-`brewpage-mcp` 1.17.0 provides twenty-one tools to publish and manage HTML, Markdown, JSON, KV, files, and multi-file sites from compatible MCP clients. It runs locally over stdio (Node.js 20 or newer) or remotely without install, and calls the BrewPage API.
+`brewpage-mcp` 1.18.0 provides twenty-five tools to publish and manage HTML, Markdown, JSON, KV, files, and multi-file sites from compatible MCP clients. It runs locally over stdio (Node.js 20 or newer) or remotely without install, and calls the BrewPage API.
 
 ## Installation
 
 ### Remote (no install)
 
-Add `https://brewpage.app/mcp` as a custom connector / remote MCP server by URL in Claude.ai, ChatGPT or any Streamable HTTP client. No auth; same 21 tools.
+Add `https://brewpage.app/mcp` as a custom connector / remote MCP server by URL in Claude.ai, ChatGPT or any Streamable HTTP client. No auth; same 25 tools.
 
 Claude Code: `claude mcp add --transport http brewpage https://brewpage.app/mcp`, or in `.mcp.json`:
 
@@ -38,7 +38,7 @@ Open Claude Desktop's **Settings > Developer > Edit Config** and add to `claude_
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@1.17.0"]
+      "args": ["-y", "brewpage-mcp@1.18.0"]
     }
   }
 }
@@ -49,7 +49,7 @@ Open Claude Desktop's **Settings > Developer > Edit Config** and add to `claude_
 Register a project-scoped stdio server:
 
 ```bash
-claude mcp add --transport stdio --scope project brewpage -- npx -y brewpage-mcp@1.17.0
+claude mcp add --transport stdio --scope project brewpage -- npx -y brewpage-mcp@1.18.0
 ```
 
 This writes `.mcp.json` in the project root; user-scoped registration uses `--scope user`. See the [official Claude Code MCP guide](https://code.claude.com/docs/en/mcp).
@@ -57,7 +57,7 @@ This writes `.mcp.json` in the project root; user-scoped registration uses `--sc
 ### One-liner
 
 ```bash
-npx -y brewpage-mcp@1.17.0
+npx -y brewpage-mcp@1.18.0
 ```
 
 This starts a stdio server for an MCP client, not an interactive publishing shell. Other clients can use the same `npx` command and pinned arguments.
@@ -84,9 +84,24 @@ This starts a stdio server for an MCP client, not an interactive publishing shel
 | `set_title` | Rename an HTML page or site; the title stays on republish; link unchanged |
 | `bind_token` | Add an owner token to your profile with an admin token |
 | `mint_token` | Mint a profile token with an admin token; shown once |
+| `set_domain` | Connect a domain you own to an HTML page or site; returns the DNS records to create |
+| `list_domains` | List the profile's custom domains with status and DNS records (admin token) |
+| `check_domain` | Check a custom domain's DNS now; status `pending_dns` -> `verifying` -> `active` |
+| `remove_domain` | Remove a custom domain and free its slot; the BrewPage link keeps working |
 | `search_gallery` | Browse public content or list owned resources with `mine` and `ownerToken` |
 | `get_stats` | Get platform-wide usage statistics |
 | `get_limits` | Get the current upload limits (`GET /api/limits`) |
+
+## Custom Domains
+
+A page or site can also live on a domain you own, such as `www.example.com` or `example.com`: free, 5 per profile, for HTML pages of format `html` and for sites without a password. The owner token must be in a free BrewPage profile (sign in at https://account.brewpage.app).
+
+```
+set_domain(type="html", namespace="public", id="aBcDeFgHiJ", hostname="www.example.com")
+check_domain(type="html", namespace="public", id="aBcDeFgHiJ")
+```
+
+`set_domain` prints the DNS records to create at your DNS provider, exactly as returned: a TXT record at `_brewpage.<host>` plus a CNAME to `domains.brewpage.app`; a root domain takes the A record shown, or ALIAS. After you create them, `check_domain` reports `pending_dns`, then `verifying`, then `active`; HTTPS is issued automatically and the BrewPage link keeps working. `list_domains` (admin token) shows all domains of the profile, `remove_domain` frees a slot. `publish_html` and `publish_site` take an optional `domain` to connect it while publishing.
 
 ## Visibility and Delivery
 

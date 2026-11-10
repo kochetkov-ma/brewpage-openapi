@@ -7,4 +7,5 @@ Use the `brewpage` MCP tools to publish HTML, Markdown, sites, files, JSON or KV
 - Omitted namespace = unlisted, not private: anyone with the link can open it. Never publish secrets without a password.
 - `public` namespace lists HTML, sites and files in the gallery and search.
 - Give the user the returned link; save `ownerToken` privately (never in chat) and send it as `X-Owner-Token` on later publishes and updates.
+- Own domain (only when the user asks): `set_domain` returns DNS records for the user to create at their DNS provider; then `check_domain` until status is `active`. Needs the owner token in a free BrewPage profile.
 - Limits: `get_limits`. Docs: https://brewpage.app/llms.txt

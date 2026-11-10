@@ -1,5 +1,9 @@
 # Release Notes
 
+## MCP 1.18.0 — unreleased
+
+- Custom domains: put one HTML page or one site on a domain you own, such as `www.example.com` or `example.com`. Free, 5 per profile; the owner token must be in a BrewPage profile (free sign-in at account.brewpage.app). New tools: `set_domain` connects the domain and returns the DNS records to create at your DNS provider; `check_domain` checks DNS and reports the status (`pending_dns`, `verifying`, `active`); `list_domains` lists the profile's domains; `remove_domain` removes one and frees its slot. `publish_html` and `publish_site` take an optional `domain`. HTTPS is issued automatically and the BrewPage link keeps working. Twenty-five tools. Contract 2.19.0. `User-Agent: brewpage-mcp/1.18.0`; pins bumped.
+
 ## API contract 2.19.0 — unreleased
 
 - Launch snapshot exported from brewpage-app source `2265766da3289c9183aee353ce0e830012dc0adc` (branch `feat/custom-domains-launch`), clean tree; re-export from the release tag before publishing. 54 paths and 74 operations. Additions only: nothing existing changed.

@@ -8,7 +8,7 @@ MCP server for [BrewPage](https://brewpage.app) -- publish and manage HTML, KV, 
 
 ## What is BrewPage
 
-[BrewPage](https://brewpage.app) is a free instant hosting platform designed for AI agents and developers. One `POST` request publishes HTML, Markdown, a multi-file site, a JSON document, or a binary file and returns its primary HTTPS link -- no account needed, no API keys, no infrastructure setup. Every resource carries an **owner token** returned at creation time: use it to update content in place, delete the resource, or authenticate list operations across sessions. `brewpage-mcp` exposes this API as twenty-one typed MCP tools so any compatible agent -- Claude, Codex, Gemini, Cursor, Cline -- can publish, update, fetch, and manage BrewPage HTML, JSON, KV, and file content without leaving the conversation.
+[BrewPage](https://brewpage.app) is a free instant hosting platform designed for AI agents and developers. One `POST` request publishes HTML, Markdown, a multi-file site, a JSON document, or a binary file and returns its primary HTTPS link -- no account needed, no API keys, no infrastructure setup. Every resource carries an **owner token** returned at creation time: use it to update content in place, delete the resource, or authenticate list operations across sessions. `brewpage-mcp` exposes this API as twenty-five typed MCP tools so any compatible agent -- Claude, Codex, Gemini, Cursor, Cline -- can publish, update, fetch, and manage BrewPage HTML, JSON, KV, and file content without leaving the conversation.
 
 Optional: sign in free (Google or any email) at https://account.brewpage.app to never lose your pages or tokens and to mint tokens that never expire. Not needed to publish.
 
@@ -17,14 +17,14 @@ Choosing a host? See how BrewPage compares with GitHub Pages, Netlify Drop, Tiin
 ## Quick Start
 
 ```bash
-npx -y brewpage-mcp@1.17.0
+npx -y brewpage-mcp@1.18.0
 ```
 
 Requires Node.js 20 or newer. This starts the stdio server for an MCP client.
 
 ### Remote (no install)
 
-Add `https://brewpage.app/mcp` as a custom connector / remote MCP server by URL in Claude.ai, ChatGPT or any Streamable HTTP client. No auth; same 21 tools.
+Add `https://brewpage.app/mcp` as a custom connector / remote MCP server by URL in Claude.ai, ChatGPT or any Streamable HTTP client. No auth; same 25 tools.
 
 Claude Code: `claude mcp add --transport http brewpage https://brewpage.app/mcp`, or in `.mcp.json`:
 
@@ -50,7 +50,7 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS)
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@1.17.0"]
+      "args": ["-y", "brewpage-mcp@1.18.0"]
     }
   }
 }
@@ -61,7 +61,7 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS)
 Register a project-scoped stdio server:
 
 ```bash
-claude mcp add --transport stdio --scope project brewpage -- npx -y brewpage-mcp@1.17.0
+claude mcp add --transport stdio --scope project brewpage -- npx -y brewpage-mcp@1.18.0
 ```
 
 This writes `.mcp.json` in the project root. Use `--scope user` for user-scoped registration. See the [official Claude Code MCP guide](https://code.claude.com/docs/en/mcp).
@@ -75,7 +75,7 @@ Open **Settings > MCP** and add:
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@1.17.0"]
+      "args": ["-y", "brewpage-mcp@1.18.0"]
     }
   }
 }
@@ -89,7 +89,7 @@ Open the Cline MCP settings panel and add:
 {
   "brewpage": {
     "command": "npx",
-    "args": ["-y", "brewpage-mcp@1.17.0"]
+    "args": ["-y", "brewpage-mcp@1.18.0"]
   }
 }
 ```
@@ -97,13 +97,13 @@ Open the Cline MCP settings panel and add:
 ### Global Install
 
 ```bash
-npm install -g brewpage-mcp@1.17.0
+npm install -g brewpage-mcp@1.18.0
 brewpage-mcp
 ```
 
 ## Tools
 
-Twenty-one tools are available. Creation returns an owner token; keep it to modify or delete the resource later. Owner tools take `ownerToken`, else `BREWPAGE_OWNER_TOKEN` (local server only). Supported password inputs use `X-Password`. Secrets allowed; likely ones are flagged in notices. For a secret: private namespace + password.
+Twenty-five tools are available. Creation returns an owner token; keep it to modify or delete the resource later. Owner tools take `ownerToken`, else `BREWPAGE_OWNER_TOKEN` (local server only). Supported password inputs use `X-Password`. Secrets allowed; likely ones are flagged in notices. For a secret: private namespace + password.
 
 | Tool | Purpose |
 |------|---------|
@@ -125,6 +125,10 @@ Twenty-one tools are available. Creation returns an owner token; keep it to modi
 | `set_title` | Rename an HTML page or site; the title stays on republish; link unchanged |
 | `bind_token` | Add an owner token to your profile (admin token) |
 | `mint_token` | Mint a profile token, shown once (admin token) |
+| `set_domain` | Connect a domain you own to an HTML page or site; returns the DNS records to create |
+| `list_domains` | List the profile's custom domains with status and DNS records (admin token) |
+| `check_domain` | Check a custom domain's DNS now; status `pending_dns` -> `verifying` -> `active` |
+| `remove_domain` | Remove a custom domain and free its slot; the BrewPage link keeps working |
 | `search_gallery` | Browse public content or list owned resources |
 | `get_stats` | Read platform-wide statistics |
 | `get_limits` | Read the current upload limits (`GET /api/limits`) |
@@ -159,7 +163,7 @@ update_hosting(type="html", namespace="public", id="aBcDeFgHiJ", ownerToken="tok
 
 Publish HTML, Markdown, code or JSON content to BrewPage; with `format` omitted the server detects it. Returns a public URL and owner token. Markdown raw HTML is rendered through an allowlist: scripts, styles, event handlers, forms, frames/embeds and `meta`/`base`/`link` are removed; links allow `http`, `https`, `mailto`, `tel` and relative URLs, images also `data:`; a lone unknown tag such as `<author>` shows as text.
 
-Parameters: `content` (string), `format` (optional; omit to let the server detect HTML, Markdown, code or JSON; `html` keeps code/JSON as HTML; also `markdown`/`md` or a code language), `namespace` (optional -- **omit for private, unlisted content**; `public` lists the page in the gallery and sitemap for Google, Bing and AI search, served on the brewpage.app domain; never put secrets there), `password` (optional), `ttlDays` (days or a string such as `2w`; default 15; the server clamps to 1--30, up to 90 with an owner token in a profile), `filename` (optional, used as title fallback), `showTopBar` (optional boolean -- adds a toolbar with filename, Download button, and theme toggle), `deliveryMode` (optional).
+Parameters: `content` (string), `format` (optional; omit to let the server detect HTML, Markdown, code or JSON; `html` keeps code/JSON as HTML; also `markdown`/`md` or a code language), `namespace` (optional -- **omit for private, unlisted content**; `public` lists the page in the gallery and sitemap for Google, Bing and AI search, served on the brewpage.app domain; never put secrets there), `password` (optional), `ttlDays` (days or a string such as `2w`; default 15; the server clamps to 1--30, up to 90 with an owner token in a profile), `filename` (optional, used as title fallback), `showTopBar` (optional boolean -- adds a toolbar with filename, Download button, and theme toggle), `deliveryMode` (optional), `domain` (optional; a domain you own to connect to an HTML-format page, see Custom domains).
 
 The result includes `deliveryModeReason` and a `Delivery notice:` line when the server returns them (see above).
 
@@ -237,7 +241,7 @@ Publish a single-page or multi-file HTML site. Pass `entryContent` for a single 
 
 Limits (current values from `get_limits`): a request is at most 25 MiB; a site at most 200 files, 5 MiB per file and 20 MiB in total; each path at most 380 characters. System files such as `.DS_Store` and `__MACOSX/` are skipped and never count; files with an unsupported extension or a too-long path are skipped and reported in notices. Entry: `entry`, else root `index.html`, else the shallowest HTML file. A site limit hit answers 400 with a message naming the limit, as does a PDF/Office file that is unreadable or password-protected; 413 means the request is over 25 MiB, has too many files and form fields, or a file name/path is too long; 422 means no servable file is left; 503 means busy: retry after `Retry-After` seconds (failed publish tools print it).
 
-Parameters: exactly one of `entryContent` (string) or non-empty `files` (array of `{path, content}`), `entry` (optional entry file path, default `index.html`), `namespace` (optional -- omit for private, unlisted content; `public` lists the site in the gallery and sitemap for Google, Bing and AI search; a site always gets its own subdomain), `password` (optional), `ttlDays` (days or a string such as `2w`; default 15; the server clamps to 1--30, up to 90 with an owner token in a profile), `ownerToken` (optional, groups site under an existing owner), `deliveryMode` (optional; fresh sites require `subdomain`).
+Parameters: exactly one of `entryContent` (string) or non-empty `files` (array of `{path, content}`), `entry` (optional entry file path, default `index.html`), `namespace` (optional -- omit for private, unlisted content; `public` lists the site in the gallery and sitemap for Google, Bing and AI search; a site always gets its own subdomain), `password` (optional), `ttlDays` (days or a string such as `2w`; default 15; the server clamps to 1--30, up to 90 with an owner token in a profile), `ownerToken` (optional, groups site under an existing owner), `deliveryMode` (optional; fresh sites require `subdomain`), `domain` (optional; a domain you own to connect to the site, see Custom domains).
 
 Example prompt:
 
@@ -441,6 +445,56 @@ Parameters: `label` (optional), `scope` (`publish` default | `admin`), `expiresI
 
 ---
 
+### Custom domains
+
+Show one HTML page (format html, no password) or one site on a domain you own, such as `www.example.com` or `example.com`. Free, 5 per profile. The owner token must be in a free BrewPage profile: sign in at https://account.brewpage.app and add the token there, or with `bind_token`. The BrewPage link keeps working.
+
+How it goes: `set_domain` returns the DNS records, the domain owner creates exactly those records at their DNS provider, then `check_domain` reports the status: `pending_dns` (records not seen yet), `verifying` (DNS found, HTTPS being issued), `active` (live). HTTPS is issued automatically. The records come from the result, never from memory: a subdomain takes a TXT record at `_brewpage.<host>` plus a CNAME to `domains.brewpage.app`; a root domain takes the TXT record plus the A record shown, or the optional ALIAS row.
+
+`publish_html` and `publish_site` accept an optional `domain` to connect it while publishing. The publication is always created; the result prints a `CUSTOM DOMAIN` block with the records, or says the domain was not set next to the notice that explains why.
+
+### `set_domain`
+
+Connect a domain to an HTML page or site (`PUT /api/publications/{html|site}/{ns}/{id}/domain`). A hostname already in the profile moves to this publication. A page on a BrewPage path address moves to its own subdomain, and its BrewPage link keeps working.
+
+Parameters: `type` (`html` | `site`), `namespace`, `id`, `hostname` (e.g. `www.example.com` or `example.com`), `ownerToken` (optional; the publication's owner token added to a profile, or a profile token).
+
+```
+set_domain(type="html", namespace="public", id="aBcDeFgHiJ", hostname="www.example.com")
+```
+
+Output: `Custom domain connected.`, then `Domain:`, `Status:`, `Problem:` (what is still missing), `Serving:`, `Shows:`, the `records[]` rows verbatim as JSON (`type`, `name`, `host`, `value`, `state`) and the next step. `host` is the name DNS panels ask for.
+
+---
+
+### `list_domains`
+
+List the custom domains of a profile (`GET /api/domains`): how many are used and allowed, and for each one its status, DNS records and the publication it shows.
+
+Parameters: `ownerToken` (admin token of the profile; optional, default `BREWPAGE_OWNER_TOKEN`, local server only).
+
+---
+
+### `check_domain`
+
+Check DNS now and return the updated status and records. By publication: `type`, `namespace`, `id` with an owner token in the profile (`POST /api/publications/{html|site}/{ns}/{id}/domain/check`). By hostname: `hostname` with an admin token of the profile (`POST /api/domains/{hostname}/check`). Checks are spaced: a repeat too soon answers 429 and the result prints `Retry-After`.
+
+Parameters: either `type` + `namespace` + `id`, or `hostname`; `ownerToken` (optional).
+
+```
+check_domain(type="html", namespace="public", id="aBcDeFgHiJ")
+```
+
+---
+
+### `remove_domain`
+
+Remove a custom domain from the profile and free its slot (`DELETE /api/publications/{html|site}/{ns}/{id}/domain` or `DELETE /api/domains/{hostname}`). The BrewPage link keeps working; the DNS records can be deleted at the DNS provider afterwards.
+
+Parameters: either `type` + `namespace` + `id`, or `hostname`; `ownerToken` (optional; by hostname an admin token of the profile).
+
+---
+
 ### `get_stats`
 
 Get platform-wide BrewPage usage statistics (page count, file count, storage, daily totals). Supports an optional IANA timezone for the "today" boundary.
@@ -495,6 +549,10 @@ get_limits()
 | "What did I store under that key?" | `get_kv` | By `namespace` + `id` + `key` |
 | "List my published pages" / "What did I publish?" | `search_gallery` | Set `mine=true` + `ownerToken` |
 | "Browse the public BrewPage gallery" | `search_gallery` | Optional `q`, `sort=date\|views` |
+| "Put this page on my own domain" | `set_domain` | Owner token in a free profile; returns the DNS records to create |
+| "I added the DNS records, is my domain live?" | `check_domain` | Status `pending_dns` -> `verifying` -> `active` |
+| "Which domains do I have?" | `list_domains` | Admin token of the profile |
+| "Disconnect my domain" | `remove_domain` | The BrewPage link keeps working |
 
 ## Owner Token
 
@@ -546,6 +604,10 @@ Every publish response includes an **owner token** -- the only credential that a
 - [Brewcode Plugin](https://github.com/kochetkov-ma/claude-brewcode) -- Claude Code plugin suite
 
 ## Changelog
+
+## 1.18.0 -- unreleased
+
+- Custom domains: four new tools. `set_domain` connects a domain you own to an HTML page or site and returns the DNS records to create at your DNS provider; `check_domain` checks DNS and reports the status (`pending_dns`, `verifying`, `active`); `list_domains` lists the profile's domains; `remove_domain` removes one and frees its slot. `publish_html` and `publish_site` take an optional `domain`. Free, 5 per profile; the owner token must be in a BrewPage profile (free sign-in at account.brewpage.app). Twenty-five tools. `User-Agent: brewpage-mcp/1.18.0`.
 
 ## 1.17.0 -- 2026-11-09
 

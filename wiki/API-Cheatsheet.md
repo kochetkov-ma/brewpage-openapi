@@ -98,6 +98,23 @@ GET /api/limits                     → Current upload limits (bytes)
 
 ---
 
+## Custom Domains
+
+Show one HTML page (format `html`, no password) or one site on a domain you own. Free, 5 per profile; `X-Owner-Token` must be in a free BrewPage profile (`/api/domains` takes an admin token of the profile). `{type}`: `html` or `site`.
+
+```
+PUT    /api/publications/{type}/{ns}/{id}/domain        → Connect {"hostname":"www.example.com"}; answers the DNS records[]
+POST   /api/publications/{type}/{ns}/{id}/domain/check  → Check DNS now: pending_dns → verifying → active
+GET    /api/publications/{type}/{ns}/{id}/domain        → Current state
+DELETE /api/publications/{type}/{ns}/{id}/domain        → Remove it and free the slot
+GET    /api/domains                                     → Domains of the profile: {limit, used, items}
+POST   /api/html?domain=www.example.com                 → Publish and connect in one call (also POST /api/sites)
+```
+
+Create exactly the returned `records` at your DNS provider: TXT `_brewpage.<host>` plus CNAME to `domains.brewpage.app`; a root domain takes the A record shown, or ALIAS. HTTPS is issued automatically and the BrewPage link keeps working.
+
+---
+
 ## Short URLs
 
 Use the exact primary `link` and any `shortUrl` returned by the API; do not reconstruct publication URLs.
