@@ -1221,7 +1221,7 @@ const listRule = (mode: string, extra: Record<string, unknown> = {}) =>
 const STORED_SETTINGS = { captcha: "auto", maxDocBytes: 16384, maxDocsPerVisitor: 20, maxBytesPerVisitor: 32768,
   collections: { guestbook: listRule("shared", { maxDocsPerVisitor: 5 }), wall: listRule("shared"), drafts: listRule("private") } };
 const OVERVIEW = {
-  alert: true, caps: { docs: 20000, bytes: 20971520 }, usage: { docs: 132, bytes: 49152 }, declared: true, tier: "anonymous",
+  alert: true, caps: { docs: 5000, bytes: 1048576 }, usage: { docs: 132, bytes: 49152 }, declared: true, tier: "anonymous",
   collections: [
     { name: "guestbook", declared: true, mode: "shared", write: "visitors", docs: 120, bytes: 42000 },
     { name: "menu", declared: true, mode: "shared", write: "author", docs: 1, bytes: 300 },
@@ -1230,7 +1230,7 @@ const OVERVIEW = {
   config: STORED_SETTINGS, notices: [] as Array<{ code: string; message: string }>,
 };
 const OVERVIEW_LINES = [
-  "Page data: priv-abc123/aBcDeFgHiJ", "Usage: 132 of 20000 entries - 48 KiB of 20 MiB", "ALERT: 80% or more of the quota is used.",
+  "Page data: priv-abc123/aBcDeFgHiJ", "Usage: 132 of 5000 entries - 48 KiB of 1 MiB", "ALERT: 80% or more of the quota is used.",
   "guestbook - shared - 120 entries - 41 KiB", "menu - shared, author writes - 1 entry - 300 B", "stray - private, not declared - 11 entries - 6.7 KiB",
   `Settings: ${JSON.stringify(STORED_SETTINGS)}`,
 ];
