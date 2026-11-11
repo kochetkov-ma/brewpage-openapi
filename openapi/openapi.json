@@ -317,6 +317,10 @@
             "description": "Write 429 without an account: free account with higher limits",
             "type": "string"
           },
+          "challengeUrl": {
+            "description": "With STATE_CHALLENGE on a custom domain only: https address of the check page to frame",
+            "type": "string"
+          },
           "code": {
             "description": "Machine-readable reason, e.g. OWNER_AUTHORIZATION_FAILED, OWNER_TOKEN_REVOKED, OWNER_TOKEN_EXPIRED, ADMIN_TOKEN_REQUIRED, OLD_PUBLICATION_READ_ONLY, WRONG_RESOURCE_TYPE, PUBLICATION_UNAVAILABLE, ROTATE_LIMITED, TITLE_INVALID.",
             "type": "string"
@@ -358,6 +362,10 @@
             "description": "Seconds to wait; same as Retry-After",
             "format": "int64",
             "type": "integer"
+          },
+          "siteKey": {
+            "description": "With STATE_CHALLENGE: Turnstile site key for the human check (action state_write)",
+            "type": "string"
           },
           "status": {
             "format": "int32",
@@ -565,7 +573,7 @@
             ]
           },
           "deliveryModeReason": {
-            "description": "Why the request was served differently than asked: 'policy:subdomain-required', 'policy:mode-locked', 'policy:classic-link', 'policy:version-stale' or 'policy:republish-keeps-mode'. Mismatches are reported, not rejected. Absent when nothing applies.",
+            "description": "Why the request was served differently than asked: 'policy:subdomain-required', 'policy:mode-locked', 'policy:classic-link', 'policy:version-stale', 'policy:republish-keeps-mode', 'policy:custom-domain-attached' or 'policy:state-declared'. Mismatches are reported, not rejected. Absent when nothing applies.",
             "type": "string"
           },
           "deliveryNotice": {
@@ -804,6 +812,175 @@
         },
         "type": "object"
       },
+      "GalleryPromoCaptions": {
+        "properties": {
+          "bottom": {
+            "description": "Caption of the block below the gallery",
+            "type": "string"
+          },
+          "top": {
+            "description": "Caption of the block above the gallery",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "GalleryPromoItem": {
+        "properties": {
+          "chips": {
+            "description": "Feature chips: 'page-data', 'custom-domain', 'api'; empty for video",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "durationSeconds": {
+            "description": "kind=video: length in seconds; absent otherwise",
+            "format": "int32",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "id": {
+            "description": "Publication id in the public namespace",
+            "type": "string"
+          },
+          "isNew": {
+            "type": "boolean"
+          },
+          "kind": {
+            "description": "Item kind",
+            "enum": [
+              "template",
+              "video"
+            ],
+            "type": "string"
+          },
+          "link": {
+            "description": "Live address of the publication",
+            "type": "string"
+          },
+          "mediaUrl": {
+            "description": "kind=video: the playable file; absent otherwise",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "namespace": {
+            "type": "string"
+          },
+          "pageUrl": {
+            "description": "kind=template: its template page; absent for video",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "preview": {
+            "description": "WebP previews (the poster's when the item has one); null while previews are off",
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/PublicationPreviewResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "slug": {
+            "type": "string"
+          },
+          "sourceUrl": {
+            "description": "kind=template: its clean source as plain text; absent for video",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "tier": {
+            "description": "kind=template: 'basic' or 'more'; absent for video",
+            "enum": [
+              "basic",
+              "more"
+            ],
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "title": {
+            "type": "string"
+          },
+          "views": {
+            "description": "Total view count",
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      },
+      "GalleryPromoPeriod": {
+        "properties": {
+          "endsAt": {
+            "description": "When the next period starts",
+            "format": "date-time",
+            "type": "string"
+          },
+          "index": {
+            "description": "Rotation period number; slots stay the same within one period",
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      },
+      "GalleryPromoResponse": {
+        "description": "BrewPage examples pinned above and below the public gallery; rotates every period",
+        "properties": {
+          "captions": {
+            "$ref": "#/components/schemas/GalleryPromoCaptions"
+          },
+          "items": {
+            "description": "Every live item in registry order; slots name items by slug",
+            "items": {
+              "$ref": "#/components/schemas/GalleryPromoItem"
+            },
+            "type": "array"
+          },
+          "period": {
+            "$ref": "#/components/schemas/GalleryPromoPeriod"
+          },
+          "sectionUrl": {
+            "description": "Page listing every template",
+            "type": "string"
+          },
+          "slots": {
+            "$ref": "#/components/schemas/GalleryPromoSlots"
+          }
+        },
+        "type": "object"
+      },
+      "GalleryPromoSlots": {
+        "properties": {
+          "bottom": {
+            "description": "Slugs of the bottom block in card order; phones show the first",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "top": {
+            "description": "Slugs of the top block in card order; phones show the first",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
       "GalleryResponse": {
         "properties": {
           "items": {
@@ -920,7 +1097,7 @@
             ]
           },
           "deliveryModeReason": {
-            "description": "Why the request was served differently than asked: 'policy:subdomain-required', 'policy:mode-locked', 'policy:classic-link', 'policy:version-stale' or 'policy:republish-keeps-mode'. Mismatches are reported, not rejected. Absent when nothing applies.",
+            "description": "Why the request was served differently than asked: 'policy:subdomain-required', 'policy:mode-locked', 'policy:classic-link', 'policy:version-stale', 'policy:republish-keeps-mode', 'policy:custom-domain-attached' or 'policy:state-declared'. Mismatches are reported, not rejected. Absent when nothing applies.",
             "type": "string"
           },
           "deliveryNotice": {
@@ -1034,7 +1211,7 @@
             ]
           },
           "deliveryModeReason": {
-            "description": "Why the request was served differently than asked: 'policy:subdomain-required', 'policy:mode-locked', 'policy:classic-link', 'policy:version-stale' or 'policy:republish-keeps-mode'. Mismatches are reported, not rejected. Absent when nothing applies.",
+            "description": "Why the request was served differently than asked: 'policy:subdomain-required', 'policy:mode-locked', 'policy:classic-link', 'policy:version-stale', 'policy:republish-keeps-mode', 'policy:custom-domain-attached' or 'policy:state-declared'. Mismatches are reported, not rejected. Absent when nothing applies.",
             "type": [
               "string",
               "null"
@@ -1186,6 +1363,13 @@
             "description": "Optional new content format on republish. Accepts 'html', 'markdown'/'md', or any code format (yaml, json, xml, csv, tsv, log, toml, ini, sql, sh, bat, env, javascript, typescript, tsx, jsx, css, properties, docker, txt). When omitted, the row's stored format is preserved. Takes precedence over the 'format' query param when both are present.",
             "type": [
               "string",
+              "null"
+            ]
+          },
+          "state": {
+            "description": "Page data settings. Omit to keep them; an object updates the lists it names and the limits it sends, other lists keep theirs; null turns page data off (saved entries are kept). Each visitor reads and writes only their own entries unless a list is shared; you, the author, read them all. Page data works on the page's own address https://<label>.brewpage.app. JSON body only; invalid settings answer 400 and the page is not changed.",
+            "type": [
+              "object",
               "null"
             ]
           }
@@ -1345,6 +1529,13 @@
               "boolean",
               "null"
             ]
+          },
+          "state": {
+            "description": "Page data: lets visitors save entries on this HTML page. An object declares its lists and limits (e.g. {\"collections\":{\"answers\":{}}}; {} turns it on with defaults). Each visitor reads and writes only their own entries unless a list is shared; you, the author, read them all. The page gets its own address https://<label>.brewpage.app. null or no state field changes no page data settings, also when this upload updates your existing page. JSON body only; invalid settings answer 400 and nothing is published.",
+            "type": [
+              "object",
+              "null"
+            ]
           }
         },
         "required": [
@@ -1384,7 +1575,7 @@
             ]
           },
           "deliveryModeReason": {
-            "description": "Why the delivery mode was chosen or flagged. 'policy:subdomain-required' -- a requested path mode was replaced by subdomain because HTML pages in a private namespace always get their own subdomain; mismatches are reported, not rejected. 'auto:<codes>' -- the page was published in subdomain mode automatically because it uses browser features a BrewPage link does not provide. 'advisory:<codes>' -- the mode was kept, but those features may not work fully on a BrewPage link. Codes are comma-separated in a fixed order: storage, cookies, history, downloads, top-navigation, media-capture, pointer-lock, embeds, fullscreen. Absent when nothing applies.",
+            "description": "Why the delivery mode was chosen or flagged. 'policy:subdomain-required' -- a requested path mode was replaced by subdomain because HTML pages in a private namespace always get their own subdomain; mismatches are reported, not rejected. 'policy:state-declared' -- the request turned on page data ('state'), so the HTML page got its own subdomain whatever mode was asked. 'auto:<codes>' -- the page was published in subdomain mode automatically because it uses browser features a BrewPage link does not provide. 'advisory:<codes>' -- the mode was kept, but those features may not work fully on a BrewPage link. Codes are comma-separated in a fixed order: storage, cookies, history, downloads, top-navigation, media-capture, pointer-lock, embeds, fullscreen. Absent when nothing applies.",
             "type": "string"
           },
           "deliveryNotice": {
@@ -1549,7 +1740,7 @@
             ]
           },
           "deliveryModeReason": {
-            "description": "Why the request was served differently than asked: 'policy:subdomain-required', 'policy:mode-locked', 'policy:classic-link', 'policy:version-stale' or 'policy:republish-keeps-mode'. Mismatches are reported, not rejected. Absent when nothing applies.",
+            "description": "Why the request was served differently than asked: 'policy:subdomain-required', 'policy:mode-locked', 'policy:classic-link', 'policy:version-stale', 'policy:republish-keeps-mode', 'policy:custom-domain-attached' or 'policy:state-declared'. Mismatches are reported, not rejected. Absent when nothing applies.",
             "type": "string"
           },
           "deliveryNotice": {
@@ -1745,7 +1936,7 @@
             ]
           },
           "deliveryModeReason": {
-            "description": "Why the request was served differently than asked: 'policy:subdomain-required', 'policy:mode-locked', 'policy:classic-link', 'policy:version-stale' or 'policy:republish-keeps-mode'. Mismatches are reported, not rejected. Absent when nothing applies.",
+            "description": "Why the request was served differently than asked: 'policy:subdomain-required', 'policy:mode-locked', 'policy:classic-link', 'policy:version-stale', 'policy:republish-keeps-mode', 'policy:custom-domain-attached' or 'policy:state-declared'. Mismatches are reported, not rejected. Absent when nothing applies.",
             "type": "string"
           },
           "deliveryNotice": {
@@ -1882,7 +2073,7 @@
             ]
           },
           "deliveryModeReason": {
-            "description": "Why the request was served differently than asked: 'policy:subdomain-required', 'policy:mode-locked', 'policy:classic-link', 'policy:version-stale' or 'policy:republish-keeps-mode'. Mismatches are reported, not rejected. Absent when nothing applies.",
+            "description": "Why the request was served differently than asked: 'policy:subdomain-required', 'policy:mode-locked', 'policy:classic-link', 'policy:version-stale', 'policy:republish-keeps-mode', 'policy:custom-domain-attached' or 'policy:state-declared'. Mismatches are reported, not rejected. Absent when nothing applies.",
             "type": "string"
           },
           "deliveryNotice": {
@@ -2153,7 +2344,7 @@
             ]
           },
           "deliveryModeReason": {
-            "description": "Why the request was served differently than asked: 'policy:subdomain-required', 'policy:mode-locked', 'policy:classic-link', 'policy:version-stale' or 'policy:republish-keeps-mode'. Mismatches are reported, not rejected. Absent when nothing applies.",
+            "description": "Why the request was served differently than asked: 'policy:subdomain-required', 'policy:mode-locked', 'policy:classic-link', 'policy:version-stale', 'policy:republish-keeps-mode', 'policy:custom-domain-attached' or 'policy:state-declared'. Mismatches are reported, not rejected. Absent when nothing applies.",
             "type": "string"
           },
           "deliveryNotice": {
@@ -3147,7 +3338,7 @@
             ]
           },
           "deliveryModeReason": {
-            "description": "Why the request was served differently than asked: 'policy:subdomain-required', 'policy:mode-locked', 'policy:classic-link', 'policy:version-stale' or 'policy:republish-keeps-mode'. Mismatches are reported, not rejected. Absent when nothing applies.",
+            "description": "Why the request was served differently than asked: 'policy:subdomain-required', 'policy:mode-locked', 'policy:classic-link', 'policy:version-stale', 'policy:republish-keeps-mode', 'policy:custom-domain-attached' or 'policy:state-declared'. Mismatches are reported, not rejected. Absent when nothing applies.",
             "type": "string"
           },
           "deliveryNotice": {
@@ -3305,7 +3496,7 @@
             ]
           },
           "deliveryModeReason": {
-            "description": "Why the request was served differently than asked: 'policy:subdomain-required', 'policy:mode-locked', 'policy:classic-link', 'policy:version-stale' or 'policy:republish-keeps-mode'. Mismatches are reported, not rejected. Absent when nothing applies.",
+            "description": "Why the request was served differently than asked: 'policy:subdomain-required', 'policy:mode-locked', 'policy:classic-link', 'policy:version-stale', 'policy:republish-keeps-mode', 'policy:custom-domain-attached' or 'policy:state-declared'. Mismatches are reported, not rejected. Absent when nothing applies.",
             "type": "string"
           },
           "deliveryNotice": {
@@ -3445,6 +3636,452 @@
           "routingCohort",
           "tags",
           "totalSizeBytes"
+        ],
+        "type": "object"
+      },
+      "StateAmount": {
+        "properties": {
+          "bytes": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "docs": {
+            "format": "int32",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "bytes",
+          "docs"
+        ],
+        "type": "object"
+      },
+      "StateCollectionUsage": {
+        "properties": {
+          "bytes": {
+            "description": "Bytes of this list's entries",
+            "format": "int64",
+            "type": "integer"
+          },
+          "declared": {
+            "description": "False for a list the page saves into without declaring it; such a list is private",
+            "type": "boolean"
+          },
+          "docs": {
+            "description": "Entries in this list",
+            "format": "int32",
+            "type": "integer"
+          },
+          "mode": {
+            "enum": [
+              "private",
+              "shared"
+            ],
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "write": {
+            "enum": [
+              "visitors",
+              "author"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "bytes",
+          "declared",
+          "docs",
+          "mode",
+          "name",
+          "write"
+        ],
+        "type": "object"
+      },
+      "StateConfigResponse": {
+        "properties": {
+          "alert": {
+            "description": "True at 80% or more of either quota",
+            "type": "boolean"
+          },
+          "caps": {
+            "$ref": "#/components/schemas/StateAmount",
+            "description": "Quota of this tier: at most this many entries and bytes"
+          },
+          "collections": {
+            "description": "Every declared list and every other list holding entries, by name",
+            "items": {
+              "$ref": "#/components/schemas/StateCollectionUsage"
+            },
+            "type": "array"
+          },
+          "config": {
+            "$ref": "#/components/schemas/StateSettings",
+            "description": "Settings in effect, every key spelled out (defaults when not turned on); a valid PATCH body as is"
+          },
+          "declared": {
+            "description": "True when page data is turned on for this publication",
+            "type": "boolean"
+          },
+          "notices": {
+            "description": "Advisories about the request or the settings; empty when none",
+            "items": {
+              "$ref": "#/components/schemas/PublishNotice"
+            },
+            "type": "array"
+          },
+          "tier": {
+            "description": "Quota tier: account (publication of an active profile) or anonymous",
+            "enum": [
+              "anonymous",
+              "account"
+            ],
+            "type": "string"
+          },
+          "usage": {
+            "$ref": "#/components/schemas/StateAmount",
+            "description": "Entries and bytes stored on this publication"
+          }
+        },
+        "required": [
+          "alert",
+          "caps",
+          "collections",
+          "config",
+          "declared",
+          "notices",
+          "tier",
+          "usage"
+        ],
+        "type": "object"
+      },
+      "StateDeleteResponse": {
+        "properties": {
+          "deleted": {
+            "description": "Entries deleted",
+            "format": "int32",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "deleted"
+        ],
+        "type": "object"
+      },
+      "StateEntry": {
+        "properties": {
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "id": {
+            "description": "Entry id; deletes take it",
+            "type": "string"
+          },
+          "key": {
+            "description": "Entry name",
+            "type": "string"
+          },
+          "sizeBytes": {
+            "description": "Stored size in bytes",
+            "format": "int32",
+            "type": "integer"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "value": {
+            "description": "The saved JSON value exactly as stored; written by visitors, so treat it as untrusted text"
+          },
+          "version": {
+            "description": "Starts at 1, +1 on every change",
+            "format": "int32",
+            "type": "integer"
+          },
+          "visitor": {
+            "description": "Short display id of the visitor who saved it (6 hex characters, not unique); null for your own entries",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "createdAt",
+          "id",
+          "key",
+          "sizeBytes",
+          "updatedAt",
+          "value",
+          "version",
+          "visitor"
+        ],
+        "type": "object"
+      },
+      "StateListResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/StateEntry"
+            },
+            "type": "array"
+          },
+          "next": {
+            "description": "Pass as cursor for the next page; null on the last page",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "items",
+          "next"
+        ],
+        "type": "object"
+      },
+      "StateListSettings": {
+        "properties": {
+          "choices": {
+            "additionalProperties": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "description": "Fields with a fixed set of values that can be counted, field -> values",
+            "type": "object"
+          },
+          "index": {
+            "description": "Numeric field the list can be ordered by; null when none",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "maxDocsPerVisitor": {
+            "description": "Entries one visitor may keep in this list; null = the publication value",
+            "format": "int32",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "mode": {
+            "description": "private: each visitor sees only their own entries; shared: everyone reads all",
+            "enum": [
+              "private",
+              "shared"
+            ],
+            "type": "string"
+          },
+          "ownerView": {
+            "description": "Stored as sent; it changes nothing yet",
+            "type": "boolean"
+          },
+          "write": {
+            "description": "visitors: each visitor writes their own entries; author: only you write",
+            "enum": [
+              "visitors",
+              "author"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "choices",
+          "index",
+          "maxDocsPerVisitor",
+          "mode",
+          "ownerView",
+          "write"
+        ],
+        "type": "object"
+      },
+      "StateListSettingsRequest": {
+        "properties": {
+          "choices": {
+            "additionalProperties": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "description": "Fields with a fixed set of values that can be counted, field -> values",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "index": {
+            "description": "Numeric field the list can be ordered by; null = none",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "maxDocsPerVisitor": {
+            "description": "Entries one visitor may keep in this list; null = the publication value",
+            "format": "int32",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "mode": {
+            "description": "private: each visitor sees only their own entries; shared: everyone reads all",
+            "enum": [
+              "private",
+              "shared"
+            ],
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "ownerView": {
+            "description": "Stored as sent; it changes nothing yet",
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "write": {
+            "description": "visitors: each visitor writes their own entries; author: only you write (needs mode shared)",
+            "enum": [
+              "visitors",
+              "author"
+            ],
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "type": "object"
+      },
+      "StateSettings": {
+        "properties": {
+          "captcha": {
+            "description": "Human check for new visitors who save: auto or always",
+            "enum": [
+              "auto",
+              "always"
+            ],
+            "type": "string"
+          },
+          "collections": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/StateListSettings"
+            },
+            "description": "Declared lists by name",
+            "type": "object"
+          },
+          "maxBytesPerVisitor": {
+            "description": "Bytes one visitor may keep on this publication",
+            "format": "int32",
+            "type": "integer"
+          },
+          "maxDocBytes": {
+            "description": "Largest entry in bytes",
+            "format": "int32",
+            "type": "integer"
+          },
+          "maxDocsPerVisitor": {
+            "description": "Entries one visitor may keep on this publication",
+            "format": "int32",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "captcha",
+          "collections",
+          "maxBytesPerVisitor",
+          "maxDocBytes",
+          "maxDocsPerVisitor"
+        ],
+        "type": "object"
+      },
+      "StateSettingsRequest": {
+        "properties": {
+          "captcha": {
+            "description": "Human check for new visitors who save: auto (default) or always",
+            "enum": [
+              "auto",
+              "always"
+            ],
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "collections": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/StateListSettingsRequest"
+            },
+            "description": "Declared lists by name; lists absent here are removed (their entries stay); a list set to null takes the default rule",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "maxBytesPerVisitor": {
+            "description": "Bytes one visitor may keep on this publication; absent or null = default",
+            "format": "int32",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "maxDocBytes": {
+            "description": "Largest entry in bytes; absent or null = default",
+            "format": "int32",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "maxDocsPerVisitor": {
+            "description": "Entries one visitor may keep on this publication; absent or null = default",
+            "format": "int32",
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        "type": "object"
+      },
+      "StateWriteResponse": {
+        "properties": {
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "key": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "version": {
+            "format": "int32",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "createdAt",
+          "id",
+          "key",
+          "updatedAt",
+          "version"
         ],
         "type": "object"
       },
@@ -3894,7 +4531,7 @@
     },
     "termsOfService": "https://brewpage.app/terms",
     "title": "BrewPage API",
-    "version": "2.21.8"
+    "version": "0.0.1-SNAPSHOT"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -4534,7 +5171,7 @@
         ]
       },
       "post": {
-        "description": "Stores a file via multipart upload and returns a download link. Only safe file types accepted; a missing or wrong extension is corrected from the content and reported in notices. Reuse existing owner token to group entities under one owner. An HTML or Markdown file is published as a page in any namespace, with or without a password (same rules and limits as POST /api/html). 'format' decides; without one a known extension, then a specific declared part type (text/html, text/markdown, application/json, text/csv), then a content guess; otherwise it stays an inert file. '.txt' without 'format' stays a text file. A whole HTML document sent as 'markdown' is an HTML page. Any readable encoding is stored as UTF-8, notice 'charset-guessed' when no usable charset was named. link and ownerLink point to the page, notice 'html-file-as-page' or 'markdown-file-as-page'; a code format chosen by 'format' or the declared type is published the same way, notice 'file-format-applied'. An HTML file over the page size limit or that no encoding reads is stored as a file and shown as source, notice 'html-file-as-source'. A JSON file in the public namespace is stored as sent, notice 'json-file-not-listed'; JSON data belongs in POST /api/json. Secrets allowed; likely ones are flagged in notices. For a secret: private namespace + password.",
+        "description": "Stores a file via multipart upload and returns a download link. Only safe file types accepted; a missing or wrong extension is corrected from the content and reported in notices. Reuse existing owner token to group entities under one owner. An HTML or Markdown file is published as a page in any namespace, with or without a password (same rules and limits as POST /api/html). 'format' decides; without one a known extension, then a specific declared part type (text/html, text/markdown, application/json, text/csv), then a content guess; otherwise it stays an inert file. '.txt' without 'format' stays a text file. A whole HTML document sent as 'markdown' is an HTML page. Any readable encoding is stored as UTF-8, notice 'charset-guessed' when no usable charset was named. link and ownerLink point to the page, notice 'html-file-as-page' or 'markdown-file-as-page'; a code format chosen by 'format' or the declared type is published the same way, notice 'file-format-applied'. An HTML file over the page size limit or that no encoding reads is stored as a file and shown as source, notice 'html-file-as-source'. Secrets allowed; likely ones are flagged in notices. For a secret: private namespace + password.",
         "operationId": "upload",
         "parameters": [
           {
@@ -5175,6 +5812,31 @@
           }
         ],
         "summary": "Browse gallery",
+        "tags": [
+          "Gallery"
+        ]
+      }
+    },
+    "/api/gallery/promo": {
+      "get": {
+        "description": "BrewPage's own example publications pinned above and below the public gallery: captions, the current rotation period, the slugs of the top and bottom blocks, and every live item. Slots change once per period and stay the same within it. Empty slots and items when no example is configured.",
+        "operationId": "getPromo",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GalleryPromoResponse"
+                }
+              }
+            },
+            "description": "Pinned blocks of the current period"
+          }
+        },
+        "security": [
+          {}
+        ],
+        "summary": "Pinned examples",
         "tags": [
           "Gallery"
         ]
@@ -8785,6 +9447,10 @@
                       "type": "string"
                     },
                     "type": "array"
+                  },
+                  "state": {
+                    "description": "Page data: lets visitors save entries on this site. Optional JSON text of the settings object, sent as a text field or a file: it declares the lists and limits (e.g. {\"collections\":{\"answers\":{}}}; {} turns it on with defaults). Each visitor reads and writes only their own entries unless a list is shared; you, the author, read them all. Page data works on the site's own address https://<label>.brewpage.app. null or no state field changes no page data settings, also when this upload updates your existing site. Invalid settings answer 400 and nothing is published.",
+                    "type": "string"
                   }
                 },
                 "type": "object"
@@ -9150,6 +9816,10 @@
                       "type": "string"
                     },
                     "type": "array"
+                  },
+                  "state": {
+                    "description": "Page data settings as JSON text, sent as a text field or a file. Omit to keep them; an object updates the lists it names and the limits it sends, other lists keep theirs; null turns page data off (saved entries are kept). Each visitor reads and writes only their own entries unless a list is shared; you, the author, read them all. Page data works on the site's own address https://<label>.brewpage.app. Invalid settings answer 400 and the site is not changed.",
+                    "type": "string"
                   }
                 },
                 "type": "object"
@@ -9498,6 +10168,814 @@
         "summary": "Verify whether the supplied X-Owner-Token or X-Manage-Key owns the resource",
         "tags": [
           "Owner Check"
+        ]
+      }
+    },
+    "/api/{ns}/{id}/state": {
+      "get": {
+        "description": "Settings in effect, each list with its entry count and size, quota tier and usage. A publication that has not turned page data on answers declared:false with the default settings. notices: state-needs-subdomain while the page is on a brewpage.app/... address (give it its own address: PATCH /api/{type}/{ns}/{id}/hosting), state-needs-html while the page is not HTML.",
+        "operationId": "readPageDataSettings",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ns",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Owner token returned at creation",
+            "in": "header",
+            "name": "X-Owner-Token"
+          },
+          {
+            "description": "Management key of this publication",
+            "in": "header",
+            "name": "X-Manage-Key"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StateConfigResponse"
+                }
+              }
+            },
+            "description": "Settings and usage"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Owner token revoked or expired; or OWNER_AUTHORIZATION_FAILED: a public publication you do not own"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "PUBLICATION_UNAVAILABLE: no such HTML page or site, not yours, hidden or expired"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "STATE_UNAVAILABLE: page data is switched off for now; wait Retry-After"
+          }
+        },
+        "security": [
+          {
+            "OwnerToken": []
+          },
+          {
+            "ManageKey": []
+          }
+        ],
+        "summary": "Read page data settings and usage",
+        "tags": [
+          "Page data"
+        ]
+      },
+      "patch": {
+        "description": "The body is the whole settings object, the same shape as `state` on publish (at most 16 KB): lists absent from it are removed (their entries stay, the list becomes private), top-level keys absent from it return to their defaults, and a named list keeps the mode and write it has unless the body states them. {} turns page data on with the defaults; null turns it off (entries are kept). A private list that holds visitors' entries cannot become shared (409 STATE_MODE_WIDENING). Answers like the read, with notices about clamped limits, ignored keys and the address.",
+        "operationId": "changePageDataSettings",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ns",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Owner token returned at creation",
+            "in": "header",
+            "name": "X-Owner-Token"
+          },
+          {
+            "description": "Management key of this publication",
+            "in": "header",
+            "name": "X-Manage-Key"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StateSettingsRequest"
+              }
+            }
+          },
+          "description": "Page data settings JSON, or null to turn page data off",
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StateConfigResponse"
+                }
+              }
+            },
+            "description": "Settings saved; same answer as the read"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "STATE_INVALID: the settings have a mistake; nothing was changed"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Owner token revoked or expired; or OWNER_AUTHORIZATION_FAILED: a public publication you do not own"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "PUBLICATION_UNAVAILABLE: no such HTML page or site, not yours, hidden or expired"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "STATE_MODE_WIDENING: a private list with visitors' entries cannot become shared; or OLD_PUBLICATION_READ_ONLY"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Settings larger than 16 KB"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Rate limited: wait Retry-After (= retryAfterSeconds); no account: accountUrl, free sign-up with higher limits"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "STATE_UNAVAILABLE: page data is switched off for now; wait Retry-After"
+          }
+        },
+        "security": [
+          {
+            "OwnerToken": []
+          },
+          {
+            "ManageKey": []
+          }
+        ],
+        "summary": "Change page data settings",
+        "tags": [
+          "Page data"
+        ]
+      }
+    },
+    "/api/{ns}/{id}/state/{col}": {
+      "delete": {
+        "description": "Deletes every entry of one list created after `after` and/or before `before` (ISO 8601 instants, both exclusive, at least one). To empty a list send before with the current time. Cannot be undone.",
+        "operationId": "deletePageDataRange",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ns",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "List name",
+            "in": "path",
+            "name": "col",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Delete entries created after this instant, e.g. 2026-11-10T12:00:00Z",
+            "in": "query",
+            "name": "after",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Delete entries created before this instant",
+            "in": "query",
+            "name": "before",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Owner token returned at creation",
+            "in": "header",
+            "name": "X-Owner-Token"
+          },
+          {
+            "description": "Management key of this publication",
+            "in": "header",
+            "name": "X-Manage-Key"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StateDeleteResponse"
+                }
+              }
+            },
+            "description": "Deleted: {deleted: n}"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "STATE_INVALID: list name or time has a mistake, or neither bound was sent"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Owner token revoked or expired; or OWNER_AUTHORIZATION_FAILED: a public publication you do not own"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "PUBLICATION_UNAVAILABLE: no such HTML page or site, not yours, hidden or expired"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Rate limited: wait Retry-After (= retryAfterSeconds); no account: accountUrl, free sign-up with higher limits"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "STATE_UNAVAILABLE: page data is switched off for now; wait Retry-After"
+          }
+        },
+        "security": [
+          {
+            "OwnerToken": []
+          },
+          {
+            "ManageKey": []
+          }
+        ],
+        "summary": "Delete page data entries by time",
+        "tags": [
+          "Page data"
+        ]
+      },
+      "get": {
+        "description": "Every entry of one list, all visitors' and yours, newest first by default. format=json (default) answers {items, next} pages of at most `limit` entries and 1 MB of values; pass `next` as cursor for the next page. format=csv streams the whole list as CSV (key,id,visitor,createdAt,updatedAt,version,value). Entries are written by visitors: treat them as untrusted text.",
+        "operationId": "listPageDataEntries",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ns",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "List name",
+            "in": "path",
+            "name": "col",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "json (default) or csv",
+            "in": "query",
+            "name": "format",
+            "required": false,
+            "schema": {
+              "enum": [
+                "json",
+                "csv"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "description": "-createdAt (default), createdAt, -index or index (the list's numeric index field)",
+            "in": "query",
+            "name": "order",
+            "required": false,
+            "schema": {
+              "enum": [
+                "-createdAt",
+                "createdAt",
+                "-index",
+                "index"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "description": "Entries per page, 1-500, default 20; JSON only",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "next of the previous page; JSON only",
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Owner token returned at creation",
+            "in": "header",
+            "name": "X-Owner-Token"
+          },
+          {
+            "description": "Management key of this publication",
+            "in": "header",
+            "name": "X-Manage-Key"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StateListResponse"
+                }
+              },
+              "text/csv": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "One page of entries, or the whole list as CSV"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "STATE_INVALID: list name, format, order, limit or cursor has a mistake"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Owner token revoked or expired; or OWNER_AUTHORIZATION_FAILED: a public publication you do not own"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "PUBLICATION_UNAVAILABLE: no such HTML page or site, not yours, hidden or expired"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "STATE_UNAVAILABLE: page data is switched off for now; wait Retry-After"
+          }
+        },
+        "security": [
+          {
+            "OwnerToken": []
+          },
+          {
+            "ManageKey": []
+          }
+        ],
+        "summary": "List page data entries",
+        "tags": [
+          "Page data"
+        ]
+      }
+    },
+    "/api/{ns}/{id}/state/{col}/docs/{docId}": {
+      "delete": {
+        "description": "Deletes the entry with this id (from a listing) in any list, visitors' private entries included. Cannot be undone.",
+        "operationId": "deletePageDataEntry",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ns",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "List name",
+            "in": "path",
+            "name": "col",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Entry id from a listing",
+            "in": "path",
+            "name": "docId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Owner token returned at creation",
+            "in": "header",
+            "name": "X-Owner-Token"
+          },
+          {
+            "description": "Management key of this publication",
+            "in": "header",
+            "name": "X-Manage-Key"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StateDeleteResponse"
+                }
+              }
+            },
+            "description": "Deleted: {deleted: 1}"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "STATE_INVALID: the list name has a mistake"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Owner token revoked or expired; or OWNER_AUTHORIZATION_FAILED: a public publication you do not own"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "PUBLICATION_UNAVAILABLE: no such HTML page or site, not yours, hidden or expired; or STATE_NOT_FOUND: no such entry in this list"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Rate limited: wait Retry-After (= retryAfterSeconds); no account: accountUrl, free sign-up with higher limits"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "STATE_UNAVAILABLE: page data is switched off for now; wait Retry-After"
+          }
+        },
+        "security": [
+          {
+            "OwnerToken": []
+          },
+          {
+            "ManageKey": []
+          }
+        ],
+        "summary": "Delete one page data entry",
+        "tags": [
+          "Page data"
+        ]
+      }
+    },
+    "/api/{ns}/{id}/state/{col}/{key}": {
+      "put": {
+        "description": "Creates or replaces your own entry `key` in a list (for example a menu in a list with write author); visitors' entries stay untouched. The body is the entry's JSON value, at most the page's entry size (16 KB by default). If-Match: <version> replaces only that version. A page that has not turned page data on answers 404 STATE_UNAVAILABLE: turn it on first (PATCH .../state with {}, or publish with state).",
+        "operationId": "writePageDataEntry",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ns",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "List name",
+            "in": "path",
+            "name": "col",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Entry name: 1-128 letters, digits, '.', - or _, not starting with _",
+            "in": "path",
+            "name": "key",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Version last read: 3 or \"3\"",
+            "in": "header",
+            "name": "If-Match",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Owner token returned at creation",
+            "in": "header",
+            "name": "X-Owner-Token"
+          },
+          {
+            "description": "Management key of this publication",
+            "in": "header",
+            "name": "X-Manage-Key"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          },
+          "description": "The entry's JSON value",
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StateWriteResponse"
+                }
+              }
+            },
+            "description": "Saved"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "STATE_INVALID: list name, entry name, If-Match or value has a mistake"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Owner token revoked or expired; or OWNER_AUTHORIZATION_FAILED: a public publication you do not own"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "PUBLICATION_UNAVAILABLE: no such HTML page or site, not yours, hidden or expired; or STATE_UNAVAILABLE: page data is not turned on"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "STATE_CONFLICT: the entry changed since that version, or is absent; or OLD_PUBLICATION_READ_ONLY"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "STATE_TOO_LARGE: larger than the entry size; or STATE_QUOTA: no room left on this page"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Rate limited: wait Retry-After (= retryAfterSeconds); no account: accountUrl, free sign-up with higher limits"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "STATE_UNAVAILABLE: page data is switched off for now; wait Retry-After"
+          }
+        },
+        "security": [
+          {
+            "OwnerToken": []
+          },
+          {
+            "ManageKey": []
+          }
+        ],
+        "summary": "Write an author entry",
+        "tags": [
+          "Page data"
         ]
       }
     },
@@ -11238,6 +12716,10 @@
     {
       "description": "Owner-only publication delivery settings",
       "name": "Hosting Management"
+    },
+    {
+      "description": "What visitors saved on your HTML page or site: settings, entries, CSV export, author entries, deletes. Visitors save through the page itself, not through this API: the page loads https://brewpage.app/js/state.js and calls bp.state(), which uses the host API /_bp/state/v1 on the page's own address (https://<label>.brewpage.app); that host API serves only its own page, so it is not listed here. Turn page data on with `state` when you publish, or with PATCH /api/{ns}/{id}/state. By default each visitor reads and writes only their own entries; you read them all.",
+      "name": "Page data"
     },
     {
       "description": "Abuse reports for hosted content",

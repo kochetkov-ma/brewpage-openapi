@@ -107,7 +107,32 @@ for (const [path, method] of [['/api/sites', 'post'], ['/api/sites/{ns}/{id}', '
   const statuses = Object.keys(spec.paths[path][method].responses);
   for (const status of ['400', '413', '422']) assert.ok(statuses.includes(status), `Site ${method} declares ${status}`);
   assert.ok(!statuses.includes('415'), `Site ${method} answers 422, not 415, when no servable file is left`);
+  assert.equal(spec.paths[path][method].requestBody.content['multipart/form-data'].schema.properties.state?.type, 'string',
+    `Site ${method} takes the optional page data settings as the JSON text field state`);
 }
+const pageDataOperations = Object.entries(spec.paths).flatMap(([path, item]) => Object.values(item)
+  .filter((operation) => operation?.tags?.includes('Page data')).map((operation) => ({ path, ...operation })));
+assert.deepEqual(pageDataOperations.map((operation) => operation.operationId).sort(), ['changePageDataSettings', 'deletePageDataEntry',
+  'deletePageDataRange', 'listPageDataEntries', 'readPageDataSettings', 'writePageDataEntry'],
+  'Page data publishes its six owner operations');
+for (const operation of pageDataOperations) {
+  assert.match(operation.path, /^\/api\/\{ns\}\/\{id\}\/state(?:\/|$)/, `${operation.operationId} is an untyped owner route under the publication`);
+  assert.deepEqual(operation.security, [{ OwnerToken: [] }, { ManageKey: [] }],
+    `${operation.operationId} requires owner authority: owner token or management key`);
+}
+assert.ok(spec.tags.find((tag) => tag.name === 'Page data').description.includes('/_bp/state/v1'),
+  'Page data tag describes the visitor host API instead of listing it');
+assert.deepEqual(Object.keys(spec.paths).filter((path) => /\/_bp\/|^\/api\/hosts\/.*\/state/.test(path)), [],
+  'Visitor host API and host state routes stay out of the contract paths');
+for (const name of ['HtmlUploadRequest', 'HtmlUpdateRequest']) {
+  assert.deepEqual(schemas[name].properties.state?.type, ['object', 'null'], `${name} takes the optional page data settings object`);
+  assert.ok(!(schemas[name].required ?? []).includes('state'), `${name} never requires state`);
+}
+assert.deepEqual([schemas.StateListResponse.required, schemas.StateDeleteResponse.required, schemas.StateWriteResponse.required],
+  [['items', 'next'], ['deleted'], ['createdAt', 'id', 'key', 'updatedAt', 'version']],
+  'Page data answers: an entry page with next, a delete count, a write receipt with its version');
+assert.deepEqual(schemas.StateEntry.required, ['createdAt', 'id', 'key', 'sizeBytes', 'updatedAt', 'value', 'version', 'visitor'],
+  'A page data entry carries key, id, visitor, version, size, times and value');
 const tagNames = (spec.tags ?? []).map((tag) => tag.name);
 assert.equal(new Set(tagNames).size, tagNames.length, 'Top-level tag names are unique');
 assert.deepEqual(spec.paths['/api/json'].post.requestBody.content['application/json'].schema, {},
