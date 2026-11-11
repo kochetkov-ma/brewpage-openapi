@@ -3894,7 +3894,7 @@
     },
     "termsOfService": "https://brewpage.app/terms",
     "title": "BrewPage API",
-    "version": "2.20.5"
+    "version": "2.21.6"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -7370,6 +7370,9 @@
             "description": "Namespace pool exhausted — retry budget hit consecutive collisions"
           }
         },
+        "security": [
+          {}
+        ],
         "summary": "Suggest a random namespace",
         "tags": [
           "Namespace"
@@ -7402,6 +7405,9 @@
             "description": "Rate limit exceeded for this IP"
           }
         },
+        "security": [
+          {}
+        ],
         "summary": "Mint a fresh owner token and its derived owner id",
         "tags": [
           "Owner Token"
@@ -8576,6 +8582,9 @@
             "description": "Too many reports from this address today"
           }
         },
+        "security": [
+          {}
+        ],
         "summary": "Submit abuse report",
         "tags": [
           "Reports"
@@ -8598,6 +8607,9 @@
             "description": "Image sitemap XML"
           }
         },
+        "security": [
+          {}
+        ],
         "summary": "Google image-sitemap",
         "tags": [
           "SEO"
@@ -8620,6 +8632,9 @@
             "description": "Sitemap index XML"
           }
         },
+        "security": [
+          {}
+        ],
         "summary": "Top-level sitemap index",
         "tags": [
           "SEO"
@@ -8642,6 +8657,9 @@
             "description": "Sitemap XML"
           }
         },
+        "security": [
+          {}
+        ],
         "summary": "Dynamic XML sitemap",
         "tags": [
           "SEO"
@@ -9415,6 +9433,9 @@
             "description": "Platform statistics"
           }
         },
+        "security": [
+          {}
+        ],
         "summary": "Get platform stats",
         "tags": [
           "Stats"
@@ -10586,6 +10607,9 @@
             "description": "Page number invalid or past the last page"
           }
         },
+        "security": [
+          {}
+        ],
         "summary": "Flat HTML index of all current public publications",
         "tags": [
           "SEO"
@@ -10626,6 +10650,9 @@
             "description": "HTML stub with OG meta (or generic stub when resource is missing)"
           }
         },
+        "security": [
+          {}
+        ],
         "summary": "OpenGraph HTML stub",
         "tags": [
           "preview"
@@ -10690,6 +10717,9 @@
             "description": "Per-IP rate limit exceeded"
           }
         },
+        "security": [
+          {}
+        ],
         "summary": "Per-content OG image",
         "tags": [
           "preview"
@@ -10754,6 +10784,9 @@
             "description": "Per-IP rate limit exceeded"
           }
         },
+        "security": [
+          {}
+        ],
         "summary": "Per-content OG image (legacy URL)",
         "tags": [
           "preview"
@@ -10834,6 +10867,9 @@
             "description": "Per-IP rate limit exceeded"
           }
         },
+        "security": [
+          {}
+        ],
         "summary": "WebP preview",
         "tags": [
           "preview"
@@ -10869,6 +10905,9 @@
             "description": "Unknown key"
           }
         },
+        "security": [
+          {}
+        ],
         "summary": "IndexNow key verification",
         "tags": [
           "SEO"

@@ -1,5 +1,10 @@
 # Release Notes
 
+## API contract 2.21.6 — 2026-11-11
+
+- Exported from brewpage-app source `6b1292b1be72a4eced943be7b159b762c682706f` (brewpage-app release v2.21.6), clean tree. 54 paths and 74 operations.
+- Every operation now states how it is accessed. The 13 operations that need no credentials (reports, previews, galleries, stats, sitemaps, IndexNow key, `GET /api/owner-token`, `GET /api/namespace/random`) declare anonymous access `security: [{}]`, so API catalogs and code generators import the spec without security warnings. No path, field, code or behaviour changed.
+
 ## MCP 1.18.1 — 2026-11-10
 
 - After publishing, the assistant gives you the management link together with the page link, so you can edit or delete the publication later. The publish result says so next to `MANAGE LINK (private)`: anyone who has that link can edit or delete the publication, so it is never posted publicly. Text only: no tool or input change. Twenty-five tools. Contract 2.20.5. `User-Agent: brewpage-mcp/1.18.1`; pins bumped.

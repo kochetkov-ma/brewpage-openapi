@@ -3030,7 +3030,7 @@ info:
     url: https://www.apache.org/licenses/LICENSE-2.0
   termsOfService: https://brewpage.app/terms
   title: BrewPage API
-  version: 2.20.5
+  version: 2.21.6
 openapi: 3.1.0
 paths:
   /api/domains:
@@ -5375,6 +5375,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
           description: Namespace pool exhausted — retry budget hit consecutive collisions
+      security:
+        - {}
       summary: Suggest a random namespace
       tags:
         - Namespace
@@ -5398,6 +5400,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
           description: Rate limit exceeded for this IP
+      security:
+        - {}
       summary: Mint a fresh owner token and its derived owner id
       tags:
         - Owner Token
@@ -6186,6 +6190,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
           description: Too many reports from this address today
+      security:
+        - {}
       summary: Submit abuse report
       tags:
         - Reports
@@ -6203,6 +6209,8 @@ paths:
               schema:
                 type: string
           description: Image sitemap XML
+      security:
+        - {}
       summary: Google image-sitemap
       tags:
         - SEO
@@ -6219,6 +6227,8 @@ paths:
               schema:
                 type: string
           description: Sitemap index XML
+      security:
+        - {}
       summary: Top-level sitemap index
       tags:
         - SEO
@@ -6235,6 +6245,8 @@ paths:
               schema:
                 type: string
           description: Sitemap XML
+      security:
+        - {}
       summary: Dynamic XML sitemap
       tags:
         - SEO
@@ -6754,6 +6766,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/StatsResponse'
           description: Platform statistics
+      security:
+        - {}
       summary: Get platform stats
       tags:
         - Stats
@@ -7487,6 +7501,8 @@ paths:
           description: HTML index page
         '404':
           description: Page number invalid or past the last page
+      security:
+        - {}
       summary: Flat HTML index of all current public publications
       tags:
         - SEO
@@ -7512,6 +7528,8 @@ paths:
               schema:
                 type: string
           description: HTML stub with OG meta (or generic stub when resource is missing)
+      security:
+        - {}
       summary: OpenGraph HTML stub
       tags:
         - preview
@@ -7555,6 +7573,8 @@ paths:
           description: Not modified (If-None-Match matched current ETag)
         '429':
           description: Per-IP rate limit exceeded
+      security:
+        - {}
       summary: Per-content OG image
       tags:
         - preview
@@ -7598,6 +7618,8 @@ paths:
           description: Not modified (If-None-Match matched current ETag)
         '429':
           description: Per-IP rate limit exceeded
+      security:
+        - {}
       summary: Per-content OG image (legacy URL)
       tags:
         - preview
@@ -7650,6 +7672,8 @@ paths:
           description: No preview
         '429':
           description: Per-IP rate limit exceeded
+      security:
+        - {}
       summary: WebP preview
       tags:
         - preview
@@ -7672,6 +7696,8 @@ paths:
           description: Key file content
         '404':
           description: Unknown key
+      security:
+        - {}
       summary: IndexNow key verification
       tags:
         - SEO

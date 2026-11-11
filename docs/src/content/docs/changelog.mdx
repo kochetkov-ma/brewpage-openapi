@@ -6,6 +6,10 @@ order: 5
 
 # Changelog
 
+## API contract 2.21.6 — explicit anonymous access
+
+Every operation now states how it is accessed: the 13 that need no credentials (reports, previews, galleries, stats, sitemaps, owner-token minting, random namespace) declare anonymous access, so API catalogs and code generators import the spec cleanly. No path, field or behaviour change: 54 paths and 74 operations.
+
 ## MCP 1.18.1 — management link for the user
 
 After publishing, the assistant gives you the management link together with the page link, so you can edit or delete the publication later. The link is private: anyone who has it can edit or delete the publication, so it is never posted publicly. No tool or input change. Contract 2.20.5.
