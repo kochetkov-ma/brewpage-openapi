@@ -6,9 +6,13 @@ order: 5
 
 # Changelog
 
-## MCP 1.19.0 — page data (unreleased)
+## MCP 1.19.0 — page data
 
-A published page can save what its visitors enter: form answers, a guestbook, votes, scores, game progress. The assistant reads the new `get_guide`, then publishes with `state` on `publish_html` or `publish_site`. Four more tools work with the saved entries: `get_page_data` reads them, `set_page_data` writes author entries, `configure_page_data` changes who can read a list, `delete_page_data` removes entries. They take the owner token, or the page's management link as `manageUrl`. After publishing, the assistant gives you the page link and the management link. Thirty tools.
+A published page can save what its visitors enter: form answers, a guestbook, votes, scores, game progress. The assistant reads the new `get_guide`, then publishes with `state` on `publish_html` or `publish_site`. Four more tools work with the saved entries: `get_page_data` reads them, `set_page_data` writes author entries, `configure_page_data` changes who can read a list, `delete_page_data` removes entries. They take the owner token, or the page's management link as `manageUrl`. After publishing, the assistant gives you the page link and the management link. Thirty tools. Contract 2.22.0.
+
+## API contract 2.22.0 — page data
+
+New tag `Page data` with 6 operations for what visitors saved on your HTML page or site: read the settings and usage (`GET /api/{ns}/{id}/state`), change the settings (`PATCH`, `{}` turns page data on, `null` turns it off and keeps the entries), list one list's entries (`GET …/state/{col}`, also as CSV), write an author entry (`PUT …/state/{col}/{key}`), delete one entry or a time range. Auth: `X-Owner-Token`, or `X-Manage-Key` from the management link. `POST /api/html`, `PUT /api/html/{ns}/{id}`, `POST /api/sites` and `PUT /api/sites/{ns}/{id}` take an optional `state`; the page gets its own address `https://<label>.brewpage.app`. New `GET /api/gallery/promo` returns BrewPage's own examples pinned in the public gallery. Additions only: 59 paths and 81 operations.
 
 ## API contract 2.21.8 — JSON files on upload
 

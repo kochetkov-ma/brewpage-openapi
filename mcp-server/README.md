@@ -697,9 +697,9 @@ Every publish response includes an **owner token** -- the only credential that a
 
 ## Changelog
 
-## 1.19.0 -- unreleased
+## 1.19.0 -- 2026-11-11
 
-- Page data: a page can save what its visitors enter (form answers, guestbook, votes, scores, game progress). Five new tools: `get_guide` returns the short reference to read before writing such a page; `get_page_data` reads the settings or one list's entries; `set_page_data` writes author entries; `configure_page_data` changes who can read a list and its limits; `delete_page_data` removes entries. `publish_html` and `publish_site` take `state` on create, `update_html` and `republish_site` on update. The four page-data tools take the owner token, or the page's management link alone as `manageUrl`. The server sends short instructions when a client connects. Thirty tools. `User-Agent: brewpage-mcp/1.19.0`.
+- Page data: a page can save what its visitors enter (form answers, guestbook, votes, scores, game progress). Five new tools: `get_guide` returns the short reference to read before writing such a page; `get_page_data` reads the settings or one list's entries; `set_page_data` writes author entries; `configure_page_data` changes who can read a list and its limits; `delete_page_data` removes entries. `publish_html` and `publish_site` take `state` on create, `update_html` and `republish_site` on update. The four page-data tools take the owner token, or the page's management link alone as `manageUrl`. The server sends short instructions when a client connects. Thirty tools. Contract 2.22.0. `User-Agent: brewpage-mcp/1.19.0`.
 
 ## 1.18.1 -- 2026-11-10
 
