@@ -134,6 +134,31 @@ for (const [transport, connect] of [["stdio", stdio], ["HTTP", http]] as const) 
   }
 }
 
+const SERVER_INSTRUCTIONS = [
+  "BrewPage publishes HTML, Markdown, sites, files, JSON and KV and returns a share link plus an owner token. Keep the owner token private and send it as ownerToken on every later call for that publication; it cannot be recovered. A page that must save what its visitors enter (form answers, guestbook, votes, scores, game progress) needs Page data: read get_guide topic page-data BEFORE writing the page, then publish with the state argument.",
+  "After publishing, give the user the page link and the management link from the result. Say that the management link is private: whoever has it can edit or delete the page, and its Data tab shows what visitors saved.",
+  "KV and JSON tools hold your own data. Page data holds what a page's visitors save: get_page_data reads it, set_page_data writes author entries, configure_page_data changes who can read a list, delete_page_data moderates. In a later chat these four take the management link as manageUrl.",
+].join("\n");
+
+for (const [transport, connect] of [["stdio", stdio], ["HTTP", http]] as const) {
+  for (const row of [
+    { label: `server/discover ${MODERN}`, method: "server/discover", params: envelope(MODERN), version: MODERN },
+    { label: "initialize 2025-11-25", method: "initialize", version: undefined,
+      params: { protocolVersion: "2025-11-25", capabilities: {}, clientInfo: { name: "protocol-test", version: "0.0.0" } } },
+  ]) {
+    test(`${transport} ${row.label} returns the exact server instructions`, { timeout: 15_000 }, async (t) => {
+      // GIVEN the built entry on a stub API.
+      const api = await backend(t);
+      const send = await connect(t, api.url);
+      // WHEN the client opens the connection.
+      const { result } = await send({ jsonrpc: "2.0", id: 1, method: row.method, params: row.params }, row.version);
+      // THEN the handshake carries the three instruction paragraphs, the first within 512 chars, and calls no API.
+      assert.deepEqual({ instructions: result?.instructions, firstParagraph: SERVER_INSTRUCTIONS.split("\n")[0].length, upstream: api.requests.length },
+        { instructions: SERVER_INSTRUCTIONS, firstParagraph: 440, upstream: 0 }, `${transport} ${row.label}: server instructions`);
+    });
+  }
+}
+
 for (const scenario of [
   { transport: "stdio", mode: "auto", negotiated: MODERN, userAgent: `brewpage-mcp/${PACKAGE_VERSION}` },
   { transport: "stdio", mode: "legacy", negotiated: "2025-11-25", userAgent: `brewpage-mcp/${PACKAGE_VERSION}` },

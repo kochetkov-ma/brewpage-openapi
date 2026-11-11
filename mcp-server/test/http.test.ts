@@ -271,6 +271,46 @@ test("a tools/call log line names only registered tools and caps the method", { 
     "log lines carry bounded method and known tool names only");
 });
 
+const MANAGE_KEY = `bpm_${"K".repeat(32)}`;
+const MANAGE_LINK = `https://brewpage.app/manage/html/priv-abc123/aBcDeFgHiJ#k=${MANAGE_KEY}`;
+
+for (const scenario of [
+  { tool: "get_guide", pool: "light", args: { topic: "page-data" }, status: "HTTP/1.1 200 OK" },
+  { tool: "get_page_data", pool: "standard", args: { manageUrl: MANAGE_LINK }, status: "HTTP/1.1 503 Service Unavailable" },
+]) {
+  test(`${scenario.tool} runs in the ${scenario.pool} pool`, { timeout: 15_000 }, async (t) => {
+    // GIVEN one client holding both of its standard slots with writes the backend never answers.
+    const f = await fixture(t, "127.0.0.1/32", { hold: true });
+    const held = [f.raw(rawPost("198.51.100.1", PUBLISH)), f.raw(rawPost("198.51.100.1", PUBLISH))];
+    await f.until(() => f.backend.open === 2);
+    // WHEN the same client calls the tool.
+    const status = await f.raw(rawPost("198.51.100.1", toolCall(scenario.tool, scenario.args))).status;
+    held.forEach(({ socket }) => socket.destroy());
+    // THEN a light tool is served beside the held writes; a standard one finds no free slot; neither reaches the backend.
+    assert.deepEqual({ status, backendCalls: f.requests.length }, { status: scenario.status, backendCalls: 2 },
+      `${scenario.tool} takes a ${scenario.pool} slot`);
+  });
+}
+
+test("the log line of a page-data call has the tool name and status, never the list, entry, value, key or link", { timeout: 15_000 }, async (t) => {
+  // GIVEN the HTTP entry and a remote client holding a management link.
+  const f = await fixture(t);
+  const client = await f.connect();
+  // WHEN it writes an author entry.
+  const result = await client.callTool({ name: "set_page_data", arguments: { manageUrl: MANAGE_LINK, collection: "secret-list",
+    docs: [{ key: "secret-entry", value: { note: "secret-value" } }] } }) as { isError?: boolean };
+  await f.until(() => f.logs.some(({ tool }) => tool === "set_page_data"));
+  // THEN the key travels only to the backend and the log line holds method, tool, status and outcome alone.
+  const { ts: _ts, ms: _ms, ...line } = f.logs.find(({ tool }) => tool === "set_page_data")!;
+  const output = JSON.stringify([...f.logs, ...f.events]);
+  const write = f.requests.at(-1)!;
+  assert.deepEqual({ isError: result.isError, line, leaked: ["secret-list", "secret-entry", "secret-value", MANAGE_KEY, "/manage/", "priv-abc123"].filter((secret) => output.includes(secret)),
+    write: { method: write.method, url: write.url, key: write.headers["x-manage-key"], owner: write.headers["x-owner-token"] } },
+  { isError: undefined, line: { http: "POST", method: "tools/call", tool: "set_page_data", status: 200, outcome: "ok" }, leaked: [],
+    write: { method: "PUT", url: "/api/priv-abc123/aBcDeFgHiJ/state/secret-list/secret-entry", key: MANAGE_KEY, owner: undefined } },
+  "page-data log line carries no private content");
+});
+
 for (const target of ["http://127.0.0.1:{port}/source-file", "http://169.254.169.254/latest/meta-data/", "http://[::1]:{port}/source-file",
   "http://localhost:{port}/source-file", "http://[::ffff:127.0.0.1]:{port}/source-file", "http://10.0.0.1/file"]) {
   test(`publish_file refuses the internal source ${target}`, { timeout: 15_000 }, async (t) => {
