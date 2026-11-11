@@ -4,6 +4,12 @@ import { z } from "zod";
 export const DEFAULT_BASE_URL = "https://brewpage.app";
 export const USER_AGENT = "brewpage-mcp/1.18.1";
 export const OWNER_TOKEN_ENV = "BREWPAGE_OWNER_TOKEN";
+/** Server instructions of the handshake: one paragraph per line; the first stands alone within 512 chars. */
+export const SERVER_INSTRUCTIONS = [
+  "BrewPage publishes HTML, Markdown, sites, files, JSON and KV and returns a share link plus an owner token. Keep the owner token private and send it as ownerToken on every later call for that publication; it cannot be recovered. A page that must save what its visitors enter (form answers, guestbook, votes, scores, game progress) needs Page data: read get_guide topic page-data BEFORE writing the page, then publish with the state argument.",
+  "After publishing, give the user the page link and the management link from the result. Say that the management link is private: whoever has it can edit or delete the page, and its Data tab shows what visitors saved.",
+  "KV and JSON tools hold your own data. Page data holds what a page's visitors save: get_page_data reads it, set_page_data writes author entries, configure_page_data changes who can read a list, delete_page_data moderates. In a later chat these four take the management link as manageUrl.",
+].join("\n");
 
 export interface ServerOptions {
   /** BrewPage origin for API calls; default https://brewpage.app. */
@@ -361,7 +367,7 @@ export function createServer(options: ServerOptions = {}): McpServer {
   const server = new McpServer({
     name: "brewpage-mcp",
     version: "1.18.1",
-  });
+  }, { instructions: SERVER_INSTRUCTIONS });
 
   /** Caller argument first, then the configured default; `fromEnv` marks the configured one. */
   function ownerTokenFor(argument?: string): { token?: string; fromEnv: boolean } {
