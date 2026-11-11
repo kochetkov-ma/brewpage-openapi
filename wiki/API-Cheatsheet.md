@@ -115,6 +115,23 @@ Create exactly the returned `records` at your DNS provider: TXT `_brewpage.<host
 
 ---
 
+## Page data
+
+An HTML page or site can save what its visitors enter (form answers, guestbook, votes, scores). Publish it with a `state` member in the JSON body of `POST /api/html` (a `state` form field on `POST /api/sites`) and load `https://brewpage.app/js/state.js` in the page; `{}` is enough. The author reads and manages the entries with `X-Owner-Token`, or with the key of the management link as `X-Manage-Key`.
+
+```
+GET    /api/{ns}/{id}/state                    → Settings, each list's entry count and size, usage
+PATCH  /api/{ns}/{id}/state                    → Change the settings; null turns page data off (entries are kept)
+GET    /api/{ns}/{id}/state/{col}              → Entries of one list: {items, next}; ?order=-createdAt&limit=20&cursor=
+PUT    /api/{ns}/{id}/state/{col}/{key}        → Write an author entry (any JSON value)
+DELETE /api/{ns}/{id}/state/{col}/docs/{docId} → Delete one entry
+DELETE /api/{ns}/{id}/state/{col}?before=      → Delete entries by time (after, before)
+```
+
+Lists are `private` by default (each visitor reads and writes only their own entries), or `shared` (everyone reads); `write: "author"` makes a shared list author-only. The author reads everything.
+
+---
+
 ## Short URLs
 
 Use the exact primary `link` and any `shortUrl` returned by the API; do not reconstruct publication URLs.

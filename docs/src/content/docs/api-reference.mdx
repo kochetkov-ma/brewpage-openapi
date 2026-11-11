@@ -53,6 +53,7 @@ Base URL: [`https://brewpage.app`](https://brewpage.app) (alias: [`https://brewd
 | **Hosting Management** | Owner-only delivery, access and publication actions | `GET/PATCH /api/{type}/{ns}/{id}/hosting`, `POST /api/{type}/{ns}/{id}/access/revoke`, `POST /api/{type}/{ns}/{id}/{visibility,password,manage-key,extend,rotate}` |
 | **Owner Token** | New token; profile tokens with an admin token | `GET /api/owner-token`, `POST /api/owner-token/{bind,mint,revoke,revoke-others}` |
 | **Custom Domains** | An HTML page or site on a domain you own; free with a profile | `GET/PUT/DELETE /api/publications/{type}/{ns}/{id}/domain`, `POST …/domain/check`, `GET/POST /api/domains`, `GET/DELETE /api/domains/{hostname}`, `POST /api/domains/{hostname}/check`, `PUT/DELETE /api/domains/{hostname}/attachment` |
+| **Page data** | What visitors save on an HTML page or site; the author reads, writes own entries, changes settings and deletes | `GET/PATCH /api/{ns}/{id}/state`, `GET/DELETE /api/{ns}/{id}/state/{col}`, `PUT /api/{ns}/{id}/state/{col}/{key}`, `DELETE /api/{ns}/{id}/state/{col}/docs/{docId}` |
 | **Stats** | Platform statistics | [`GET /api/stats`](https://brewpage.app/swagger-ui/index.html#/Stats) |
 | **Limits** | Current upload limits | [`GET /api/limits`](https://brewpage.app/api/limits) |
 | **Short Links** | URL shortener | `GET /s/{code}` |

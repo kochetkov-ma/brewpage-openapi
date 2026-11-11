@@ -24,7 +24,7 @@ Use BrewPage directly from Claude Desktop, Claude Code, or any MCP client.
 
 ### Remote (no install)
 
-Add `https://brewpage.app/mcp` as a custom connector / remote MCP server by URL in Claude.ai, ChatGPT or any Streamable HTTP client. No auth; same 25 tools.
+Add `https://brewpage.app/mcp` as a custom connector / remote MCP server by URL in Claude.ai, ChatGPT or any Streamable HTTP client. No auth; same 30 tools.
 
 Claude Code: `claude mcp add --transport http brewpage https://brewpage.app/mcp`, or in `.mcp.json`:
 
@@ -108,8 +108,24 @@ npx -y brewpage-mcp@1.18.1
 | `get_kv` | Read a key |
 | `search_gallery` | Search the public gallery |
 | `update_hosting` | Change hosting with owner authority and the expected hosting version |
+| `get_guide` | Read the short Page data guide before writing a page that saves what visitors enter |
+| `get_page_data` | Read what visitors saved on your page: settings and usage, or one list's entries |
+| `set_page_data` | Write author entries (for example today's menu) without republishing |
+| `configure_page_data` | Change who can read a list and its limits; only what you name changes |
+| `delete_page_data` | Delete entries by id or by time range |
 
 Omitted `namespace` is private (a generated namespace): unlisted and not indexed; anyone with the link can still open it. `public` lists HTML, sites and files in the gallery and sitemap, so Google, Bing and AI search can index them. Password-protected publications are never listed. Keep the exact server-returned `link`, cohort and effective mode.
+
+---
+
+## Page data
+
+A published HTML page or site can save what its visitors enter: form answers, a guestbook, votes, scores, game progress. Ask for it in plain words ("make a guestbook page that saves messages"): the assistant reads `get_guide`, writes the page with the script `https://brewpage.app/js/state.js` and publishes it with `state`.
+
+- Each visitor reads and writes only their own entries by default; a `shared` list is readable by everyone; a `shared` list with `write: "author"` is written only by you.
+- You read everything: in the Data tab behind the management link, or by asking the assistant ("show me what people wrote").
+- After publishing, the assistant gives you the page link and the management link. The management link is private: whoever has it can edit or delete the page and read its data. The assistant keeps the owner token and shows it on request; neither is ever posted publicly.
+- In a later chat, paste the management link: `get_page_data`, `set_page_data`, `configure_page_data` and `delete_page_data` take it as `manageUrl` instead of the owner token.
 
 ---
 
@@ -146,6 +162,9 @@ Omitted `namespace` is private (a generated namespace): unlisted and not indexed
 | "Delete my page demo/abc123, token tok_xyz" | `delete_resource` |
 | "Show BrewPage stats" | `get_stats` |
 | "How many files can a BrewPage site have?" | `get_limits` |
+| "Make a guestbook page that saves messages" | `get_guide`, then `publish_html` (state) |
+| "Show me what people wrote on my page" | `get_page_data` |
+| "Remove these spam entries" | `delete_page_data` |
 
 ---
 

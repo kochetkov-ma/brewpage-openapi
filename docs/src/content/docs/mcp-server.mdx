@@ -8,13 +8,13 @@ order: 3
 
 Last updated: 2026-10-29
 
-`brewpage-mcp` 1.18.1 provides twenty-five tools to publish and manage HTML, Markdown, JSON, KV, files, and multi-file sites from compatible MCP clients. It runs locally over stdio (Node.js 20 or newer) or remotely without install, and calls the BrewPage API.
+`brewpage-mcp` 1.18.1 provides thirty tools to publish and manage HTML, Markdown, JSON, KV, files, and multi-file sites, and to read what visitors save on a page, from compatible MCP clients. It runs locally over stdio (Node.js 20 or newer) or remotely without install, and calls the BrewPage API.
 
 ## Installation
 
 ### Remote (no install)
 
-Add `https://brewpage.app/mcp` as a custom connector / remote MCP server by URL in Claude.ai, ChatGPT or any Streamable HTTP client. No auth; same 25 tools.
+Add `https://brewpage.app/mcp` as a custom connector / remote MCP server by URL in Claude.ai, ChatGPT or any Streamable HTTP client. No auth; same 30 tools.
 
 Claude Code: `claude mcp add --transport http brewpage https://brewpage.app/mcp`, or in `.mcp.json`:
 
@@ -88,6 +88,11 @@ This starts a stdio server for an MCP client, not an interactive publishing shel
 | `list_domains` | List the profile's custom domains with status and DNS records (admin token) |
 | `check_domain` | Check a custom domain's DNS now; status `pending_dns` -> `verifying` -> `active` |
 | `remove_domain` | Remove a custom domain and free its slot; the BrewPage link keeps working |
+| `get_guide` | Read the short Page data guide before writing a page that saves what visitors enter |
+| `get_page_data` | Read what visitors saved on your page: the settings and usage, or one list's entries |
+| `set_page_data` | Write author entries (for example today's menu) without republishing the page |
+| `configure_page_data` | Change who can read a list and its limits; only what you name changes |
+| `delete_page_data` | Delete entries by id, or every entry in a time range |
 | `search_gallery` | Browse public content or list owned resources with `mine` and `ownerToken` |
 | `get_stats` | Get platform-wide usage statistics |
 | `get_limits` | Get the current upload limits (`GET /api/limits`) |
@@ -102,6 +107,22 @@ check_domain(type="html", namespace="public", id="aBcDeFgHiJ")
 ```
 
 `set_domain` prints the DNS records to create at your DNS provider, exactly as returned: a TXT record at `_brewpage.<host>` plus a CNAME to `domains.brewpage.app`; a root domain takes the A record shown, or ALIAS. After you create them, `check_domain` reports `pending_dns`, then `verifying`, then `active`; HTTPS is issued automatically and the BrewPage link keeps working. `list_domains` (admin token) shows all domains of the profile, `remove_domain` frees a slot. `publish_html` and `publish_site` take an optional `domain` to connect it while publishing.
+
+## Page Data
+
+A published HTML page or site can save what its visitors enter: form answers, a guestbook, votes, scores, game progress. No keys and no backend of your own. The page loads the script `https://brewpage.app/js/state.js` and is published with a `state` argument that names its lists; `{}` is enough to start.
+
+```
+get_guide(topic="page-data")
+publish_html(content="<!doctype html>...", state={"collections": {"guestbook": {"mode": "shared"}}})
+get_page_data(namespace="priv-abc123", id="aBcDeFgHiJ", collection="guestbook")
+```
+
+By default each visitor reads and writes only their own entries (`private`). A `shared` list is readable by everyone; with `write: "author"` only you write it, for example a menu. You, the author, read everything: in the Data tab behind the management link, or with `get_page_data`.
+
+`get_guide` returns the short reference the assistant reads before writing such a page. `publish_html` and `publish_site` take `state` on create and the page gets its own address `https://<label>.brewpage.app`; `update_html` and `republish_site` take it on update, where lists named in the call are added or updated and the others stay. `set_page_data` writes author entries without republishing, `configure_page_data` changes who can read a list and its limits, `delete_page_data` removes entries by id or by time range.
+
+After publishing, the assistant gives you the page link and the management link, keeps the owner token and shows it on request; neither is ever posted publicly. The four page-data tools take `namespace`, `id` and `ownerToken`, or the management link alone as `manageUrl`, which works in a later chat when the token is not at hand.
 
 ## Visibility and Delivery
 
