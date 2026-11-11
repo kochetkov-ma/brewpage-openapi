@@ -3030,7 +3030,7 @@ info:
     url: https://www.apache.org/licenses/LICENSE-2.0
   termsOfService: https://brewpage.app/terms
   title: BrewPage API
-  version: 2.21.6
+  version: 2.21.8
 openapi: 3.1.0
 paths:
   /api/domains:
@@ -3481,8 +3481,9 @@ paths:
         charset was named. link and ownerLink point to the page, notice 'html-file-as-page' or 'markdown-file-as-page';
         a code format chosen by 'format' or the declared type is published the same way, notice 'file-format-applied'.
         An HTML file over the page size limit or that no encoding reads is stored as a file and shown as source, notice
-        'html-file-as-source'. Secrets allowed; likely ones are flagged in notices. For a secret: private namespace +
-        password.
+        'html-file-as-source'. A JSON file in the public namespace is stored as sent, notice 'json-file-not-listed';
+        JSON data belongs in POST /api/json. Secrets allowed; likely ones are flagged in notices. For a secret: private
+        namespace + password.
       operationId: upload
       parameters:
         - description: >-

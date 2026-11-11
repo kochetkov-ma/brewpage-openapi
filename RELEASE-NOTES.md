@@ -1,5 +1,10 @@
 # Release Notes
 
+## API contract 2.21.8 — 2026-11-11
+
+- Exported from brewpage-app source `3bfec094181e9258ec6e6779ee021a2602ecebce` (brewpage-app release v2.21.8), clean tree. 54 paths and 74 operations. Description only: no path, field or code changed.
+- `POST /api/files`: the file upload response tells clients that JSON files are not listed in the gallery (notice `json-file-not-listed` for a JSON file in the public namespace) and that JSON data belongs in `/api/json`.
+
 ## API contract 2.21.6 — 2026-11-11
 
 - Exported from brewpage-app source `6b1292b1be72a4eced943be7b159b762c682706f` (brewpage-app release v2.21.6), clean tree. 54 paths and 74 operations.

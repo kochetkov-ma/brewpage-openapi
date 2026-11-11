@@ -6,6 +6,10 @@ order: 5
 
 # Changelog
 
+## API contract 2.21.8 — JSON files on upload
+
+The file upload response tells clients that JSON files are not listed in the gallery and that JSON data belongs in `/api/json`. Description only: 54 paths and 74 operations.
+
 ## API contract 2.21.6 — explicit anonymous access
 
 Every operation now states how it is accessed: the 13 that need no credentials (reports, previews, galleries, stats, sitemaps, owner-token minting, random namespace) declare anonymous access, so API catalogs and code generators import the spec cleanly. No path, field or behaviour change: 54 paths and 74 operations.

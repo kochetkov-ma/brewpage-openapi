@@ -3894,7 +3894,7 @@
     },
     "termsOfService": "https://brewpage.app/terms",
     "title": "BrewPage API",
-    "version": "2.21.6"
+    "version": "2.21.8"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -4534,7 +4534,7 @@
         ]
       },
       "post": {
-        "description": "Stores a file via multipart upload and returns a download link. Only safe file types accepted; a missing or wrong extension is corrected from the content and reported in notices. Reuse existing owner token to group entities under one owner. An HTML or Markdown file is published as a page in any namespace, with or without a password (same rules and limits as POST /api/html). 'format' decides; without one a known extension, then a specific declared part type (text/html, text/markdown, application/json, text/csv), then a content guess; otherwise it stays an inert file. '.txt' without 'format' stays a text file. A whole HTML document sent as 'markdown' is an HTML page. Any readable encoding is stored as UTF-8, notice 'charset-guessed' when no usable charset was named. link and ownerLink point to the page, notice 'html-file-as-page' or 'markdown-file-as-page'; a code format chosen by 'format' or the declared type is published the same way, notice 'file-format-applied'. An HTML file over the page size limit or that no encoding reads is stored as a file and shown as source, notice 'html-file-as-source'. Secrets allowed; likely ones are flagged in notices. For a secret: private namespace + password.",
+        "description": "Stores a file via multipart upload and returns a download link. Only safe file types accepted; a missing or wrong extension is corrected from the content and reported in notices. Reuse existing owner token to group entities under one owner. An HTML or Markdown file is published as a page in any namespace, with or without a password (same rules and limits as POST /api/html). 'format' decides; without one a known extension, then a specific declared part type (text/html, text/markdown, application/json, text/csv), then a content guess; otherwise it stays an inert file. '.txt' without 'format' stays a text file. A whole HTML document sent as 'markdown' is an HTML page. Any readable encoding is stored as UTF-8, notice 'charset-guessed' when no usable charset was named. link and ownerLink point to the page, notice 'html-file-as-page' or 'markdown-file-as-page'; a code format chosen by 'format' or the declared type is published the same way, notice 'file-format-applied'. An HTML file over the page size limit or that no encoding reads is stored as a file and shown as source, notice 'html-file-as-source'. A JSON file in the public namespace is stored as sent, notice 'json-file-not-listed'; JSON data belongs in POST /api/json. Secrets allowed; likely ones are flagged in notices. For a secret: private namespace + password.",
         "operationId": "upload",
         "parameters": [
           {
