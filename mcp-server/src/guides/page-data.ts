@@ -9,7 +9,7 @@ export const PAGE_DATA_GUIDE = [
   "     \"guestbook\":{\"mode\":\"shared\",\"maxDocsPerVisitor\":5},",
   "     \"scores\":{\"mode\":\"shared\",\"index\":\"score\",\"maxDocsPerVisitor\":1},",
   "     \"menu\":{\"mode\":\"shared\",\"write\":\"author\"}}}}",
-  "   The page gets its own address https://<label>.brewpage.app. Saving needs both: a declared \"state\" and that address (or the page's custom domain).",
+  "   The page gets its own address https://<label>.brewpage.app. Saving needs both: a declared \"state\" and that address.",
   "   Raw-HTML publishes cannot carry state: use the JSON body, or PATCH /api/{ns}/{id}/state afterwards.",
   "2) Include before your code (absolute URL, classic script, no async, no import):",
   "   <script src=\"https://brewpage.app/js/state.js\"></script>",
