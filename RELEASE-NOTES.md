@@ -1,5 +1,11 @@
 # Release Notes
 
+## MCP 1.19.0 — unreleased
+
+- Page data: a published page can now save what its visitors enter, such as form answers, a guestbook, votes, scores or game progress, with no backend of your own. Ask the assistant for such a page: it reads the new `get_guide`, writes the page and publishes it with `state` (`publish_html`, `publish_site`; `update_html` and `republish_site` take it too). Each visitor sees only their own entries unless you make a list shared; you read everything in the Data tab behind the management link.
+- New tools for the saved entries: `get_page_data` reads the settings or one list's entries, `set_page_data` writes author entries such as today's menu, `configure_page_data` changes who can read a list and its limits, `delete_page_data` removes entries by id or by time range. They take the owner token, or the page's management link alone as `manageUrl`, so a later chat needs only that link.
+- After publishing, the assistant gives you the page link and the management link, keeps the owner token and shows it on request. Thirty tools. `User-Agent: brewpage-mcp/1.19.0`; pins bumped.
+
 ## API contract 2.21.8 — 2026-11-11
 
 - Exported from brewpage-app source `3bfec094181e9258ec6e6779ee021a2602ecebce` (brewpage-app release v2.21.8), clean tree. 54 paths and 74 operations. Description only: no path, field or code changed.

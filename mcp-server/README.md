@@ -17,7 +17,7 @@ Choosing a host? See how BrewPage compares with GitHub Pages, Netlify Drop, Tiin
 ## Quick Start
 
 ```bash
-npx -y brewpage-mcp@1.18.1
+npx -y brewpage-mcp@1.19.0
 ```
 
 Requires Node.js 20 or newer. This starts the stdio server for an MCP client.
@@ -50,7 +50,7 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS)
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@1.18.1"]
+      "args": ["-y", "brewpage-mcp@1.19.0"]
     }
   }
 }
@@ -61,7 +61,7 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS)
 Register a project-scoped stdio server:
 
 ```bash
-claude mcp add --transport stdio --scope project brewpage -- npx -y brewpage-mcp@1.18.1
+claude mcp add --transport stdio --scope project brewpage -- npx -y brewpage-mcp@1.19.0
 ```
 
 This writes `.mcp.json` in the project root. Use `--scope user` for user-scoped registration. See the [official Claude Code MCP guide](https://code.claude.com/docs/en/mcp).
@@ -75,7 +75,7 @@ Open **Settings > MCP** and add:
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@1.18.1"]
+      "args": ["-y", "brewpage-mcp@1.19.0"]
     }
   }
 }
@@ -89,7 +89,7 @@ Open the Cline MCP settings panel and add:
 {
   "brewpage": {
     "command": "npx",
-    "args": ["-y", "brewpage-mcp@1.18.1"]
+    "args": ["-y", "brewpage-mcp@1.19.0"]
   }
 }
 ```
@@ -97,7 +97,7 @@ Open the Cline MCP settings panel and add:
 ### Global Install
 
 ```bash
-npm install -g brewpage-mcp@1.18.1
+npm install -g brewpage-mcp@1.19.0
 brewpage-mcp
 ```
 
@@ -696,6 +696,10 @@ Every publish response includes an **owner token** -- the only credential that a
 - [Brewcode Plugin](https://github.com/kochetkov-ma/claude-brewcode) -- Claude Code plugin suite
 
 ## Changelog
+
+## 1.19.0 -- unreleased
+
+- Page data: a page can save what its visitors enter (form answers, guestbook, votes, scores, game progress). Five new tools: `get_guide` returns the short reference to read before writing such a page; `get_page_data` reads the settings or one list's entries; `set_page_data` writes author entries; `configure_page_data` changes who can read a list and its limits; `delete_page_data` removes entries. `publish_html` and `publish_site` take `state` on create, `update_html` and `republish_site` on update. The four page-data tools take the owner token, or the page's management link alone as `manageUrl`. The server sends short instructions when a client connects. Thirty tools. `User-Agent: brewpage-mcp/1.19.0`.
 
 ## 1.18.1 -- 2026-11-10
 

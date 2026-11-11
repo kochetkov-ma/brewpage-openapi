@@ -6,6 +6,10 @@ order: 5
 
 # Changelog
 
+## MCP 1.19.0 — page data (unreleased)
+
+A published page can save what its visitors enter: form answers, a guestbook, votes, scores, game progress. The assistant reads the new `get_guide`, then publishes with `state` on `publish_html` or `publish_site`. Four more tools work with the saved entries: `get_page_data` reads them, `set_page_data` writes author entries, `configure_page_data` changes who can read a list, `delete_page_data` removes entries. They take the owner token, or the page's management link as `manageUrl`. After publishing, the assistant gives you the page link and the management link. Thirty tools.
+
 ## API contract 2.21.8 — JSON files on upload
 
 The file upload response tells clients that JSON files are not listed in the gallery and that JSON data belongs in `/api/json`. Description only: 54 paths and 74 operations.
