@@ -144,12 +144,25 @@ jobs:
         working-directory: mcp-server
         run: npm test
 
+      # People-facing notes: the "## MCP <version>" section of RELEASE-NOTES.md, never only a changelog link.
+      - name: Release notes from RELEASE-NOTES.md
+        if: github.event_name == 'push'
+        env:
+          RELEASE_TAG: ${{ steps.identity.outputs.tag }}
+        run: |
+          set -euo pipefail
+          awk -v head="## MCP ${RELEASE_TAG#v} " 'index($0, head) == 1 {on = 1; next} on && /^## / {exit} on {print}' RELEASE-NOTES.md > "$RUNNER_TEMP/notes.md"
+          if ! grep -q '[^[:space:]]' "$RUNNER_TEMP/notes.md"; then
+            echo "::error file=RELEASE-NOTES.md::no '## MCP ${RELEASE_TAG#v}' section; write the people-facing notes before tagging"
+            exit 1
+          fi
+
       - name: Create GitHub Release
         if: github.event_name == 'push'
         uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
         with:
           tag_name: ${{ steps.identity.outputs.tag }}
-          generate_release_notes: true
+          body_path: ${{ runner.temp }}/notes.md
           files: |
             openapi/openapi.json
             openapi/openapi.yaml
