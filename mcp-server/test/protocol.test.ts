@@ -21,6 +21,7 @@ const EXPECTED_TOOL_NAMES = [
   "republish_site", "update_html", "publish_json", "get_json", "update_json", "publish_kv",
   "set_kv", "get_kv", "get_limits", "search_gallery", "set_visibility", "set_title", "bind_token", "mint_token",
   "set_domain", "list_domains", "check_domain", "remove_domain",
+  "get_page_data", "set_page_data", "configure_page_data", "delete_page_data", "get_guide",
 ];
 
 type Rpc = { id?: number; result?: Record<string, unknown>; error?: { code: number; message: string } };
@@ -118,7 +119,7 @@ const PROTOCOL_MATRIX = [
 
 for (const [transport, connect] of [["stdio", stdio], ["HTTP", http]] as const) {
   for (const row of PROTOCOL_MATRIX) {
-    test(`${transport} ${row.label} negotiates ${row.negotiated} and lists all 25 tools`, { timeout: 15_000 }, async (t) => {
+    test(`${transport} ${row.label} negotiates ${row.negotiated} and lists all 30 tools`, { timeout: 15_000 }, async (t) => {
       // GIVEN the built entry on a stub API.
       const api = await backend(t);
       const send = await connect(t, api.url);

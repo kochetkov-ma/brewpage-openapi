@@ -30,8 +30,8 @@ const MAX_HEAVY_PER_CLIENT = 1;
 /** A full pool queues a request (before its body is read) for up to 30 s instead of answering 503. */
 const QUEUE_WAIT_MS = 30_000;
 const MAX_QUEUED = 64;
-/** Read-only tools with small answers; content reads (get_page/json/kv) stay in the standard pool. */
-const LIGHT_TOOLS = new Set(["get_limits", "get_stats", "search_gallery", "list_domains"]);
+/** Read-only tools with small answers; content reads (get_page/json/kv, get_page_data) stay in the standard pool. */
+const LIGHT_TOOLS = new Set(["get_limits", "get_stats", "search_gallery", "list_domains", "get_guide"]);
 const BACKEND_TIMEOUT_MS = 60_000;
 /** Published egress lists (backend `openai-chatgpt-connectors` rules): daily refresh, last good set kept on failure. */
 const SHARED_LIST_REFRESH_MS = 24 * 60 * 60_000;

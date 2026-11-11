@@ -12,6 +12,7 @@ const EXPECTED_TOOL_NAMES = [
   "republish_site", "update_html", "publish_json", "get_json", "update_json", "publish_kv",
   "set_kv", "get_kv", "search_gallery", "update_hosting", "get_limits", "set_visibility", "set_title", "bind_token", "mint_token",
   "set_domain", "list_domains", "check_domain", "remove_domain",
+  "get_page_data", "set_page_data", "configure_page_data", "delete_page_data", "get_guide",
 ];
 
 const PACKAGE_VERSION = (JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8")) as { version: string }).version;
@@ -111,7 +112,7 @@ async function fixture(t: TestContext, env: Record<string, string> = {}) {
   };
 }
 
-test("MCP exposes exactly 25 tools and optional create-only delivery choice", { timeout: 10_000 }, async (t) => {
+test("MCP exposes exactly 30 tools and optional create-only delivery choice", { timeout: 10_000 }, async (t) => {
   // GIVEN local MCP connected to a synthetic API.
   const f = await fixture(t);
   // WHEN client discovers tools.
@@ -143,6 +144,9 @@ const EXPECTED_TOOL_META: Record<string, [string, Record<string, boolean>]> = {
   mint_token: ["Mint profile token", ADDITIVE], set_title: ["Rename page or site", ADDITIVE],
   set_domain: ["Connect custom domain", ADDITIVE], list_domains: ["List custom domains", READ_ONLY],
   check_domain: ["Check custom domain DNS", ADDITIVE], remove_domain: ["Remove custom domain", DESTRUCTIVE],
+  get_page_data: ["Read page data", READ_ONLY], set_page_data: ["Write author entries", DESTRUCTIVE],
+  configure_page_data: ["Change page data settings", ADDITIVE], delete_page_data: ["Delete page data entries", DESTRUCTIVE],
+  get_guide: ["Read BrewPage guide", READ_ONLY],
 };
 
 test("every tool carries a title and its exact safety hints", { timeout: 10_000 }, async (t) => {
