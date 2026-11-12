@@ -24,7 +24,7 @@ Use BrewPage directly from Claude Desktop, Claude Code, or any MCP client.
 
 ### Remote (no install)
 
-One remote MCP server for every client: `https://brewpage.app/mcp` (Streamable HTTP, no authentication, same 30 tools). Add it by URL in Claude (a custom connector), ChatGPT (a custom MCP server) or any Streamable HTTP client.
+One remote MCP server for every client: `https://brewpage.app/mcp` (Streamable HTTP, no authentication, same 32 tools). Add it by URL in Claude (a custom connector), ChatGPT (a custom MCP server) or any Streamable HTTP client.
 
 Claude Code: `claude mcp add --transport http brewpage --scope user https://brewpage.app/mcp` (leave out `--scope user` to add it to the current project only), or in `.mcp.json`:
 
@@ -96,7 +96,9 @@ npx -y brewpage-mcp@1.19.1
 | `publish_file` | Upload file from URL → URL + token; HTML and Markdown become pages |
 | `publish_site` | Publish a multi-file HTML site from HTML content (`entryContent`, `namespace?`, `password?`, `ttlDays?`) |
 | `delete_resource` | Delete with owner token (incl. sites) |
-| `set_visibility` | Hide or show a public publication; link unchanged |
+| `set_visibility` | List or unlist a public publication; link unchanged |
+| `make_private` | Make a public publication private: new private link, one-way |
+| `set_badge` | Hide or show the BrewPage badge (profile, up to 5 hidden) |
 | `set_title` | Rename an HTML page or site; kept on republish |
 | `bind_token` | Add a token to your profile (admin token) |
 | `mint_token` | Mint a profile token, shown once (admin token) |

@@ -8,13 +8,13 @@ order: 3
 
 Last updated: 2026-11-12
 
-`brewpage-mcp` 1.19.1 provides thirty tools to publish and manage HTML, Markdown, JSON, KV, files, and multi-file sites, and to read what visitors save on a page, from compatible MCP clients. It runs locally over stdio (Node.js 20 or newer) or remotely without install, and calls the BrewPage API.
+`brewpage-mcp` 1.19.1 provides thirty-two tools to publish and manage HTML, Markdown, JSON, KV, files, and multi-file sites, and to read what visitors save on a page, from compatible MCP clients. It runs locally over stdio (Node.js 20 or newer) or remotely without install, and calls the BrewPage API.
 
 ## Installation
 
 ### Remote (no install)
 
-One remote MCP server for every client: `https://brewpage.app/mcp` (Streamable HTTP, no authentication, same 30 tools). Add it by URL in Claude (a custom connector), ChatGPT (a custom MCP server) or any Streamable HTTP client.
+One remote MCP server for every client: `https://brewpage.app/mcp` (Streamable HTTP, no authentication, same 32 tools). Add it by URL in Claude (a custom connector), ChatGPT (a custom MCP server) or any Streamable HTTP client.
 
 Claude Code: `claude mcp add --transport http brewpage --scope user https://brewpage.app/mcp` (leave out `--scope user` to add it to the current project only), or in `.mcp.json`:
 
@@ -89,7 +89,9 @@ This starts a stdio server for an MCP client, not an interactive publishing shel
 | `get_kv` | Fetch a key's value; optional password |
 | `update_hosting` | Change eligible publication delivery mode using owner authority and hosting version |
 | `delete_resource` | Delete a resource (incl. sites) by namespace/id with owner token |
-| `set_visibility` | Hide or show a public publication in the gallery and sitemap; link unchanged |
+| `set_visibility` | List or unlist a public publication in the gallery and sitemap; link unchanged |
+| `make_private` | Make a public publication private: new private link, the public link stops working; one-way |
+| `set_badge` | Hide or show the BrewPage badge on a publication of your profile, up to 5 hidden |
 | `set_title` | Rename an HTML page or site; the title stays on republish; link unchanged |
 | `bind_token` | Add an owner token to your profile with an admin token |
 | `mint_token` | Mint a profile token with an admin token; shown once |

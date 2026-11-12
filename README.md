@@ -175,7 +175,7 @@ Both imports run in one step and neither output is hand-edited: `node scripts/sy
 
 ## MCP Server
 
-The `brewpage-mcp` package provides a Model Context Protocol server with **30 tools** for AI-assisted content publishing and management. Selected tools appear below; see [`mcp-server/README.md`](mcp-server/README.md) for the complete list and documentation.
+The `brewpage-mcp` package provides a Model Context Protocol server with **32 tools** for AI-assisted content publishing and management. Selected tools appear below; see [`mcp-server/README.md`](mcp-server/README.md) for the complete list and documentation.
 
 Package releases use `.github/workflows/release.yml` with package-scoped npm Trusted Publisher/OIDC for `kochetkov-ma/brewpage-openapi`, workflow `release.yml`, without an environment. CI needs no `NPM_TOKEN`, manual npm login or static-token rotation. Local `npm whoami` does not validate GitHub Actions OIDC authentication. Publication to the official MCP registry (`io.github.kochetkov-ma/brewpage-mcp`) is automatic via GitHub OIDC in the same workflow; no local `mcp-publisher` token is needed.
 
@@ -193,7 +193,9 @@ Rerunning historical tag workflows that used token authentication is unsupported
 | `publish_file` | Upload a file from a URL |
 | `publish_site` | Publish a single-page or multi-file HTML site |
 | `delete_resource` | Delete any resource (HTML, site, KV, JSON, file) by owner token |
-| `set_visibility` | Hide or show a public publication in the gallery and sitemap |
+| `set_visibility` | List or unlist a public publication in the gallery and sitemap |
+| `make_private` | Make a public publication private: new private link, the public link stops working |
+| `set_badge` | Hide or show the BrewPage badge on a publication of your profile, up to 5 hidden |
 | `set_title` | Rename an HTML page or site; the title stays on republish |
 | `set_domain` | Connect a domain you own to an HTML page or site; returns the DNS records to create |
 | `check_domain` | Check a custom domain's DNS; status `pending_dns` -> `verifying` -> `active` |
@@ -209,7 +211,7 @@ Rerunning historical tag workflows that used token authentication is unsupported
 
 ### Remote (no install)
 
-One remote MCP server for every client: `https://brewpage.app/mcp` (Streamable HTTP, no authentication, same 30 tools). Add it by URL in Claude (a custom connector), ChatGPT (a custom MCP server) or any Streamable HTTP client.
+One remote MCP server for every client: `https://brewpage.app/mcp` (Streamable HTTP, no authentication, same 32 tools). Add it by URL in Claude (a custom connector), ChatGPT (a custom MCP server) or any Streamable HTTP client.
 
 Claude Code: `claude mcp add --transport http brewpage --scope user https://brewpage.app/mcp` (leave out `--scope user` to add it to the current project only), or in `.mcp.json`:
 
@@ -316,7 +318,7 @@ BrewPage is described using [schema.org/SoftwareApplication](https://schema.org/
 |-----------|-------------|
 | OpenAPI 3.1 spec | Complete API contract for all public endpoints (YAML + JSON) |
 | Interactive docs | Astro + Scalar documentation site (GitHub Pages) |
-| MCP server | `brewpage-mcp` -- Claude Desktop/Code integration (30 tools) |
+| MCP server | `brewpage-mcp` -- Claude Desktop/Code integration (32 tools) |
 | Wiki | Code snippets, cheatsheet, tips & tricks |
 | Release notes | Changelog for API and public tooling |
 

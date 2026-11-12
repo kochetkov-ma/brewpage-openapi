@@ -18,7 +18,7 @@ Choosing a host? See how BrewPage compares with GitHub Pages, Netlify Drop, Tiin
 
 ### Remote (no install)
 
-One remote MCP server for every client: `https://brewpage.app/mcp` (Streamable HTTP, no authentication, same 30 tools). Add it by URL in Claude (a custom connector), ChatGPT (a custom MCP server) or any Streamable HTTP client.
+One remote MCP server for every client: `https://brewpage.app/mcp` (Streamable HTTP, no authentication, same 32 tools). Add it by URL in Claude (a custom connector), ChatGPT (a custom MCP server) or any Streamable HTTP client.
 
 Claude Code: `claude mcp add --transport http brewpage --scope user https://brewpage.app/mcp` (leave out `--scope user` to add it to the current project only), or in `.mcp.json`:
 
@@ -131,7 +131,7 @@ Open the Cline MCP settings panel and add:
 
 ## Tools
 
-Thirty tools are available. Creation returns an owner token; keep it to modify or delete the resource later. Owner tools take `ownerToken`, else `BREWPAGE_OWNER_TOKEN` (local server only). Supported password inputs use `X-Password`. Secrets allowed; likely ones are flagged in notices. For a secret: private namespace + password.
+Thirty-two tools are available. Creation returns an owner token; keep it to modify or delete the resource later. Owner tools take `ownerToken`, else `BREWPAGE_OWNER_TOKEN` (local server only). Supported password inputs use `X-Password`. Secrets allowed; likely ones are flagged in notices. For a secret: private namespace + password.
 
 | Tool | Purpose |
 |------|---------|
@@ -149,7 +149,9 @@ Thirty tools are available. Creation returns an owner token; keep it to modify o
 | `get_kv` | Read a KV value |
 | `update_hosting` | Change eligible delivery mode with owner token and hosting version |
 | `delete_resource` | Delete an HTML page, site, JSON document, KV store or file |
-| `set_visibility` | Hide or show a public publication in the gallery and sitemap; link unchanged |
+| `set_visibility` | List or unlist a public publication in the gallery and sitemap; link unchanged |
+| `make_private` | Make a public publication private: new private link, the public link stops working; one-way |
+| `set_badge` | Hide or show the BrewPage badge on a publication of your profile, up to 5 hidden |
 | `set_title` | Rename an HTML page or site; the title stays on republish; link unchanged |
 | `bind_token` | Add an owner token to your profile (admin token) |
 | `mint_token` | Mint a profile token, shown once (admin token) |
@@ -436,15 +438,43 @@ delete_resource(type="html", namespace="public", id="aBcDeFgHiJ", ownerToken="to
 
 ### `set_visibility`
 
-Hide or show a public publication in the gallery and sitemap; the link stays the same. Only public, password-free HTML, sites and files can be listed; others answer with a `visibility-not-listable` notice.
+List or unlist a public publication in the gallery and sitemap; the link stays the same. Only public, password-free HTML, sites and files can be listed; others answer with a `visibility-not-listable` notice.
 
-Parameters: `type` (`html` | `site` | `file` | `json` | `kv`), `namespace`, `id`, `listed` (boolean), `ownerToken` (optional).
+Parameters: `type` (`html` | `site` | `file` | `json` | `kv`), `namespace`, `id`, `listed` (boolean: `true` = listed, `false` = unlisted), `ownerToken` (optional).
 
 ```
 set_visibility(type="html", namespace="public", id="aBcDeFgHiJ", listed=false)
 ```
 
 Output: `LISTED: false · link unchanged`.
+
+---
+
+### `make_private`
+
+Make a public publication private (`POST /api/{type}/{ns}/{id}/private`): it gets a new private link in a private namespace under a new id, and the public link stops working. Views and stats stay; a custom domain on it is detached. One-way: to go public again, publish again. The owner token stays the same; later calls take the new namespace and id.
+
+Parameters: `type` (`html` | `site` | `file` | `json` | `kv`), `namespace` (`public`), `id`, `ownerToken` (optional).
+
+```
+make_private(type="html", namespace="public", id="aBcDeFgHiJ")
+```
+
+Output: `MADE PRIVATE · the public link no longer works`, then the new link, namespace and id, and the new management link when the publication had one. Give the user the new link and the management link. A publication outside `public` answers 409 `NOT_PUBLIC`.
+
+---
+
+### `set_badge`
+
+Hide or show the BrewPage badge on a publication (`POST /api/{type}/{ns}/{id}/badge`). HTML pages and sites show a small BrewPage badge; page code must not hide or alter it. Hiding works when the publication's owner token is in a BrewPage profile: sign in free at https://account.brewpage.app, then `bind_token`. A profile hides the badge on up to 5 publications; showing it again frees the slot.
+
+Parameters: `type` (`html` | `site` | `file` | `json` | `kv`), `namespace`, `id`, `hidden` (optional boolean: `true` = hide, `false` = show; omitted reports the current state), `ownerToken` (optional).
+
+```
+set_badge(type="html", namespace="public", id="aBcDeFgHiJ", hidden=true)
+```
+
+Output: `BADGE: hidden · 2 of 5 hidden in the profile · link unchanged`. Without a profile the badge stays shown and the result carries the `badge-hide-needs-profile` notice; a sixth hide answers 409 `BADGE_HIDDEN_LIMIT`.
 
 ---
 
