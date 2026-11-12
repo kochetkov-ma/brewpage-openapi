@@ -6,7 +6,7 @@ Public contract snapshots, documentation and the BrewPage MCP server. The backen
 
 - `openapi/openapi.json` — exported backend-generated public OpenAPI 3.1 contract; version and provenance identify the backend source.
 - `openapi/openapi.yaml` — deterministic derived representation; `docs/public/openapi.json` is the identical Scalar copy.
-- `mcp-server/` — TypeScript implementation of the BrewPage MCP server. Prepared `version: 1.19.1`. Published as `brewpage-mcp` on npm.
+- `mcp-server/` — TypeScript implementation of the BrewPage MCP server. Prepared `version: 1.20.0`. Published as `brewpage-mcp` on npm.
 - `docs/` — Astro docs site published at https://kochetkov-ma.github.io/brewpage-openapi/.
 
 ## Where to read the live API
@@ -20,6 +20,7 @@ Public contract snapshots, documentation and the BrewPage MCP server. The backen
 
 ## Recent contract changes
 
+- 2.27.0 (pre-release snapshot, source ef7f893b): new `setBadge` `POST /api/{type}/{ns}/{id}/badge` (`BadgeRequest` `{"hidden"}`, omitted = report; `BadgeResponse` `{hidden, used, limit, notices}`): hide or show the BrewPage badge on a publication of a profile, up to 5 hidden per profile; 409 `BADGE_HIDDEN_LIMIT`, notice `badge-hide-needs-profile`. New `makePrivate` `POST /api/{type}/{ns}/{id}/private`: a public publication gets a new private link (`link`, `namespace`, `id`, `manageUrl`), the public link answers 410, one-way; 409 `NOT_PUBLIC`, notice `private-domain-detached`. `GET /api/publications` items add `badgeHidden`. `setVisibility`, `visibilityUrl`, `visibilityNotice` and `listable` say list or unlist; no path, field or code renamed. The API description states the badge rule. 61 paths and 83 operations (were 59 and 81). MCP 1.20.0: `make_private`, `set_badge`.
 - 2.26.0 (backend v2.26.0, source db3b11c6): `GalleryItem` (items of `GET /api/gallery`, default and `mine=true`) adds `chips`: `page-data` (page data on), `custom-domain` (an active custom domain serves it), in that order; empty list when none. No path, parameter or code change: 59 paths and 81 operations.
 - 2.25.0 (backend v2.25.0, source af8fac78): `FileUploadResponse` (the `POST /api/files` answer) now requires `listed` and `listable`, like `HtmlUploadResponse`, `HtmlUpdateResponse` and `FileUpdateResponse`; the server already sent both on every upload. No path, parameter, field or code change: 59 paths and 81 operations.
 - 2.24.0 (backend v2.24.0, source 7b85cd2c): new boolean `listable`: `false` = never listed in the gallery whatever the namespace (JSON and KV, JSON pages, HTML and JSON files); Hide and Show do not apply. Required on `HtmlUploadResponse`, `HtmlUpdateResponse`, `FileUpdateResponse` and `GET /api/publications` items; optional on `FileUploadResponse`, the hosting read and `GET /api/gallery?mine=true` items. `GET /api/publications` items add optional `pageData` `{docs, usedPercent}` for a page or site with page data on. `visibilityNotice` and `GET /api/gallery` descriptions name the never-listed types. No path, parameter or code change: 59 paths and 81 operations.
@@ -81,7 +82,7 @@ Public contract snapshots, documentation and the BrewPage MCP server. The backen
 ## How to use the MCP server
 
 ```bash
-npx -y brewpage-mcp@1.19.1
+npx -y brewpage-mcp@1.20.0
 ```
 
 Always pin an exact version.

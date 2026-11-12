@@ -1,5 +1,18 @@
 # Release Notes
 
+## MCP 1.20.0 — unreleased
+
+- Two new tools. `make_private` turns a public page into a private one in one step: it gets a new private link and the public link stops working; views and stats stay. It is one-way, and the assistant gives you the new link and the management link.
+- `set_badge` hides or shows the BrewPage badge on a page of your profile, up to 5 hidden. The profile is free: sign in at https://account.brewpage.app.
+- `set_visibility` now reads as list or unlist; inputs unchanged. The assistant is told not to hide the badge in page code and to use `set_badge` instead. Thirty-two tools. Contract 2.27.0. `User-Agent: brewpage-mcp/1.20.0`; pins bumped.
+
+## API contract 2.27.0 — unreleased
+
+- Pre-release snapshot exported from brewpage-app source `ef7f893bfefe9fb734bd16ee0c11ad8470257595` (branch `feat/owner-batch`, before release v2.27.0), clean tree. 61 paths and 83 operations (were 59 and 81).
+- New `setBadge` (`POST /api/{type}/{ns}/{id}/badge`, body `{hidden}`): hide or show the BrewPage badge on a publication of a profile, up to 5 hidden per profile. Answer `BadgeResponse` `{hidden, used, limit, notices}`; a sixth hide answers 409 `BADGE_HIDDEN_LIMIT` with `used` and `limit`; without a profile the answer carries the notice `badge-hide-needs-profile`. Items of `GET /api/publications` add `badgeHidden`.
+- New `makePrivate` (`POST /api/{type}/{ns}/{id}/private`): a public publication gets a new private link, the public link answers 410; one-way. The answer has the new `link`, `namespace`, `id` and `manageUrl`; a custom domain on the page is detached (notice `private-domain-detached`). A publication outside `public` answers 409 `NOT_PUBLIC`. `GET /api/sites/{ns}/{id}` declares 410 for a public site that was deleted or expired, like the other reads.
+- Wording: `setVisibility`, `visibilityUrl`, `visibilityNotice` and `listable` say list or unlist instead of hide or show; no path, field or code renamed. The API description states the badge rule: HTML pages and sites show a small BrewPage badge, and page code must not hide or alter it.
+
 ## API contract 2.26.0 — 2026-11-12
 
 - Exported from brewpage-app source `db3b11c66720e109b072e221acfbcd0bfaad61e2` (for brewpage-app release v2.26.0), clean tree. 59 paths and 81 operations, unchanged. One field added: no path, parameter or code changed.

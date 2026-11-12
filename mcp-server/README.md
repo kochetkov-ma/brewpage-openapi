@@ -38,7 +38,7 @@ Claude Code: `claude mcp add --transport http brewpage --scope user https://brew
 For clients that only start local servers; the same tools as the server URL.
 
 ```bash
-npx -y brewpage-mcp@1.19.1
+npx -y brewpage-mcp@1.20.0
 ```
 
 Requires Node.js 20 or newer. This starts the stdio server for an MCP client.
@@ -63,7 +63,7 @@ Local fallback (stdio, needs Node.js; the same tools): add to `~/Library/Applica
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@1.19.1"]
+      "args": ["-y", "brewpage-mcp@1.20.0"]
     }
   }
 }
@@ -86,7 +86,7 @@ Custom servers follow your ChatGPT plan and workspace settings.
 The remote command above is the default. Local fallback: register a project-scoped stdio server:
 
 ```bash
-claude mcp add --transport stdio --scope project brewpage -- npx -y brewpage-mcp@1.19.1
+claude mcp add --transport stdio --scope project brewpage -- npx -y brewpage-mcp@1.20.0
 ```
 
 This writes `.mcp.json` in the project root. Use `--scope user` for user-scoped registration. See the [official Claude Code MCP guide](https://code.claude.com/docs/en/mcp).
@@ -110,7 +110,7 @@ Local fallback (stdio, needs Node.js; the same tools): open **Settings > MCP** a
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@1.19.1"]
+      "args": ["-y", "brewpage-mcp@1.20.0"]
     }
   }
 }
@@ -124,7 +124,7 @@ Open the Cline MCP settings panel and add:
 {
   "brewpage": {
     "command": "npx",
-    "args": ["-y", "brewpage-mcp@1.19.1"]
+    "args": ["-y", "brewpage-mcp@1.20.0"]
   }
 }
 ```
@@ -754,6 +754,10 @@ Every publish response includes an **owner token** -- the only credential that a
 - [Brewcode Plugin](https://github.com/kochetkov-ma/claude-brewcode) -- Claude Code plugin suite
 
 ## Changelog
+
+## 1.20.0 -- unreleased
+
+- Two new tools. `make_private` turns a public publication into a private one: new private link, the public link stops working, views and stats stay; one-way. `set_badge` hides or shows the BrewPage badge on a publication of your profile, up to 5 hidden. `set_visibility` reads as list or unlist; inputs unchanged. The server instructions and the tools that send page code say that page code must not hide or alter the badge. Thirty-two tools. Contract 2.27.0. `User-Agent: brewpage-mcp/1.20.0`.
 
 ## 1.19.1 -- 2026-11-12
 
