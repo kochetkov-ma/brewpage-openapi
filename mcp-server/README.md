@@ -16,12 +16,6 @@ Choosing a host? See how BrewPage compares with GitHub Pages, Netlify Drop, Tiin
 
 ## Quick Start
 
-```bash
-npx -y brewpage-mcp@1.19.0
-```
-
-Requires Node.js 20 or newer. This starts the stdio server for an MCP client.
-
 ### Remote (no install)
 
 One remote MCP server for every client: `https://brewpage.app/mcp` (Streamable HTTP, no authentication, same 30 tools). Add it by URL in Claude (a custom connector), ChatGPT (a custom MCP server) or any Streamable HTTP client.
@@ -38,6 +32,16 @@ Claude Code: `claude mcp add --transport http brewpage --scope user https://brew
   }
 }
 ```
+
+### Local (npx)
+
+For clients that only start local servers; the same tools as the server URL.
+
+```bash
+npx -y brewpage-mcp@1.19.0
+```
+
+Requires Node.js 20 or newer. This starts the stdio server for an MCP client.
 
 ## Installation
 
@@ -64,6 +68,18 @@ Local fallback (stdio, needs Node.js; the same tools): add to `~/Library/Applica
   }
 }
 ```
+
+### ChatGPT
+
+Add BrewPage as a custom MCP server; ChatGPT then publishes for you. Nothing to install.
+
+1. Open **Plugins** in ChatGPT.
+2. Click **+**, then **Add custom MCP server**.
+3. Name it **BrewPage** and paste `https://brewpage.app/mcp` as the server URL.
+4. Choose no authentication, select **I understand and want to continue**, then **Create as a plugin**.
+5. Install the new plugin, then ask ChatGPT to publish.
+
+Custom servers follow your ChatGPT plan and workspace settings.
 
 ### Claude Code
 
