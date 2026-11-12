@@ -34,7 +34,7 @@ const PUBLISH = toolCall("publish_html", { content: "<p>x</p>" });
 
 /** Stub backend plus the built HTTP entry on ephemeral ports; `trusted` sets the proxy CIDRs.
  * Backend counts open calls; `hold` = answers wait for `backend.release()`; `shared`/`list` = shared-egress CIDRs and list body. */
-async function fixture(t: TestContext, trusted = "127.0.0.1/32", { hold = false, shared = "", list = "", gzip = false, redirect = false } = {}) {
+async function fixture(t: TestContext, trusted = "127.0.0.1/32", { hold = false, shared = "", list = "", gzip = false, redirect = false, metrics = "" } = {}) {
   const requests: RequestSnapshot[] = [];
   const pending: Array<() => void> = [];
   let holding = hold;
@@ -66,7 +66,7 @@ async function fixture(t: TestContext, trusted = "127.0.0.1/32", { hold = false,
   const child = spawn(process.execPath, [HTTP_ENTRY], {
     env: { PATH: process.env.PATH, BREWPAGE_BACKEND_URL: backendUrl, BREWPAGE_TRUSTED_PROXY_CIDRS: trusted,
       BREWPAGE_MCP_HOST: "127.0.0.1", BREWPAGE_MCP_PORT: "0", BREWPAGE_SHARED_EGRESS_CIDRS: shared,
-      BREWPAGE_SHARED_EGRESS_LIST_URLS: listUrl?.url ?? "", NODE_EXTRA_CA_CERTS: listUrl?.ca ?? "" },
+      BREWPAGE_SHARED_EGRESS_LIST_URLS: listUrl?.url ?? "", NODE_EXTRA_CA_CERTS: listUrl?.ca ?? "", BREWPAGE_METRICS_CIDRS: metrics },
     stdio: ["ignore", "pipe", "inherit"],
   });
   const lines = createInterface({ input: child.stdout! });
@@ -270,6 +270,44 @@ test("a tools/call log line names only registered tools and caps the method", { 
   assert.deepEqual(f.logs.map(({ method, tool }) => ({ method, tool })), [{ method: "tools/call", tool: "unknown" }, { method: "m".repeat(64), tool: null }],
     "log lines carry bounded method and known tool names only");
 });
+
+const USAGE_SERIES = [
+  'brewpage_mcp_requests_total{method="tools/list",client="other"} 1',
+  'brewpage_mcp_requests_total{method="tools/call",client="claude"} 1',
+  'brewpage_mcp_requests_total{method="tools/call",client="chatgpt"} 1',
+  'brewpage_mcp_requests_total{method="tools/call",client="other"} 2',
+  'brewpage_mcp_tool_calls_total{tool="get_limits",client="claude",outcome="ok"} 1',
+  'brewpage_mcp_tool_calls_total{tool="get_limits",client="chatgpt",outcome="ok"} 1',
+  'brewpage_mcp_tool_calls_total{tool="get_limits",client="other",outcome="ok"} 1',
+  'brewpage_mcp_tool_calls_total{tool="unknown",client="other",outcome="error"} 1',
+  'brewpage_mcp_clients_today{client="claude"} 1',
+  'brewpage_mcp_clients_today{client="chatgpt"} 1',
+  'brewpage_mcp_clients_today{client="other"} 1',
+];
+
+for (const scenario of [
+  { label: "the Prometheus peer", metrics: "127.0.0.1/32", status: 200, series: USAGE_SERIES },
+  { label: "a peer outside BREWPAGE_METRICS_CIDRS", metrics: "10.0.0.0/8", status: 404, series: [] },
+]) {
+  test(`GET /metrics for ${scenario.label}: calls per tool and client class, distinct clients, no addresses`, { timeout: 15_000 }, async (t) => {
+    // GIVEN Anthropic static egress and the metrics peer list.
+    const f = await fixture(t, "127.0.0.1/32", { shared: "160.79.104.0/21", metrics: scenario.metrics });
+    // WHEN Claude, ChatGPT and one other address (twice, once with an unknown tool) call tools, plus one tools/list.
+    const limits = toolCall("get_limits", {});
+    await f.post({ "X-Forwarded-For": "160.79.104.10", "User-Agent": "Claude-User" }, "POST", limits);
+    await f.post({ "X-Forwarded-For": "203.0.113.20", "User-Agent": "openai-mcp/1.0.0" }, "POST", limits);
+    await f.post(XFF, "POST", limits);
+    await f.post(XFF, "POST", toolCall("nope", {}));
+    await f.post(XFF, "POST", TOOLS_LIST);
+    await f.until(() => f.logs.length === 5);
+    const res = await fetch(`http://127.0.0.1:${f.port}/metrics`);
+    const text = await res.text();
+    // THEN the reader gets exactly the non-zero series, and no client address appears anywhere.
+    const series = text.split("\n").filter((line) => line.startsWith("brewpage_mcp_") && !line.endsWith(" 0"));
+    assert.deepEqual({ status: res.status, series: series.sort(), addresses: /203\.0\.113|160\.79\./.test(text) },
+      { status: scenario.status, series: [...scenario.series].sort(), addresses: false }, `${scenario.label} reads the usage metrics`);
+  });
+}
 
 const MANAGE_KEY = `bpm_${"K".repeat(32)}`;
 const MANAGE_LINK = `https://brewpage.app/manage/html/priv-abc123/aBcDeFgHiJ#k=${MANAGE_KEY}`;

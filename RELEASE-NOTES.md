@@ -1,5 +1,10 @@
 # Release Notes
 
+## MCP 1.21.0 — 2026-11-12
+
+- The hosted server at `https://brewpage.app/mcp` now counts how it is used: calls per tool, how many come from Claude, ChatGPT and other clients, and how many different clients use it each day. The counts stay on our own monitoring; no addresses, page content or tool inputs are kept.
+- Nothing changes for you: the same thirty-two tools and inputs, contract 2.27.0, and the local `npx` server works as before. `User-Agent: brewpage-mcp/1.21.0`; pins bumped.
+
 ## MCP 1.20.0 — 2026-11-12
 
 - Two new tools. `make_private` turns a public page into a private one in one step: it gets a new private link and the public link stops working; views and stats stay. It is one-way, and the assistant gives you the new link and the management link.

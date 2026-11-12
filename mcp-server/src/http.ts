@@ -9,6 +9,7 @@ import { pathToFileURL } from "node:url";
 import { createMcpHandler, InMemoryTransport, isLegacyRequest, LATEST_PROTOCOL_VERSION, type JSONRPCMessage } from "@modelcontextprotocol/server";
 import { NodeStreamableHTTPServerTransport, toWebRequest } from "@modelcontextprotocol/node";
 import { createServer, OWNER_TOKEN_ENV, USER_AGENT } from "./tools.js";
+import { classifyClient, UsageMetrics, type ClientClass } from "./metrics.js";
 
 const MIB = 1024 * 1024;
 /** Fits the largest site (25 MiB backend request: 20 MiB of inline text plus JSON escaping).
@@ -59,6 +60,8 @@ const METHOD_NOT_FOUND = -32601;
 const SERVER_ERROR = -32000;
 
 type LogFields = Record<string, string | number | null>;
+/** Per-request usage facts for metrics; `address` is never logged, only hashed into the daily set. */
+interface Usage { client?: ClientClass; address?: string }
 
 /** One JSON line per event on stdout; callers never pass arguments, tokens or IPs. */
 function log(fields: LogFields): void {
@@ -149,6 +152,8 @@ function loadConfig() {
     /** Platform egress (one IP, many users): global pools only, no per-client caps or download budget. */
     sharedEgress: parseCidrs("BREWPAGE_SHARED_EGRESS_CIDRS", false),
     sharedEgressLists: parseListUrls("BREWPAGE_SHARED_EGRESS_LIST_URLS"),
+    /** Peers allowed to read GET /metrics (the Prometheus network); empty = /metrics answers 404. */
+    metricsPeers: parseCidrs("BREWPAGE_METRICS_CIDRS", false),
     host: process.env.BREWPAGE_MCP_HOST || "0.0.0.0",
     port,
   };
@@ -449,7 +454,10 @@ async function main(): Promise<void> {
   const heavy = new Pool(MAX_HEAVY_IN_FLIGHT, MAX_HEAVY_PER_CLIENT);
   let draining = false;
   const listed = new Map<string, Cidr[]>();
-  let sharedEgress = blockList(config.sharedEgress);
+  const staticEgress = blockList(config.sharedEgress);
+  let listedEgress = blockList([]);
+  const metricsPeers = config.metricsPeers.length > 0 ? blockList(config.metricsPeers) : undefined;
+  const metrics = new UsageMetrics([...toolNames]);
 
   /** Never throws: a failed fetch or parse keeps the last good set and logs a warning. */
   async function loadEgressList(url: string): Promise<void> {
@@ -462,7 +470,7 @@ async function main(): Promise<void> {
       }
       const ranges = parseEgressList(await readCapped(res, SHARED_LIST_MAX_BYTES));
       listed.set(url, ranges);
-      sharedEgress = blockList([...config.sharedEgress, ...[...listed.values()].flat()]);
+      listedEgress = blockList([...listed.values()].flat());
       log({ event: "shared_egress_list", url, ranges: ranges.length });
     } catch (error) {
       log({ event: "shared_egress_list_failed", url, message: error instanceof Error ? error.message : String(error) });
@@ -472,7 +480,7 @@ async function main(): Promise<void> {
   refreshEgressLists();
   setInterval(refreshEgressLists, SHARED_LIST_REFRESH_MS).unref();
 
-  async function handleMcp(req: IncomingMessage, res: ServerResponse, entry: LogFields): Promise<void> {
+  async function handleMcp(req: IncomingMessage, res: ServerResponse, entry: LogFields, usage: Usage): Promise<void> {
     if (req.headers.origin !== undefined) return rpcError(res, 403, SERVER_ERROR, "Origin not allowed.");
     const peer = peerAddress(req);
     if (isIP(peer) === 0 || !config.trustedProxies.check(peer, isIP(peer) === 6 ? "ipv6" : "ipv4")) {
@@ -490,7 +498,9 @@ async function main(): Promise<void> {
       rpcError(res, 503, SERVER_ERROR, "Busy, retry shortly.", { "Retry-After": "1" });
     };
     const known = Number.isFinite(declared);
-    const shared = sharedEgress.check(client, isIP(client) === 6 ? "ipv6" : "ipv4");
+    const family = isIP(client) === 6 ? "ipv6" : "ipv4";
+    const egress = staticEgress.check(client, family) ? "static" : listedEgress.check(client, family) ? "listed" : undefined;
+    const shared = egress !== undefined;
     const capKey = shared ? undefined : client;
     // Registered first: a client that leaves at any point, even while queued, aborts the call.
     const abort = new AbortController();
@@ -541,6 +551,8 @@ async function main(): Promise<void> {
       const toolName = rpc.method === "tools/call" ? rpc.params?.name : undefined;
       entry.method = typeof rpc.method === "string" ? rpc.method.slice(0, MAX_LOGGED_METHOD) : null;
       entry.tool = rpc.method === "tools/call" ? (typeof toolName === "string" && toolNames.has(toolName) ? toolName : "unknown") : null;
+      usage.client = classifyClient(egress, (req.headers["user-agent"] ?? "").slice(0, MAX_LOGGED_METHOD));
+      usage.address = client;
       // Stateless: no server-push streams, as the 2025 GET stream (405); a refused auto-open never fails a connect.
       if (rpc.method === "subscriptions/listen") {
         const id = (message as { id?: unknown }).id;
@@ -608,18 +620,24 @@ async function main(): Promise<void> {
     }
   }
 
-  function handle(req: IncomingMessage, res: ServerResponse, entry: LogFields): Promise<void> {
+  function handle(req: IncomingMessage, res: ServerResponse, entry: LogFields, usage: Usage): Promise<void> {
     const path = (req.url ?? "/").split("?")[0];
     if (path === "/healthz") {
       res.writeHead(draining ? 503 : 200, { "Content-Type": "application/json" });
       res.end(JSON.stringify({ status: draining ? "draining" : "ok", version: VERSION }));
       return Promise.resolve();
     }
+    const peer = peerAddress(req);
+    if (path === "/metrics" && req.method === "GET" && isIP(peer) !== 0 && metricsPeers?.check(peer, isIP(peer) === 6 ? "ipv6" : "ipv4")) {
+      res.writeHead(200, { "Content-Type": "text/plain; version=0.0.4; charset=utf-8" });
+      res.end(metrics.render());
+      return Promise.resolve();
+    }
     if (path !== "/mcp") {
       rpcError(res, 404, SERVER_ERROR, "Not found.");
       return Promise.resolve();
     }
-    return handleMcp(req, res, entry).catch((error: unknown) => {
+    return handleMcp(req, res, entry, usage).catch((error: unknown) => {
       entry.outcome = "exception";
       log({ event: "request_failed", message: error instanceof Error ? error.message : String(error) });
       if (!res.headersSent) rpcError(res, 500, SERVER_ERROR, "Internal error.");
@@ -630,11 +648,12 @@ async function main(): Promise<void> {
   const httpServer = createHttpServer((req, res) => {
     const started = performance.now();
     const entry: LogFields = { http: req.method ?? "", method: null, tool: null, status: 0, outcome: null, ms: 0 };
-    const logged = !(req.url ?? "").startsWith("/healthz");
+    const usage: Usage = {};
+    const logged = !(req.url ?? "").startsWith("/healthz") && !(req.url ?? "").startsWith("/metrics");
     const closedEarly = new Promise<boolean>((resolve) => res.once("close", () => resolve(!res.writableFinished)));
     let done: Promise<void>;
     try {
-      done = handle(req, res, entry);
+      done = handle(req, res, entry, usage);
     } catch (error) {
       entry.outcome = "exception";
       log({ event: "request_failed", message: error instanceof Error ? error.message : String(error) });
@@ -649,6 +668,9 @@ async function main(): Promise<void> {
       else entry.outcome ??= res.statusCode < 400 ? "ok" : `http_${res.statusCode}`;
       entry.ms = Math.round(performance.now() - started);
       log(entry);
+      if (usage.client === undefined || typeof entry.method !== "string") return;
+      metrics.request(entry.method, usage.client);
+      if (typeof entry.tool === "string") metrics.toolCall(entry.tool, usage.client, String(entry.outcome), usage.address!);
     });
   });
   // Whole request incl. queue wait: 30 s queue + 2 s grace + 32 MiB at the body floor (~131 s) + margin.

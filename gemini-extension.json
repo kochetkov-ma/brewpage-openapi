@@ -1,11 +1,11 @@
 {
   "name": "brewpage",
-  "version": "1.20.0",
+  "version": "1.21.0",
   "description": "Publish HTML, Markdown, sites, KV, JSON and files on BrewPage; get a shareable link.",
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@1.20.0"]
+      "args": ["-y", "brewpage-mcp@1.21.0"]
     }
   },
   "contextFileName": "gemini-context.md"

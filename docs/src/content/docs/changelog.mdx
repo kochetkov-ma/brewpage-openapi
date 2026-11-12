@@ -6,6 +6,10 @@ order: 5
 
 # Changelog
 
+## MCP 1.21.0 — usage counts on the hosted server
+
+The hosted server at `https://brewpage.app/mcp` counts calls per tool, Claude, ChatGPT and other clients, and distinct clients per day, for our own monitoring only; no addresses, content or tool inputs are kept. Tools and inputs are unchanged: thirty-two tools, contract 2.27.0.
+
 ## MCP 1.20.0 — make private, hide the badge
 
 Two new tools. `make_private` turns a public page into a private one: it gets a new private link and the public link stops working; views and stats stay. It is one-way, and the assistant gives you the new link and the management link. `set_badge` hides or shows the BrewPage badge on a page of your profile, up to 5 hidden. `set_visibility` now reads as list or unlist; inputs unchanged. The assistant is told not to hide the badge in page code and to use `set_badge` instead. Thirty-two tools. Contract 2.27.0.

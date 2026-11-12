@@ -57,7 +57,7 @@ Local fallback (stdio, needs Node.js; the same tools): edit `~/Library/Applicati
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@1.20.0"]
+      "args": ["-y", "brewpage-mcp@1.21.0"]
     }
   }
 }
@@ -67,14 +67,14 @@ Windows: `%APPDATA%\Claude\claude_desktop_config.json`
 
 ### Claude Code
 
-The remote command above is the default. Local fallback: run `claude mcp add --transport stdio --scope project brewpage -- npx -y brewpage-mcp@1.20.0`, or add this to project-root `.mcp.json`:
+The remote command above is the default. Local fallback: run `claude mcp add --transport stdio --scope project brewpage -- npx -y brewpage-mcp@1.21.0`, or add this to project-root `.mcp.json`:
 
 ```json
 {
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@1.20.0"]
+      "args": ["-y", "brewpage-mcp@1.21.0"]
     }
   }
 }
@@ -83,7 +83,7 @@ The remote command above is the default. Local fallback: run `claude mcp add --t
 ### Direct run
 
 ```bash
-npx -y brewpage-mcp@1.20.0
+npx -y brewpage-mcp@1.21.0
 ```
 
 ---

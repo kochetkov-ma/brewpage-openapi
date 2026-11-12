@@ -38,7 +38,7 @@ Claude Code: `claude mcp add --transport http brewpage --scope user https://brew
 For clients that only start local servers; the same tools as the server URL.
 
 ```bash
-npx -y brewpage-mcp@1.20.0
+npx -y brewpage-mcp@1.21.0
 ```
 
 Requires Node.js 20 or newer. This starts the stdio server for an MCP client.
@@ -63,7 +63,7 @@ Local fallback (stdio, needs Node.js; the same tools): add to `~/Library/Applica
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@1.20.0"]
+      "args": ["-y", "brewpage-mcp@1.21.0"]
     }
   }
 }
@@ -86,7 +86,7 @@ Custom servers follow your ChatGPT plan and workspace settings.
 The remote command above is the default. Local fallback: register a project-scoped stdio server:
 
 ```bash
-claude mcp add --transport stdio --scope project brewpage -- npx -y brewpage-mcp@1.20.0
+claude mcp add --transport stdio --scope project brewpage -- npx -y brewpage-mcp@1.21.0
 ```
 
 This writes `.mcp.json` in the project root. Use `--scope user` for user-scoped registration. See the [official Claude Code MCP guide](https://code.claude.com/docs/en/mcp).
@@ -110,7 +110,7 @@ Local fallback (stdio, needs Node.js; the same tools): open **Settings > MCP** a
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@1.20.0"]
+      "args": ["-y", "brewpage-mcp@1.21.0"]
     }
   }
 }
@@ -124,7 +124,7 @@ Open the Cline MCP settings panel and add:
 {
   "brewpage": {
     "command": "npx",
-    "args": ["-y", "brewpage-mcp@1.20.0"]
+    "args": ["-y", "brewpage-mcp@1.21.0"]
   }
 }
 ```
@@ -731,12 +731,14 @@ Every publish response includes an **owner token** -- the only credential that a
 - Memory: run with `--max-old-space-size=192` and a 512 MiB container limit.
 - Never reads `BREWPAGE_OWNER_TOKEN`; refuses to start when it is set. Pass `ownerToken` per call.
 - One JSON log line per request on stdout (method, tool, status, outcome, ms); no arguments, tokens or IPs. `SIGTERM` drains for up to 30 s.
+- `GET /metrics` (Prometheus text) only for peers in `BREWPAGE_METRICS_CIDRS`, else 404: `brewpage_mcp_requests_total{method,client}`, `brewpage_mcp_tool_calls_total{tool,client,outcome}` and the gauge `brewpage_mcp_clients_today{client}` (distinct caller addresses with a tool call since 00:00 UTC, kept only as hashes with a random salt drawn each day; resets on restart). `client` is `claude` (an address in `BREWPAGE_SHARED_EGRESS_CIDRS` or a `Claude...` User-Agent), `chatgpt` (an address in a published egress list or an `openai-mcp`/`ChatGPT` User-Agent), else `other`; `outcome` is `ok`, `tool_error`, `error` or `client_closed`. No IPs, arguments or content in any label.
 
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `BREWPAGE_TRUSTED_PROXY_CIDRS` | required | Comma list of reverse-proxy CIDRs or IPs |
 | `BREWPAGE_SHARED_EGRESS_CIDRS` | empty | Comma list of platform egress CIDRs (one IP, many users): global limits only, no per-IP caps |
 | `BREWPAGE_SHARED_EGRESS_LIST_URLS` | empty | Comma list of `https` URLs of published egress lists (`{"prefixes":[{"ipv4Prefix"}]}`, at least 100 prefixes, at most 1 MiB, no redirects); fetched at startup and daily, last good list kept |
+| `BREWPAGE_METRICS_CIDRS` | empty | Comma list of CIDRs or IPs allowed to read `GET /metrics`; empty = `/metrics` answers 404 |
 | `BREWPAGE_BACKEND_URL` | `http://brewpage-backend-mcp:8080` | API base URL (internal address) |
 | `BREWPAGE_PUBLIC_ORIGIN` | `https://brewpage.app` | Origin for returned links and forwarded proto/host |
 | `BREWPAGE_MCP_PORT` | `8787` | Listen port |
@@ -754,6 +756,10 @@ Every publish response includes an **owner token** -- the only credential that a
 - [Brewcode Plugin](https://github.com/kochetkov-ma/claude-brewcode) -- Claude Code plugin suite
 
 ## Changelog
+
+## 1.21.0 -- 2026-11-12
+
+- Remote mode only: optional `GET /metrics` with usage counts for the operator (calls per tool, Claude, ChatGPT or other clients, distinct clients per day), served only to the addresses in `BREWPAGE_METRICS_CIDRS`. No addresses, arguments or content are kept or shown. Tools, inputs and stdio are unchanged: thirty-two tools, contract 2.27.0. `User-Agent: brewpage-mcp/1.21.0`.
 
 ## 1.20.0 -- 2026-11-12
 
