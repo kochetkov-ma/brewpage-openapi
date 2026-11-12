@@ -29,11 +29,28 @@ The `brewpage-mcp` server exposes thirty typed MCP tools; six are shown below, s
 
 ## Install
 
-Install the pinned MCP package shown below. All snippets use `npx` to fetch and execute that version on demand.
+### Remote (no install)
 
-### Claude Desktop
+One remote MCP server for every client: `https://brewpage.app/mcp` (Streamable HTTP, no authentication, same 30 tools). Add it by URL in Claude (a custom connector), ChatGPT (a custom MCP server) or any Streamable HTTP client.
 
-Add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) or `%APPDATA%\Claude\claude_desktop_config.json` (Windows):
+Claude Code: `claude mcp add --transport http brewpage --scope user https://brewpage.app/mcp` (leave out `--scope user` to add it to the current project only).
+
+### Claude.ai and Claude Desktop
+
+Claude calls a remote MCP server a custom connector. Add it once in Claude on the web; Claude Desktop picks it up too. Nothing to install.
+
+1. Open **Customize** > **Connectors**.
+2. Click **+ Add**, then **Add custom connector**.
+3. Name it **BrewPage**, paste `https://brewpage.app/mcp` and click **Continue**.
+4. Click **Continue** again, choose **No sign in** under Authentication and click **Add**.
+
+The free plan includes one custom connector.
+
+### Local package (stdio)
+
+For clients that only start local servers (needs Node.js; the same tools). All snippets use `npx` to fetch and run the pinned version on demand.
+
+Claude Desktop local fallback: add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) or `%APPDATA%\Claude\claude_desktop_config.json` (Windows):
 
 ```json
 {
@@ -46,7 +63,7 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS)
 }
 ```
 
-### Codex CLI
+#### Codex CLI
 
 Add to `~/.codex/config.toml`:
 
@@ -56,7 +73,7 @@ command = "npx"
 args = ["-y", "brewpage-mcp@1.19.0"]
 ```
 
-### Cursor
+#### Cursor
 
 Open **Settings > MCP** and add:
 
@@ -71,7 +88,7 @@ Open **Settings > MCP** and add:
 }
 ```
 
-### Cline (VS Code extension)
+#### Cline (VS Code extension)
 
 Open the Cline MCP settings panel and add:
 
@@ -89,6 +106,8 @@ Open the Cline MCP settings panel and add:
 | Resource | URL |
 |----------|-----|
 | BrewPage platform | https://brewpage.app/ |
+| Remote MCP server | https://brewpage.app/mcp |
+| Setup for every AI tool | https://brewpage.app/integrations |
 | LLM context file | https://brewpage.app/llms.txt |
 | OpenAPI spec (YAML) | https://brewpage.app/api/openapi.yaml |
 | npm package | https://www.npmjs.com/package/brewpage-mcp |
