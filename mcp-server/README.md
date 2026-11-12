@@ -755,7 +755,7 @@ Every publish response includes an **owner token** -- the only credential that a
 
 ## Changelog
 
-## 1.20.0 -- unreleased
+## 1.20.0 -- 2026-11-12
 
 - Two new tools. `make_private` turns a public publication into a private one: new private link, the public link stops working, views and stats stay; one-way. `set_badge` hides or shows the BrewPage badge on a publication of your profile, up to 5 hidden. `set_visibility` reads as list or unlist; inputs unchanged. The server instructions and the tools that send page code say that page code must not hide or alter the badge. Thirty-two tools. Contract 2.27.0. `User-Agent: brewpage-mcp/1.20.0`.
 
