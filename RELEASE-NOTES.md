@@ -1,5 +1,11 @@
 # Release Notes
 
+## API contract 2.26.0 — 2026-11-12
+
+- Exported from brewpage-app source `db3b11c66720e109b072e221acfbcd0bfaad61e2` (for brewpage-app release v2.26.0), clean tree. 59 paths and 81 operations, unchanged. One field added: no path, parameter or code changed.
+- Gallery items show what a page offers: `GET /api/gallery` items (`GalleryItem`) add `chips`, a list of `page-data` (the page saves what visitors enter) and `custom-domain` (the page has its own domain), in that order; empty when none. Default and `mine=true` answers both carry it.
+- The MCP server is unchanged: `brewpage-mcp` 1.19.1 works with this contract as it is (`search_gallery` prints the answer as sent).
+
 ## API contract 2.25.0 — 2026-11-12
 
 - Exported from brewpage-app source `af8fac789007583b502bfa00e3ef76c00c5db1dd` (brewpage-app release v2.25.0), clean tree. 59 paths and 81 operations, unchanged. One declaration tightened: no path, parameter, field or code changed.

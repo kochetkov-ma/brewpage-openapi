@@ -6,6 +6,10 @@ order: 5
 
 # Changelog
 
+## API contract 2.26.0 — feature chips on gallery items
+
+Items of `GET /api/gallery` add `chips`: `page-data` when the page saves what visitors enter, `custom-domain` when it has its own domain, in that order, empty when none. The default answer and `mine=true` both carry it. Still 59 paths and 81 operations. The MCP server is unchanged.
+
 ## API contract 2.25.0 — file upload answers always include listed and listable
 
 The `POST /api/files` answer now declares `listed` and `listable` as always present, like the HTML create and update answers and the file update answer. The server already sent both on every upload, so nothing changes on the wire; clients and code generators can read them without a presence check. Still 59 paths and 81 operations. The MCP server is unchanged.

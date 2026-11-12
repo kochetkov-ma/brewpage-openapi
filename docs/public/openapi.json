@@ -719,6 +719,13 @@
       },
       "GalleryItem": {
         "properties": {
+          "chips": {
+            "description": "Feature chips: 'page-data', 'custom-domain'; empty when none",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
           "createdAt": {
             "format": "date-time",
             "type": "string"
@@ -4596,7 +4603,7 @@
     },
     "termsOfService": "https://brewpage.app/terms",
     "title": "BrewPage API",
-    "version": "2.25.0"
+    "version": "2.26.0"
   },
   "openapi": "3.1.0",
   "paths": {
