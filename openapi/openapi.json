@@ -510,6 +510,10 @@
           "link": {
             "type": "string"
           },
+          "listable": {
+            "description": "false = never listed in the gallery whatever the namespace (JSON and KV, JSON pages, HTML and JSON files); Hide and Show do not apply",
+            "type": "boolean"
+          },
           "listed": {
             "description": "true = listed in the gallery and sitemap now (public, no password, not hidden).",
             "type": "boolean"
@@ -537,6 +541,7 @@
           "filename",
           "id",
           "link",
+          "listable",
           "listed",
           "namespace",
           "ownerLink",
@@ -609,6 +614,10 @@
             "description": "Primary URL returned for browser download and sharing",
             "type": "string"
           },
+          "listable": {
+            "description": "false = never listed in the gallery whatever the namespace (JSON and KV, JSON pages, HTML and JSON files); Hide and Show do not apply",
+            "type": "boolean"
+          },
           "listed": {
             "description": "true = listed in the gallery and sitemap now (public, no password, not hidden).",
             "type": "boolean"
@@ -677,7 +686,7 @@
             "type": "boolean"
           },
           "visibilityNotice": {
-            "description": "Link access in words, e.g. 'Public: listed in the gallery and sitemap; search engines can index it.' (public html, site and file add a hide hint), 'Public: anyone with the link. Not listed.' (public json, kv), 'Private: not listed. Only via your unique private link.' or 'Password: link + password.'",
+            "description": "Link access in words, e.g. 'Public: listed in the gallery and sitemap; search engines can index it.' (public html, site and file add a hide hint), 'Public: anyone with the link. Not listed.' (public json, kv, json pages, json and html files), 'Private: not listed. Only via your unique private link.' or 'Password: link + password.'",
             "type": "string"
           },
           "visibilityUrl": {
@@ -749,8 +758,15 @@
               "null"
             ]
           },
+          "listable": {
+            "description": "mine=true only: false = never listed in the gallery whatever the namespace (JSON and KV, JSON pages, HTML and JSON files); Hide and Show do not apply",
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
           "listed": {
-            "description": "mine=true only: false for private, password or hidden items (Hidden = public + false)",
+            "description": "mine=true only: false for private, password or hidden items (Hidden = public + false + listable)",
             "type": [
               "boolean",
               "null"
@@ -1267,6 +1283,10 @@
           "link": {
             "type": "string"
           },
+          "listable": {
+            "description": "false = never listed in the gallery whatever the namespace (JSON and KV, JSON pages, HTML and JSON files); Hide and Show do not apply",
+            "type": "boolean"
+          },
           "listed": {
             "description": "Shown in the gallery and search",
             "type": "boolean"
@@ -1439,6 +1459,10 @@
             "description": "Primary URL returned for browser viewing and sharing",
             "type": "string"
           },
+          "listable": {
+            "description": "false = never listed in the gallery whatever the namespace (JSON and KV, JSON pages, HTML and JSON files); Hide and Show do not apply",
+            "type": "boolean"
+          },
           "listed": {
             "description": "true = listed in the gallery and sitemap now (public, no password, not hidden).",
             "type": "boolean"
@@ -1488,7 +1512,7 @@
             "type": "integer"
           },
           "visibilityNotice": {
-            "description": "Link access in words, e.g. 'Public: listed in the gallery and sitemap; search engines can index it.' (public html, site and file add a hide hint), 'Public: anyone with the link. Not listed.' (public json, kv), 'Private: not listed. Only via your unique private link.' or 'Password: link + password.'",
+            "description": "Link access in words, e.g. 'Public: listed in the gallery and sitemap; search engines can index it.' (public html, site and file add a hide hint), 'Public: anyone with the link. Not listed.' (public json, kv, json pages, json and html files), 'Private: not listed. Only via your unique private link.' or 'Password: link + password.'",
             "type": "string"
           }
         },
@@ -1496,6 +1520,7 @@
           "expiresAt",
           "id",
           "link",
+          "listable",
           "listed",
           "namespace",
           "ownerLink",
@@ -1611,6 +1636,10 @@
             "description": "Primary URL returned for browser viewing and sharing",
             "type": "string"
           },
+          "listable": {
+            "description": "false = never listed in the gallery whatever the namespace (JSON and KV, JSON pages, HTML and JSON files); Hide and Show do not apply",
+            "type": "boolean"
+          },
           "listed": {
             "description": "true = listed in the gallery and sitemap now (public, no password, not hidden).",
             "type": "boolean"
@@ -1682,7 +1711,7 @@
             "type": "boolean"
           },
           "visibilityNotice": {
-            "description": "Link access in words, e.g. 'Public: listed in the gallery and sitemap; search engines can index it.' (public html, site and file add a hide hint), 'Public: anyone with the link. Not listed.' (public json, kv), 'Private: not listed. Only via your unique private link.' or 'Password: link + password.'",
+            "description": "Link access in words, e.g. 'Public: listed in the gallery and sitemap; search engines can index it.' (public html, site and file add a hide hint), 'Public: anyone with the link. Not listed.' (public json, kv, json pages, json and html files), 'Private: not listed. Only via your unique private link.' or 'Password: link + password.'",
             "type": "string"
           },
           "visibilityUrl": {
@@ -1699,6 +1728,7 @@
           "hostingVersion",
           "id",
           "link",
+          "listable",
           "listed",
           "managementLink",
           "modeLocked",
@@ -1827,7 +1857,7 @@
             "type": "array"
           },
           "visibilityNotice": {
-            "description": "Link access in words, e.g. 'Public: listed in the gallery and sitemap; search engines can index it.' (public html, site and file add a hide hint), 'Public: anyone with the link. Not listed.' (public json, kv), 'Private: not listed. Only via your unique private link.' or 'Password: link + password.'",
+            "description": "Link access in words, e.g. 'Public: listed in the gallery and sitemap; search engines can index it.' (public html, site and file add a hide hint), 'Public: anyone with the link. Not listed.' (public json, kv, json pages, json and html files), 'Private: not listed. Only via your unique private link.' or 'Password: link + password.'",
             "type": "string"
           },
           "visibilityUrl": {
@@ -2008,7 +2038,7 @@
             "type": "string"
           },
           "visibilityNotice": {
-            "description": "Link access in words, e.g. 'Public: listed in the gallery and sitemap; search engines can index it.' (public html, site and file add a hide hint), 'Public: anyone with the link. Not listed.' (public json, kv), 'Private: not listed. Only via your unique private link.' or 'Password: link + password.'",
+            "description": "Link access in words, e.g. 'Public: listed in the gallery and sitemap; search engines can index it.' (public html, site and file add a hide hint), 'Public: anyone with the link. Not listed.' (public json, kv, json pages, json and html files), 'Private: not listed. Only via your unique private link.' or 'Password: link + password.'",
             "type": "string"
           }
         },
@@ -2163,7 +2193,7 @@
             "type": "array"
           },
           "visibilityNotice": {
-            "description": "Link access in words, e.g. 'Public: listed in the gallery and sitemap; search engines can index it.' (public html, site and file add a hide hint), 'Public: anyone with the link. Not listed.' (public json, kv), 'Private: not listed. Only via your unique private link.' or 'Password: link + password.'",
+            "description": "Link access in words, e.g. 'Public: listed in the gallery and sitemap; search engines can index it.' (public html, site and file add a hide hint), 'Public: anyone with the link. Not listed.' (public json, kv, json pages, json and html files), 'Private: not listed. Only via your unique private link.' or 'Password: link + password.'",
             "type": "string"
           },
           "visibilityUrl": {
@@ -2415,7 +2445,7 @@
             "type": "integer"
           },
           "visibilityNotice": {
-            "description": "Link access in words, e.g. 'Public: listed in the gallery and sitemap; search engines can index it.' (public html, site and file add a hide hint), 'Public: anyone with the link. Not listed.' (public json, kv), 'Private: not listed. Only via your unique private link.' or 'Password: link + password.'",
+            "description": "Link access in words, e.g. 'Public: listed in the gallery and sitemap; search engines can index it.' (public html, site and file add a hide hint), 'Public: anyone with the link. Not listed.' (public json, kv, json pages, json and html files), 'Private: not listed. Only via your unique private link.' or 'Password: link + password.'",
             "type": "string"
           }
         },
@@ -2722,11 +2752,23 @@
           "link": {
             "type": "string"
           },
+          "listable": {
+            "description": "false = never listed in the gallery whatever the namespace (JSON and KV, JSON pages, HTML and JSON files); Hide and Show do not apply",
+            "type": "boolean"
+          },
           "listed": {
             "type": "boolean"
           },
           "namespace": {
             "type": "string"
+          },
+          "pageData": {
+            "description": "Page data of this page or site; absent when page data is off and for other types",
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/PublicationPageData"
+              }
+            ]
           },
           "preview": {
             "oneOf": [
@@ -2759,6 +2801,7 @@
           "createdAt",
           "expiresAt",
           "id",
+          "listable",
           "listed",
           "namespace",
           "readOnly",
@@ -2796,6 +2839,26 @@
         "required": [
           "items",
           "total"
+        ],
+        "type": "object"
+      },
+      "PublicationPageData": {
+        "description": "Page data on a page or site: what visitors saved there",
+        "properties": {
+          "docs": {
+            "description": "Stored entries",
+            "format": "int32",
+            "type": "integer"
+          },
+          "usedPercent": {
+            "description": "Higher share of the entry and size quotas in use, percent from 0 to 100",
+            "format": "int32",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "docs",
+          "usedPercent"
         ],
         "type": "object"
       },
@@ -3437,7 +3500,7 @@
             "type": "integer"
           },
           "visibilityNotice": {
-            "description": "Link access in words, e.g. 'Public: listed in the gallery and sitemap; search engines can index it.' (public html, site and file add a hide hint), 'Public: anyone with the link. Not listed.' (public json, kv), 'Private: not listed. Only via your unique private link.' or 'Password: link + password.'",
+            "description": "Link access in words, e.g. 'Public: listed in the gallery and sitemap; search engines can index it.' (public html, site and file add a hide hint), 'Public: anyone with the link. Not listed.' (public json, kv, json pages, json and html files), 'Private: not listed. Only via your unique private link.' or 'Password: link + password.'",
             "type": "string"
           }
         },
@@ -3607,7 +3670,7 @@
             "type": "boolean"
           },
           "visibilityNotice": {
-            "description": "Link access in words, e.g. 'Public: listed in the gallery and sitemap; search engines can index it.' (public html, site and file add a hide hint), 'Public: anyone with the link. Not listed.' (public json, kv), 'Private: not listed. Only via your unique private link.' or 'Password: link + password.'",
+            "description": "Link access in words, e.g. 'Public: listed in the gallery and sitemap; search engines can index it.' (public html, site and file add a hide hint), 'Public: anyone with the link. Not listed.' (public json, kv, json pages, json and html files), 'Private: not listed. Only via your unique private link.' or 'Password: link + password.'",
             "type": "string"
           },
           "visibilityUrl": {
@@ -4531,7 +4594,7 @@
     },
     "termsOfService": "https://brewpage.app/terms",
     "title": "BrewPage API",
-    "version": "2.22.0"
+    "version": "2.24.0"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -5731,7 +5794,7 @@
     },
     "/api/gallery": {
       "get": {
-        "description": "Lists live public publications (pages, files, sites; public namespace, no password, not hidden by the owner) with optional case-insensitive search by title (filename for files, id when untitled). When `mine=true` and `X-Owner-Token` is supplied, returns all of the caller's live pages, files and sites in any namespace, including password-protected ones (a token active in a profile lists the profile's rows; `scope` says which); each item carries its real `namespace`, a `visibility` of my_public, my_public_password or my_private, and `listed`. KV and JSON stores are never listed.",
+        "description": "Lists live public publications (pages, files, sites; public namespace, no password, not hidden by the owner) with optional case-insensitive search by title (filename for files, id when untitled). When `mine=true` and `X-Owner-Token` is supplied, returns all of the caller's live pages, files and sites in any namespace, including password-protected ones (a token active in a profile lists the profile's rows; `scope` says which); each item carries its real `namespace`, a `visibility` of my_public, my_public_password or my_private, and `listed`. Key-value and JSON stores, JSON pages and files, and HTML files kept as source are never listed.",
         "operationId": "getGallery",
         "parameters": [
           {

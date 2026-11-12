@@ -6,6 +6,10 @@ order: 5
 
 # Changelog
 
+## API contract 2.24.0 — what the gallery can list
+
+Answers now say whether a publication can appear in the gallery at all: the new boolean `listable` is `false` for the types that are never listed whatever the namespace (JSON and KV, JSON pages, HTML and JSON files), where Hide and Show do not apply. It comes on HTML create and update answers, file answers, the hosting read, the items of `GET /api/publications` and your own items of `GET /api/gallery`. Items of `GET /api/publications` also add an optional `pageData` with the number of stored entries and the share of the quota in use. Additions and wording only: 59 paths and 81 operations. The MCP server is unchanged.
+
 ## MCP 1.19.1 — setup guide on npm
 
 The package page on npm shows the current setup guide: the remote server `https://brewpage.app/mcp` first, with steps for Claude and ChatGPT; the local `npx -y brewpage-mcp@1.19.1` server as the fallback; no global install. The server is unchanged: thirty tools, contract 2.22.0.

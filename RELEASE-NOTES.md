@@ -1,5 +1,13 @@
 # Release Notes
 
+## API contract 2.24.0 — 2026-11-12
+
+- Exported from brewpage-app source `7b85cd2c3c8a012a9620fe9db1ec3d477598e9ed` (brewpage-app release v2.24.0), clean tree. 59 paths and 81 operations, unchanged. Additions and wording only: no path, parameter or code changed.
+- New `listable` (boolean) tells a client whether a publication can appear in the gallery at all. `false` means it is never listed whatever the namespace (JSON and KV, JSON pages, HTML and JSON files), so Hide and Show do not apply to it. Always present on HTML create and update answers, file update answers and the items of `GET /api/publications`; also declared on the file upload answer, the hosting read and the `mine=true` items of `GET /api/gallery`.
+- Items of `GET /api/publications` add an optional `pageData` (`PublicationPageData`: `docs` = stored entries, `usedPercent` = share of the quota in use, 0 to 100) for a page or site with page data turned on.
+- Descriptions say the same in words: `visibilityNotice` names JSON pages and JSON and HTML files among the publications that are public by link and not listed, and `GET /api/gallery` states that key-value and JSON stores, JSON pages and files, and HTML files kept as source are never listed.
+- The MCP server is unchanged: `brewpage-mcp` 1.19.1 works with this contract as it is.
+
 ## MCP 1.19.1 — 2026-11-12
 
 - The package page on npm now shows the current setup guide: one remote MCP server, `https://brewpage.app/mcp`, comes first, with steps for Claude and ChatGPT and nothing to install. The local `npx` server stays as the fallback for clients that only start local servers. The global install instructions are gone.
