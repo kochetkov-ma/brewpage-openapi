@@ -24,9 +24,9 @@ Use BrewPage directly from Claude Desktop, Claude Code, or any MCP client.
 
 ### Remote (no install)
 
-Add `https://brewpage.app/mcp` as a custom connector / remote MCP server by URL in Claude.ai, ChatGPT or any Streamable HTTP client. No auth; same 30 tools.
+One remote MCP server for every client: `https://brewpage.app/mcp` (Streamable HTTP, no authentication, same 30 tools). Add it by URL in Claude (a custom connector), ChatGPT (a custom MCP server) or any Streamable HTTP client.
 
-Claude Code: `claude mcp add --transport http brewpage https://brewpage.app/mcp`, or in `.mcp.json`:
+Claude Code: `claude mcp add --transport http brewpage --scope user https://brewpage.app/mcp` (leave out `--scope user` to add it to the current project only), or in `.mcp.json`:
 
 ```json
 {
@@ -39,9 +39,18 @@ Claude Code: `claude mcp add --transport http brewpage https://brewpage.app/mcp`
 }
 ```
 
-### Claude Desktop
+### Claude.ai and Claude Desktop
 
-Edit `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS):
+Claude calls a remote MCP server a custom connector. Add it once in Claude on the web; Claude Desktop picks it up too. Nothing to install.
+
+1. Open **Customize** > **Connectors**.
+2. Click **+ Add**, then **Add custom connector**.
+3. Name it **BrewPage**, paste `https://brewpage.app/mcp` and click **Continue**.
+4. Click **Continue** again, choose **No sign in** under Authentication and click **Add**.
+
+The free plan includes one custom connector.
+
+Local fallback (stdio, needs Node.js; the same tools): edit `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS):
 
 ```json
 {
@@ -58,7 +67,7 @@ Windows: `%APPDATA%\Claude\claude_desktop_config.json`
 
 ### Claude Code
 
-Run `claude mcp add --transport stdio --scope project brewpage -- npx -y brewpage-mcp@1.19.0`, or add this to project-root `.mcp.json`:
+The remote command above is the default. Local fallback: run `claude mcp add --transport stdio --scope project brewpage -- npx -y brewpage-mcp@1.19.0`, or add this to project-root `.mcp.json`:
 
 ```json
 {

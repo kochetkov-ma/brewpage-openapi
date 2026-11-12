@@ -98,9 +98,9 @@ Upload report.md to brewpage.app
 
 ### Install (one-time)
 
-**Remote (no install)** — Add `https://brewpage.app/mcp` as a custom connector / remote MCP server by URL in Claude.ai, ChatGPT or any Streamable HTTP client. No auth; same 30 tools. Claude Code: `claude mcp add --transport http brewpage https://brewpage.app/mcp`.
+**Remote (no install)** — One remote MCP server for every client: `https://brewpage.app/mcp` (Streamable HTTP, no authentication, same 30 tools). Add it by URL in Claude (a custom connector), ChatGPT (a custom MCP server) or any Streamable HTTP client. In Claude: **Customize** > **Connectors** > **+ Add** > **Add custom connector**, paste the URL, choose **No sign in**. Claude Code: `claude mcp add --transport http brewpage --scope user https://brewpage.app/mcp`.
 
-**Claude Desktop** — `claude_desktop_config.json`:
+**Claude Desktop, local fallback (stdio, needs Node.js)** — `claude_desktop_config.json`:
 ```json
 {
   "mcpServers": {
