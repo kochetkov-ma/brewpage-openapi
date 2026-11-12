@@ -57,6 +57,46 @@
         ],
         "type": "object"
       },
+      "BadgeRequest": {
+        "properties": {
+          "hidden": {
+            "description": "true = hide the BrewPage badge (profile owners, up to 5 publications), false = show it; omitted reports the state.",
+            "type": "boolean"
+          }
+        },
+        "type": "object"
+      },
+      "BadgeResponse": {
+        "properties": {
+          "hidden": {
+            "description": "true = the BrewPage badge is not shown on this publication",
+            "type": "boolean"
+          },
+          "limit": {
+            "description": "Most publications a profile may hide the badge on",
+            "format": "int32",
+            "type": "integer"
+          },
+          "notices": {
+            "description": "Advisories about the request or its result; omitted when none.",
+            "items": {
+              "$ref": "#/components/schemas/PublishNotice"
+            },
+            "type": "array"
+          },
+          "used": {
+            "description": "Publications of your profile with the badge hidden",
+            "format": "int32",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "hidden",
+          "limit",
+          "used"
+        ],
+        "type": "object"
+      },
       "BindRequest": {
         "properties": {
           "token": {
@@ -322,7 +362,7 @@
             "type": "string"
           },
           "code": {
-            "description": "Machine-readable reason, e.g. OWNER_AUTHORIZATION_FAILED, OWNER_TOKEN_REVOKED, OWNER_TOKEN_EXPIRED, ADMIN_TOKEN_REQUIRED, OLD_PUBLICATION_READ_ONLY, WRONG_RESOURCE_TYPE, PUBLICATION_UNAVAILABLE, ROTATE_LIMITED, TITLE_INVALID.",
+            "description": "Machine-readable reason, e.g. OWNER_AUTHORIZATION_FAILED, OWNER_TOKEN_REVOKED, OWNER_TOKEN_EXPIRED, ADMIN_TOKEN_REQUIRED, OLD_PUBLICATION_READ_ONLY, WRONG_RESOURCE_TYPE, PUBLICATION_UNAVAILABLE, ROTATE_LIMITED, TITLE_INVALID, BADGE_HIDDEN_LIMIT, NOT_PUBLIC.",
             "type": "string"
           },
           "createUrl": {
@@ -382,7 +422,7 @@
             "type": "string"
           },
           "used": {
-            "description": "With DOMAIN_LIMIT: custom domains the profile already uses (`limit` = how many it may hold)",
+            "description": "With DOMAIN_LIMIT or BADGE_HIDDEN_LIMIT: custom domains or hidden badges the profile already uses (`limit` = how many it may hold)",
             "format": "int32",
             "type": "integer"
           }
@@ -511,7 +551,7 @@
             "type": "string"
           },
           "listable": {
-            "description": "false = never listed in the gallery whatever the namespace (JSON and KV, JSON pages, HTML and JSON files); Hide and Show do not apply",
+            "description": "false = never listed in the gallery whatever the namespace (JSON and KV, JSON pages, HTML and JSON files); listing does not apply",
             "type": "boolean"
           },
           "listed": {
@@ -615,7 +655,7 @@
             "type": "string"
           },
           "listable": {
-            "description": "false = never listed in the gallery whatever the namespace (JSON and KV, JSON pages, HTML and JSON files); Hide and Show do not apply",
+            "description": "false = never listed in the gallery whatever the namespace (JSON and KV, JSON pages, HTML and JSON files); listing does not apply",
             "type": "boolean"
           },
           "listed": {
@@ -686,11 +726,11 @@
             "type": "boolean"
           },
           "visibilityNotice": {
-            "description": "Link access in words, e.g. 'Public: listed in the gallery and sitemap; search engines can index it.' (public html, site and file add a hide hint), 'Public: anyone with the link. Not listed.' (public json, kv, json pages, json and html files), 'Private: not listed. Only via your unique private link.' or 'Password: link + password.'",
+            "description": "Link access in words, e.g. 'Public: listed in the gallery and sitemap; search engines can index it.' (public html, site and file add an unlist hint), 'Public: anyone with the link. Not listed.' (public json, kv, json pages, json and html files), 'Private: not listed. Only via your unique private link.' or 'Password: link + password.'",
             "type": "string"
           },
           "visibilityUrl": {
-            "description": "Owner: POST {\"listed\":false|true} here to hide or show. Link unchanged.",
+            "description": "Owner: POST {\"listed\":false|true} here to unlist or list. Link unchanged.",
             "type": "string"
           }
         },
@@ -768,14 +808,14 @@
             ]
           },
           "listable": {
-            "description": "mine=true only: false = never listed in the gallery whatever the namespace (JSON and KV, JSON pages, HTML and JSON files); Hide and Show do not apply",
+            "description": "mine=true only: false = never listed in the gallery whatever the namespace (JSON and KV, JSON pages, HTML and JSON files); listing does not apply",
             "type": [
               "boolean",
               "null"
             ]
           },
           "listed": {
-            "description": "mine=true only: false for private, password or hidden items (Hidden = public + false + listable)",
+            "description": "mine=true only: false for private, password or unlisted items (unlisted by the owner = public + false + listable)",
             "type": [
               "boolean",
               "null"
@@ -1293,7 +1333,7 @@
             "type": "string"
           },
           "listable": {
-            "description": "false = never listed in the gallery whatever the namespace (JSON and KV, JSON pages, HTML and JSON files); Hide and Show do not apply",
+            "description": "false = never listed in the gallery whatever the namespace (JSON and KV, JSON pages, HTML and JSON files); listing does not apply",
             "type": "boolean"
           },
           "listed": {
@@ -1469,7 +1509,7 @@
             "type": "string"
           },
           "listable": {
-            "description": "false = never listed in the gallery whatever the namespace (JSON and KV, JSON pages, HTML and JSON files); Hide and Show do not apply",
+            "description": "false = never listed in the gallery whatever the namespace (JSON and KV, JSON pages, HTML and JSON files); listing does not apply",
             "type": "boolean"
           },
           "listed": {
@@ -1521,7 +1561,7 @@
             "type": "integer"
           },
           "visibilityNotice": {
-            "description": "Link access in words, e.g. 'Public: listed in the gallery and sitemap; search engines can index it.' (public html, site and file add a hide hint), 'Public: anyone with the link. Not listed.' (public json, kv, json pages, json and html files), 'Private: not listed. Only via your unique private link.' or 'Password: link + password.'",
+            "description": "Link access in words, e.g. 'Public: listed in the gallery and sitemap; search engines can index it.' (public html, site and file add an unlist hint), 'Public: anyone with the link. Not listed.' (public json, kv, json pages, json and html files), 'Private: not listed. Only via your unique private link.' or 'Password: link + password.'",
             "type": "string"
           }
         },
@@ -1646,7 +1686,7 @@
             "type": "string"
           },
           "listable": {
-            "description": "false = never listed in the gallery whatever the namespace (JSON and KV, JSON pages, HTML and JSON files); Hide and Show do not apply",
+            "description": "false = never listed in the gallery whatever the namespace (JSON and KV, JSON pages, HTML and JSON files); listing does not apply",
             "type": "boolean"
           },
           "listed": {
@@ -1720,11 +1760,11 @@
             "type": "boolean"
           },
           "visibilityNotice": {
-            "description": "Link access in words, e.g. 'Public: listed in the gallery and sitemap; search engines can index it.' (public html, site and file add a hide hint), 'Public: anyone with the link. Not listed.' (public json, kv, json pages, json and html files), 'Private: not listed. Only via your unique private link.' or 'Password: link + password.'",
+            "description": "Link access in words, e.g. 'Public: listed in the gallery and sitemap; search engines can index it.' (public html, site and file add an unlist hint), 'Public: anyone with the link. Not listed.' (public json, kv, json pages, json and html files), 'Private: not listed. Only via your unique private link.' or 'Password: link + password.'",
             "type": "string"
           },
           "visibilityUrl": {
-            "description": "Owner: POST {\"listed\":false|true} here to hide or show. Link unchanged.",
+            "description": "Owner: POST {\"listed\":false|true} here to unlist or list. Link unchanged.",
             "type": "string"
           }
         },
@@ -1866,11 +1906,11 @@
             "type": "array"
           },
           "visibilityNotice": {
-            "description": "Link access in words, e.g. 'Public: listed in the gallery and sitemap; search engines can index it.' (public html, site and file add a hide hint), 'Public: anyone with the link. Not listed.' (public json, kv, json pages, json and html files), 'Private: not listed. Only via your unique private link.' or 'Password: link + password.'",
+            "description": "Link access in words, e.g. 'Public: listed in the gallery and sitemap; search engines can index it.' (public html, site and file add an unlist hint), 'Public: anyone with the link. Not listed.' (public json, kv, json pages, json and html files), 'Private: not listed. Only via your unique private link.' or 'Password: link + password.'",
             "type": "string"
           },
           "visibilityUrl": {
-            "description": "Owner: POST {\"listed\":false|true} here to hide or show. Link unchanged.",
+            "description": "Owner: POST {\"listed\":false|true} here to unlist or list. Link unchanged.",
             "type": "string"
           }
         },
@@ -2047,7 +2087,7 @@
             "type": "string"
           },
           "visibilityNotice": {
-            "description": "Link access in words, e.g. 'Public: listed in the gallery and sitemap; search engines can index it.' (public html, site and file add a hide hint), 'Public: anyone with the link. Not listed.' (public json, kv, json pages, json and html files), 'Private: not listed. Only via your unique private link.' or 'Password: link + password.'",
+            "description": "Link access in words, e.g. 'Public: listed in the gallery and sitemap; search engines can index it.' (public html, site and file add an unlist hint), 'Public: anyone with the link. Not listed.' (public json, kv, json pages, json and html files), 'Private: not listed. Only via your unique private link.' or 'Password: link + password.'",
             "type": "string"
           }
         },
@@ -2202,11 +2242,11 @@
             "type": "array"
           },
           "visibilityNotice": {
-            "description": "Link access in words, e.g. 'Public: listed in the gallery and sitemap; search engines can index it.' (public html, site and file add a hide hint), 'Public: anyone with the link. Not listed.' (public json, kv, json pages, json and html files), 'Private: not listed. Only via your unique private link.' or 'Password: link + password.'",
+            "description": "Link access in words, e.g. 'Public: listed in the gallery and sitemap; search engines can index it.' (public html, site and file add an unlist hint), 'Public: anyone with the link. Not listed.' (public json, kv, json pages, json and html files), 'Private: not listed. Only via your unique private link.' or 'Password: link + password.'",
             "type": "string"
           },
           "visibilityUrl": {
-            "description": "Owner: POST {\"listed\":false|true} here to hide or show. Link unchanged.",
+            "description": "Owner: POST {\"listed\":false|true} here to unlist or list. Link unchanged.",
             "type": "string"
           }
         },
@@ -2454,7 +2494,7 @@
             "type": "integer"
           },
           "visibilityNotice": {
-            "description": "Link access in words, e.g. 'Public: listed in the gallery and sitemap; search engines can index it.' (public html, site and file add a hide hint), 'Public: anyone with the link. Not listed.' (public json, kv, json pages, json and html files), 'Private: not listed. Only via your unique private link.' or 'Password: link + password.'",
+            "description": "Link access in words, e.g. 'Public: listed in the gallery and sitemap; search engines can index it.' (public html, site and file add an unlist hint), 'Public: anyone with the link. Not listed.' (public json, kv, json pages, json and html files), 'Private: not listed. Only via your unique private link.' or 'Password: link + password.'",
             "type": "string"
           }
         },
@@ -2726,6 +2766,10 @@
       },
       "PublicationListItemResponse": {
         "properties": {
+          "badgeHidden": {
+            "description": "true = your profile hid the BrewPage badge on this publication; absent otherwise",
+            "type": "boolean"
+          },
           "claimed": {
             "description": "Added by management link",
             "type": "boolean"
@@ -2762,7 +2806,7 @@
             "type": "string"
           },
           "listable": {
-            "description": "false = never listed in the gallery whatever the namespace (JSON and KV, JSON pages, HTML and JSON files); Hide and Show do not apply",
+            "description": "false = never listed in the gallery whatever the namespace (JSON and KV, JSON pages, HTML and JSON files); listing does not apply",
             "type": "boolean"
           },
           "listed": {
@@ -2954,7 +2998,7 @@
             "type": "string"
           },
           "notices": {
-            "description": "rotate-still-listed while the row is shown in gallery and search",
+            "description": "rotate-still-listed while the row is listed in gallery and search; private-domain-detached when Make private detached a custom domain",
             "items": {
               "$ref": "#/components/schemas/RotateNotice"
             },
@@ -3062,7 +3106,7 @@
       "PublishNotice": {
         "properties": {
           "code": {
-            "description": "Kebab-case, e.g. ttl-clamped, namespace-defaulted, secret-detected, visibility-not-listable, extend-needs-profile, rotate-still-listed, owner-token-new (save the new ownerToken, reuse it), credential-published (token or manage link in public content: remove it, reset it), archive-unverified (archive: check contents before opening).",
+            "description": "Kebab-case, e.g. ttl-clamped, namespace-defaulted, secret-detected, visibility-not-listable, extend-needs-profile, rotate-still-listed, private-domain-detached, badge-hide-needs-profile, owner-token-new (save the new ownerToken, reuse it), credential-published (token or manage link in public content: remove it, reset it), archive-unverified (archive: check contents before opening).",
             "type": "string"
           },
           "message": {
@@ -3509,7 +3553,7 @@
             "type": "integer"
           },
           "visibilityNotice": {
-            "description": "Link access in words, e.g. 'Public: listed in the gallery and sitemap; search engines can index it.' (public html, site and file add a hide hint), 'Public: anyone with the link. Not listed.' (public json, kv, json pages, json and html files), 'Private: not listed. Only via your unique private link.' or 'Password: link + password.'",
+            "description": "Link access in words, e.g. 'Public: listed in the gallery and sitemap; search engines can index it.' (public html, site and file add an unlist hint), 'Public: anyone with the link. Not listed.' (public json, kv, json pages, json and html files), 'Private: not listed. Only via your unique private link.' or 'Password: link + password.'",
             "type": "string"
           }
         },
@@ -3679,11 +3723,11 @@
             "type": "boolean"
           },
           "visibilityNotice": {
-            "description": "Link access in words, e.g. 'Public: listed in the gallery and sitemap; search engines can index it.' (public html, site and file add a hide hint), 'Public: anyone with the link. Not listed.' (public json, kv, json pages, json and html files), 'Private: not listed. Only via your unique private link.' or 'Password: link + password.'",
+            "description": "Link access in words, e.g. 'Public: listed in the gallery and sitemap; search engines can index it.' (public html, site and file add an unlist hint), 'Public: anyone with the link. Not listed.' (public json, kv, json pages, json and html files), 'Private: not listed. Only via your unique private link.' or 'Password: link + password.'",
             "type": "string"
           },
           "visibilityUrl": {
-            "description": "Owner: POST {\"listed\":false|true} here to hide or show. Link unchanged. Absent when result.extras.isOwner is false.",
+            "description": "Owner: POST {\"listed\":false|true} here to unlist or list. Link unchanged. Absent when result.extras.isOwner is false.",
             "type": "string"
           }
         },
@@ -4528,7 +4572,7 @@
       "VisibilityRequest": {
         "properties": {
           "listed": {
-            "description": "false = hide from gallery & search, true = show. Link unchanged; omitted reports the state.",
+            "description": "true = listed in gallery & search, false = unlisted. Link unchanged; omitted reports the state.",
             "type": "boolean"
           }
         },
@@ -4596,14 +4640,14 @@
       "name": "BrewPage",
       "url": "https://brewpage.app"
     },
-    "description": "Free instant hosting for HTML, Markdown, JSON, key-value stores, files and sites. Send ns=public to be found: gallery + Google, Bing & AI search. Omitted ns: private (MCP: a generated private namespace). Password or hidden: unlisted. A private link is not a lock: anyone with it can open it; add a password to restrict. Secrets allowed; likely ones are flagged in notices. For a secret: private namespace + password. Retain returned links. Give the user link and manageUrl; manageUrl is private (anyone who has it can edit or delete the publication): never post it publicly. Keep ownerToken; send it as X-Owner-Token on later publishes and updates; show it to the user on request. How BrewPage compares with GitHub Pages, GitHub Gist, Netlify Drop, Cloudflare Drop, Tiiny Host and Static.app: https://brewpage.app/compare. Agents: remote MCP at https://brewpage.app/mcp (no auth).",
+    "description": "Free instant hosting for HTML, Markdown, JSON, key-value stores, files and sites. Send ns=public to be found: gallery + Google, Bing & AI search. Omitted ns: private (MCP: a generated private namespace). Password or listed=false: unlisted. A private link is not a lock: anyone with it can open it; add a password to restrict. Secrets allowed; likely ones are flagged in notices. For a secret: private namespace + password. Retain returned links. Give the user link and manageUrl; manageUrl is private (anyone who has it can edit or delete the publication): never post it publicly. Keep ownerToken; send it as X-Owner-Token on later publishes and updates; show it to the user on request. How BrewPage compares with GitHub Pages, GitHub Gist, Netlify Drop, Cloudflare Drop, Tiiny Host and Static.app: https://brewpage.app/compare. Agents: remote MCP at https://brewpage.app/mcp (no auth). HTML pages and sites show a small BrewPage badge; page code must not hide or alter it. A profile can turn it off on up to 5 pages (setBadge).",
     "license": {
       "name": "Apache-2.0",
       "url": "https://www.apache.org/licenses/LICENSE-2.0"
     },
     "termsOfService": "https://brewpage.app/terms",
     "title": "BrewPage API",
-    "version": "2.26.0"
+    "version": "2.27.0"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -9758,6 +9802,16 @@
               }
             },
             "description": "Site not found"
+          },
+          "410": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Public publication deleted or expired"
           }
         },
         "security": [
@@ -11168,6 +11222,127 @@
         ]
       }
     },
+    "/api/{type}/{ns}/{id}/badge": {
+      "post": {
+        "operationId": "setBadge",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "type",
+            "required": true,
+            "schema": {
+              "enum": [
+                "html",
+                "files",
+                "json",
+                "kv",
+                "sites"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "ns",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Owner token returned at creation",
+            "in": "header",
+            "name": "X-Owner-Token"
+          },
+          {
+            "description": "Management key of this publication",
+            "in": "header",
+            "name": "X-Manage-Key"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BadgeRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BadgeResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Missing or wrong owner token or management key; token revoked or expired"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Publication unavailable (outside public also for wrong credentials)"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "BADGE_HIDDEN_LIMIT: badge already hidden on 5 publications of the profile; show it on one first"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Rate limited: wait Retry-After (= retryAfterSeconds); no account: accountUrl, free sign-up with higher limits"
+          }
+        },
+        "security": [
+          {
+            "OwnerToken": []
+          },
+          {
+            "ManageKey": []
+          }
+        ],
+        "summary": "Hide or show the BrewPage badge on your publication (profile owners)",
+        "tags": [
+          "Hosting Management"
+        ]
+      }
+    },
     "/api/{type}/{ns}/{id}/extend": {
       "post": {
         "operationId": "extendPublication",
@@ -11753,6 +11928,136 @@
         ]
       }
     },
+    "/api/{type}/{ns}/{id}/private": {
+      "post": {
+        "operationId": "makePrivate",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "type",
+            "required": true,
+            "schema": {
+              "enum": [
+                "html",
+                "files",
+                "json",
+                "kv",
+                "sites"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "ns",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Owner token",
+            "in": "header",
+            "name": "X-Owner-Token",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Management key",
+            "in": "header",
+            "name": "X-Manage-Key",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicationRotateResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Missing or wrong owner token or management key; token revoked or expired"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Publication unavailable (outside public also for wrong credentials)"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "NOT_PUBLIC: only a public publication can be made private; Old publication is read-only (code: OLD_PUBLICATION_READ_ONLY); publish anew via createUrl; or the namespace file or document limit is reached"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Rate limited: wait Retry-After (= retryAfterSeconds); no account: accountUrl, free sign-up with higher limits; or ROTATE_LIMITED: at most 3 link changes a day"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Link changes temporarily unavailable"
+          }
+        },
+        "security": [
+          {
+            "OwnerToken": []
+          },
+          {
+            "ManageKey": []
+          }
+        ],
+        "summary": "Make a public publication private: new private link, the public link answers 410. One-way",
+        "tags": [
+          "Hosting Management"
+        ]
+      }
+    },
     "/api/{type}/{ns}/{id}/rotate": {
       "post": {
         "operationId": "rotatePublicationLink",
@@ -12126,7 +12431,7 @@
             "ManageKey": []
           }
         ],
-        "summary": "Hide or show a public publication in gallery & search. Link unchanged",
+        "summary": "List or unlist a public publication in gallery & search. Link unchanged",
         "tags": [
           "Hosting Management"
         ]

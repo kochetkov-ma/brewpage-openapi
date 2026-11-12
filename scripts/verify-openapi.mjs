@@ -133,6 +133,15 @@ assert.deepEqual([schemas.StateListResponse.required, schemas.StateDeleteRespons
   'Page data answers: an entry page with next, a delete count, a write receipt with its version');
 assert.deepEqual(schemas.StateEntry.required, ['createdAt', 'id', 'key', 'sizeBytes', 'updatedAt', 'value', 'version', 'visitor'],
   'A page data entry carries key, id, visitor, version, size, times and value');
+for (const [suffix, operationId, answer] of [['badge', 'setBadge', 'BadgeResponse'], ['private', 'makePrivate', 'PublicationRotateResponse']]) {
+  const action = spec.paths[`/api/{type}/{ns}/{id}/${suffix}`]?.post;
+  assert.equal(action?.operationId, operationId, `Owner action /${suffix} is published as ${operationId}`);
+  assert.deepEqual(action.security, [{ OwnerToken: [] }, { ManageKey: [] }], `${operationId} requires owner authority: owner token or management key`);
+  assert.equal(action.responses['200'].content['application/json'].schema.$ref, `#/components/schemas/${answer}`, `${operationId} answers with ${answer}`);
+  assert.ok(action.responses['409'], `${operationId} declares its 409 refusal`);
+}
+assert.deepEqual(schemas.BadgeResponse.required, ['hidden', 'limit', 'used'], 'A badge answer carries the state and the profile counts');
+assert.equal(schemas.BadgeRequest.properties.hidden.type, 'boolean', 'A badge request takes the optional boolean hidden');
 const tagNames = (spec.tags ?? []).map((tag) => tag.name);
 assert.equal(new Set(tagNames).size, tagNames.length, 'Top-level tag names are unique');
 assert.deepEqual(spec.paths['/api/json'].post.requestBody.content['application/json'].schema, {},
