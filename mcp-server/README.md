@@ -93,7 +93,17 @@ This writes `.mcp.json` in the project root. Use `--scope user` for user-scoped 
 
 ### Cursor
 
-Open **Settings > MCP** and add:
+One click: **Add to Cursor** on [brewpage.app/integrations](https://brewpage.app/integrations#cursor) opens the install dialog in Cursor with BrewPage filled in. Or add to `~/.cursor/mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "brewpage": { "url": "https://brewpage.app/mcp" }
+  }
+}
+```
+
+Local fallback (stdio, needs Node.js; the same tools): open **Settings > MCP** and add:
 
 ```json
 {
