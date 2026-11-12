@@ -153,7 +153,7 @@ curl https://brewpage.app/api/stats
 
 The backend-generated public JSON contract owns schema authority. YAML is derived deterministically; Scalar serves an identical JSON copy. See [`openapi/openapi.provenance.json`](openapi/openapi.provenance.json) for export provenance. Correct backend generation before importing a new snapshot; do not author schemas in YAML.
 
-Both imports run in one step and neither output is hand-edited: `node scripts/sync-openapi.mjs <backend export public.json>` writes the contract, its YAML, the Scalar copy and the provenance; `node scripts/sync-guide.mjs <brewpage-app>/frontend/src` writes the MCP Page data guide ([`mcp-server/src/guides/page-data.ts`](mcp-server/src/guides/page-data.ts)) from `llms-full.txt` and `llms.txt` and fails when the cheat-sheet block or the call-shapes line is missing.
+Both imports run in one step and neither output is hand-edited: `node scripts/sync-openapi.mjs <backend export public.json>` writes the contract, its YAML, the Scalar copy and the provenance; `node scripts/sync-guide.mjs <brewpage-app>/frontend/src` writes the MCP Page data guide ([`mcp-server/src/guides/page-data.ts`](mcp-server/src/guides/page-data.ts)) from `llms-full.txt` and `llms.txt` and fails when the cheat-sheet block or the call-shapes line is missing; the same run writes the custom-domain status and problem tables ([`mcp-server/src/guides/custom-domain.ts`](mcp-server/src/guides/custom-domain.ts)) from the `Custom Domains` section of `llms-full.txt`.
 
 ### Endpoints
 
@@ -198,10 +198,10 @@ Rerunning historical tag workflows that used token authentication is unsupported
 | `set_badge` | Hide or show the BrewPage badge on a publication of your profile, up to 5 hidden |
 | `set_title` | Rename an HTML page or site; the title stays on republish |
 | `set_domain` | Connect a domain you own to an HTML page or site; returns the DNS records to create |
-| `check_domain` | Check a custom domain's DNS; status `pending_dns` -> `verifying` -> `active` |
-| `list_domains` | List the profile's custom domains |
+| `check_domain` | Run a DNS check once the records exist; status `pending_dns` -> `verifying` -> `active` |
+| `list_domains` | Read one custom domain's status and DNS records without a check, or list the profile's custom domains |
 | `remove_domain` | Remove a custom domain; the BrewPage link keeps working |
-| `get_guide` | Read the short Page data guide before writing a page that saves what visitors enter |
+| `get_guide` | Read a short guide: Page data before writing a page that saves what visitors enter, or the custom-domain steps |
 | `get_page_data` | Read what visitors saved on your page: settings and usage, or one list's entries |
 | `set_page_data` | Write author entries (for example today's menu) without republishing |
 | `configure_page_data` | Change who can read a list and its limits |

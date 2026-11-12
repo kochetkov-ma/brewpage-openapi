@@ -156,14 +156,14 @@ Thirty-two tools are available. Creation returns an owner token; keep it to modi
 | `bind_token` | Add an owner token to your profile (admin token) |
 | `mint_token` | Mint a profile token, shown once (admin token) |
 | `set_domain` | Connect a domain you own to an HTML page or site; returns the DNS records to create |
-| `list_domains` | List the profile's custom domains with status and DNS records (admin token) |
-| `check_domain` | Check a custom domain's DNS now; status `pending_dns` -> `verifying` -> `active` |
+| `list_domains` | Read one custom domain's status and DNS records without a check, or list the profile's custom domains (admin token) |
+| `check_domain` | Run a DNS check once the records exist; status `pending_dns` -> `verifying` -> `active` |
 | `remove_domain` | Remove a custom domain and free its slot; the BrewPage link keeps working |
 | `get_page_data` | Read what visitors saved on your page: the settings and usage, or one list's entries |
 | `set_page_data` | Write author entries (for example today's menu) without republishing the page |
 | `configure_page_data` | Change who can read a list and its limits; only what you name changes |
 | `delete_page_data` | Delete entries by id, or every entry in a time range |
-| `get_guide` | Read the short Page data guide before writing a page that saves data |
+| `get_guide` | Read a short guide: Page data before writing a page that saves data, or the custom-domain steps |
 | `search_gallery` | Browse public content or list owned resources |
 | `get_stats` | Read platform-wide statistics |
 | `get_limits` | Read the current upload limits (`GET /api/limits`) |
@@ -510,37 +510,48 @@ Parameters: `label` (optional), `scope` (`publish` default | `admin`), `expiresI
 
 ### Custom domains
 
-Show one HTML page (format html, no password) or one site on a domain you own, such as `www.example.com` or `example.com`. Free, 5 per profile. The owner token must be in a free BrewPage profile: sign in at https://account.brewpage.app and add the token there, or with `bind_token`. The BrewPage link keeps working.
+Show one HTML page (format html, no password) or one site on a domain you own, such as `www.example.com` or `example.com`. Free, up to 5 per profile. A profile token works at once; an owner token must first be added to a free BrewPage profile: sign in at https://account.brewpage.app/tokens, press Add existing token and paste it (or `bind_token` with an admin profile token). Any registrar or DNS host works; if you are buying a domain, Cloudflare and Porkbun are the quickest to set up. The BrewPage link keeps working.
 
-How it goes: `set_domain` returns the DNS records, the domain owner creates exactly those records at their DNS provider, then `check_domain` reports the status: `pending_dns` (records not seen yet), `verifying` (DNS found, HTTPS being issued), `active` (live). HTTPS is issued automatically. The records come from the result, never from memory: a subdomain takes a TXT record at `_brewpage.<host>` plus a CNAME to `domains.brewpage.app`; a root domain takes the TXT record plus the A record shown, or the optional ALIAS row.
+How it goes:
 
-`publish_html` and `publish_site` accept an optional `domain` to connect it while publishing. The publication is always created; the result prints a `CUSTOM DOMAIN` block with the records, or says the domain was not set next to the notice that explains why.
+1. `set_domain` returns the DNS records. They come from the result, never from memory: a subdomain takes a TXT record at `_brewpage.<host>` plus a CNAME to `domains.brewpage.app`; a root domain takes the TXT record plus the A record shown, or the optional ALIAS row.
+2. The domain owner creates exactly those records at their DNS provider: MX (mail) records stay, an A, AAAA or CNAME record at the same name is replaced, and at Cloudflare Proxy status is set to DNS only.
+3. After the records exist, `check_domain` once.
+4. `list_domains` with the same `type`, `namespace` and `id` reads the status without a new check until it is `active`. BrewPage checks on its own (the first full check about 15 minutes after adding); the domain is usually live within 30 minutes and HTTPS is issued automatically. Another `check_domain` is needed only after a DNS change.
+
+Statuses: `pending_dns` (records not seen yet), `verifying` (DNS found, HTTPS being issued), `active` (live), `lost` (the records broke after going live; the domain is still served until `graceEndsAt`: restore the records and check again). The `Problem:` line of a result names what blocks progress and its fix; a refusal names its next step. The same steps are in `get_guide(topic="custom-domain")` for the assistant.
+
+`publish_html` and `publish_site` accept an optional `domain` to connect it while publishing. The publication is always created; the result prints a `CUSTOM DOMAIN` block with the records, or says the domain was not set, with the next step, below the notice that explains why.
 
 ### `set_domain`
 
 Connect a domain to an HTML page or site (`PUT /api/publications/{html|site}/{ns}/{id}/domain`). A hostname already in the profile moves to this publication. A page on a BrewPage path address moves to its own subdomain, and its BrewPage link keeps working.
 
-Parameters: `type` (`html` | `site`), `namespace`, `id`, `hostname` (e.g. `www.example.com` or `example.com`), `ownerToken` (optional; the publication's owner token added to a profile, or a profile token).
+Parameters: `type` (`html` | `site`), `namespace`, `id`, `hostname` (a bare hostname such as `www.example.com` or `example.com`, no scheme or path), `ownerToken` (optional; a profile token, or the publication's owner token added to a profile).
 
 ```
 set_domain(type="html", namespace="public", id="aBcDeFgHiJ", hostname="www.example.com")
 ```
 
-Output: `Custom domain connected.`, then `Domain:`, `Status:`, `Problem:` (what is still missing), `Serving:`, `Shows:`, the `records[]` rows verbatim as JSON (`type`, `name`, `host`, `value`, `state`) and the next step. `host` is the name DNS panels ask for.
+Output: `Custom domain added. It is not live until the DNS records below exist.`, then `Domain:`, `Status:`, `Problem:` (what is still missing, with the fix), `Serving:`, `Shows:`, the `records[]` rows verbatim as JSON (`type`, `name`, `host`, `value`, `state`) and the next step. `host` is the name DNS panels ask for.
 
 ---
 
 ### `list_domains`
 
-List the custom domains of a profile (`GET /api/domains`): how many are used and allowed, and for each one its status, DNS records and the publication it shows.
+Read custom domains without running a DNS check. With `type`, `namespace` and `id` (`GET /api/publications/{html|site}/{ns}/{id}/domain`; a profile token or an owner token added to the profile) or with `hostname` (`GET /api/domains/{hostname}`; admin profile token): the status, problem, DNS records and next step of that one custom domain. Without an address (`GET /api/domains`; admin profile token): every custom domain of the profile, plus how many are used and allowed.
 
-Parameters: `ownerToken` (admin token of the profile; optional, default `BREWPAGE_OWNER_TOKEN`, local server only).
+Parameters: optional `type` + `namespace` + `id`, or `hostname`; `ownerToken` (optional, default `BREWPAGE_OWNER_TOKEN`, local server only).
+
+```
+list_domains(type="html", namespace="public", id="aBcDeFgHiJ")
+```
 
 ---
 
 ### `check_domain`
 
-Check DNS now and return the updated status and records. By publication: `type`, `namespace`, `id` with an owner token in the profile (`POST /api/publications/{html|site}/{ns}/{id}/domain/check`). By hostname: `hostname` with an admin token of the profile (`POST /api/domains/{hostname}/check`). Checks are spaced: a repeat too soon answers 429 and the result prints `Retry-After`.
+Run a DNS check now and return the updated status and records. One check after the records exist is enough: BrewPage keeps checking on its own, and `list_domains` reads the status without a check. By publication: `type`, `namespace`, `id` with a profile token or an owner token added to the profile (`POST /api/publications/{html|site}/{ns}/{id}/domain/check`). By hostname: `hostname` with an admin profile token (`POST /api/domains/{hostname}/check`). A repeat within seconds answers 429 and the result prints `Retry-After`.
 
 Parameters: either `type` + `namespace` + `id`, or `hostname`; `ownerToken` (optional).
 
@@ -584,9 +595,9 @@ The four page-data tools below take `namespace` + `id` + `ownerToken`, or `manag
 
 ### `get_guide`
 
-Read a short reference text. Topic `page-data`: how a page saves what visitors enter, with the script calls and the `state` settings. Meant to be read before writing such a page. No API call.
+Read a short reference text. Topic `page-data`: how a page saves what visitors enter, with the script calls and the `state` settings. Meant to be read before writing such a page. Topic `custom-domain`: the steps that put a page or site on a domain you own, with the statuses and the fix for each problem. No API call.
 
-Parameters: `topic` (`page-data`).
+Parameters: `topic` (`page-data` | `custom-domain`).
 
 ---
 
@@ -693,7 +704,8 @@ get_limits()
 | "List my published pages" / "What did I publish?" | `search_gallery` | Set `mine=true` + `ownerToken` |
 | "Browse the public BrewPage gallery" | `search_gallery` | Optional `q`, `sort=date\|views` |
 | "Put this page on my own domain" | `set_domain` | Owner token in a free profile; returns the DNS records to create |
-| "I added the DNS records, is my domain live?" | `check_domain` | Status `pending_dns` -> `verifying` -> `active` |
+| "I added the DNS records" | `check_domain` | Once; status `pending_dns` -> `verifying` -> `active` |
+| "Is my domain live yet?" | `list_domains` | With `type`, `namespace`, `id`: reads the status without a new check |
 | "Which domains do I have?" | `list_domains` | Admin token of the profile |
 | "Disconnect my domain" | `remove_domain` | The BrewPage link keeps working |
 | "Make a page with a guestbook / form / poll that saves answers" | `get_guide`, then `publish_html` | Publish with `state`; give the user the page link and the management link |

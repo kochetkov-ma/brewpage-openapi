@@ -103,8 +103,8 @@ npx -y brewpage-mcp@1.21.0
 | `bind_token` | Add a token to your profile (admin token) |
 | `mint_token` | Mint a profile token, shown once (admin token) |
 | `set_domain` | Connect a domain you own to an HTML page or site → DNS records to create |
-| `check_domain` | Check the domain's DNS; `pending_dns` → `verifying` → `active` |
-| `list_domains` | List the profile's custom domains (admin token) |
+| `check_domain` | Run a DNS check once the records exist; `pending_dns` → `verifying` → `active` |
+| `list_domains` | Read one custom domain's status without a check, or list the profile's custom domains (admin token) |
 | `remove_domain` | Remove a custom domain; BrewPage link keeps working |
 | `get_page` | Fetch the API's rendered HTML or raw code response; original authored source is owner-only |
 | `get_stats` | Platform statistics |
@@ -119,7 +119,7 @@ npx -y brewpage-mcp@1.21.0
 | `get_kv` | Read a key |
 | `search_gallery` | Search the public gallery |
 | `update_hosting` | Change hosting with owner authority and the expected hosting version |
-| `get_guide` | Read the short Page data guide before writing a page that saves what visitors enter |
+| `get_guide` | Read a short guide: Page data before writing a page that saves what visitors enter, or the custom-domain steps |
 | `get_page_data` | Read what visitors saved on your page: settings and usage, or one list's entries |
 | `set_page_data` | Write author entries (for example today's menu) without republishing |
 | `configure_page_data` | Change who can read a list and its limits; only what you name changes |

@@ -96,10 +96,10 @@ This starts a stdio server for an MCP client, not an interactive publishing shel
 | `bind_token` | Add an owner token to your profile with an admin token |
 | `mint_token` | Mint a profile token with an admin token; shown once |
 | `set_domain` | Connect a domain you own to an HTML page or site; returns the DNS records to create |
-| `list_domains` | List the profile's custom domains with status and DNS records (admin token) |
-| `check_domain` | Check a custom domain's DNS now; status `pending_dns` -> `verifying` -> `active` |
+| `list_domains` | Read one custom domain's status and DNS records without a check, or list the profile's custom domains (admin token) |
+| `check_domain` | Run a DNS check once the records exist; status `pending_dns` -> `verifying` -> `active` |
 | `remove_domain` | Remove a custom domain and free its slot; the BrewPage link keeps working |
-| `get_guide` | Read the short Page data guide before writing a page that saves what visitors enter |
+| `get_guide` | Read a short guide: Page data before writing a page that saves what visitors enter, or the custom-domain steps |
 | `get_page_data` | Read what visitors saved on your page: the settings and usage, or one list's entries |
 | `set_page_data` | Write author entries (for example today's menu) without republishing the page |
 | `configure_page_data` | Change who can read a list and its limits; only what you name changes |
@@ -110,14 +110,15 @@ This starts a stdio server for an MCP client, not an interactive publishing shel
 
 ## Custom Domains
 
-A page or site can also live on a domain you own, such as `www.example.com` or `example.com`: free, 5 per profile, for HTML pages of format `html` and for sites without a password. The owner token must be in a free BrewPage profile (sign in at https://account.brewpage.app).
+A page or site can also live on a domain you own, such as `www.example.com` or `example.com`: free, up to 5 per profile, for HTML pages of format `html` and for sites without a password. A profile token works at once; an owner token must first be added to a free BrewPage profile: sign in at https://account.brewpage.app/tokens, press Add existing token and paste it. Any registrar or DNS host works; if you are buying a domain, Cloudflare and Porkbun are the quickest to set up.
 
 ```
 set_domain(type="html", namespace="public", id="aBcDeFgHiJ", hostname="www.example.com")
 check_domain(type="html", namespace="public", id="aBcDeFgHiJ")
+list_domains(type="html", namespace="public", id="aBcDeFgHiJ")
 ```
 
-`set_domain` prints the DNS records to create at your DNS provider, exactly as returned: a TXT record at `_brewpage.<host>` plus a CNAME to `domains.brewpage.app`; a root domain takes the A record shown, or ALIAS. After you create them, `check_domain` reports `pending_dns`, then `verifying`, then `active`; HTTPS is issued automatically and the BrewPage link keeps working. `list_domains` (admin token) shows all domains of the profile, `remove_domain` frees a slot. `publish_html` and `publish_site` take an optional `domain` to connect it while publishing.
+`set_domain` prints the DNS records to create at your DNS provider, exactly as returned: a TXT record at `_brewpage.<host>` plus a CNAME to `domains.brewpage.app`; a root domain takes the A record shown, or ALIAS. Keep your MX (mail) records, replace an A, AAAA or CNAME record at the same name, and at Cloudflare set Proxy status to DNS only. After the records exist, one `check_domain` is enough: BrewPage keeps checking on its own (the first full check about 15 minutes after adding), and `list_domains` with the same `type`, `namespace` and `id` reads the status without a new check: `pending_dns`, then `verifying`, then `active`, usually within 30 minutes. HTTPS is issued automatically and the BrewPage link keeps working. If the records break later the status is `lost` and the domain is still served until `graceEndsAt`: restore the records and check again. The `Problem:` line of a result names the fix. `list_domains` without an address (admin token) shows all custom domains of the profile, `remove_domain` frees a slot. `publish_html` and `publish_site` take an optional `domain` to connect it while publishing. The assistant can read the steps with `get_guide(topic="custom-domain")`.
 
 ## Page Data
 
