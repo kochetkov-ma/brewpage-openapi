@@ -1,5 +1,10 @@
 # Release Notes
 
+## MCP 1.19.1 — 2026-11-12
+
+- The package page on npm now shows the current setup guide: one remote MCP server, `https://brewpage.app/mcp`, comes first, with steps for Claude and ChatGPT and nothing to install. The local `npx` server stays as the fallback for clients that only start local servers. The global install instructions are gone.
+- Nothing changes in the server: the same thirty tools and inputs, contract 2.22.0. `User-Agent: brewpage-mcp/1.19.1`; pins bumped.
+
 ## MCP 1.19.0 — 2026-11-11
 
 - Page data: a published page can now save what its visitors enter, such as form answers, a guestbook, votes, scores or game progress, with no backend of your own. Ask the assistant for such a page: it reads the new `get_guide`, writes the page and publishes it with `state` (`publish_html`, `publish_site`; `update_html` and `republish_site` take it too). Each visitor sees only their own entries unless you make a list shared; you read everything in the Data tab behind the management link. The page gets its own address `https://<label>.brewpage.app`; saving also works on its custom domain. Per page: 1 MB and 5,000 entries; 10 MB and 20,000 entries for a page in a profile.

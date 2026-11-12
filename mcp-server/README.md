@@ -38,7 +38,7 @@ Claude Code: `claude mcp add --transport http brewpage --scope user https://brew
 For clients that only start local servers; the same tools as the server URL.
 
 ```bash
-npx -y brewpage-mcp@1.19.0
+npx -y brewpage-mcp@1.19.1
 ```
 
 Requires Node.js 20 or newer. This starts the stdio server for an MCP client.
@@ -63,7 +63,7 @@ Local fallback (stdio, needs Node.js; the same tools): add to `~/Library/Applica
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@1.19.0"]
+      "args": ["-y", "brewpage-mcp@1.19.1"]
     }
   }
 }
@@ -86,7 +86,7 @@ Custom servers follow your ChatGPT plan and workspace settings.
 The remote command above is the default. Local fallback: register a project-scoped stdio server:
 
 ```bash
-claude mcp add --transport stdio --scope project brewpage -- npx -y brewpage-mcp@1.19.0
+claude mcp add --transport stdio --scope project brewpage -- npx -y brewpage-mcp@1.19.1
 ```
 
 This writes `.mcp.json` in the project root. Use `--scope user` for user-scoped registration. See the [official Claude Code MCP guide](https://code.claude.com/docs/en/mcp).
@@ -110,7 +110,7 @@ Local fallback (stdio, needs Node.js; the same tools): open **Settings > MCP** a
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@1.19.0"]
+      "args": ["-y", "brewpage-mcp@1.19.1"]
     }
   }
 }
@@ -124,7 +124,7 @@ Open the Cline MCP settings panel and add:
 {
   "brewpage": {
     "command": "npx",
-    "args": ["-y", "brewpage-mcp@1.19.0"]
+    "args": ["-y", "brewpage-mcp@1.19.1"]
   }
 }
 ```
@@ -724,6 +724,10 @@ Every publish response includes an **owner token** -- the only credential that a
 - [Brewcode Plugin](https://github.com/kochetkov-ma/claude-brewcode) -- Claude Code plugin suite
 
 ## Changelog
+
+## 1.19.1 -- 2026-11-12
+
+- README only: the remote server `https://brewpage.app/mcp` comes first, with setup steps for Claude and ChatGPT; the local `npx` server is the fallback; the global install section is removed. No tool or input change. Contract 2.22.0. `User-Agent: brewpage-mcp/1.19.1`.
 
 ## 1.19.0 -- 2026-11-11
 

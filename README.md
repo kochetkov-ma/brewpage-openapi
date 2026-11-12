@@ -242,7 +242,7 @@ Local fallback (stdio, needs Node.js; the same tools): add to `~/Library/Applica
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@1.19.0"]
+      "args": ["-y", "brewpage-mcp@1.19.1"]
     }
   }
 }
@@ -257,7 +257,7 @@ The remote command above is the default. Local fallback (stdio, needs Node.js): 
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@1.19.0"]
+      "args": ["-y", "brewpage-mcp@1.19.1"]
     }
   }
 }

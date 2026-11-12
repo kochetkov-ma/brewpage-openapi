@@ -6,6 +6,10 @@ order: 5
 
 # Changelog
 
+## MCP 1.19.1 — setup guide on npm
+
+The package page on npm shows the current setup guide: the remote server `https://brewpage.app/mcp` first, with steps for Claude and ChatGPT; the local `npx -y brewpage-mcp@1.19.1` server as the fallback; no global install. The server is unchanged: thirty tools, contract 2.22.0.
+
 ## MCP 1.19.0 — page data
 
 A published page can save what its visitors enter: form answers, a guestbook, votes, scores, game progress. The assistant reads the new `get_guide`, then publishes with `state` on `publish_html` or `publish_site`. Four more tools work with the saved entries: `get_page_data` reads them, `set_page_data` writes author entries, `configure_page_data` changes who can read a list, `delete_page_data` removes entries. They take the owner token, or the page's management link as `manageUrl`. After publishing, the assistant gives you the page link and the management link. Thirty tools. Contract 2.22.0.
