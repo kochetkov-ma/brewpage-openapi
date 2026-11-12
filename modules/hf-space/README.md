@@ -57,7 +57,7 @@ Claude Desktop local fallback: add to `~/Library/Application Support/Claude/clau
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@1.21.0"]
+      "args": ["-y", "brewpage-mcp@1.22.0"]
     }
   }
 }
@@ -70,7 +70,7 @@ Add to `~/.codex/config.toml`:
 ```toml
 [mcp_servers.brewpage]
 command = "npx"
-args = ["-y", "brewpage-mcp@1.21.0"]
+args = ["-y", "brewpage-mcp@1.22.0"]
 ```
 
 #### Cursor
@@ -82,7 +82,7 @@ Open **Settings > MCP** and add:
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@1.21.0"]
+      "args": ["-y", "brewpage-mcp@1.22.0"]
     }
   }
 }
@@ -96,7 +96,7 @@ Open the Cline MCP settings panel and add:
 {
   "brewpage": {
     "command": "npx",
-    "args": ["-y", "brewpage-mcp@1.21.0"]
+    "args": ["-y", "brewpage-mcp@1.22.0"]
   }
 }
 ```

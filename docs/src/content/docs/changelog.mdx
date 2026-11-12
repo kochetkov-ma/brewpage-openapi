@@ -6,6 +6,10 @@ order: 5
 
 # Changelog
 
+## MCP 1.22.0 — custom domains that get finished
+
+The assistant now leads you through your own domain step by step. If your owner token is not in a profile yet, it gives you the token and the one thing only you can do: sign in at https://account.brewpage.app/tokens, press Add existing token and paste it. It hands you the exact DNS records to create (keep your mail records; at Cloudflare set Proxy status to DNS only), checks once after you created them and then reads the status until the domain is live, usually within 30 minutes; if something blocks it, the result names the fix. `list_domains` can read one custom domain by page or hostname without a new DNS check, and `get_guide` has a second topic, `custom-domain`. Thirty-two tools, contract 2.28.0.
+
 ## MCP 1.21.0 — usage counts on the hosted server
 
 The hosted server at `https://brewpage.app/mcp` counts calls per tool, Claude, ChatGPT and other clients, and distinct clients per day, for our own monitoring only; no addresses, content or tool inputs are kept. Tools and inputs are unchanged: thirty-two tools, contract 2.27.0.

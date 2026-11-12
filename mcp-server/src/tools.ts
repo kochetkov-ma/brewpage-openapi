@@ -4,7 +4,7 @@ import { DOMAIN_PROBLEMS, DOMAIN_STATUSES } from "./guides/custom-domain.js";
 import { PAGE_DATA_CALLS, PAGE_DATA_GUIDE } from "./guides/page-data.js";
 
 export const DEFAULT_BASE_URL = "https://brewpage.app";
-export const USER_AGENT = "brewpage-mcp/1.21.0";
+export const USER_AGENT = "brewpage-mcp/1.22.0";
 export const OWNER_TOKEN_ENV = "BREWPAGE_OWNER_TOKEN";
 /** Server instructions of the handshake: one paragraph per line; the first stands alone within 512 chars. */
 export const SERVER_INSTRUCTIONS = [
@@ -603,7 +603,7 @@ export function createServer(options: ServerOptions = {}): McpServer {
   const apiFetch = options.fetch ?? fetch;
   const server = new McpServer({
     name: "brewpage-mcp",
-    version: "1.21.0",
+    version: "1.22.0",
   }, { instructions: SERVER_INSTRUCTIONS });
 
   /** Caller argument first, then the configured default; `fromEnv` marks the configured one. */

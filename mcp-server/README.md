@@ -38,7 +38,7 @@ Claude Code: `claude mcp add --transport http brewpage --scope user https://brew
 For clients that only start local servers; the same tools as the server URL.
 
 ```bash
-npx -y brewpage-mcp@1.21.0
+npx -y brewpage-mcp@1.22.0
 ```
 
 Requires Node.js 20 or newer. This starts the stdio server for an MCP client.
@@ -63,7 +63,7 @@ Local fallback (stdio, needs Node.js; the same tools): add to `~/Library/Applica
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@1.21.0"]
+      "args": ["-y", "brewpage-mcp@1.22.0"]
     }
   }
 }
@@ -86,7 +86,7 @@ Custom servers follow your ChatGPT plan and workspace settings.
 The remote command above is the default. Local fallback: register a project-scoped stdio server:
 
 ```bash
-claude mcp add --transport stdio --scope project brewpage -- npx -y brewpage-mcp@1.21.0
+claude mcp add --transport stdio --scope project brewpage -- npx -y brewpage-mcp@1.22.0
 ```
 
 This writes `.mcp.json` in the project root. Use `--scope user` for user-scoped registration. See the [official Claude Code MCP guide](https://code.claude.com/docs/en/mcp).
@@ -110,7 +110,7 @@ Local fallback (stdio, needs Node.js; the same tools): open **Settings > MCP** a
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@1.21.0"]
+      "args": ["-y", "brewpage-mcp@1.22.0"]
     }
   }
 }
@@ -124,7 +124,7 @@ Open the Cline MCP settings panel and add:
 {
   "brewpage": {
     "command": "npx",
-    "args": ["-y", "brewpage-mcp@1.21.0"]
+    "args": ["-y", "brewpage-mcp@1.22.0"]
   }
 }
 ```
@@ -768,6 +768,10 @@ Every publish response includes an **owner token** -- the only credential that a
 - [Brewcode Plugin](https://github.com/kochetkov-ma/claude-brewcode) -- Claude Code plugin suite
 
 ## Changelog
+
+## 1.22.0 -- 2026-11-12
+
+- Custom domains: the texts now lead to a connected domain. A refusal names its next step (an owner token in no profile: sign in at https://account.brewpage.app/tokens, press Add existing token, paste it, repeat); results give the DNS records step (mail records stay, a same-name A, AAAA or CNAME is replaced, Cloudflare Proxy status DNS only), one `check_domain`, then status reads until `active`; the `Problem:` line names the fix; status `lost` is described. `list_domains` takes an optional `type` + `namespace` + `id` or `hostname` and reads that one custom domain without a DNS check; without them it lists the profile as before. `get_guide` adds the topic `custom-domain`. Thirty-two tools. Contract 2.28.0. `User-Agent: brewpage-mcp/1.22.0`.
 
 ## 1.21.0 -- 2026-11-12
 
