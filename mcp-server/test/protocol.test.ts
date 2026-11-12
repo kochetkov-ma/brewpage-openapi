@@ -19,7 +19,7 @@ const LIMITS = { maxFileSizeBytes: 5242880 };
 const EXPECTED_TOOL_NAMES = [
   "publish_html", "publish_file", "update_hosting", "delete_resource", "get_page", "get_stats", "publish_site",
   "republish_site", "update_html", "publish_json", "get_json", "update_json", "publish_kv",
-  "set_kv", "get_kv", "get_limits", "search_gallery", "set_visibility", "set_title", "bind_token", "mint_token",
+  "set_kv", "get_kv", "get_limits", "search_gallery", "set_visibility", "make_private", "set_badge", "set_title", "bind_token", "mint_token",
   "set_domain", "list_domains", "check_domain", "remove_domain",
   "get_page_data", "set_page_data", "configure_page_data", "delete_page_data", "get_guide",
 ];
@@ -119,7 +119,7 @@ const PROTOCOL_MATRIX = [
 
 for (const [transport, connect] of [["stdio", stdio], ["HTTP", http]] as const) {
   for (const row of PROTOCOL_MATRIX) {
-    test(`${transport} ${row.label} negotiates ${row.negotiated} and lists all 30 tools`, { timeout: 15_000 }, async (t) => {
+    test(`${transport} ${row.label} negotiates ${row.negotiated} and lists all 32 tools`, { timeout: 15_000 }, async (t) => {
       // GIVEN the built entry on a stub API.
       const api = await backend(t);
       const send = await connect(t, api.url);
@@ -138,6 +138,7 @@ const SERVER_INSTRUCTIONS = [
   "BrewPage publishes HTML, Markdown, sites, files, JSON and KV and returns a share link plus an owner token. Keep the owner token private and send it as ownerToken on every later call for that publication; it cannot be recovered. A page that must save what its visitors enter (form answers, guestbook, votes, scores, game progress) needs Page data: read get_guide topic page-data BEFORE writing the page, then publish with the state argument.",
   "After publishing, give the user the page link and the management link from the result. Say that the management link is private: whoever has it can edit or delete the page, and its Data tab shows what visitors saved.",
   "KV and JSON tools hold your own data. Page data holds what a page's visitors save: get_page_data reads it, set_page_data writes author entries, configure_page_data changes who can read a list, delete_page_data moderates. In a later chat these four take the management link as manageUrl.",
+  "HTML pages and sites show a small BrewPage badge; page code must not hide or alter it. A profile can turn it off on up to 5 pages (set_badge).",
 ].join("\n");
 
 for (const [transport, connect] of [["stdio", stdio], ["HTTP", http]] as const) {
@@ -152,9 +153,10 @@ for (const [transport, connect] of [["stdio", stdio], ["HTTP", http]] as const) 
       const send = await connect(t, api.url);
       // WHEN the client opens the connection.
       const { result } = await send({ jsonrpc: "2.0", id: 1, method: row.method, params: row.params }, row.version);
-      // THEN the handshake carries the three instruction paragraphs, the first within 512 chars, and calls no API.
-      assert.deepEqual({ instructions: result?.instructions, firstParagraph: SERVER_INSTRUCTIONS.split("\n")[0].length, upstream: api.requests.length },
-        { instructions: SERVER_INSTRUCTIONS, firstParagraph: 440, upstream: 0 }, `${transport} ${row.label}: server instructions`);
+      // THEN the handshake carries the four instruction paragraphs, the first within 512 chars, and calls no API.
+      assert.deepEqual({ instructions: result?.instructions, paragraphs: SERVER_INSTRUCTIONS.split("\n").length,
+        firstParagraph: SERVER_INSTRUCTIONS.split("\n")[0].length, upstream: api.requests.length },
+      { instructions: SERVER_INSTRUCTIONS, paragraphs: 4, firstParagraph: 440, upstream: 0 }, `${transport} ${row.label}: server instructions`);
     });
   }
 }

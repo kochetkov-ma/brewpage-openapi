@@ -10,6 +10,7 @@ export const SERVER_INSTRUCTIONS = [
   "BrewPage publishes HTML, Markdown, sites, files, JSON and KV and returns a share link plus an owner token. Keep the owner token private and send it as ownerToken on every later call for that publication; it cannot be recovered. A page that must save what its visitors enter (form answers, guestbook, votes, scores, game progress) needs Page data: read get_guide topic page-data BEFORE writing the page, then publish with the state argument.",
   "After publishing, give the user the page link and the management link from the result. Say that the management link is private: whoever has it can edit or delete the page, and its Data tab shows what visitors saved.",
   "KV and JSON tools hold your own data. Page data holds what a page's visitors save: get_page_data reads it, set_page_data writes author entries, configure_page_data changes who can read a list, delete_page_data moderates. In a later chat these four take the management link as manageUrl.",
+  "HTML pages and sites show a small BrewPage badge; page code must not hide or alter it. A profile can turn it off on up to 5 pages (set_badge).",
 ].join("\n");
 
 export interface ServerOptions {
@@ -48,6 +49,10 @@ const NO_PUBLIC_CREDENTIALS = "BrewPage tokens and manage links must never be in
 const SECRETS = "Secrets allowed; likely ones are flagged in notices. Private namespace + password suit secrets. " +
   NO_PUBLIC_CREDENTIALS;
 const MANAGE_URL_TEXT = "Returns manageUrl, a private management link (grants control; not for public sharing).";
+/** Badge sentence of the four tools that publish or replace page code. */
+const BADGE_TEXT = "Page code must not hide or alter the BrewPage badge; a profile can turn the badge off for a page.";
+const BADGE_NEEDS_PROFILE_CODE = "badge-hide-needs-profile";
+const BADGE_NEEDS_PROFILE_NEXT = "Next: sign in at https://account.brewpage.app, add this publication's owner token with bind_token, then retry.";
 const OLD_READ_ONLY_CODE = "OLD_PUBLICATION_READ_ONLY";
 const WRONG_TYPE_CODE = "WRONG_RESOURCE_TYPE";
 /** 403 message of a rename on a publication no profile owns. */
@@ -478,7 +483,7 @@ function ownerLinkLines(data: Record<string, unknown>): string[] {
   if (typeof data.manageUrl === "string" && data.manageUrl.length > 0) {
     lines.push(``, `MANAGE LINK (private): ${data.manageUrl}`, `Give it to the user with the link: anyone who has it can edit or delete this publication. Never post it publicly.`);
   }
-  if (data.listed === true && !hasCredentialNotice(data)) lines.push(``, `VISIBILITY: public, listed. Hide: set_visibility listed=false`);
+  if (data.listed === true && !hasCredentialNotice(data)) lines.push(``, `VISIBILITY: public, listed. Unlist: set_visibility listed=false`);
   return lines;
 }
 
@@ -629,7 +634,7 @@ export function createServer(options: ServerOptions = {}): McpServer {
         "A `public` page without deliveryMode may get its own subdomain if it needs browser features a BrewPage link lacks; " +
         "the result then has deliveryModeReason and a delivery notice. Markdown raw HTML is allowlisted: scripts, styles, event handlers, forms, embeds removed. " +
         "Optional `domain` connects a domain the user owns to an HTML-format page. " +
-        MANAGE_URL_TEXT + " " + SECRETS + " " + PUBLISH_STATE_TEXT,
+        MANAGE_URL_TEXT + " " + SECRETS + " " + BADGE_TEXT + " " + PUBLISH_STATE_TEXT,
       inputSchema: {
         content: z.string().describe("HTML, Markdown, code or JSON to publish"),
         deliveryMode: DELIVERY_MODE_SCHEMA,
@@ -932,7 +937,7 @@ export function createServer(options: ServerOptions = {}): McpServer {
       ...toolMeta("Publish site", ADDITIVE),
       description: "Publish an HTML site to BrewPage. " + PUBLIC_HINT + "Single-page: `entryContent`. Multi-page: `files` (`{path, content}` array). Optional `entry` overrides `index.html`. Returns its primary share link and owner token. " +
         "Static only: HTML, CSS, JS (incl. built React/Vue bundles) run in the browser; server code (PHP etc.) never runs. " + SITE_LIMITS_TEXT +
-        " Optional `domain` connects a domain the user owns. " + MANAGE_URL_TEXT + " " + SECRETS + " " + PUBLISH_STATE_TEXT,
+        " Optional `domain` connects a domain the user owns. " + MANAGE_URL_TEXT + " " + SECRETS + " " + BADGE_TEXT + " " + PUBLISH_STATE_TEXT,
       inputSchema: {
         deliveryMode: DELIVERY_MODE_SCHEMA,
         entryContent: z
@@ -1052,7 +1057,7 @@ export function createServer(options: ServerOptions = {}): McpServer {
     "republish_site",
     {
       ...toolMeta("Republish site", DESTRUCTIVE),
-      description: "Republish (full-replace) an existing multi-file BrewPage site in place at the SAME URL/ID. Requires owner token. The uploaded bundle becomes the complete new file set — files absent from it are removed, new files added, matching files overwritten. Single-page: `entryContent`. Multi-page: `files` (array of `{path, content}`). Optional `entry` overrides the default `index.html`. Republishing preserves existing expiry." + OLD_READ_ONLY_TEXT + " " + SITE_LIMITS_TEXT + " " + NO_PUBLIC_CREDENTIALS,
+      description: "Republish (full-replace) an existing multi-file BrewPage site in place at the SAME URL/ID. Requires owner token. The uploaded bundle becomes the complete new file set — files absent from it are removed, new files added, matching files overwritten. Single-page: `entryContent`. Multi-page: `files` (array of `{path, content}`). Optional `entry` overrides the default `index.html`. Republishing preserves existing expiry." + OLD_READ_ONLY_TEXT + " " + SITE_LIMITS_TEXT + " " + NO_PUBLIC_CREDENTIALS + " " + BADGE_TEXT,
       inputSchema: {
         namespace: z.string().describe("Site namespace"),
         id: z.string().describe("Site ID"),
@@ -1151,7 +1156,7 @@ export function createServer(options: ServerOptions = {}): McpServer {
       ...toolMeta("Update page", DESTRUCTIVE),
       description: "Update an existing BrewPage HTML, Markdown, code or JSON page. Requires owner token. Returns the updated page metadata. " +
         "Format omitted keeps the stored format, except a whole HTML document makes a Markdown page an HTML page. " +
-        "The link and delivery mode never change on update; an advisory deliveryModeReason and delivery notice are included when the new content uses browser features that may not work fully on a BrewPage link." + OLD_READ_ONLY_TEXT + " " + NO_PUBLIC_CREDENTIALS,
+        "The link and delivery mode never change on update; an advisory deliveryModeReason and delivery notice are included when the new content uses browser features that may not work fully on a BrewPage link." + OLD_READ_ONLY_TEXT + " " + NO_PUBLIC_CREDENTIALS + " " + BADGE_TEXT,
       inputSchema: {
         namespace: z.string().describe("Page namespace"),
         id: z.string().describe("Page ID"),
@@ -1631,12 +1636,12 @@ export function createServer(options: ServerOptions = {}): McpServer {
     "set_visibility",
     {
       ...toolMeta("Set gallery visibility", ADDITIVE),
-      description: "Hide or show a public publication in the gallery and sitemap. Link unchanged.",
+      description: "List or unlist a public publication in the gallery and sitemap. Link unchanged.",
       inputSchema: {
         type: z.enum(["html", "site", "file", "json", "kv"]).describe("Publication type; only public html, site and file can be listed"),
         namespace: z.string().describe("Publication namespace"),
         id: z.string().describe("Publication ID"),
-        listed: z.boolean().describe("false = hide, true = show"),
+        listed: z.boolean().describe("true = listed, false = unlisted"),
         ownerToken: z.string().optional().describe(OWNER_TOKEN_DESCRIPTION),
       },
     },
@@ -1648,6 +1653,71 @@ export function createServer(options: ServerOptions = {}): McpServer {
       if (!ok) return ownerFailure("set visibility", status, data, auth.fromEnv, answerHeaders);
       const result = data as Record<string, unknown>;
       return textResult([...credentialAlertLines(result), `LISTED: ${result.listed} · link unchanged`, ...noticeLines(result)].join("\n"));
+    }
+  );
+
+  server.registerTool(
+    "make_private",
+    {
+      ...toolMeta("Make private", DESTRUCTIVE),
+      description: "Make a public publication private: it gets a new private link and the public link stops working; a custom domain on it is detached. One-way. " +
+        "Returns the new link, namespace and id, plus a new management link when the publication had one; the owner token stays the same.",
+      inputSchema: {
+        type: z.enum(["html", "site", "file", "json", "kv"]).describe("Publication type"),
+        namespace: z.string().describe("Publication namespace; only `public` publications can be made private"),
+        id: z.string().describe("Publication ID"),
+        ownerToken: z.string().optional().describe(OWNER_TOKEN_DESCRIPTION),
+      },
+    },
+    async ({ type, namespace, id, ownerToken }) => {
+      const auth = ownerTokenFor(ownerToken);
+      if (!auth.token) return textResult(NO_OWNER_TOKEN, true);
+      const path = apiPath(TYPE_SEGMENTS[type], namespace, id, "private");
+      const { ok, status, data, headers: answerHeaders } = await apiRequest("POST", path, undefined, { "X-Owner-Token": auth.token });
+      if (!ok) return ownerFailure("make private", status, data, auth.fromEnv, answerHeaders);
+      const result = data as Record<string, unknown>;
+      return textResult([
+        ...credentialAlertLines(result),
+        `MADE PRIVATE · the public link no longer works`,
+        ``,
+        `New link: ${result.link || "N/A"}`,
+        `Namespace: ${result.namespace || "N/A"}`,
+        `ID: ${result.id || "N/A"}`,
+        `Give the user the new link. Later calls take this namespace and ID with the same owner token.`,
+        ...noticeLines(result),
+        ...ownerLinkLines(result),
+      ].join("\n"));
+    }
+  );
+
+  server.registerTool(
+    "set_badge",
+    {
+      ...toolMeta("Hide or show badge", ADDITIVE),
+      description: "Hide or show the BrewPage badge on a publication. Needs an owner token that is in a BrewPage profile (free sign-in at https://account.brewpage.app); up to 5 hidden per profile.",
+      inputSchema: {
+        type: z.enum(["html", "site", "file", "json", "kv"]).describe("Publication type"),
+        namespace: z.string().describe("Publication namespace"),
+        id: z.string().describe("Publication ID"),
+        hidden: z.boolean().optional().describe("true = hide the badge, false = show it. Omit: report the current state."),
+        ownerToken: z.string().optional().describe(OWNER_TOKEN_DESCRIPTION),
+      },
+    },
+    async ({ type, namespace, id, hidden, ownerToken }) => {
+      const auth = ownerTokenFor(ownerToken);
+      if (!auth.token) return textResult(NO_OWNER_TOKEN, true);
+      const path = apiPath(TYPE_SEGMENTS[type], namespace, id, "badge");
+      const { ok, status, data, headers: answerHeaders } = await apiRequest("POST", path, hidden === undefined ? {} : { hidden },
+        { "X-Owner-Token": auth.token });
+      if (!ok) return ownerFailure("set badge", status, data, auth.fromEnv, answerHeaders);
+      const result = data as Record<string, unknown>;
+      const used = typeof result.used === "number" && result.used > 0 ? ` · ${result.used} of ${result.limit} hidden in the profile` : "";
+      return textResult([
+        ...credentialAlertLines(result),
+        `BADGE: ${result.hidden === true ? "hidden" : "shown"}${used} · link unchanged`,
+        ...noticeLines(result),
+        ...(notices(result).some((n) => n.code === BADGE_NEEDS_PROFILE_CODE) ? [BADGE_NEEDS_PROFILE_NEXT] : []),
+      ].join("\n"));
     }
   );
 

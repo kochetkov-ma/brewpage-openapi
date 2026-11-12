@@ -11,8 +11,8 @@ import { PAGE_DATA_CALLS, PAGE_DATA_GUIDE } from "../src/guides/page-data.js";
 const EXPECTED_TOOL_NAMES = [
   "publish_html", "publish_file", "delete_resource", "get_page", "get_stats", "publish_site",
   "republish_site", "update_html", "publish_json", "get_json", "update_json", "publish_kv",
-  "set_kv", "get_kv", "search_gallery", "update_hosting", "get_limits", "set_visibility", "set_title", "bind_token", "mint_token",
-  "set_domain", "list_domains", "check_domain", "remove_domain",
+  "set_kv", "get_kv", "search_gallery", "update_hosting", "get_limits", "set_visibility", "make_private", "set_badge", "set_title",
+  "bind_token", "mint_token", "set_domain", "list_domains", "check_domain", "remove_domain",
   "get_page_data", "set_page_data", "configure_page_data", "delete_page_data", "get_guide",
 ];
 
@@ -124,7 +124,7 @@ async function fixture(t: TestContext, env: Record<string, string> = {}) {
   };
 }
 
-test("MCP exposes exactly 30 tools and optional create-only delivery choice", { timeout: 10_000 }, async (t) => {
+test("MCP exposes exactly 32 tools and optional create-only delivery choice", { timeout: 10_000 }, async (t) => {
   // GIVEN local MCP connected to a synthetic API.
   const f = await fixture(t);
   // WHEN client discovers tools.
@@ -154,6 +154,7 @@ const EXPECTED_TOOL_META: Record<string, [string, Record<string, boolean>]> = {
   publish_kv: ["Publish KV entry", ADDITIVE], set_visibility: ["Set gallery visibility", ADDITIVE],
   update_hosting: ["Change delivery mode", ADDITIVE], bind_token: ["Add token to profile", ADDITIVE],
   mint_token: ["Mint profile token", ADDITIVE], set_title: ["Rename page or site", ADDITIVE],
+  make_private: ["Make private", DESTRUCTIVE], set_badge: ["Hide or show badge", ADDITIVE],
   set_domain: ["Connect custom domain", ADDITIVE], list_domains: ["List custom domains", READ_ONLY],
   check_domain: ["Check custom domain DNS", ADDITIVE], remove_domain: ["Remove custom domain", DESTRUCTIVE],
   get_page_data: ["Read page data", READ_ONLY], set_page_data: ["Write author entries", DESTRUCTIVE],
@@ -199,6 +200,28 @@ test("PDF/Office 400 hints use the contract 2.8.5 wording", { timeout: 10_000 },
   const expected = Object.fromEntries(EXPECTED_TOOL_NAMES.map((name) =>
     [name, ["publish_site", "republish_site"].includes(name) ? ["PDF/Office file unreadable or password-protected"] : []]));
   assert.deepEqual(actual, expected, "PDF/Office 400 wording matches the contract");
+});
+
+const BADGE_SENTENCE = "Page code must not hide or alter the BrewPage badge; a profile can turn the badge off for a page.";
+
+test("the four tools that send page code carry the badge sentence; listing reads as list or unlist", { timeout: 10_000 }, async (t) => {
+  // GIVEN local MCP connected to a synthetic API.
+  const f = await fixture(t);
+  // WHEN client discovers tools.
+  const { tools } = await f.client.listTools();
+  const described = (name: string) => tools.find((tool) => tool.name === name)!;
+  // THEN exactly those four carry the badge sentence, and set_visibility says list or unlist.
+  assert.deepEqual({
+    badge: tools.filter(({ description }) => (description ?? "").includes(BADGE_SENTENCE)).map(({ name }) => name).sort(),
+    mentions: tools.filter(({ description }) => (description ?? "").includes("BrewPage badge")).map(({ name }) => name).sort(),
+    visibility: described("set_visibility").description,
+    listed: (described("set_visibility").inputSchema.properties!.listed as { description: string }).description,
+  }, {
+    badge: ["publish_html", "publish_site", "republish_site", "update_html"],
+    mentions: ["publish_html", "publish_site", "republish_site", "set_badge", "update_html"],
+    visibility: "List or unlist a public publication in the gallery and sitemap. Link unchanged.",
+    listed: "true = listed, false = unlisted",
+  }, "badge sentence placement and listing wording are exact");
 });
 
 for (const scenario of [
@@ -745,6 +768,8 @@ for (const scenario of [
   { tool: "update_html", args: { namespace: "public", id: "aBcDeFgHiJ", content: "x" } },
   { tool: "delete_resource", args: { type: "site", namespace: "public", id: "aBcDeFgHiJ" } },
   { tool: "set_visibility", args: { type: "html", namespace: "public", id: "aBcDeFgHiJ", listed: false } },
+  { tool: "make_private", args: { type: "html", namespace: "public", id: "aBcDeFgHiJ" } },
+  { tool: "set_badge", args: { type: "html", namespace: "public", id: "aBcDeFgHiJ", hidden: true } },
   { tool: "set_title", args: { type: "html", namespace: "public", id: "aBcDeFgHiJ", title: "Trip notes" } },
   { tool: "bind_token", args: { token: "fixture-bound-token" } },
   { tool: "search_gallery", args: { mine: true } },
@@ -764,6 +789,14 @@ for (const scenario of [
   });
 }
 
+const MADE_PRIVATE = { type: "site", namespace: "priv-a1b2c3", id: "kLmNoPqRsT", link: "https://priv-a1b2c3-kLmNoPqRsT.brewpage.app/",
+  ownerLink: "https://brewpage.app/api/sites/priv-a1b2c3/kLmNoPqRsT", managementLink: "https://brewpage.app/manage/sites/priv-a1b2c3/kLmNoPqRsT",
+  manageUrl: null, listed: false, notices: [] };
+const MADE_PRIVATE_LINES = ["MADE PRIVATE · the public link no longer works", "", "New link: https://priv-a1b2c3-kLmNoPqRsT.brewpage.app/",
+  "Namespace: priv-a1b2c3", "ID: kLmNoPqRsT", "Give the user the new link. Later calls take this namespace and ID with the same owner token."];
+const DOMAIN_DETACHED_MESSAGE = "A custom domain was detached from this page; it can be attached to another publication.";
+const BADGE_NEEDS_PROFILE_MESSAGE = "Hiding the badge needs a profile: use it from your profile or with an owner token bound to one profile.";
+
 for (const scenario of [
   { tool: "delete_resource", args: { type: "site", namespace: "my ns", id: "a/b" }, status: 204, response: {},
     request: { method: "DELETE", url: "/api/sites/my%20ns/a%2Fb", body: "" }, text: "Successfully deleted site resource: my ns/a/b" },
@@ -771,6 +804,33 @@ for (const scenario of [
     response: { listed: false, access: "public", link: NEW_RESPONSE.link, notices: [{ code: "visibility-not-listable", message: "Not listable." }] },
     request: { method: "POST", url: "/api/files/public/aBcDeFgHiJ/visibility", body: '{"listed":false}' },
     text: "LISTED: false · link unchanged\nNotice (visibility-not-listable): Not listable." },
+  { tool: "make_private", args: { type: "site", namespace: "public", id: "aBcDeFgHiJ" }, status: 200,
+    response: { ...MADE_PRIVATE, manageUrl: "https://brewpage.app/manage/sites/priv-a1b2c3/kLmNoPqRsT#k=bpm_fixture",
+      notices: [{ code: "private-domain-detached", message: DOMAIN_DETACHED_MESSAGE }] },
+    request: { method: "POST", url: "/api/sites/public/aBcDeFgHiJ/private", body: "" },
+    text: [...MADE_PRIVATE_LINES, `Notice (private-domain-detached): ${DOMAIN_DETACHED_MESSAGE}`, "",
+      "MANAGE LINK (private): https://brewpage.app/manage/sites/priv-a1b2c3/kLmNoPqRsT#k=bpm_fixture",
+      "Give it to the user with the link: anyone who has it can edit or delete this publication. Never post it publicly."].join("\n") },
+  { tool: "make_private", args: { type: "kv", namespace: "public", id: "aBcDeFgHiJ" }, status: 200,
+    response: { ...MADE_PRIVATE, type: "kv", managementLink: null },
+    request: { method: "POST", url: "/api/kv/public/aBcDeFgHiJ/private", body: "" }, text: MADE_PRIVATE_LINES.join("\n") },
+  { tool: "set_badge", args: { type: "html", namespace: "public", id: "aBcDeFgHiJ", hidden: true }, status: 200,
+    response: { hidden: true, used: 2, limit: 5 },
+    request: { method: "POST", url: "/api/html/public/aBcDeFgHiJ/badge", body: '{"hidden":true}' },
+    text: "BADGE: hidden · 2 of 5 hidden in the profile · link unchanged" },
+  { tool: "set_badge", args: { type: "site", namespace: "my-ns", id: "aBcDeFgHiJ", hidden: false }, status: 200,
+    response: { hidden: false, used: 0, limit: 5 },
+    request: { method: "POST", url: "/api/sites/my-ns/aBcDeFgHiJ/badge", body: '{"hidden":false}' },
+    text: "BADGE: shown · link unchanged" },
+  { tool: "set_badge", args: { type: "file", namespace: "public", id: "aBcDeFgHiJ" }, status: 200,
+    response: { hidden: false, used: 1, limit: 5 },
+    request: { method: "POST", url: "/api/files/public/aBcDeFgHiJ/badge", body: "{}" },
+    text: "BADGE: shown · 1 of 5 hidden in the profile · link unchanged" },
+  { tool: "set_badge", args: { type: "json", namespace: "public", id: "aBcDeFgHiJ", hidden: true }, status: 200,
+    response: { hidden: false, used: 0, limit: 5, notices: [{ code: "badge-hide-needs-profile", message: BADGE_NEEDS_PROFILE_MESSAGE }] },
+    request: { method: "POST", url: "/api/json/public/aBcDeFgHiJ/badge", body: '{"hidden":true}' },
+    text: `BADGE: shown · link unchanged\nNotice (badge-hide-needs-profile): ${BADGE_NEEDS_PROFILE_MESSAGE}\n` +
+      "Next: sign in at https://account.brewpage.app, add this publication's owner token with bind_token, then retry." },
   { tool: "set_title", args: { type: "html", namespace: "public", id: "aBcDeFgHiJ", title: "Trip notes" }, status: 200,
     response: { title: "Trip notes", custom: true, notices: [{ code: "secret-detected", message: "Possible secret." }] },
     request: { method: "POST", url: "/api/html/public/aBcDeFgHiJ/title", body: '{"title":"Trip notes"}' },
@@ -842,7 +902,7 @@ test("publish_kv prints the private manage link, the listing hint and warning-cl
     "Notice (ttl-clamped): TTL clamped.",
     "MANAGE LINK (private): https://brewpage.app/manage/kv/public/aBcDeFgHiJ#k=bpm_fixture",
     "Give it to the user with the link: anyone who has it can edit or delete this publication. Never post it publicly.",
-    "VISIBILITY: public, listed. Hide: set_visibility listed=false",
+    "VISIBILITY: public, listed. Unlist: set_visibility listed=false",
   ], "warning, manage link and listing lines are exact");
 });
 
@@ -859,7 +919,7 @@ for (const scenario of [
   { label: "no credential notice -> unchanged listed result",
     notices: [{ code: "ttl-clamped", message: "TTL clamped." }],
     head: ["Published successfully!", "", "URL: https://public-z9y8x7w6v5.brewpage.app/"],
-    relayed: ["Notice (ttl-clamped): TTL clamped.", "VISIBILITY: public, listed. Hide: set_visibility listed=false"] },
+    relayed: ["Notice (ttl-clamped): TTL clamped.", "VISIBILITY: public, listed. Unlist: set_visibility listed=false"] },
 ]) {
   test(`publish_html ${scenario.label}`, { timeout: 10_000 }, async (t) => {
     // GIVEN a listed public result with the scenario's notices.
@@ -901,6 +961,48 @@ for (const scenario of [
     // THEN the server body is verbatim and the hint matches the cause.
     assert.deepEqual({ text: result.content[0].text, isError: result.isError },
       { text: `Failed to set title (403): ${JSON.stringify(scenario.response)}${scenario.hint}`, isError: true }, "403 hint follows the cause");
+  });
+}
+
+const OWNER_PUBLICATION = { type: "html", namespace: "public", id: "aBcDeFgHiJ", ownerToken: "fixture-owner" };
+const NO_ANSWER_HEADERS: Record<string, string> = {};
+const BADGE_REFUSAL_MESSAGE = "Publishing refused: hiding, removing or changing the BrewPage badge is not allowed. " +
+  "Remove the CSS or script that targets the badge and publish again. Signed in, you can turn the badge off on up to 5 publications.";
+const BADGE_TAMPERING = { status: 403, error: "Forbidden", message: BADGE_REFUSAL_MESSAGE,
+  result: { action: "unavailable", code: "failed", reason: BADGE_REFUSAL_MESSAGE }, code: "BADGE_TAMPERING" };
+const BADGE_LIMIT_MESSAGE = "Badge hidden on 5 of 5 publications. Show it on one of them first.";
+const BADGE_HIDDEN_LIMIT = { status: 409, error: "Conflict", message: BADGE_LIMIT_MESSAGE,
+  result: { code: "failed", action: "rejected", reason: BADGE_LIMIT_MESSAGE }, code: "BADGE_HIDDEN_LIMIT", used: 5, limit: 5 };
+const NOT_PUBLIC = { status: 409, error: "Conflict", message: "Only a public publication can be made private.", code: "NOT_PUBLIC" };
+const ROTATE_LIMITED = { status: 429, error: "Too Many Requests", message: "Try again later.", code: "ROTATE_LIMITED", retryAfterSeconds: 3600 };
+const WRONG_OWNER = { status: 403, error: "Forbidden", message: "Owner authorization failed", code: "OWNER_AUTHORIZATION_FAILED" };
+const WRONG_OWNER_HINT = "\nWrong owner token for this publication. Use ownerToken from create.";
+
+for (const scenario of [
+  { tool: "set_badge", args: { ...OWNER_PUBLICATION, hidden: true }, response: BADGE_HIDDEN_LIMIT, headers: NO_ANSWER_HEADERS,
+    prefix: "Failed to set badge (409): ", tail: "" },
+  { tool: "set_badge", args: { ...OWNER_PUBLICATION, hidden: true }, response: WRONG_OWNER, headers: NO_ANSWER_HEADERS,
+    prefix: "Failed to set badge (403): ", tail: WRONG_OWNER_HINT },
+  { tool: "make_private", args: { ...OWNER_PUBLICATION, namespace: "my-ns" }, response: NOT_PUBLIC, headers: NO_ANSWER_HEADERS,
+    prefix: "Failed to make private (409): ", tail: "" },
+  { tool: "make_private", args: OWNER_PUBLICATION, response: ROTATE_LIMITED, headers: { "Retry-After": "3600" },
+    prefix: "Failed to make private (429): ", tail: " Retry-After: 3600." },
+  { tool: "make_private", args: OWNER_PUBLICATION, response: WRONG_OWNER, headers: NO_ANSWER_HEADERS,
+    prefix: "Failed to make private (403): ", tail: WRONG_OWNER_HINT },
+  { tool: "publish_html", args: { content: "<style>.bp-badge{display:none}</style>" }, response: BADGE_TAMPERING, headers: NO_ANSWER_HEADERS,
+    prefix: "Failed to publish: ", tail: "" },
+  { tool: "update_html", args: { namespace: "public", id: "aBcDeFgHiJ", ownerToken: "fixture-owner", content: "<style>.bp-badge{display:none}</style>" },
+    response: BADGE_TAMPERING, headers: NO_ANSWER_HEADERS, prefix: "Failed to update HTML (403): ", tail: "" },
+]) {
+  test(`${scenario.tool} relays ${scenario.response.status} ${scenario.response.code} verbatim`, { timeout: 10_000 }, async (t) => {
+    // GIVEN a refusal from the API.
+    const f = await fixture(t);
+    f.respond(scenario.response.status, scenario.response, scenario.headers);
+    // WHEN the tool runs.
+    const result = await f.call(scenario.tool, scenario.args);
+    // THEN the server answer is verbatim, with Retry-After or the wrong-token hint only where they apply, and no retry.
+    assert.deepEqual({ isError: result.isError, text: result.content[0].text, requests: f.requests.length },
+      { isError: true, text: `${scenario.prefix}${JSON.stringify(scenario.response)}${scenario.tail}`, requests: 1 }, "refusal relay is exact");
   });
 }
 
@@ -1074,6 +1176,8 @@ for (const scenario of [
   { tool: "set_kv", method: "PUT", args: (v: string) => ({ namespace: v, id: v, key: v, value: "x" }), url: (e: string) => `/api/kv/${e}/${e}/${e}` },
   { tool: "update_hosting", method: "PATCH", args: (v: string) => ({ type: "file", namespace: v, id: v, deliveryMode: "path" }), url: (e: string) => `/api/files/${e}/${e}/hosting` },
   { tool: "set_visibility", method: "POST", args: (v: string) => ({ type: "kv", namespace: v, id: v, listed: true }), url: (e: string) => `/api/kv/${e}/${e}/visibility` },
+  { tool: "make_private", method: "POST", args: (v: string) => ({ type: "file", namespace: v, id: v }), url: (e: string) => `/api/files/${e}/${e}/private` },
+  { tool: "set_badge", method: "POST", args: (v: string) => ({ type: "json", namespace: v, id: v, hidden: true }), url: (e: string) => `/api/json/${e}/${e}/badge` },
   { tool: "set_title", method: "POST", args: (v: string) => ({ type: "site", namespace: v, id: v, title: "x" }), url: (e: string) => `/api/sites/${e}/${e}/title` },
   { tool: "set_domain", method: "PUT", args: (v: string) => ({ type: "html", namespace: v, id: v, hostname: "www.example.com" }), url: (e: string) => `/api/publications/html/${e}/${e}/domain` },
   { tool: "check_domain", method: "POST", args: (v: string) => ({ hostname: v }), url: (e: string) => `/api/domains/${e}/check` },
