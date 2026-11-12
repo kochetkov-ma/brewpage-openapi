@@ -139,6 +139,7 @@ const SERVER_INSTRUCTIONS = [
   "After publishing, give the user the page link and the management link from the result. Say that the management link is private: whoever has it can edit or delete the page, and its Data tab shows what visitors saved.",
   "KV and JSON tools hold your own data. Page data holds what a page's visitors save: get_page_data reads it, set_page_data writes author entries, configure_page_data changes who can read a list, delete_page_data moderates. In a later chat these four take the management link as manageUrl.",
   "HTML pages and sites show a small BrewPage badge; page code must not hide or alter it. A profile can turn it off on up to 5 pages (set_badge).",
+  "A custom domain, only when the user asks for their own domain: set_domain, the user creates the returned DNS records at their DNS provider, check_domain once, then list_domains reads the status until it is active. Steps and fixes: get_guide topic custom-domain.",
 ].join("\n");
 
 for (const [transport, connect] of [["stdio", stdio], ["HTTP", http]] as const) {
@@ -153,10 +154,10 @@ for (const [transport, connect] of [["stdio", stdio], ["HTTP", http]] as const) 
       const send = await connect(t, api.url);
       // WHEN the client opens the connection.
       const { result } = await send({ jsonrpc: "2.0", id: 1, method: row.method, params: row.params }, row.version);
-      // THEN the handshake carries the four instruction paragraphs, the first within 512 chars, and calls no API.
+      // THEN the handshake carries the five instruction paragraphs, the first within 512 chars, and calls no API.
       assert.deepEqual({ instructions: result?.instructions, paragraphs: SERVER_INSTRUCTIONS.split("\n").length,
         firstParagraph: SERVER_INSTRUCTIONS.split("\n")[0].length, upstream: api.requests.length },
-      { instructions: SERVER_INSTRUCTIONS, paragraphs: 4, firstParagraph: 440, upstream: 0 }, `${transport} ${row.label}: server instructions`);
+      { instructions: SERVER_INSTRUCTIONS, paragraphs: 5, firstParagraph: 440, upstream: 0 }, `${transport} ${row.label}: server instructions`);
     });
   }
 }

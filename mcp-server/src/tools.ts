@@ -1,5 +1,6 @@
 import { McpServer, type ToolAnnotations } from "@modelcontextprotocol/server";
 import { z } from "zod";
+import { DOMAIN_PROBLEMS, DOMAIN_STATUSES } from "./guides/custom-domain.js";
 import { PAGE_DATA_CALLS, PAGE_DATA_GUIDE } from "./guides/page-data.js";
 
 export const DEFAULT_BASE_URL = "https://brewpage.app";
@@ -11,6 +12,7 @@ export const SERVER_INSTRUCTIONS = [
   "After publishing, give the user the page link and the management link from the result. Say that the management link is private: whoever has it can edit or delete the page, and its Data tab shows what visitors saved.",
   "KV and JSON tools hold your own data. Page data holds what a page's visitors save: get_page_data reads it, set_page_data writes author entries, configure_page_data changes who can read a list, delete_page_data moderates. In a later chat these four take the management link as manageUrl.",
   "HTML pages and sites show a small BrewPage badge; page code must not hide or alter it. A profile can turn it off on up to 5 pages (set_badge).",
+  "A custom domain, only when the user asks for their own domain: set_domain, the user creates the returned DNS records at their DNS provider, check_domain once, then list_domains reads the status until it is active. Steps and fixes: get_guide topic custom-domain.",
 ].join("\n");
 
 export interface ServerOptions {
@@ -205,32 +207,68 @@ function configuredListLine(name: string, named: unknown, before: unknown, after
     : `${name} - ${listRuleText(after)} (was shared; it cannot become shared again while it holds visitors' entries)`;
 }
 
-const DOMAIN_PROFILE_TEXT = "Works when the owner token is in a free BrewPage profile (sign-in at https://account.brewpage.app); free, 5 domains per profile.";
-const DOMAIN_ADDRESS_TEXT = "Addressed by publication (type, namespace, id; an owner token in the profile) or by hostname (an admin token of the profile).";
-const DOMAIN_OWNER_TOKEN = `Owner token in a BrewPage profile: the publication's own token added to the profile, or a profile token. Default: ${ENV_DEFAULT}.`;
-const DOMAIN_EITHER_TOKEN = `By publication: an owner token in the profile. By hostname: an admin token of the profile. Default: ${ENV_DEFAULT}.`;
-const DOMAIN_ADDRESS_ERROR = "Provide either `hostname` (admin token of the profile) or `type`, `namespace` and `id` (an owner token in the profile).";
-const DOMAIN_ARGUMENT = "Optional domain the user owns (www.example.com or example.com) to connect to the new publication. " +
-  "Works when the owner token is in a free BrewPage profile, without a password. The publication is always created; " +
-  "the result lists the DNS records for the domain owner to create, or says why the domain was not set.";
-/** Plain words for `DomainItem.problem`; other codes print bare. */
-const DOMAIN_PROBLEMS: Record<string, string> = {
-  TXT_MISSING: "the TXT record is not visible yet",
-  TXT_WRONG: "the TXT record has another value",
-  ROUTING_MISSING: "the CNAME or A record is not visible yet",
-  ROUTING_WRONG: "the CNAME or A record points elsewhere",
-  FOREIGN_AAAA: "an AAAA record points elsewhere: delete it",
-  CAA_BLOCKS: "a CAA record stops the HTTPS certificate: add the CAA record listed",
-  DOMAIN_TAKEN: "this hostname is not available",
-  QUEUE_FULL: "DNS is right; the next step is queued and retried automatically",
-  CERT_PENDING: "the HTTPS certificate is on its way",
-  CERT_FAILED: "the HTTPS certificate was not issued: check DNS, then check again",
-  DNS_LOST: "the records stayed broken: restore them, then check again",
-  CHECK_PAUSED: "automatic checks are paused; a check resumes them",
-  RESOLVER_UNAVAILABLE: "DNS did not answer; retried automatically",
-  PUBLICATION_GONE: "the publication is gone: set the domain on another one",
+const DOMAIN_TOKENS_PAGE = "https://account.brewpage.app/tokens";
+const DOMAIN_PROFILE_TEXT = `Free with a BrewPage profile, up to 5 custom domains: a profile token works at once, an owner token after it is added to a profile (sign-in at ${DOMAIN_TOKENS_PAGE}, "Add existing token").`;
+const DOMAIN_PROVIDER_TEXT = "Any registrar or DNS host works; if the user is buying a domain, Cloudflare and Porkbun are the quickest to set up.";
+const DOMAIN_ADDRESS_TEXT = "Addressed by publication (type, namespace, id; a profile token or an owner token added to the profile) or by hostname (an admin profile token).";
+const DOMAIN_OWNER_TOKEN = `A profile token, or the publication's owner token added to a BrewPage profile. Default: ${ENV_DEFAULT}.`;
+const DOMAIN_EITHER_TOKEN = `By publication: a profile token or an owner token added to the profile. By hostname: an admin profile token. Default: ${ENV_DEFAULT}.`;
+const DOMAIN_LIST_TOKEN = `Whole list or by hostname: an admin profile token. By publication: a profile token or an owner token added to the profile. Default: ${ENV_DEFAULT}.`;
+const DOMAIN_ADDRESS_ERROR = "Provide either `hostname` (an admin profile token) or `type`, `namespace` and `id` (a profile token or an owner token added to the profile).";
+const DOMAIN_HOSTNAME = "Custom domain as a bare hostname, e.g. www.example.com; instead of type, namespace and id";
+const DOMAIN_ARGUMENT = "Optional custom domain for the new publication: a bare hostname the user owns (www.example.com or example.com, no scheme or path). " +
+  "Needs a profile token or an owner token added to a free BrewPage profile, and no password. The publication is always created; " +
+  "the result lists the DNS records for the domain owner to create, or says why the custom domain was not set.";
+/** Status sentence of the check_domain description; names every key of DOMAIN_STATUSES. */
+const DOMAIN_STATUS_TEXT = "Status: pending_dns (DNS records not seen yet), verifying (DNS records found, HTTPS being issued), active (live), " +
+  "lost (DNS records broke after going live; still served until `graceEndsAt`; restored records and one more check bring it back). `problem` names the fix.";
+/** Next step per `reason` of 409 NOT_ELIGIBLE and per `NOT_ELIGIBLE_<reason>` problem. */
+const DOMAIN_REASONS: Record<string, string> = {
+  OWNERSHIP: `add its owner token to the profile (bind_token with an admin profile token, or "Add existing token" at ${DOMAIN_TOKENS_PAGE})`,
+  OLD: "it is an old publication: publish it again and connect the custom domain to the new one",
+  RETIRED: "its address was retired: connect the custom domain to a live publication",
+  TYPE: "only HTML pages and sites can",
+  FORMAT: "the page is not format html: publish it as format html",
+  PASSWORD: "remove the password (management link, or POST /api/{html|sites}/{ns}/{id}/password {\"password\":null})",
+  EXPIRED: "it has expired: connect the custom domain to another publication",
+  MODE: "it left its own subdomain: change its hosting back to subdomain (update_hosting deliveryMode=subdomain)",
 };
-const DOMAIN_NEXT_CREATE = "Next: ask the user to add exactly these records at their DNS provider and change nothing else (keep MX/email records); `host` is the name DNS panels ask for. Then call check_domain. BrewPage also checks on its own and issues HTTPS automatically.";
+const DOMAIN_READ_STATUS = "read the status with list_domains (same type, namespace and id, or hostname)";
+const DOMAIN_NEXT_CREATE = "Next: give the user exactly these DNS records to create at their DNS provider (`host` is the name DNS panels ask for). " +
+  "MX/mail records stay; an A, AAAA or CNAME record at the same name is replaced. When the user says the records exist, call check_domain once, then " +
+  DOMAIN_READ_STATUS + " until it is active: BrewPage checks on its own (first full check about 15 minutes after adding), " +
+  "usually live within 30 minutes, HTTPS is automatic. Call check_domain again only after a DNS change.";
+const DOMAIN_NEXT_VERIFYING = "Next: DNS records are found and HTTPS is being issued. To follow it, " + DOMAIN_READ_STATUS +
+  " until it is active; call check_domain again only if the Problem line says so or DNS changed.";
+const DOMAIN_NEXT_LOST = "Next: DNS records broke after going live. Ask the user to restore exactly these DNS records at their DNS provider, then call check_domain once.";
+const DOMAIN_SUSPENDED_TEXT = "BrewPage suspended this custom domain: the user writes to info@brewpage.app; repeating a call does not help.";
+/** Custom-domain guide: the flow in tool words, then the status and problem tables generated from llms-full.txt. */
+const CUSTOM_DOMAIN_GUIDE = [
+  "BrewPage custom domain: a hostname the user owns (example.com, docs.example.com) shows one HTML page of format html or one site, without a password. Only when the user asks for their own domain.",
+  `Who: ${DOMAIN_PROFILE_TEXT}`,
+  "  403 DOMAIN_NEEDS_ACCOUNT = the owner token is in no profile: give the user the owner token (it is theirs) to add there, then repeat the call. With an admin profile token bind_token adds it instead.",
+  `Domain: ${DOMAIN_PROVIDER_TEXT}`,
+  "Steps:",
+  "1) set_domain (type, namespace, id, hostname), or `domain` on publish_html / publish_site. The hostname is bare: www.example.com or example.com, no scheme or path.",
+  "2) Give the user exactly the DNS records of the result to create at their DNS provider (`host` is the name DNS panels ask for); never values from memory.",
+  "   MX/mail records stay; an A, AAAA or CNAME record at the same name is replaced. At Cloudflare set Proxy status to DNS only.",
+  "3) When the user says the records exist: check_domain once.",
+  "4) Read the status with list_domains (type, namespace, id) until it is active. BrewPage checks on its own (first full check about 15 minutes after adding);",
+  "   usually live within 30 minutes, HTTPS is issued automatically. check_domain again only after a DNS change; on 429 wait Retry-After and read instead.",
+  "Statuses (`Status:` line of a result):",
+  ...Object.entries(DOMAIN_STATUSES).map(([status, text]) => `  ${status} - ${text}`),
+  "Problems (`Problem:` line) and the fix:",
+  ...Object.entries(DOMAIN_PROBLEMS).map(([problem, fix]) => `  ${problem} - ${fix}`),
+  "  NOT_ELIGIBLE_<reason> - the publication cannot take a custom domain now; the line names the fix",
+  "A refusal names its next step. The BrewPage link keeps working throughout. set_domain with the same hostname on another publication of the profile moves it; remove_domain removes it.",
+].join("\n") + "\n";
+
+/** `Problem:` value: the code plus its fix (generated table, or the reason of a `NOT_ELIGIBLE_<reason>` code); other codes print bare. */
+function domainProblemText(problem: string): string {
+  const reason = problem.startsWith("NOT_ELIGIBLE_") ? DOMAIN_REASONS[problem.slice("NOT_ELIGIBLE_".length)] : undefined;
+  const fix = reason ? `the publication cannot take a custom domain now: ${reason}` : DOMAIN_PROBLEMS[problem];
+  return fix ? `${problem} (${fix})` : problem;
+}
 
 /** One custom domain (`DomainItem`): status, `records[]` verbatim and the next step. */
 function domainLines(item: Record<string, unknown>): string[] {
@@ -240,7 +278,7 @@ function domainLines(item: Record<string, unknown>): string[] {
     `Domain: ${hostname}${typeof displayHostname === "string" && displayHostname !== hostname ? ` (${displayHostname})` : ""}`,
     `Status: ${item.status}`,
   ];
-  if (typeof problem === "string" && problem) lines.push(`Problem: ${problem}${DOMAIN_PROBLEMS[problem] ? ` (${DOMAIN_PROBLEMS[problem]})` : ""}`);
+  if (typeof problem === "string" && problem) lines.push(`Problem: ${domainProblemText(problem)}`);
   lines.push(`Serving: ${item.serving === true}`);
   if (item.suspended === true) lines.push(`suspended: true`);
   if (typeof url === "string" && url) lines.push(`Domain URL: ${url}`);
@@ -249,45 +287,79 @@ function domainLines(item: Record<string, unknown>): string[] {
   if (typeof item.provider === "string" && item.provider) lines.push(`DNS provider: ${item.provider}`);
   if (item.deliveryModeChanged === true) lines.push(`The publication moved to its own BrewPage subdomain (a custom domain needs it); its BrewPage link keeps working.`);
   if (typeof item.detached === "string" && item.detached) lines.push(`Earlier domain ${item.detached} stays in the profile, not attached.`);
-  for (const [field, label] of [["checkedAt", "Checked"], ["nextCheckAt", "Next automatic check"], ["graceEndsAt", "Shown until"]]) {
+  for (const [field, label] of [["checkedAt", "Checked"], ["nextCheckAt", "Next automatic check"], ["graceEndsAt", "Served until (graceEndsAt)"]]) {
     if (typeof item[field] === "string") lines.push(`${label}: ${item[field]}`);
   }
   lines.push(`DNS records (records[], verbatim):`, ...records.map((record) => `  ${JSON.stringify(record)}`));
   if (records.some((record) => record.optional === true)) lines.push(`A row with "optional":true is an alternative to the A record: one of the two is enough.`);
   if (records.some((record) => record.type === "AAAA")) lines.push(`An AAAA row is a record to delete, not to create.`);
   if (item.provider === "cloudflare") lines.push(`Cloudflare: Proxy status "DNS only" on the CNAME or A record.`);
-  if (item.suspended === true) return lines;
-  if (item.status === "pending_dns") lines.push(DOMAIN_NEXT_CREATE);
-  if (item.status === "verifying") lines.push(`Next: DNS is found and HTTPS is being issued. Call check_domain again shortly.`);
-  if (item.status === "active") lines.push(`Live: the domain shows the publication over HTTPS. The BrewPage link keeps working.`);
-  if (item.status === "lost") lines.push(`Next: DNS changed after going live. Ask the user to restore exactly these records at their DNS provider, then call check_domain.`);
+  if (item.suspended === true) return [...lines, DOMAIN_SUSPENDED_TEXT];
+  if (problem === "DOMAIN_NOT_REGISTERED") lines.push(DOMAIN_PROVIDER_TEXT);
+  // The DNS provider is unknown until a check names it, so the Cloudflare rule travels with the step.
+  if (item.status === "pending_dns") lines.push(DOMAIN_NEXT_CREATE + (typeof item.provider === "string" && item.provider ? "" : " At Cloudflare set Proxy status to DNS only."));
+  if (item.status === "verifying") lines.push(DOMAIN_NEXT_VERIFYING);
+  if (item.status === "active") lines.push(`Live: the custom domain shows the publication over HTTPS. The BrewPage link keeps working.`);
+  if (item.status === "lost") lines.push(DOMAIN_NEXT_LOST);
   return lines;
 }
 
-/** Create with `domain`: the returned `customDomain`, else a line saying it was not set (the reason is a `domain-*` notice). */
-function publishDomainLines(data: Record<string, unknown>, requested?: string): string[] {
+/** 403 `DOMAIN_NEEDS_ACCOUNT` and its create notice: the profile step in the user's hands, then `then`. */
+function domainNeedsProfile(fromEnv: boolean, then: string): string {
+  return `The owner token is in no BrewPage profile. Give the user the owner token (it is theirs${fromEnv ? `; it is the ${OWNER_TOKEN_ENV} value in this server's settings` : ""}) ` +
+    `and ask them to sign in at ${DOMAIN_TOKENS_PAGE} (free), press "Add existing token" and paste it; then ${then}. With an admin profile token bind_token adds it instead.`;
+}
+
+const DOMAIN_LIMIT_NEXT = "remove_domain frees one; a hostname already in the profile moves here with set_domain.";
+/** 409 `DOMAIN_PROFILE_AMBIGUOUS` and its create notice; `then` = the call to make with the profile token. */
+function domainAmbiguous(then: string): string {
+  return `The token is in several profiles: ${then} with a profile token of the profile that should hold the custom domain (minted at ${DOMAIN_TOKENS_PAGE}).`;
+}
+
+/** Next step per `domain-*` notice of a create; other codes point at the notice text. */
+function publishDomainNext(code: string, fromEnv: boolean): string {
+  if (code === "domain-needs-account") return ` ${domainNeedsProfile(fromEnv, "call set_domain for this publication")}`;
+  if (code === "domain-limit-reached") return ` Next: ${DOMAIN_LIMIT_NEXT}`;
+  if (code === "domain-profile-ambiguous") return ` ${domainAmbiguous("call set_domain")}`;
+  if (code === "domain-not-eligible" || code === "domain-invalid") return " The domain notice above says what to fix; then set_domain connects it.";
+  if (code === "domain-account-restricted") return " The domain notice above says why.";
+  return " The domain notice above says why. set_domain connects it later.";
+}
+
+/** Create with `domain`: the returned `customDomain`, else a line saying it was not set plus the next step of its `domain-*` notice. */
+function publishDomainLines(data: Record<string, unknown>, requested?: string, fromEnv = false): string[] {
   const item = data.customDomain;
   if (item && typeof item === "object") return [``, `CUSTOM DOMAIN`, ...domainLines(item as Record<string, unknown>)];
   if (!requested) return [];
-  const reason = notices(data).some((n) => n.code.startsWith("domain-")) ? " The domain notice above says why." : "";
-  return [``, `CUSTOM DOMAIN: ${requested} was not set; the publication is live at its BrewPage link.${reason} set_domain connects it later.`];
+  const notice = notices(data).find((n) => n.code.startsWith("domain-"));
+  return [``, `CUSTOM DOMAIN: ${requested} was not set; the publication is live at its BrewPage link.` +
+    (notice ? publishDomainNext(notice.code, fromEnv) : " set_domain connects it later.")];
 }
 
-/** Next step after a custom-domain refusal; other codes keep the server answer alone. */
-function domainHints(data: unknown, byHostname: boolean): string[] {
-  const { code, limit, used } = (data ?? {}) as { code?: unknown; limit?: unknown; used?: unknown };
-  if (code === "DOMAIN_NEEDS_ACCOUNT") {
-    return ["Custom domains need a free BrewPage account: sign in at https://account.brewpage.app and add this token to your profile (bind_token), then retry."];
+/** Next step after a custom-domain refusal; `address` = how the call named the domain. Other codes keep the server answer alone. */
+function domainHints(data: unknown, address: "publication" | "hostname" | "list", fromEnv = false): string[] {
+  const { code, limit, used, reason } = (data ?? {}) as { code?: unknown; limit?: unknown; used?: unknown; reason?: unknown };
+  switch (code) {
+    case "DOMAIN_NEEDS_ACCOUNT": return [domainNeedsProfile(fromEnv, "repeat this call")];
+    case "DOMAIN_LIMIT": return typeof limit === "number" && limit > 0
+      ? [`The profile uses ${typeof used === "number" ? used : limit} of ${limit} custom domains: ${DOMAIN_LIMIT_NEXT}`] : [];
+    case "ADMIN_TOKEN_REQUIRED": return ["This call needs an admin profile token." + (address === "publication" ? ""
+      : " With a publish-scope profile token or an owner token added to the profile, pass type, namespace and id" + (address === "hostname" ? " instead of hostname." : "."))];
+    case "DOMAIN_CHECK_TOO_SOON": return [`Checked a moment ago: do not call check_domain again now. BrewPage keeps checking on its own; after Retry-After ${DOMAIN_READ_STATUS}.`];
+    case "DOMAIN_NOT_FOUND": return ["No custom domain there: list_domains shows the profile's custom domains; set_domain connects one."];
+    case "INVALID_HOSTNAME": return ["Pass one bare hostname such as www.example.com or example.com (no scheme, path or port); the message says what to fix."];
+    case "DOMAIN_NOT_ALLOWED": return ["brewpage.app addresses and some domains cannot be used: ask the user for a domain they own."];
+    case "NOT_ELIGIBLE": return typeof reason === "string" && DOMAIN_REASONS[reason] ? [`This publication cannot take a custom domain: ${DOMAIN_REASONS[reason]}.`] : [];
+    case "DOMAIN_PROFILE_AMBIGUOUS": return [domainAmbiguous("repeat")];
+    case "OWNER_TOKEN_REVOKED": case "OWNER_TOKEN_EXPIRED":
+      return [`The token ${code === "OWNER_TOKEN_REVOKED" ? "was revoked" : "expired"}: repeat with another profile token or the publication's owner token.`];
+    case "ACCOUNT_RESTRICTED": case "ACCOUNT_BLOCKED":
+      return [`This profile cannot add custom domains${code === "ACCOUNT_RESTRICTED" ? " now" : ""}: tell the user; repeating the call does not help.`];
+    case "DOMAIN_SUSPENDED": return [DOMAIN_SUSPENDED_TEXT];
+    case "PUBLICATION_UNAVAILABLE": return ["The publication is missing or expired (outside public a wrong token answers the same): check type, namespace, id and the token."];
+    case "FEATURE_DISABLED": case "DOMAIN_INTAKE_PAUSED": case "HOSTING_CREATION_PAUSED": return ["Temporary: tell the user and try again later."];
+    default: return [];
   }
-  if (code === "DOMAIN_LIMIT" && typeof limit === "number" && limit > 0) {
-    return [`The profile uses ${typeof used === "number" ? used : limit} of ${limit} custom domains: remove_domain frees one; a hostname already in the profile moves here with set_domain.`];
-  }
-  if (code === "ADMIN_TOKEN_REQUIRED") {
-    return ["Custom domains need an admin token from a free BrewPage profile." + (byHostname ? " With an owner token of the publication, pass type, namespace and id instead of hostname." : "")];
-  }
-  if (code === "DOMAIN_CHECK_TOO_SOON") return ["Checked a moment ago: wait, then call check_domain again."];
-  if (code === "DOMAIN_NOT_FOUND") return ["No custom domain there: list_domains shows the profile's domains; set_domain connects one."];
-  return [];
 }
 
 /** `/api/<segments>` with each segment encoded; empty, `.` and `..` refused (URL parsing would resolve them away). */
@@ -615,7 +687,7 @@ export function createServer(options: ServerOptions = {}): McpServer {
     if (data.expiresAt) lines.push(`Expires: ${data.expiresAt}`);
     lines.push(...hostingResponseLines(data));
     lines.push(...pageDataPublishLines(data, sentState));
-    lines.push(...publishDomainLines(data, requestedDomain));
+    lines.push(...publishDomainLines(data, requestedDomain, sentOwnerToken !== undefined && sentOwnerToken === defaultOwnerToken));
     lines.push(...ownerTokenLines(data, "update or delete this resource later", sentOwnerToken));
     lines.push(...ownerLinkLines(data));
     const ns = ((data.namespace as string | undefined) ?? effectiveNamespace) || "";
@@ -633,7 +705,7 @@ export function createServer(options: ServerOptions = {}): McpServer {
         "Format order: `format`, then a known filename extension, else the server detects it. Returns its primary share link and owner token. Optional password, TTL, filename, top toolbar (showTopBar). " +
         "A `public` page without deliveryMode may get its own subdomain if it needs browser features a BrewPage link lacks; " +
         "the result then has deliveryModeReason and a delivery notice. Markdown raw HTML is allowlisted: scripts, styles, event handlers, forms, embeds removed. " +
-        "Optional `domain` connects a domain the user owns to an HTML-format page. " +
+        "Optional `domain` connects a custom domain the user owns to an HTML-format page. " +
         MANAGE_URL_TEXT + " " + SECRETS + " " + BADGE_TEXT + " " + PUBLISH_STATE_TEXT,
       inputSchema: {
         content: z.string().describe("HTML, Markdown, code or JSON to publish"),
@@ -937,7 +1009,7 @@ export function createServer(options: ServerOptions = {}): McpServer {
       ...toolMeta("Publish site", ADDITIVE),
       description: "Publish an HTML site to BrewPage. " + PUBLIC_HINT + "Single-page: `entryContent`. Multi-page: `files` (`{path, content}` array). Optional `entry` overrides `index.html`. Returns its primary share link and owner token. " +
         "Static only: HTML, CSS, JS (incl. built React/Vue bundles) run in the browser; server code (PHP etc.) never runs. " + SITE_LIMITS_TEXT +
-        " Optional `domain` connects a domain the user owns. " + MANAGE_URL_TEXT + " " + SECRETS + " " + BADGE_TEXT + " " + PUBLISH_STATE_TEXT,
+        " Optional `domain` connects a custom domain the user owns. " + MANAGE_URL_TEXT + " " + SECRETS + " " + BADGE_TEXT + " " + PUBLISH_STATE_TEXT,
       inputSchema: {
         deliveryMode: DELIVERY_MODE_SCHEMA,
         entryContent: z
@@ -1039,7 +1111,7 @@ export function createServer(options: ServerOptions = {}): McpServer {
       if (site.expiresAt) lines.push(`Expires: ${site.expiresAt}`);
       lines.push(...hostingResponseLines(site));
       lines.push(...pageDataPublishLines(site, sentState?.value));
-      lines.push(...publishDomainLines(site, domain || undefined));
+      lines.push(...publishDomainLines(site, domain || undefined, owner !== undefined && owner === defaultOwnerToken));
       lines.push(...ownerTokenLines(site, "view info or delete this site", owner));
       lines.push(...ownerLinkLines(site));
       const ns = ((site.namespace as string | undefined) || effectiveNamespace) || "";
@@ -1812,15 +1884,18 @@ export function createServer(options: ServerOptions = {}): McpServer {
     "set_domain",
     {
       ...toolMeta("Connect custom domain", ADDITIVE),
-      description: "Connect a domain the user owns (www.example.com or example.com) to one HTML page or site. " + DOMAIN_PROFILE_TEXT +
-        " Returns the DNS records for the domain owner to create at their DNS provider: TXT for ownership plus CNAME, or A/ALIAS for a root domain. " +
-        "A DNS check after that moves the status pending_dns -> verifying -> active; HTTPS is issued automatically. " +
-        "HTML pages of format html and sites, without a password. A hostname already in the profile moves to this publication. The BrewPage link keeps working.",
+      description: "Connect a custom domain (a hostname the user owns) to one HTML page of format html or one site, without a password. " + DOMAIN_PROFILE_TEXT +
+        " Returns the DNS records for the domain owner to create at their DNS provider exactly as returned: MX/mail records stay, " +
+        "an A, AAAA or CNAME record at the same name is replaced, at Cloudflare Proxy status is DNS only. " +
+        "One DNS check after the records exist is enough: BrewPage keeps checking on its own (first full check about 15 minutes after adding); " +
+        "usually live within 30 minutes, HTTPS is automatic. Status: pending_dns -> verifying -> active (lost when the DNS records break later); `problem` names the fix. " +
+        "A hostname already in the profile moves to this publication; the BrewPage link keeps working. " + DOMAIN_PROVIDER_TEXT +
+        " Steps and fixes: guide topic `custom-domain`.",
       inputSchema: {
         type: z.enum(["html", "site"]).describe("Publication type"),
         namespace: z.string().describe("Publication namespace"),
         id: z.string().describe("Publication ID"),
-        hostname: z.string().describe("Domain or subdomain the user owns, e.g. www.example.com or example.com"),
+        hostname: z.string().describe("Bare hostname the user owns: www.example.com or example.com, no scheme or path"),
         ownerToken: z.string().optional().describe(DOMAIN_OWNER_TOKEN),
       },
     },
@@ -1829,8 +1904,9 @@ export function createServer(options: ServerOptions = {}): McpServer {
       if (!auth.token) return textResult(NO_OWNER_TOKEN, true);
       const path = apiPath("publications", type, namespace, id, "domain");
       const { ok, status, data, headers: answerHeaders } = await apiRequest("PUT", path, { hostname }, { "X-Owner-Token": auth.token });
-      if (!ok) return ownerFailure("set domain", status, data, auth.fromEnv, answerHeaders, domainHints(data, false));
-      const lead = status === 201 ? "Custom domain connected." : "Custom domain set: it was already in the profile (moved here or unchanged).";
+      if (!ok) return ownerFailure("set domain", status, data, auth.fromEnv, answerHeaders, domainHints(data, "publication", auth.fromEnv));
+      const lead = status === 201 ? "Custom domain added. It is not live until the DNS records below exist."
+        : "Custom domain set: it was already in the profile (moved here or unchanged).";
       return textResult([lead, ``, ...domainLines(data as Record<string, unknown>)].join("\n"));
     }
   );
@@ -1839,16 +1915,30 @@ export function createServer(options: ServerOptions = {}): McpServer {
     "list_domains",
     {
       ...toolMeta("List custom domains", READ_ONLY),
-      description: "List the custom domains of a BrewPage profile: status, DNS records and the publication each one shows, plus how many the profile holds and may hold. Needs an admin token of the profile.",
+      description: "Read custom domains without running a DNS check: status, `problem`, DNS records and the publication shown. " +
+        "No address: every custom domain of the profile plus how many it holds and may hold. With type, namespace and id, or with hostname: that one custom domain.",
       inputSchema: {
-        ownerToken: z.string().optional().describe(`Admin token of the profile. Default: ${ENV_DEFAULT}.`),
+        type: z.enum(["html", "site"]).optional().describe("Publication type; with namespace and id, instead of hostname"),
+        namespace: z.string().optional().describe("Publication namespace"),
+        id: z.string().optional().describe("Publication ID"),
+        hostname: z.string().optional().describe(DOMAIN_HOSTNAME),
+        ownerToken: z.string().optional().describe(DOMAIN_LIST_TOKEN),
       },
     },
-    async ({ ownerToken }) => {
+    async ({ type, namespace, id, hostname, ownerToken }) => {
       const auth = ownerTokenFor(ownerToken);
       if (!auth.token) return textResult(NO_OWNER_TOKEN, true);
+      // An empty string reads as an omitted argument: the list stays reachable for a client that fills every field.
+      const [kind, ns, row, host] = [type, namespace, id, hostname].map((part) => part || undefined);
+      if ([kind, ns, row, host].some((part) => part !== undefined)) {
+        const path = domainPath(kind, ns, row, host);
+        if (path === null) return textResult(DOMAIN_ADDRESS_ERROR, true);
+        const { ok, status, data, headers: answerHeaders } = await apiRequest("GET", path, undefined, { "X-Owner-Token": auth.token });
+        if (!ok) return ownerFailure("read domain", status, data, auth.fromEnv, answerHeaders, domainHints(data, host !== undefined ? "hostname" : "publication", auth.fromEnv));
+        return textResult(domainLines(data as Record<string, unknown>).join("\n"));
+      }
       const { ok, status, data, headers: answerHeaders } = await apiRequest("GET", "/api/domains", undefined, { "X-Owner-Token": auth.token });
-      if (!ok) return ownerFailure("list domains", status, data, auth.fromEnv, answerHeaders, domainHints(data, false));
+      if (!ok) return ownerFailure("list domains", status, data, auth.fromEnv, answerHeaders, domainHints(data, "list", auth.fromEnv));
       const list = data as { limit?: unknown; used?: unknown; items?: unknown };
       const items = Array.isArray(list.items) ? list.items as Array<Record<string, unknown>> : [];
       const lines = [`Custom domains: ${list.used} of ${list.limit} used`];
@@ -1862,14 +1952,15 @@ export function createServer(options: ServerOptions = {}): McpServer {
     "check_domain",
     {
       ...toolMeta("Check custom domain DNS", ADDITIVE),
-      description: "Check the DNS of a custom domain now and return its status and records. Status: pending_dns (records not seen yet), " +
-        "verifying (DNS found, HTTPS being issued), active (live). " + DOMAIN_ADDRESS_TEXT +
-        " Checks are spaced: a repeat too soon answers 429 with Retry-After.",
+      description: "Run a DNS check of a custom domain now and return its status, `problem` and DNS records. " +
+        "One check after the DNS records exist is enough: BrewPage keeps checking on its own (`nextCheckAt`) and reading the status needs no check; " +
+        "another check fits only after a DNS change. " + DOMAIN_STATUS_TEXT + " " + DOMAIN_ADDRESS_TEXT +
+        " A repeat within seconds answers 429 with Retry-After.",
       inputSchema: {
         type: z.enum(["html", "site"]).optional().describe("Publication type; with namespace and id, instead of hostname"),
         namespace: z.string().optional().describe("Publication namespace"),
         id: z.string().optional().describe("Publication ID"),
-        hostname: z.string().optional().describe("Custom domain, e.g. www.example.com; instead of type, namespace and id"),
+        hostname: z.string().optional().describe(DOMAIN_HOSTNAME),
         ownerToken: z.string().optional().describe(DOMAIN_EITHER_TOKEN),
       },
     },
@@ -1879,7 +1970,8 @@ export function createServer(options: ServerOptions = {}): McpServer {
       const path = domainPath(type, namespace, id, hostname, ["check"]);
       if (path === null) return textResult(DOMAIN_ADDRESS_ERROR, true);
       const { ok, status, data, headers: answerHeaders } = await apiRequest("POST", path, undefined, { "X-Owner-Token": auth.token });
-      if (!ok) return ownerFailure("check domain", status, data, auth.fromEnv, answerHeaders, domainHints(data, hostname !== undefined));
+      if (!ok) return ownerFailure("check domain", status, data, auth.fromEnv, answerHeaders,
+        domainHints(data, hostname !== undefined ? "hostname" : "publication", auth.fromEnv));
       return textResult([`DNS checked.`, ``, ...domainLines(data as Record<string, unknown>)].join("\n"));
     }
   );
@@ -1889,12 +1981,12 @@ export function createServer(options: ServerOptions = {}): McpServer {
     {
       ...toolMeta("Remove custom domain", DESTRUCTIVE),
       description: "Remove a custom domain from the profile: it stops showing the publication and its slot is free at once. The BrewPage link keeps working. " +
-        DOMAIN_ADDRESS_TEXT + " DNS records at the provider stay until the domain owner deletes them.",
+        DOMAIN_ADDRESS_TEXT + " DNS records at the DNS provider stay until the domain owner deletes them.",
       inputSchema: {
         type: z.enum(["html", "site"]).optional().describe("Publication type; with namespace and id, instead of hostname"),
         namespace: z.string().optional().describe("Publication namespace"),
         id: z.string().optional().describe("Publication ID"),
-        hostname: z.string().optional().describe("Custom domain, e.g. www.example.com; instead of type, namespace and id"),
+        hostname: z.string().optional().describe(DOMAIN_HOSTNAME),
         ownerToken: z.string().optional().describe(DOMAIN_EITHER_TOKEN),
       },
     },
@@ -1904,7 +1996,8 @@ export function createServer(options: ServerOptions = {}): McpServer {
       const path = domainPath(type, namespace, id, hostname);
       if (path === null) return textResult(DOMAIN_ADDRESS_ERROR, true);
       const { ok, status, data, headers: answerHeaders } = await apiRequest("DELETE", path, undefined, { "X-Owner-Token": auth.token });
-      if (!ok) return ownerFailure("remove domain", status, data, auth.fromEnv, answerHeaders, domainHints(data, hostname !== undefined));
+      if (!ok) return ownerFailure("remove domain", status, data, auth.fromEnv, answerHeaders,
+        domainHints(data, hostname !== undefined ? "hostname" : "publication", auth.fromEnv));
       const what = hostname !== undefined ? `Custom domain removed: ${hostname}` : `No custom domain on ${type} ${namespace}/${id} now`;
       return textResult(`${what} · slot free · BrewPage link unchanged\nIts DNS records can be deleted at the DNS provider.`);
     }
@@ -2126,12 +2219,13 @@ export function createServer(options: ServerOptions = {}): McpServer {
       ...toolMeta("Read BrewPage guide", READ_ONLY),
       description: "Short reference texts for building on BrewPage. Topic `page-data`: how a published page saves what visitors enter " +
         "(forms, guestbook, votes, leaderboard, game progress) with the script `https://brewpage.app/js/state.js` and the `state` config; " +
-        "meant to be read before writing such a page.",
+        "meant to be read before writing such a page. Topic `custom-domain`: the steps that put a page or site on a domain the user owns " +
+        "(profile, DNS records, one check, statuses, problems and fixes).",
       inputSchema: {
-        topic: z.enum(["page-data"]).describe("Guide topic"),
+        topic: z.enum(["page-data", "custom-domain"]).describe("Guide topic"),
       },
     },
-    async () => textResult(PAGE_DATA_GUIDE + PAGE_DATA_GUIDE_TAIL)
+    async ({ topic }) => textResult(topic === "custom-domain" ? CUSTOM_DOMAIN_GUIDE : PAGE_DATA_GUIDE + PAGE_DATA_GUIDE_TAIL)
   );
 
   return server;
