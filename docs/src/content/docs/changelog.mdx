@@ -6,6 +6,10 @@ order: 5
 
 # Changelog
 
+## API contract 2.25.0 — file upload answers always include listed and listable
+
+The `POST /api/files` answer now declares `listed` and `listable` as always present, like the HTML create and update answers and the file update answer. The server already sent both on every upload, so nothing changes on the wire; clients and code generators can read them without a presence check. Still 59 paths and 81 operations. The MCP server is unchanged.
+
 ## API contract 2.24.0 — what the gallery can list
 
 Answers now say whether a publication can appear in the gallery at all: the new boolean `listable` is `false` for the types that are never listed whatever the namespace (JSON and KV, JSON pages, HTML and JSON files), where Hide and Show do not apply. It comes on HTML create and update answers, file answers, the hosting read, the items of `GET /api/publications` and your own items of `GET /api/gallery`. Items of `GET /api/publications` also add an optional `pageData` with the number of stored entries and the share of the quota in use. Additions and wording only: 59 paths and 81 operations. The MCP server is unchanged.

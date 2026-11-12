@@ -1,5 +1,11 @@
 # Release Notes
 
+## API contract 2.25.0 — 2026-11-12
+
+- Exported from brewpage-app source `af8fac789007583b502bfa00e3ef76c00c5db1dd` (brewpage-app release v2.25.0), clean tree. 59 paths and 81 operations, unchanged. One declaration tightened: no path, parameter, field or code changed.
+- File upload answers always include `listed` and `listable`: the `POST /api/files` answer (`FileUploadResponse`) now declares both as required, like the HTML create and update answers and the file update answer. The server already sent both on every upload, so clients and code generators can read them without a presence check.
+- The MCP server is unchanged: `brewpage-mcp` 1.19.1 works with this contract as it is.
+
 ## API contract 2.24.0 — 2026-11-12
 
 - Exported from brewpage-app source `7b85cd2c3c8a012a9620fe9db1ec3d477598e9ed` (brewpage-app release v2.24.0), clean tree. 59 paths and 81 operations, unchanged. Additions and wording only: no path, parameter or code changed.
