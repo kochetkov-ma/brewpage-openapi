@@ -184,14 +184,15 @@ components:
           type: string
         problem:
           description: >-
-            What blocks progress now, absent when nothing does: TXT_MISSING, TXT_WRONG, ROUTING_MISSING, ROUTING_WRONG,
-            FOREIGN_AAAA, CAA_BLOCKS (fix the matching row of records[]), DOMAIN_TAKEN (this hostname is not available),
-            QUEUE_FULL (DNS is right, verification waits its turn; retried automatically), CERT_PENDING (certificate on
-            its way), CERT_FAILED (certificate could not be issued; check DNS, then check again), DNS_LOST (records
-            stayed broken past the grace period; restore them and check again), CHECK_PAUSED (checks paused after long
-            failure; the check route resumes them), RESOLVER_UNAVAILABLE (DNS did not answer; retried), PUBLICATION_GONE
-            (attach another publication), NOT_ELIGIBLE_<reason> (the publication cannot take a custom domain; reasons as
-            ErrorResponse.reason)
+            What blocks progress now, absent when nothing does: DOMAIN_NOT_REGISTERED (the domain does not exist yet;
+            register it with a domain registrar, then create the records), TXT_MISSING, TXT_WRONG, ROUTING_MISSING,
+            ROUTING_WRONG, FOREIGN_AAAA, CAA_BLOCKS (fix the matching row of records[]), DOMAIN_TAKEN (this hostname is
+            not available), QUEUE_FULL (DNS is right, verification waits its turn; retried automatically), CERT_PENDING
+            (certificate on its way), CERT_FAILED (certificate could not be issued; check DNS, then check again),
+            DNS_LOST (records stayed broken past the grace period; restore them and check again), CHECK_PAUSED (checks
+            paused after long failure; the check route resumes them), RESOLVER_UNAVAILABLE (DNS did not answer;
+            retried), PUBLICATION_GONE (attach another publication), NOT_ELIGIBLE_<reason> (the publication cannot take
+            a custom domain; reasons as ErrorResponse.reason)
           type: string
         provider:
           description: >-
@@ -3631,7 +3632,7 @@ info:
     url: https://www.apache.org/licenses/LICENSE-2.0
   termsOfService: https://brewpage.app/terms
   title: BrewPage API
-  version: 2.27.0
+  version: 2.28.0
 openapi: 3.1.0
 paths:
   /api/domains:
@@ -3672,8 +3673,9 @@ paths:
     post:
       description: >-
         Adds a hostname to the profile without showing a publication yet (attach one later with PUT
-        /api/domains/{hostname}/attachment). Create the DNS `records[]` of the answer, then call POST
-        /api/domains/{hostname}/check until `status` is `active`.
+        /api/domains/{hostname}/attachment). For a new hostname the answer already says DOMAIN_NOT_REGISTERED when the
+        domain does not exist; the first automatic DNS check runs about 15 minutes later (`nextCheckAt`). Create the DNS
+        `records[]` of the answer, then call POST /api/domains/{hostname}/check until `status` is `active`.
       operationId: addDomain
       parameters:
         - description: Admin token of your BrewPage profile
@@ -6445,9 +6447,10 @@ paths:
         or moves it here when your profile already holds it. Works for HTML pages of format html and for sites, without
         a password; a page on a BrewPage path address moves to its own subdomain (`deliveryModeChanged`), and its
         BrewPage link keeps working. A hostname that was on this publication before stays in your profile, unattached
-        (`detached`). Next: create exactly the DNS records in `records[]` at your DNS provider, call POST
-        /api/publications/{type}/{ns}/{id}/domain/check, and repeat until `status` is `active` (`serving` true, `url`
-        set).
+        (`detached`). For a new hostname the answer already says DOMAIN_NOT_REGISTERED when the domain does not exist;
+        the first automatic DNS check runs about 15 minutes later (`nextCheckAt`). Next: create exactly the DNS records
+        in `records[]` at your DNS provider, call POST /api/publications/{type}/{ns}/{id}/domain/check, and repeat until
+        `status` is `active` (`serving` true, `url` set).
       operationId: setPublicationDomain
       parameters:
         - description: html (pages of format html) or site; only these take a custom domain
@@ -7721,7 +7724,7 @@ paths:
               - json
               - csv
             type: string
-        - description: '-createdAt (default), createdAt, -index or index (the list''s numeric index field)'
+        - description: '-createdAt (default), createdAt, -updatedAt, updatedAt, -index or index (the list''s numeric index field)'
           in: query
           name: order
           required: false
@@ -7729,6 +7732,8 @@ paths:
             enum:
               - '-createdAt'
               - createdAt
+              - '-updatedAt'
+              - updatedAt
               - '-index'
               - index
             type: string
