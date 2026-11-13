@@ -1,10 +1,25 @@
 # Release Notes
 
+## API contract 2.29.0 — 2026-11-13
+
+- Exported from brewpage-app source `d88ea66897e37d2acc0979a6ad34ef79348ea710` (brewpage-app release v2.29.0), clean tree. 61 paths and 83 operations, unchanged. Custom-domain texts and declarations only: no path, parameter, field or code added or renamed.
+- Connecting a custom domain reads as one flow: create the DNS `records[]`, call the check route once, then read the domain (`GET /api/publications/{type}/{ns}/{id}/domain` or `GET /api/domains/{hostname}`) until `status` is `active`. BrewPage keeps checking on its own (`nextCheckAt`); check again only after changing DNS. The `Custom Domains` tag, `setPublicationDomain`, `addDomain`, `DomainItem` and the `domain` parameter of `POST /api/html` and `POST /api/sites` all say so.
+- Each refusal names its next step. 403 `DOMAIN_NEEDS_ACCOUNT`: sign in at https://account.brewpage.app/tokens, press Add existing token, paste the owner token, then set the domain again. 409 `DOMAIN_PROFILE_AMBIGUOUS`: set the domain with a profile token of the profile that should hold it. 409 `DOMAIN_SUSPENDED` and `suspended`: write to info@brewpage.app. 409 `NOT_ELIGIBLE` `reason`: `OWNERSHIP` (add the publication's owner token to the profile), `RETIRED` (set the domain on a live publication), `EXPIRED` (extend it or attach another publication), `MODE` (set the domain on it again). The texts say profile where they said account.
+- Records and statuses: a CAA row is added where your existing CAA records are; the apex A value can be absent for a few minutes, then create the optional ALIAS row or read the domain again later. `lost` and `graceEndsAt` say the domain is served until that time and then disconnected unless the records are restored; `DOMAIN_TAKEN` says to use another hostname or write to info@brewpage.app. `provider` adds `dnspod`.
+- Declarations: `DomainRecord` `type` and `state`, `AttachDomainRequest` `type` and the `status` of `PublicationDomain` and `HostingCustomDomain` list their values as enums, the same values the descriptions named; the request fields `hostname` (`SetDomainRequest`, `AddDomainRequest`) and `type`, `ns`, `id` (`AttachDomainRequest`) are declared as strings.
+- The MCP server is unchanged: `brewpage-mcp` 1.22.0 works with this contract as it is.
+
 ## MCP 1.22.0 — 2026-11-12
 
 - Custom domains are easier to finish with an assistant. It now tells you the one thing only you can do: sign in at https://account.brewpage.app/tokens, press Add existing token and paste the owner token it gives you; a profile token works at once.
 - The assistant gives you the exact DNS records to create (keep your mail records; at Cloudflare set Proxy status to DNS only), checks once after you created them and then just reads the status until the domain is live, usually within 30 minutes. If something blocks it, the result names the fix.
 - `list_domains` can read one custom domain by page (`type`, `namespace`, `id`) or by `hostname`, without a new DNS check; with no address it lists the profile as before. `get_guide` has a second topic, `custom-domain`. The same thirty-two tools, contract 2.28.0. `User-Agent: brewpage-mcp/1.22.0`; pins bumped.
+
+## API contract 2.28.0 — 2026-11-12
+
+- Exported from brewpage-app source `5dd0622bdc7777e287a5ad7401e2d05713399ff5` (brewpage-app release v2.28.0), clean tree. 61 paths and 83 operations, unchanged. No path, field or code changed.
+- Page data lists can be read by last change: `order` of `GET /api/{ns}/{id}/state/{col}` adds `-updatedAt` and `updatedAt`.
+- Custom domains: `problem` adds `DOMAIN_NOT_REGISTERED` (the domain does not exist yet: register it with a domain registrar, then create the records). `setPublicationDomain` and `addDomain` say that the answer for a new hostname already carries it and that the first automatic DNS check runs about 15 minutes later (`nextCheckAt`).
 
 ## MCP 1.21.0 — 2026-11-12
 

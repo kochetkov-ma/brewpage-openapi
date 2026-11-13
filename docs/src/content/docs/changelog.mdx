@@ -6,9 +6,17 @@ order: 5
 
 # Changelog
 
+## API contract 2.29.0 — custom domains: check once, then read
+
+The custom-domain texts now describe one flow: create the DNS records the answer lists, call the check route once, then read the domain until `status` is `active`; BrewPage keeps checking on its own, so check again only after changing DNS. The `domain` parameter of `POST /api/html` and `POST /api/sites` says the same. Each refusal names its next step: for 403 `DOMAIN_NEEDS_ACCOUNT` sign in at https://account.brewpage.app/tokens, press Add existing token and paste the owner token; for 409 `DOMAIN_PROFILE_AMBIGUOUS` use a profile token of the profile that should hold the domain; for a suspended domain write to info@brewpage.app; each `NOT_ELIGIBLE` reason says what to do. Record types, record states and domain statuses are declared as enums, and `provider` adds `dnspod`. Texts and declarations only: still 61 paths and 83 operations. The MCP server is unchanged.
+
 ## MCP 1.22.0 — custom domains that get finished
 
 The assistant now leads you through your own domain step by step. If your owner token is not in a profile yet, it gives you the token and the one thing only you can do: sign in at https://account.brewpage.app/tokens, press Add existing token and paste it. It hands you the exact DNS records to create (keep your mail records; at Cloudflare set Proxy status to DNS only), checks once after you created them and then reads the status until the domain is live, usually within 30 minutes; if something blocks it, the result names the fix. `list_domains` can read one custom domain by page or hostname without a new DNS check, and `get_guide` has a second topic, `custom-domain`. Thirty-two tools, contract 2.28.0.
+
+## API contract 2.28.0 — lists by last change, unregistered domains
+
+Page data lists can be read by last change: `order` of the list read adds `-updatedAt` and `updatedAt`. Custom domains name one more problem, `DOMAIN_NOT_REGISTERED`: the domain does not exist yet, so register it with a domain registrar, then create the records; the answer for a new hostname already carries it, and the first automatic DNS check runs about 15 minutes later. Still 61 paths and 83 operations.
 
 ## MCP 1.21.0 — usage counts on the hosted server
 

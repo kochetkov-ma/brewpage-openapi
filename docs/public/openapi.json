@@ -14,10 +14,7 @@
         "properties": {
           "hostname": {
             "description": "Hostname to add, e.g. www.example.com or example.com; Unicode names accepted",
-            "type": [
-              "string",
-              "null"
-            ]
+            "type": "string"
           }
         },
         "required": [
@@ -30,24 +27,19 @@
         "properties": {
           "id": {
             "description": "Id of the publication",
-            "type": [
-              "string",
-              "null"
-            ]
+            "type": "string"
           },
           "ns": {
             "description": "Namespace of the publication",
-            "type": [
-              "string",
-              "null"
-            ]
+            "type": "string"
           },
           "type": {
-            "description": "html or site (sites accepted)",
-            "type": [
-              "string",
-              "null"
-            ]
+            "description": "html or site",
+            "enum": [
+              "html",
+              "site"
+            ],
+            "type": "string"
           }
         },
         "required": [
@@ -176,7 +168,7 @@
             "type": "string"
           },
           "type": {
-            "description": "html or site (the {type} path segment of /api/publications/{type}/{ns}/{id}; sites also accepts site and sites)",
+            "description": "html or site",
             "type": "string"
           }
         },
@@ -189,7 +181,7 @@
         "type": "object"
       },
       "DomainItem": {
-        "description": "A custom domain of a profile and what to do next: create the `records[]` in DNS, then call the check route until `status` is `active`.",
+        "description": "A custom domain of a profile and what to do next: create the `records[]` in DNS, call the check route once, then read the domain until `status` is `active`.",
         "properties": {
           "apex": {
             "description": "true when the hostname is the registered domain itself (example.com): routing uses an A or ALIAS record instead of CNAME",
@@ -225,7 +217,7 @@
             "type": "string"
           },
           "graceEndsAt": {
-            "description": "While lost: when the hostname is released if DNS stays broken",
+            "description": "While lost: served until this time, then disconnected unless the records are restored",
             "format": "date-time",
             "type": "string"
           },
@@ -239,11 +231,11 @@
             "type": "string"
           },
           "problem": {
-            "description": "What blocks progress now, absent when nothing does: DOMAIN_NOT_REGISTERED (the domain does not exist yet; register it with a domain registrar, then create the records), TXT_MISSING, TXT_WRONG, ROUTING_MISSING, ROUTING_WRONG, FOREIGN_AAAA, CAA_BLOCKS (fix the matching row of records[]), DOMAIN_TAKEN (this hostname is not available), QUEUE_FULL (DNS is right, verification waits its turn; retried automatically), CERT_PENDING (certificate on its way), CERT_FAILED (certificate could not be issued; check DNS, then check again), DNS_LOST (records stayed broken past the grace period; restore them and check again), CHECK_PAUSED (checks paused after long failure; the check route resumes them), RESOLVER_UNAVAILABLE (DNS did not answer; retried), PUBLICATION_GONE (attach another publication), NOT_ELIGIBLE_<reason> (the publication cannot take a custom domain; reasons as ErrorResponse.reason)",
+            "description": "What blocks progress now, absent when nothing does: DOMAIN_NOT_REGISTERED (the domain does not exist yet; register it with a domain registrar, then create the records), TXT_MISSING, TXT_WRONG, ROUTING_MISSING, ROUTING_WRONG, FOREIGN_AAAA, CAA_BLOCKS (fix the matching row of records[]), DOMAIN_TAKEN (this hostname is not available: use another hostname or write to info@brewpage.app), QUEUE_FULL (DNS is right, verification waits its turn; retried automatically), CERT_PENDING (certificate on its way), CERT_FAILED (certificate could not be issued; check DNS, then check again), DNS_LOST (records stayed broken past graceEndsAt, so the domain was disconnected; restore them and check again), CHECK_PAUSED (checks paused after long failure; the check route resumes them), RESOLVER_UNAVAILABLE (DNS did not answer; retried), PUBLICATION_GONE (attach another publication), NOT_ELIGIBLE_<reason> (the publication cannot take a custom domain; reasons as ErrorResponse.reason)",
             "type": "string"
           },
           "provider": {
-            "description": "DNS provider once known: cloudflare, godaddy, namecheap, porkbun, squarespace, ionos, hostinger, ovh, route53, other",
+            "description": "DNS provider once known: cloudflare, godaddy, namecheap, porkbun, squarespace, ionos, hostinger, ovh, route53, dnspod, other",
             "type": "string"
           },
           "records": {
@@ -258,7 +250,7 @@
             "type": "boolean"
           },
           "status": {
-            "description": "pending_dns (create the records), verifying (DNS found, certificate being issued), active (serving) or lost (DNS changed after activation; still serving until graceEndsAt, fix the records)",
+            "description": "pending_dns (create the records), verifying (DNS found, certificate being issued), active (serving) or lost (records broke after activation; still served until graceEndsAt, then disconnected: restore the records and check again)",
             "enum": [
               "pending_dns",
               "verifying",
@@ -268,7 +260,7 @@
             "type": "string"
           },
           "suspended": {
-            "description": "true when BrewPage suspended this domain: it does not serve and cannot be checked, moved or removed",
+            "description": "true when BrewPage suspended this domain: it does not serve and cannot be checked, moved or removed; write to info@brewpage.app",
             "type": "boolean"
           },
           "url": {
@@ -332,14 +324,30 @@
           },
           "state": {
             "description": "From the last check: ok, missing, wrong (another value found), foreign (AAAA record pointing elsewhere: delete it), blocked (CAA record forbids the certificate: add this one) or unknown (not checked yet, or DNS did not answer)",
+            "enum": [
+              "ok",
+              "missing",
+              "wrong",
+              "foreign",
+              "blocked",
+              "unknown"
+            ],
             "type": "string"
           },
           "type": {
-            "description": "TXT (ownership), CNAME, A or ALIAS (routing), AAAA (delete it) or CAA (add it)",
+            "description": "TXT (ownership), CNAME, A or ALIAS (routing), AAAA (delete it) or CAA (add it where your existing CAA records are)",
+            "enum": [
+              "TXT",
+              "CNAME",
+              "A",
+              "ALIAS",
+              "AAAA",
+              "CAA"
+            ],
             "type": "string"
           },
           "value": {
-            "description": "Value to publish (AAAA: the record found, to delete); absent while not known yet, then use the optional ALIAS row",
+            "description": "Value to publish (AAAA: the record found, to delete). The apex A value is absent for a few minutes while BrewPage resolves its address: create the optional ALIAS row instead, or read the domain again later",
             "type": "string"
           }
         },
@@ -380,7 +388,7 @@
             "type": "string"
           },
           "reason": {
-            "description": "With NOT_ELIGIBLE: why the publication cannot take a custom domain: OWNERSHIP (the profile does not manage it), OLD (publish it again), RETIRED, TYPE (only HTML pages and sites), FORMAT (only format html), PASSWORD (remove the password), EXPIRED or MODE",
+            "description": "With NOT_ELIGIBLE: why the publication cannot take a custom domain: OWNERSHIP (add its owner token to the profile), OLD (publish it again), RETIRED (its address was retired; set the domain on a live publication), TYPE (only HTML pages and sites), FORMAT (only format html), PASSWORD (remove the password), EXPIRED (extend it or attach another publication) or MODE (it is not on its own subdomain; set the domain on it again)",
             "type": "string"
           },
           "republishUrl": {
@@ -1123,6 +1131,12 @@
           },
           "status": {
             "description": "pending_dns, verifying, active or lost (as DomainItem.status)",
+            "enum": [
+              "pending_dns",
+              "verifying",
+              "active",
+              "lost"
+            ],
             "type": "string"
           },
           "url": {
@@ -2749,10 +2763,16 @@
           },
           "status": {
             "description": "pending_dns, verifying, active or lost (as DomainItem.status)",
+            "enum": [
+              "pending_dns",
+              "verifying",
+              "active",
+              "lost"
+            ],
             "type": "string"
           },
           "suspended": {
-            "description": "true when BrewPage suspended this domain",
+            "description": "true when BrewPage suspended this domain; write to info@brewpage.app",
             "type": "boolean"
           }
         },
@@ -3264,10 +3284,7 @@
         "properties": {
           "hostname": {
             "description": "Hostname to connect, e.g. www.example.com or example.com; Unicode names accepted",
-            "type": [
-              "string",
-              "null"
-            ]
+            "type": "string"
           }
         },
         "required": [
@@ -4647,7 +4664,7 @@
     },
     "termsOfService": "https://brewpage.app/terms",
     "title": "BrewPage API",
-    "version": "2.28.0"
+    "version": "2.29.0"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -4706,7 +4723,7 @@
         ]
       },
       "post": {
-        "description": "Adds a hostname to the profile without showing a publication yet (attach one later with PUT /api/domains/{hostname}/attachment). For a new hostname the answer already says DOMAIN_NOT_REGISTERED when the domain does not exist; the first automatic DNS check runs about 15 minutes later (`nextCheckAt`). Create the DNS `records[]` of the answer, then call POST /api/domains/{hostname}/check until `status` is `active`.",
+        "description": "Adds a hostname to the profile without showing a publication yet (attach one later with PUT /api/domains/{hostname}/attachment). For a new hostname the answer already says DOMAIN_NOT_REGISTERED when the domain does not exist; the first automatic DNS check runs about 15 minutes later (`nextCheckAt`). Create the DNS `records[]` of the answer, then call POST /api/domains/{hostname}/check once; BrewPage keeps checking on its own: read GET /api/domains/{hostname} until `status` is `active`.",
         "operationId": "addDomain",
         "parameters": [
           {
@@ -4764,7 +4781,7 @@
                 }
               }
             },
-            "description": "Missing token, or ADMIN_TOKEN_REQUIRED: not an admin token of a profile; OWNER_TOKEN_REVOKED or OWNER_TOKEN_EXPIRED; ACCOUNT_RESTRICTED or ACCOUNT_BLOCKED: this account cannot add domains now"
+            "description": "Missing token, or ADMIN_TOKEN_REQUIRED: not an admin token of a profile; OWNER_TOKEN_REVOKED or OWNER_TOKEN_EXPIRED; ACCOUNT_RESTRICTED or ACCOUNT_BLOCKED: this profile cannot add domains now"
           },
           "404": {
             "content": {
@@ -4851,7 +4868,7 @@
                 }
               }
             },
-            "description": "Missing token, or ADMIN_TOKEN_REQUIRED: not an admin token of a profile; OWNER_TOKEN_REVOKED or OWNER_TOKEN_EXPIRED; ACCOUNT_RESTRICTED or ACCOUNT_BLOCKED: this account cannot add domains now"
+            "description": "Missing token, or ADMIN_TOKEN_REQUIRED: not an admin token of a profile; OWNER_TOKEN_REVOKED or OWNER_TOKEN_EXPIRED; ACCOUNT_RESTRICTED or ACCOUNT_BLOCKED: this profile cannot add domains now"
           },
           "404": {
             "content": {
@@ -4871,7 +4888,7 @@
                 }
               }
             },
-            "description": "DOMAIN_SUSPENDED: this domain is suspended"
+            "description": "DOMAIN_SUSPENDED: BrewPage suspended this domain; write to info@brewpage.app"
           },
           "429": {
             "content": {
@@ -5024,7 +5041,7 @@
         ]
       },
       "put": {
-        "description": "Shows an HTML page or site of yours on this hostname; body `{type, ns, id}`. The hostname is added to the profile when it is not there yet (201) or moved from its current publication (200). The admin token must also prove ownership of the publication (its owner token in this profile, or a profile token that reaches it). Same rules and next steps as PUT /api/publications/{type}/{ns}/{id}/domain.",
+        "description": "Shows an HTML page or site of yours on this hostname; body `{type, ns, id}`. The hostname is added to the profile when it is not there yet (201) or moved from its current publication (200). The publication must be in this profile (its owner token added to the profile). Same rules and next steps as PUT /api/publications/{type}/{ns}/{id}/domain.",
         "operationId": "attachDomain",
         "parameters": [
           {
@@ -5091,7 +5108,7 @@
                 }
               }
             },
-            "description": "Missing token, or ADMIN_TOKEN_REQUIRED: not an admin token of a profile; OWNER_TOKEN_REVOKED or OWNER_TOKEN_EXPIRED; OWNER_AUTHORIZATION_FAILED: wrong token; OWNER_TOKEN_REVOKED or OWNER_TOKEN_EXPIRED; ACCOUNT_RESTRICTED or ACCOUNT_BLOCKED: this account cannot add domains now"
+            "description": "Missing token, or ADMIN_TOKEN_REQUIRED: not an admin token of a profile; OWNER_TOKEN_REVOKED or OWNER_TOKEN_EXPIRED; OWNER_AUTHORIZATION_FAILED: wrong token; OWNER_TOKEN_REVOKED or OWNER_TOKEN_EXPIRED; ACCOUNT_RESTRICTED or ACCOUNT_BLOCKED: this profile cannot add domains now"
           },
           "404": {
             "content": {
@@ -5111,7 +5128,7 @@
                 }
               }
             },
-            "description": "NOT_ELIGIBLE: the publication cannot take a custom domain (`reason`); DOMAIN_LIMIT: the profile already holds all its custom domains (`limit`, `used`); remove or move one; DOMAIN_SUSPENDED: this domain is suspended"
+            "description": "NOT_ELIGIBLE: the publication cannot take a custom domain (`reason`); DOMAIN_LIMIT: the profile already holds all its custom domains (`limit`, `used`); remove or move one; DOMAIN_SUSPENDED: BrewPage suspended this domain; write to info@brewpage.app"
           },
           "429": {
             "content": {
@@ -5185,7 +5202,7 @@
                 }
               }
             },
-            "description": "Missing token, or ADMIN_TOKEN_REQUIRED: not an admin token of a profile; OWNER_TOKEN_REVOKED or OWNER_TOKEN_EXPIRED; ACCOUNT_RESTRICTED or ACCOUNT_BLOCKED: this account cannot add domains now"
+            "description": "Missing token, or ADMIN_TOKEN_REQUIRED: not an admin token of a profile; OWNER_TOKEN_REVOKED or OWNER_TOKEN_EXPIRED; ACCOUNT_RESTRICTED or ACCOUNT_BLOCKED: this profile cannot add domains now"
           },
           "404": {
             "content": {
@@ -5205,7 +5222,7 @@
                 }
               }
             },
-            "description": "DOMAIN_SUSPENDED: this domain is suspended"
+            "description": "DOMAIN_SUSPENDED: BrewPage suspended this domain; write to info@brewpage.app"
           },
           "429": {
             "content": {
@@ -6079,7 +6096,7 @@
             }
           },
           {
-            "description": "Custom domain to connect to the new publication, e.g. www.example.com or example.com (query parameter or form/multipart field). Needs an X-Owner-Token added to a free BrewPage profile; works for HTML pages of format html and for sites, without a password. The publication is always created; on success the answer carries `customDomain` with the DNS `records[]` to create, then call POST /api/publications/{type}/{ns}/{id}/domain/check until `status` is `active`. Otherwise one notice says why it was not set: domain-needs-account, domain-limit-reached, domain-not-eligible, domain-invalid, domain-account-restricted, domain-profile-ambiguous or domain-unavailable. Updates ignore it (notice domain-ignored): use PUT /api/publications/{type}/{ns}/{id}/domain.",
+            "description": "Custom domain to connect to the new publication, e.g. www.example.com or example.com (query parameter or form/multipart field). Needs an X-Owner-Token added to a free BrewPage profile; works for HTML pages of format html and for sites, without a password. The publication is always created; on success the answer carries `customDomain` with the DNS `records[]` to create; then call POST /api/publications/{type}/{ns}/{id}/domain/check once and read GET /api/publications/{type}/{ns}/{id}/domain until `status` is `active`. Otherwise one notice says why it was not set: domain-needs-account, domain-limit-reached, domain-not-eligible, domain-invalid, domain-account-restricted, domain-profile-ambiguous or domain-unavailable. Updates ignore it (notice domain-ignored): use PUT /api/publications/{type}/{ns}/{id}/domain.",
             "in": "query",
             "name": "domain",
             "schema": {
@@ -8672,7 +8689,7 @@
                 }
               }
             },
-            "description": "OWNER_AUTHORIZATION_FAILED: wrong token; OWNER_TOKEN_REVOKED or OWNER_TOKEN_EXPIRED; DOMAIN_NEEDS_ACCOUNT: custom domains need a free BrewPage account; sign in at account.brewpage.app and add this token to your profile; ACCOUNT_RESTRICTED or ACCOUNT_BLOCKED: this account cannot add domains now"
+            "description": "OWNER_AUTHORIZATION_FAILED: wrong token; OWNER_TOKEN_REVOKED or OWNER_TOKEN_EXPIRED; DOMAIN_NEEDS_ACCOUNT: custom domains need a free BrewPage profile: sign in at https://account.brewpage.app/tokens, press Add existing token and paste this owner token, then set the domain again; ACCOUNT_RESTRICTED or ACCOUNT_BLOCKED: this profile cannot add domains now"
           },
           "404": {
             "content": {
@@ -8692,7 +8709,7 @@
                 }
               }
             },
-            "description": "DOMAIN_SUSPENDED: this domain is suspended; DOMAIN_PROFILE_AMBIGUOUS: the token is in several profiles; use a profile's admin token"
+            "description": "DOMAIN_SUSPENDED: BrewPage suspended this domain; write to info@brewpage.app; DOMAIN_PROFILE_AMBIGUOUS: the token is in several profiles; set the domain with a profile token of the profile that should hold it"
           },
           "429": {
             "content": {
@@ -8774,7 +8791,7 @@
                 }
               }
             },
-            "description": "OWNER_AUTHORIZATION_FAILED: wrong token; OWNER_TOKEN_REVOKED or OWNER_TOKEN_EXPIRED; DOMAIN_NEEDS_ACCOUNT: custom domains need a free BrewPage account; sign in at account.brewpage.app and add this token to your profile"
+            "description": "OWNER_AUTHORIZATION_FAILED: wrong token; OWNER_TOKEN_REVOKED or OWNER_TOKEN_EXPIRED; DOMAIN_NEEDS_ACCOUNT: custom domains need a free BrewPage profile: sign in at https://account.brewpage.app/tokens, press Add existing token and paste this owner token, then set the domain again"
           },
           "404": {
             "content": {
@@ -8794,7 +8811,7 @@
                 }
               }
             },
-            "description": "DOMAIN_PROFILE_AMBIGUOUS: the token is in several profiles; use a profile's admin token"
+            "description": "DOMAIN_PROFILE_AMBIGUOUS: the token is in several profiles; set the domain with a profile token of the profile that should hold it"
           },
           "410": {
             "content": {
@@ -8818,7 +8835,7 @@
         ]
       },
       "put": {
-        "description": "Connects a hostname you own (www.example.com or example.com) to this HTML page or site: adds it to your profile, or moves it here when your profile already holds it. Works for HTML pages of format html and for sites, without a password; a page on a BrewPage path address moves to its own subdomain (`deliveryModeChanged`), and its BrewPage link keeps working. A hostname that was on this publication before stays in your profile, unattached (`detached`). For a new hostname the answer already says DOMAIN_NOT_REGISTERED when the domain does not exist; the first automatic DNS check runs about 15 minutes later (`nextCheckAt`). Next: create exactly the DNS records in `records[]` at your DNS provider, call POST /api/publications/{type}/{ns}/{id}/domain/check, and repeat until `status` is `active` (`serving` true, `url` set).",
+        "description": "Connects a hostname you own (www.example.com or example.com) to this HTML page or site: adds it to your profile, or moves it here when your profile already holds it. Works for HTML pages of format html and for sites, without a password; a page on a BrewPage path address moves to its own subdomain (`deliveryModeChanged`), and its BrewPage link keeps working. A hostname that was on this publication before stays in your profile, unattached (`detached`). For a new hostname the answer already says DOMAIN_NOT_REGISTERED when the domain does not exist; the first automatic DNS check runs about 15 minutes later (`nextCheckAt`). Next: create exactly the DNS records in `records[]`, then call POST /api/publications/{type}/{ns}/{id}/domain/check once. BrewPage keeps checking on its own (`nextCheckAt`): read GET /api/publications/{type}/{ns}/{id}/domain until `status` is `active`; check again only after changing DNS.",
         "operationId": "setPublicationDomain",
         "parameters": [
           {
@@ -8905,7 +8922,7 @@
                 }
               }
             },
-            "description": "OWNER_AUTHORIZATION_FAILED: wrong token; OWNER_TOKEN_REVOKED or OWNER_TOKEN_EXPIRED; DOMAIN_NEEDS_ACCOUNT: custom domains need a free BrewPage account; sign in at account.brewpage.app and add this token to your profile; ACCOUNT_RESTRICTED or ACCOUNT_BLOCKED: this account cannot add domains now"
+            "description": "OWNER_AUTHORIZATION_FAILED: wrong token; OWNER_TOKEN_REVOKED or OWNER_TOKEN_EXPIRED; DOMAIN_NEEDS_ACCOUNT: custom domains need a free BrewPage profile: sign in at https://account.brewpage.app/tokens, press Add existing token and paste this owner token, then set the domain again; ACCOUNT_RESTRICTED or ACCOUNT_BLOCKED: this profile cannot add domains now"
           },
           "404": {
             "content": {
@@ -8925,7 +8942,7 @@
                 }
               }
             },
-            "description": "NOT_ELIGIBLE: the publication cannot take a custom domain (`reason`); DOMAIN_LIMIT: the profile already holds all its custom domains (`limit`, `used`); remove or move one; DOMAIN_SUSPENDED: this domain is suspended; DOMAIN_PROFILE_AMBIGUOUS: the token is in several profiles; use a profile's admin token"
+            "description": "NOT_ELIGIBLE: the publication cannot take a custom domain (`reason`); DOMAIN_LIMIT: the profile already holds all its custom domains (`limit`, `used`); remove or move one; DOMAIN_SUSPENDED: BrewPage suspended this domain; write to info@brewpage.app; DOMAIN_PROFILE_AMBIGUOUS: the token is in several profiles; set the domain with a profile token of the profile that should hold it"
           },
           "429": {
             "content": {
@@ -9019,7 +9036,7 @@
                 }
               }
             },
-            "description": "OWNER_AUTHORIZATION_FAILED: wrong token; OWNER_TOKEN_REVOKED or OWNER_TOKEN_EXPIRED; DOMAIN_NEEDS_ACCOUNT: custom domains need a free BrewPage account; sign in at account.brewpage.app and add this token to your profile; ACCOUNT_RESTRICTED or ACCOUNT_BLOCKED: this account cannot add domains now"
+            "description": "OWNER_AUTHORIZATION_FAILED: wrong token; OWNER_TOKEN_REVOKED or OWNER_TOKEN_EXPIRED; DOMAIN_NEEDS_ACCOUNT: custom domains need a free BrewPage profile: sign in at https://account.brewpage.app/tokens, press Add existing token and paste this owner token, then set the domain again; ACCOUNT_RESTRICTED or ACCOUNT_BLOCKED: this profile cannot add domains now"
           },
           "404": {
             "content": {
@@ -9039,7 +9056,7 @@
                 }
               }
             },
-            "description": "DOMAIN_SUSPENDED: this domain is suspended; DOMAIN_PROFILE_AMBIGUOUS: the token is in several profiles; use a profile's admin token"
+            "description": "DOMAIN_SUSPENDED: BrewPage suspended this domain; write to info@brewpage.app; DOMAIN_PROFILE_AMBIGUOUS: the token is in several profiles; set the domain with a profile token of the profile that should hold it"
           },
           "429": {
             "content": {
@@ -9517,7 +9534,7 @@
             }
           },
           {
-            "description": "Custom domain to connect to the new publication, e.g. www.example.com or example.com (query parameter or form/multipart field). Needs an X-Owner-Token added to a free BrewPage profile; works for HTML pages of format html and for sites, without a password. The publication is always created; on success the answer carries `customDomain` with the DNS `records[]` to create, then call POST /api/publications/{type}/{ns}/{id}/domain/check until `status` is `active`. Otherwise one notice says why it was not set: domain-needs-account, domain-limit-reached, domain-not-eligible, domain-invalid, domain-account-restricted, domain-profile-ambiguous or domain-unavailable. Updates ignore it (notice domain-ignored): use PUT /api/publications/{type}/{ns}/{id}/domain.",
+            "description": "Custom domain to connect to the new publication, e.g. www.example.com or example.com (query parameter or form/multipart field). Needs an X-Owner-Token added to a free BrewPage profile; works for HTML pages of format html and for sites, without a password. The publication is always created; on success the answer carries `customDomain` with the DNS `records[]` to create; then call POST /api/publications/{type}/{ns}/{id}/domain/check once and read GET /api/publications/{type}/{ns}/{id}/domain until `status` is `active`. Otherwise one notice says why it was not set: domain-needs-account, domain-limit-reached, domain-not-eligible, domain-invalid, domain-account-restricted, domain-profile-ambiguous or domain-unavailable. Updates ignore it (notice domain-ignored): use PUT /api/publications/{type}/{ns}/{id}/domain.",
             "in": "query",
             "name": "domain",
             "schema": {
@@ -13070,7 +13087,7 @@
       "name": "Publications"
     },
     {
-      "description": "Serve an HTML page or a site on your own domain, free with a BrewPage profile. Set the hostname, create the DNS records the answer lists, call check until the status is active.",
+      "description": "Serve an HTML page or a site on your own domain, free with a BrewPage profile. Set the hostname, create the DNS records the answer lists, call check once, then read the domain until the status is active.",
       "name": "Custom Domains"
     },
     {
