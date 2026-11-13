@@ -230,8 +230,8 @@ const DOMAIN_REASONS: Record<string, string> = {
   TYPE: "only HTML pages and sites can",
   FORMAT: "the page is not format html: publish it as format html",
   PASSWORD: "remove the password (management link, or POST /api/{html|sites}/{ns}/{id}/password {\"password\":null})",
-  EXPIRED: "it has expired: connect the custom domain to another publication",
-  MODE: "it left its own subdomain: change its hosting back to subdomain (update_hosting deliveryMode=subdomain)",
+  EXPIRED: "it has expired: extend it, or connect the custom domain to another publication",
+  MODE: "it is not on its own subdomain: set the domain on it again (set_domain with the same hostname), which moves it to its own subdomain",
 };
 const DOMAIN_READ_STATUS = "read the status with list_domains (same type, namespace and id, or hostname)";
 const DOMAIN_NEXT_CREATE = "Next: give the user exactly these DNS records to create at their DNS provider (`host` is the name DNS panels ask for). " +
