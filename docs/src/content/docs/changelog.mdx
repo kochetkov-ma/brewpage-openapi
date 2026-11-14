@@ -6,6 +6,18 @@ order: 5
 
 # Changelog
 
+## MCP 1.23.0 — try a Page data page before publishing
+
+The Page data guide the assistant reads (`get_guide` topic `page-data`) now goes build, try locally, publish. A page opened from disk or from localhost runs in a local preview: entries stay in that browser, nothing is sent, and the same file works unchanged once published with `state`. The guide also covers the owner view: a part of the page only its owner sees, with every visitor's entries and a remove action. Custom domains: a domain that is not registered yet gets its next step, buy it from a registrar first or check the spelling. Thirty-two tools, contract 2.36.0.
+
+## API contract 2.36.0 — the owner view needs no setting
+
+`ownerView` in a Page data list's settings is accepted for compatibility and stored as sent; it has no effect. The page's owner view needs no setting. Still 61 paths and 83 operations.
+
+## API contract 2.35.0 — unregistered domains get a clear answer
+
+Connecting a domain that isn't registered yet answers 400 `DOMAIN_NOT_REGISTERED` on `setPublicationDomain`, `addDomain` and `attachDomain`: buy the domain from a registrar first, then connect it. Publishing with `domain` on `POST /api/html` or `POST /api/sites` still creates the publication and adds the notice `domain-not-registered`. Still 61 paths and 83 operations.
+
 ## API contract 2.31.0 — TTL wording
 
 The `ttl` parameter of the create routes now reads: TTL in days, up to 30 days without an account, up to 90 with a free profile (send its `X-Owner-Token`); a default applies when `ttl` is omitted; whole days such as 15, 15d or 15 days. On the update routes `ttl` is not part of the contract: updates keep the original expiry. Texts only: still 61 paths and 83 operations. The MCP server is unchanged.

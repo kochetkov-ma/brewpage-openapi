@@ -38,7 +38,7 @@ Claude Code: `claude mcp add --transport http brewpage --scope user https://brew
 For clients that only start local servers; the same tools as the server URL.
 
 ```bash
-npx -y brewpage-mcp@1.22.0
+npx -y brewpage-mcp@1.23.0
 ```
 
 Requires Node.js 20 or newer. This starts the stdio server for an MCP client.
@@ -63,7 +63,7 @@ Local fallback (stdio, needs Node.js; the same tools): add to `~/Library/Applica
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@1.22.0"]
+      "args": ["-y", "brewpage-mcp@1.23.0"]
     }
   }
 }
@@ -86,7 +86,7 @@ Custom servers follow your ChatGPT plan and workspace settings.
 The remote command above is the default. Local fallback: register a project-scoped stdio server:
 
 ```bash
-claude mcp add --transport stdio --scope project brewpage -- npx -y brewpage-mcp@1.22.0
+claude mcp add --transport stdio --scope project brewpage -- npx -y brewpage-mcp@1.23.0
 ```
 
 This writes `.mcp.json` in the project root. Use `--scope user` for user-scoped registration. See the [official Claude Code MCP guide](https://code.claude.com/docs/en/mcp).
@@ -110,7 +110,7 @@ Local fallback (stdio, needs Node.js; the same tools): open **Settings > MCP** a
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@1.22.0"]
+      "args": ["-y", "brewpage-mcp@1.23.0"]
     }
   }
 }
@@ -124,7 +124,7 @@ Open the Cline MCP settings panel and add:
 {
   "brewpage": {
     "command": "npx",
-    "args": ["-y", "brewpage-mcp@1.22.0"]
+    "args": ["-y", "brewpage-mcp@1.23.0"]
   }
 }
 ```
@@ -595,7 +595,7 @@ The four page-data tools below take `namespace` + `id` + `ownerToken`, or `manag
 
 ### `get_guide`
 
-Read a short reference text. Topic `page-data`: how a page saves what visitors enter, with the script calls and the `state` settings. Meant to be read before writing such a page. Topic `custom-domain`: the steps that put a page or site on a domain you own, with the statuses and the fix for each problem. No API call.
+Read a short reference text. Topic `page-data`: how a page saves what visitors enter, with the script calls, the `state` settings, the owner view and how to try the page locally before publishing. Meant to be read before writing such a page. Topic `custom-domain`: the steps that put a page or site on a domain you own, with the statuses and the fix for each problem. No API call.
 
 Parameters: `topic` (`page-data` | `custom-domain`).
 
@@ -768,6 +768,10 @@ Every publish response includes an **owner token** -- the only credential that a
 - [Brewcode Plugin](https://github.com/kochetkov-ma/claude-brewcode) -- Claude Code plugin suite
 
 ## Changelog
+
+## 1.23.0 -- 2026-11-14
+
+- Page data guide (`get_guide` topic `page-data`) regenerated from BrewPage's new Browser SDK text: build, try locally, publish. It adds the local preview (a page opened from disk or localhost keeps entries in that browser and sends nothing: `s.local`, `?bp-local=owner`, `?bp-local=off`; the same file works unchanged once published with `state`) and the owner view (`s.role`, `s.onRole`, `list({all: true})`, `removeById`, error `not_owner`). Custom domains: 400 `DOMAIN_NOT_REGISTERED` and the notice `domain-not-registered` name the next step (buy the domain from a registrar first, or check its spelling); the `NOT_ELIGIBLE` reasons `EXPIRED` and `MODE` name the server's next step; the `DOMAIN_TAKEN` and `CHECK_PAUSED` problem texts follow the site. `ttlDays` states the contract. Thirty-two tools. Contract 2.36.0. `User-Agent: brewpage-mcp/1.23.0`.
 
 ## 1.22.0 -- 2026-11-12
 

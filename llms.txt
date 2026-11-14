@@ -6,7 +6,7 @@ Public contract snapshots, documentation and the BrewPage MCP server. The backen
 
 - `openapi/openapi.json` — exported backend-generated public OpenAPI 3.1 contract; version and provenance identify the backend source.
 - `openapi/openapi.yaml` — deterministic derived representation; `docs/public/openapi.json` is the identical Scalar copy.
-- `mcp-server/` — TypeScript implementation of the BrewPage MCP server. Prepared `version: 1.22.0`. Published as `brewpage-mcp` on npm.
+- `mcp-server/` — TypeScript implementation of the BrewPage MCP server. Prepared `version: 1.23.0`. Published as `brewpage-mcp` on npm.
 - `docs/` — Astro docs site published at https://kochetkov-ma.github.io/brewpage-openapi/.
 
 ## Where to read the live API
@@ -20,6 +20,8 @@ Public contract snapshots, documentation and the BrewPage MCP server. The backen
 
 ## Recent contract changes
 
+- 2.36.0 (backend v2.36.0, source a97fe688): `ownerView` in a Page data list's settings is accepted for compatibility and stored as sent; it has no effect, the page's owner view needs no setting. No path, parameter, field or code change: 61 paths and 83 operations.
+- 2.35.0 (backend v2.35.0, source 46ff9a9b): connecting a domain that is not registered yet answers 400 `DOMAIN_NOT_REGISTERED` on `setPublicationDomain`, `addDomain` and `attachDomain` (buy it from a registrar first); publishing with `domain` still creates the publication and adds notice `domain-not-registered`. 61 paths and 83 operations.
 - 2.31.0 (backend v2.31.0, tag 8e0b1c53): `ttl` texts only. Create routes: TTL in days, up to 30 days without an account, up to 90 with a free profile (send its X-Owner-Token); a default applies when `ttl` is omitted; accepts whole days 15, 15d, 15 days. `PUT /api/files/{ns}/{id}` and `PUT /api/sites/{ns}/{id}`: `ttl` is not part of the update contract, updates keep the original expiry. No path, parameter, field or code change: 61 paths and 83 operations. MCP 1.22.0 unchanged.
 - 2.29.0 (backend v2.29.0, source d88ea668): custom-domain texts and declarations only. Flow: create the DNS `records[]`, call the check route once, then read `GET /api/publications/{type}/{ns}/{id}/domain` (or `GET /api/domains/{hostname}`) until `status` is `active`; BrewPage keeps checking on its own (`nextCheckAt`), check again only after changing DNS; the `domain` parameter of `POST /api/html` and `POST /api/sites` says the same. Next steps: 403 `DOMAIN_NEEDS_ACCOUNT` (sign in at https://account.brewpage.app/tokens, Add existing token, paste the owner token, set the domain again), 409 `DOMAIN_PROFILE_AMBIGUOUS` (a profile token of the profile that should hold the domain), 409 `DOMAIN_SUSPENDED` (write to info@brewpage.app), `NOT_ELIGIBLE` `reason` `OWNERSHIP`, `RETIRED`, `EXPIRED` and `MODE` each with its step; texts say profile. `DomainRecord` `type` and `state`, `AttachDomainRequest` `type`, `PublicationDomain` and `HostingCustomDomain` `status` are enums; `hostname`, `type`, `ns`, `id` of the domain request bodies are strings; `provider` adds `dnspod`. No path, parameter, field or code change: 61 paths and 83 operations. MCP 1.22.0 unchanged.
 - 2.28.0 (backend v2.28.0, source 5dd0622b): `order` of `GET /api/{ns}/{id}/state/{col}` adds `-updatedAt` and `updatedAt`. Custom-domain `problem` adds `DOMAIN_NOT_REGISTERED` (register the domain with a domain registrar, then create the records); `setPublicationDomain` and `addDomain` say the answer for a new hostname already carries it and the first automatic DNS check runs about 15 minutes later (`nextCheckAt`). No path, field or code change: 61 paths and 83 operations.
@@ -85,7 +87,7 @@ Public contract snapshots, documentation and the BrewPage MCP server. The backen
 ## How to use the MCP server
 
 ```bash
-npx -y brewpage-mcp@1.22.0
+npx -y brewpage-mcp@1.23.0
 ```
 
 Always pin an exact version.

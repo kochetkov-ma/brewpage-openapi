@@ -1,5 +1,12 @@
 # Release Notes
 
+## MCP 1.23.0 — 2026-11-14
+
+- A page that saves what visitors enter can now be tried before it is published. The Page data guide (`get_guide` topic `page-data`) follows BrewPage's new Browser SDK text: build, try locally, publish. Opened from disk or from localhost the page runs in a local preview: entries stay in that browser, nothing is sent, and the same file works unchanged once published with `state`.
+- The guide also covers the owner view: a part of the page only its owner sees, with every visitor's entries and a remove action (`s.role`, `s.onRole`, `list({all: true})`, `removeById`). `?bp-local=owner` shows it in the local preview.
+- Custom domains: a domain that is not registered yet gets its next step (buy it from a registrar first, or check the spelling); the next steps for an expired publication and for one that is not on its own subdomain match the server, and the problem texts follow the site.
+- `ttlDays` reads as the API does: whole days, a default applies when omitted. The same thirty-two tools, contract 2.36.0. `User-Agent: brewpage-mcp/1.23.0`; pins bumped.
+
 ## API contract 2.36.0 — 2026-11-14
 
 - Exported from brewpage-app source `a97fe688ad21ca34ac3811f5eb6487eed84839aa` (brewpage-app release v2.36.0), clean tree. 61 paths and 83 operations, unchanged.
