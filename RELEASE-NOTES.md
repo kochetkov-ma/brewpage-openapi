@@ -1,10 +1,11 @@
 # Release Notes
 
-## API contract 2.34.1 — unreleased
+## API contract 2.35.0 — 2026-11-14
 
-- Exported from brewpage-app source `26791fbd34f91e2095d5de054586027f4df08139`, clean tree, build version 2.34.1 (not yet a release tag: re-export from the tag before publishing). 61 paths and 83 operations, unchanged. brewpage-app v2.32.x to v2.34.0 carried no contract change.
-- 400 `DOMAIN_NOT_REGISTERED` on `setPublicationDomain`, `addDomain` and `attachDomain`: a new hostname whose domain is not registered is refused; register it with a domain registrar first. The `domain` parameter of `POST /api/html` and `POST /api/sites` lists notice `domain-not-registered`; the publication is still created.
-- MCP (next release): `set_domain` and the other domain tools answer `DOMAIN_NOT_REGISTERED` with its next step (buy the domain from a registrar first, or check its spelling), and `publish_html`/`publish_site` do the same for the `domain-not-registered` notice.
+- Exported from brewpage-app source `46ff9a9bd5c4a0b4f455e81e584b82c6cd3144ff` (brewpage-app release v2.35.0), clean tree. 61 paths and 83 operations, unchanged. brewpage-app v2.32.x to v2.34.x carried no contract change.
+- Connecting a domain that isn't registered yet now gets a clear answer: 400 `DOMAIN_NOT_REGISTERED` on `setPublicationDomain`, `addDomain` and `attachDomain`. Buy the domain from a registrar first, then connect it.
+- Publishing with `domain` on `POST /api/html` or `POST /api/sites` still creates the publication and adds notice `domain-not-registered`.
+- MCP (next release): the domain tools and `publish_html`/`publish_site` name the next step for this case: buy the domain first, or check its spelling. `brewpage-mcp` 1.22.0 works with this contract as it is.
 
 ## API contract 2.31.0 — 2026-11-14
 
