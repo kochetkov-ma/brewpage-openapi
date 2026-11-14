@@ -114,7 +114,7 @@ Limits depend on operation and visibility. Handle the running API's 429 response
 | File | 5 MiB | 1,000 files/ns |
 | Site | 20 MiB total uncompressed, 5 MiB/file | 200 files/site |
 | Request | 25 MiB per request | — |
-| TTL | 1–30 days, 90 with a profile token (default 15) | — |
+| TTL | Up to 30 days without an account, up to 90 with a free profile; a default applies when `ttl` is omitted | — |
 
 Sizes are MiB; video uploads allow up to 20 MiB and audio up to 5 MiB. `GET /api/limits` returns the current values per type (`html`, `json`, `kv`, `files`, `sites`) and `profileMaxTtlDays`. Content over a resource limit answers `400` with a message naming the limit. KV key counts apply per store; JSON and file counts apply per namespace. The running deployment may apply different limits or owner-specific TTL caps. Eligible content may receive automatic TTL extensions; returned `expiresAt` describes the current expiry.
 

@@ -47,7 +47,7 @@ curl -H "X-Password: mypass" https://brewpage.app/api/html/public/aBcDeFgHiJ
 
 ## Auto-expire with TTL
 
-Set TTL to expire content after 1–30 days (default 15; up to 90 with an owner token in a profile); owner-specific caps and eligible automatic extensions can affect the returned expiry:
+Set `ttl` in days on create: up to 30 days without an account, up to 90 with a free profile (send its `X-Owner-Token`); a default applies when `ttl` is omitted. The returned `expiresAt` is the actual expiry:
 
 ```bash
 curl -X POST 'https://brewpage.app/api/html?ttl=30' \

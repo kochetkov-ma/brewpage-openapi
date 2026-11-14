@@ -6,6 +6,10 @@ order: 5
 
 # Changelog
 
+## API contract 2.31.0 — TTL wording
+
+The `ttl` parameter of the create routes now reads: TTL in days, up to 30 days without an account, up to 90 with a free profile (send its `X-Owner-Token`); a default applies when `ttl` is omitted; whole days such as 15, 15d or 15 days. On the update routes `ttl` is not part of the contract: updates keep the original expiry. Texts only: still 61 paths and 83 operations. The MCP server is unchanged.
+
 ## API contract 2.29.0 — custom domains: check once, then read
 
 The custom-domain texts now describe one flow: create the DNS records the answer lists, call the check route once, then read the domain until `status` is `active`; BrewPage keeps checking on its own, so check again only after changing DNS. The `domain` parameter of `POST /api/html` and `POST /api/sites` says the same. Each refusal names its next step: for 403 `DOMAIN_NEEDS_ACCOUNT` sign in at https://account.brewpage.app/tokens, press Add existing token and paste the owner token; for 409 `DOMAIN_PROFILE_AMBIGUOUS` use a profile token of the profile that should hold the domain; for a suspended domain write to info@brewpage.app; each `NOT_ELIGIBLE` reason says what to do. Record types, record states and domain statuses are declared as enums, and `provider` adds `dnspod`. Texts and declarations only: still 61 paths and 83 operations. The MCP server is unchanged.

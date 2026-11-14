@@ -1,5 +1,12 @@
 # Release Notes
 
+## API contract 2.31.0 — 2026-11-14
+
+- Exported from brewpage-app source `b267f8d9e42daf39df70d84a2a73d3a79512a238`, clean tree, byte-identical to release tag v2.31.0 (`8e0b1c537de3f41f2efb60b25b04efa68b4431c7`, tree `9cff2858`). 61 paths and 83 operations, unchanged. brewpage-app v2.30.x carried no contract change.
+- `ttl` on the create routes (`POST /api/html`, `/api/sites`, `/api/files`, `/api/json`, `/api/kv`) states the strict contract: TTL in days, up to 30 days without an account, up to 90 with a free profile (send its `X-Owner-Token`); a default applies when `ttl` is omitted. Accepts whole days: 15, 15d, 15 days.
+- `ttl` on `PUT /api/files/{ns}/{id}` and `PUT /api/sites/{ns}/{id}`: not part of the update contract; updates keep the original expiry.
+- Hand-written texts (README, docs site, wiki, `llms.txt`, Gemini context, MCP README) use the same wording. The `ttlDays` description in `mcp-server/src/tools.ts` follows it and ships with the next MCP release; `brewpage-mcp` 1.22.0 works with this contract as it is.
+
 ## API contract 2.29.0 — 2026-11-13
 
 - Exported from brewpage-app source `d88ea66897e37d2acc0979a6ad34ef79348ea710` (brewpage-app release v2.29.0), clean tree. 61 paths and 83 operations, unchanged. Custom-domain texts and declarations only: no path, parameter, field or code added or renamed.

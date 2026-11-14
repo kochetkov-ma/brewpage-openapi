@@ -489,8 +489,8 @@ const DATA_NAMESPACE_DESCRIPTION =
   "or indexed, in any namespace; anyone who has the link can open it. " + NAMESPACE_FORMAT;
 
 const TTL_SCHEMA = z.union([z.number().positive(), z.string().min(1).max(32)]).optional().describe(
-  "Requested TTL: days as a number, or a string such as '2w', '36h' or '1 month' (default 15 days). " +
-  "The server rounds to whole days and clamps to the allowed range (1-30; up to 90 with an owner token in a profile), reporting each adjustment in notices; the returned expiresAt is the actual expiry."
+  "TTL in days: up to 30 days without an account, up to 90 with a free profile (pass an ownerToken held in the profile); " +
+  "a default applies when omitted. Accepts whole days: 15, '15d', '15 days'. The returned expiresAt is the actual expiry."
 );
 
 const DELIVERY_MODE_SCHEMA = z.enum(["path", "subdomain"]).optional().describe(

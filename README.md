@@ -40,7 +40,7 @@ Key characteristics:
 - **File hosting** -- upload any safe file type (images, PDFs, video, audio, archives, code), up to 5 MiB (video 20 MiB), with inline preview.
 - **Visibility** -- REST omitted `?ns=` publishes privately; MCP omitted namespace generates a private namespace: unlisted and not indexed; anyone with the link can still open it. `public` lists HTML, sites and files in the gallery and sitemap, so Google, Bing and AI search can find and index them; public pages are served on the brewpage.app domain for the strongest reach (a site always gets its own subdomain). Never put secrets in a public publication. Password-protected publications, JSON and KV are never listed. `POST …/visibility {"listed":false}` hides a public publication, link unchanged.
 - **Owner tokens** -- every publish response includes an `ownerToken`. Use it to update content in place (stable URL), delete it, or list your own resources. No account needed. Optional: sign in free (Google or any email) at https://account.brewpage.app to never lose your pages or tokens and to mint tokens that never expire. Not needed to publish. Creates also return a private `manageUrl` (management link) for that one publication: an assistant gives it to the user with the link; never post it publicly.
-- **TTL** -- default 15 days, ordinary maximum 30 days (90 with an owner token in a profile), configured through the REST `ttl` query parameter. Owner-specific caps and eligible automatic extensions can affect expiry; use returned `expiresAt`.
+- **TTL** -- in days through the REST `ttl` query parameter on create: up to 30 days without an account, up to 90 with a free profile (send its `X-Owner-Token`); a default applies when `ttl` is omitted. Accepts whole days: `15`, `15d`, `15 days`. Updates keep the original expiry; use returned `expiresAt`.
 - **Access** -- unprotected reads and creation require no account. Protected reads use `X-Password`; owner updates, deletion and scoped lists use `X-Owner-Token`. Rate limits depend on operation/visibility; handle `429` and `Retry-After`.
 
 The API base URL is `https://brewpage.app`. `brewdata.app` is a redirect domain: every path answers 301 to `brewpage.app`.
@@ -92,11 +92,11 @@ Open `link` in any browser -- no further steps required.
 
 | Resource | Description | Limits |
 |----------|-------------|--------|
-| **HTML pages** | Raw HTML or Markdown with instant short URLs | 5 MiB, TTL 1--30d |
+| **HTML pages** | Raw HTML or Markdown with instant short URLs | 5 MiB, TTL up to 30 days (90 with a free profile) |
 | **Key-value store** | Named key-value pairs addressed by namespace/store ID | 1,000 keys/store |
 | **JSON documents** | Store and retrieve arbitrary JSON with owner-scoped listing | 1 MiB, 10,000 docs/namespace |
 | **Files** | Upload files with automatic MIME detection and inline preview | 5 MiB (video 20 MiB), 1,000 files/namespace |
-| **Sites** | Multi-file HTML sites via ZIP or individual files | 20 MiB total, 200 files, 5 MiB/file, TTL 1--30d |
+| **Sites** | Multi-file HTML sites via ZIP or individual files | 20 MiB total, 200 files, 5 MiB/file, TTL up to 30 days (90 with a free profile) |
 
 Creation returns a primary link and owner token. Keep the token for management and share the link exactly. Password-protected publications are never listed. TTL and supported inputs vary by operation.
 

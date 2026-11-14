@@ -3654,7 +3654,7 @@ info:
     url: https://www.apache.org/licenses/LICENSE-2.0
   termsOfService: https://brewpage.app/terms
   title: BrewPage API
-  version: 2.29.0
+  version: 2.31.0
 openapi: 3.1.0
 paths:
   /api/domains:
@@ -4139,9 +4139,8 @@ paths:
           schema:
             type: string
         - description: >-
-            TTL in days (1-30, up to 90 with an X-Owner-Token in a profile); omitted or blank uses 15 days. Accepts 15,
-            15d, 15 days; h/w/mo/y units round up to whole days. Out-of-range values are clamped and unparseable ones
-            use the default; each adjustment is reported in notices.
+            TTL in days: up to 30 days without an account, up to 90 with a free profile (send its X-Owner-Token); a
+            default applies when `ttl` is omitted. Accepts whole days: 15, 15d, 15 days.
           in: query
           name: ttl
           required: false
@@ -4397,7 +4396,7 @@ paths:
           required: true
           schema:
             type: string
-        - description: 'Ignored: updates keep the original expiry; a supplied value is reported in notices (ttl-ignored).'
+        - description: 'Not part of the update contract: updates keep the original expiry.'
           in: query
           name: ttl
           required: false
@@ -4633,9 +4632,8 @@ paths:
           schema:
             type: string
         - description: >-
-            TTL in days (1-30, up to 90 with an X-Owner-Token in a profile); omitted or blank uses 15 days. Accepts 15,
-            15d, 15 days; h/w/mo/y units round up to whole days. Out-of-range values are clamped and unparseable ones
-            use the default; each adjustment is reported in notices.
+            TTL in days: up to 30 days without an account, up to 90 with a free profile (send its X-Owner-Token); a
+            default applies when `ttl` is omitted. Accepts whole days: 15, 15d, 15 days.
           in: query
           name: ttl
           required: false
@@ -5255,9 +5253,8 @@ paths:
           schema:
             type: string
         - description: >-
-            TTL in days (1-30, up to 90 with an X-Owner-Token in a profile); omitted or blank uses 15 days. Accepts 15,
-            15d, 15 days; h/w/mo/y units round up to whole days. Out-of-range values are clamped and unparseable ones
-            use the default; each adjustment is reported in notices.
+            TTL in days: up to 30 days without an account, up to 90 with a free profile (send its X-Owner-Token); a
+            default applies when `ttl` is omitted. Accepts whole days: 15, 15d, 15 days.
           in: query
           name: ttl
           required: false
@@ -5571,9 +5568,8 @@ paths:
           schema:
             type: string
         - description: >-
-            TTL in days (1-30, up to 90 with an X-Owner-Token in a profile); omitted or blank uses 15 days. Accepts 15,
-            15d, 15 days; h/w/mo/y units round up to whole days. Out-of-range values are clamped and unparseable ones
-            use the default; each adjustment is reported in notices.
+            TTL in days: up to 30 days without an account, up to 90 with a free profile (send its X-Owner-Token); a
+            default applies when `ttl` is omitted. Accepts whole days: 15, 15d, 15 days.
           in: query
           name: ttl
           required: false
@@ -6932,9 +6928,8 @@ paths:
           schema:
             type: string
         - description: >-
-            TTL in days (1-30, up to 90 with an X-Owner-Token in a profile); omitted or blank uses 15 days. Accepts 15,
-            15d, 15 days; h/w/mo/y units round up to whole days. Out-of-range values are clamped and unparseable ones
-            use the default; each adjustment is reported in notices.
+            TTL in days: up to 30 days without an account, up to 90 with a free profile (send its X-Owner-Token); a
+            default applies when `ttl` is omitted. Accepts whole days: 15, 15d, 15 days.
           in: query
           name: ttl
           required: false
@@ -7199,7 +7194,7 @@ paths:
           required: false
           schema:
             type: string
-        - description: 'Ignored: updates keep the original expiry; a supplied value is reported in notices (ttl-ignored).'
+        - description: 'Not part of the update contract: updates keep the original expiry.'
           in: query
           name: ttl
           required: false
