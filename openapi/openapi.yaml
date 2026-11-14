@@ -3654,7 +3654,7 @@ info:
     url: https://www.apache.org/licenses/LICENSE-2.0
   termsOfService: https://brewpage.app/terms
   title: BrewPage API
-  version: 2.31.0
+  version: 2.34.1
 openapi: 3.1.0
 paths:
   /api/domains:
@@ -3695,10 +3695,10 @@ paths:
     post:
       description: >-
         Adds a hostname to the profile without showing a publication yet (attach one later with PUT
-        /api/domains/{hostname}/attachment). For a new hostname the answer already says DOMAIN_NOT_REGISTERED when the
-        domain does not exist; the first automatic DNS check runs about 15 minutes later (`nextCheckAt`). Create the DNS
-        `records[]` of the answer, then call POST /api/domains/{hostname}/check once; BrewPage keeps checking on its
-        own: read GET /api/domains/{hostname} until `status` is `active`.
+        /api/domains/{hostname}/attachment). A new hostname whose domain is not registered is refused (400
+        DOMAIN_NOT_REGISTERED). For an added hostname the first automatic DNS check runs about 15 minutes later
+        (`nextCheckAt`). Create the DNS `records[]` of the answer, then call POST /api/domains/{hostname}/check once;
+        BrewPage keeps checking on its own: read GET /api/domains/{hostname} until `status` is `active`.
       operationId: addDomain
       parameters:
         - description: Admin token of your BrewPage profile
@@ -3728,7 +3728,9 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-          description: 'INVALID_HOSTNAME: not a valid hostname; DOMAIN_NOT_ALLOWED: this hostname cannot be used'
+          description: >-
+            INVALID_HOSTNAME: not a valid hostname; DOMAIN_NOT_ALLOWED: this hostname cannot be used;
+            DOMAIN_NOT_REGISTERED: the domain is not registered yet; register it with a domain registrar first
         '403':
           content:
             application/json:
@@ -3951,7 +3953,7 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
           description: >-
             Missing type, ns or id; INVALID_HOSTNAME: not a valid hostname; DOMAIN_NOT_ALLOWED: this hostname cannot be
-            used
+            used; DOMAIN_NOT_REGISTERED: the domain is not registered yet; register it with a domain registrar first
         '403':
           content:
             application/json:
@@ -4681,7 +4683,7 @@ paths:
             carries `customDomain` with the DNS `records[]` to create; then call POST
             /api/publications/{type}/{ns}/{id}/domain/check once and read GET /api/publications/{type}/{ns}/{id}/domain
             until `status` is `active`. Otherwise one notice says why it was not set: domain-needs-account,
-            domain-limit-reached, domain-not-eligible, domain-invalid, domain-account-restricted,
+            domain-limit-reached, domain-not-eligible, domain-invalid, domain-not-registered, domain-account-restricted,
             domain-profile-ambiguous or domain-unavailable. Updates ignore it (notice domain-ignored): use PUT
             /api/publications/{type}/{ns}/{id}/domain.
           in: query
@@ -6470,11 +6472,11 @@ paths:
         or moves it here when your profile already holds it. Works for HTML pages of format html and for sites, without
         a password; a page on a BrewPage path address moves to its own subdomain (`deliveryModeChanged`), and its
         BrewPage link keeps working. A hostname that was on this publication before stays in your profile, unattached
-        (`detached`). For a new hostname the answer already says DOMAIN_NOT_REGISTERED when the domain does not exist;
-        the first automatic DNS check runs about 15 minutes later (`nextCheckAt`). Next: create exactly the DNS records
-        in `records[]`, then call POST /api/publications/{type}/{ns}/{id}/domain/check once. BrewPage keeps checking on
-        its own (`nextCheckAt`): read GET /api/publications/{type}/{ns}/{id}/domain until `status` is `active`; check
-        again only after changing DNS.
+        (`detached`). A new hostname whose domain is not registered is refused (400 DOMAIN_NOT_REGISTERED). For an added
+        hostname the first automatic DNS check runs about 15 minutes later (`nextCheckAt`). Next: create exactly the DNS
+        records in `records[]`, then call POST /api/publications/{type}/{ns}/{id}/domain/check once. BrewPage keeps
+        checking on its own (`nextCheckAt`): read GET /api/publications/{type}/{ns}/{id}/domain until `status` is
+        `active`; check again only after changing DNS.
       operationId: setPublicationDomain
       parameters:
         - description: html (pages of format html) or site; only these take a custom domain
@@ -6525,7 +6527,9 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-          description: 'INVALID_HOSTNAME: not a valid hostname; DOMAIN_NOT_ALLOWED: this hostname cannot be used'
+          description: >-
+            INVALID_HOSTNAME: not a valid hostname; DOMAIN_NOT_ALLOWED: this hostname cannot be used;
+            DOMAIN_NOT_REGISTERED: the domain is not registered yet; register it with a domain registrar first
         '403':
           content:
             application/json:
@@ -6968,7 +6972,7 @@ paths:
             carries `customDomain` with the DNS `records[]` to create; then call POST
             /api/publications/{type}/{ns}/{id}/domain/check once and read GET /api/publications/{type}/{ns}/{id}/domain
             until `status` is `active`. Otherwise one notice says why it was not set: domain-needs-account,
-            domain-limit-reached, domain-not-eligible, domain-invalid, domain-account-restricted,
+            domain-limit-reached, domain-not-eligible, domain-invalid, domain-not-registered, domain-account-restricted,
             domain-profile-ambiguous or domain-unavailable. Updates ignore it (notice domain-ignored): use PUT
             /api/publications/{type}/{ns}/{id}/domain.
           in: query

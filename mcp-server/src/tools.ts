@@ -311,6 +311,8 @@ function domainNeedsProfile(fromEnv: boolean, then: string): string {
 }
 
 const DOMAIN_LIMIT_NEXT = "remove_domain frees one; a hostname already in the profile moves here with set_domain.";
+/** 400 `DOMAIN_NOT_REGISTERED` and its create notice; the caller appends the call to make next. */
+const DOMAIN_NOT_REGISTERED_NEXT = "The domain is not registered yet: ask the user to buy it from a domain registrar first (BrewPage does not sell domains), or check its spelling;";
 /** 409 `DOMAIN_PROFILE_AMBIGUOUS` and its create notice; `then` = the call to make with the profile token. */
 function domainAmbiguous(then: string): string {
   return `The token is in several profiles: ${then} with a profile token of the profile that should hold the custom domain (minted at ${DOMAIN_TOKENS_PAGE}).`;
@@ -322,6 +324,7 @@ function publishDomainNext(code: string, fromEnv: boolean): string {
   if (code === "domain-limit-reached") return ` Next: ${DOMAIN_LIMIT_NEXT}`;
   if (code === "domain-profile-ambiguous") return ` ${domainAmbiguous("call set_domain")}`;
   if (code === "domain-not-eligible" || code === "domain-invalid") return " The domain notice above says what to fix; then set_domain connects it.";
+  if (code === "domain-not-registered") return ` ${DOMAIN_NOT_REGISTERED_NEXT} then set_domain connects it.`;
   if (code === "domain-account-restricted") return " The domain notice above says why.";
   return " The domain notice above says why. set_domain connects it later.";
 }
@@ -349,6 +352,7 @@ function domainHints(data: unknown, address: "publication" | "hostname" | "list"
     case "DOMAIN_NOT_FOUND": return ["No custom domain there: list_domains shows the profile's custom domains; set_domain connects one."];
     case "INVALID_HOSTNAME": return ["Pass one bare hostname such as www.example.com or example.com (no scheme, path or port); the message says what to fix."];
     case "DOMAIN_NOT_ALLOWED": return ["brewpage.app addresses and some domains cannot be used: ask the user for a domain they own."];
+    case "DOMAIN_NOT_REGISTERED": return [`${DOMAIN_NOT_REGISTERED_NEXT} then repeat this call.`];
     case "NOT_ELIGIBLE": return typeof reason === "string" && DOMAIN_REASONS[reason] ? [`This publication cannot take a custom domain: ${DOMAIN_REASONS[reason]}.`] : [];
     case "DOMAIN_PROFILE_AMBIGUOUS": return [domainAmbiguous("repeat")];
     case "OWNER_TOKEN_REVOKED": case "OWNER_TOKEN_EXPIRED":

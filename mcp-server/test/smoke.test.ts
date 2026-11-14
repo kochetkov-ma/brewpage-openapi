@@ -1287,6 +1287,9 @@ const DOMAIN_REFUSALS: DomainRefusal[] = [
     tail: "\nPass one bare hostname such as www.example.com or example.com (no scheme, path or port); the message says what to fix." },
   { ...SET_REFUSAL, response: DOMAIN_CODE(400, "DOMAIN_NOT_ALLOWED"), prefix: "Failed to set domain (400): ",
     tail: "\nbrewpage.app addresses and some domains cannot be used: ask the user for a domain they own." },
+  { ...SET_REFUSAL, response: DOMAIN_CODE(400, "DOMAIN_NOT_REGISTERED"), prefix: "Failed to set domain (400): ",
+    tail: "\nThe domain is not registered yet: ask the user to buy it from a domain registrar first (BrewPage does not sell domains), " +
+      "or check its spelling; then repeat this call." },
   { ...SET_REFUSAL, response: DOMAIN_CODE(409, "DOMAIN_PROFILE_AMBIGUOUS"), prefix: "Failed to set domain (409): ",
     tail: "\nThe token is in several profiles: repeat with a profile token of the profile that should hold the custom domain (minted at https://account.brewpage.app/tokens)." },
   { ...SET_REFUSAL, response: DOMAIN_CODE(403, "OWNER_TOKEN_REVOKED"), prefix: "Failed to set domain (403): ",
@@ -1360,6 +1363,10 @@ const LIMIT_NOTICE = { code: "domain-limit-reached", message: "Custom domain not
 const AMBIGUOUS_NOTICE = { code: "domain-profile-ambiguous",
   message: "Custom domain not set: this token is in several profiles. Set the domain with a profile token of the profile that should hold it." };
 const NOT_ELIGIBLE_NOTICE = { code: "domain-not-eligible", message: "Custom domain not set: not available with a password. Remove the password to use a custom domain." };
+const NOT_REGISTERED_NOTICE = { code: "domain-not-registered", message: "Custom domain not set: example.com isn't registered yet. " +
+  "Buy it from a domain registrar first, then set it with PUT /api/publications/html/public/aBcDeFgHiJ/domain." };
+const NOT_REGISTERED_NEXT = "The domain is not registered yet: ask the user to buy it from a domain registrar first (BrewPage does not sell domains), " +
+  "or check its spelling;";
 const RESTRICTED_NOTICE = { code: "domain-account-restricted", message: "Custom domain not set: this profile cannot add domains now." };
 const UNAVAILABLE_NOTICE = { code: "domain-unavailable", message: "Custom domain not set: try again later with PUT /api/publications/html/public/aBcDeFgHiJ/domain." };
 const PUBLISH_DOMAIN_TOOLS = [
@@ -1380,6 +1387,8 @@ for (const scenario of PUBLISH_DOMAIN_TOOLS.flatMap((target) => [
       "with a profile token of the profile that should hold the custom domain (minted at https://account.brewpage.app/tokens)."] },
   { ...target, label: "domain-not-eligible notice", domain: "www.example.com", extra: { notices: [NOT_ELIGIBLE_NOTICE] },
     relayed: [`Notice (${NOT_ELIGIBLE_NOTICE.code}): ${NOT_ELIGIBLE_NOTICE.message}`, `${DOMAIN_NOT_SET} The domain notice above says what to fix; then set_domain connects it.`] },
+  { ...target, label: "domain-not-registered notice", domain: "www.example.com", extra: { notices: [NOT_REGISTERED_NOTICE] },
+    relayed: [`Notice (${NOT_REGISTERED_NOTICE.code}): ${NOT_REGISTERED_NOTICE.message}`, `${DOMAIN_NOT_SET} ${NOT_REGISTERED_NEXT} then set_domain connects it.`] },
   { ...target, label: "domain-account-restricted notice", domain: "www.example.com", extra: { notices: [RESTRICTED_NOTICE] },
     relayed: [`Notice (${RESTRICTED_NOTICE.code}): ${RESTRICTED_NOTICE.message}`, `${DOMAIN_NOT_SET} The domain notice above says why.`] },
   { ...target, label: "domain-unavailable notice", domain: "www.example.com", extra: { notices: [UNAVAILABLE_NOTICE] },

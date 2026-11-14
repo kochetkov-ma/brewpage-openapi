@@ -1,5 +1,11 @@
 # Release Notes
 
+## API contract 2.34.1 — unreleased
+
+- Exported from brewpage-app source `26791fbd34f91e2095d5de054586027f4df08139`, clean tree, build version 2.34.1 (not yet a release tag: re-export from the tag before publishing). 61 paths and 83 operations, unchanged. brewpage-app v2.32.x to v2.34.0 carried no contract change.
+- 400 `DOMAIN_NOT_REGISTERED` on `setPublicationDomain`, `addDomain` and `attachDomain`: a new hostname whose domain is not registered is refused; register it with a domain registrar first. The `domain` parameter of `POST /api/html` and `POST /api/sites` lists notice `domain-not-registered`; the publication is still created.
+- MCP (next release): `set_domain` and the other domain tools answer `DOMAIN_NOT_REGISTERED` with its next step (buy the domain from a registrar first, or check its spelling), and `publish_html`/`publish_site` do the same for the `domain-not-registered` notice.
+
 ## API contract 2.31.0 — 2026-11-14
 
 - Exported from brewpage-app source `8e0b1c537de3f41f2efb60b25b04efa68b4431c7` (brewpage-app release v2.31.0), clean tree. 61 paths and 83 operations, unchanged. brewpage-app v2.30.x carried no contract change.
