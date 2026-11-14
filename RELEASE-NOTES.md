@@ -1,5 +1,11 @@
 # Release Notes
 
+## API contract 2.36.0 — 2026-11-14
+
+- Exported from brewpage-app source `a97fe688ad21ca34ac3811f5eb6487eed84839aa` (brewpage-app release v2.36.0), clean tree. 61 paths and 83 operations, unchanged.
+- `ownerView` in a Page data list's settings is accepted for compatibility and stored as sent; it has no effect. The page's owner view needs no setting.
+- `brewpage-mcp` 1.22.0 works with this contract as it is.
+
 ## API contract 2.35.0 — 2026-11-14
 
 - Exported from brewpage-app source `46ff9a9bd5c4a0b4f455e81e584b82c6cd3144ff` (brewpage-app release v2.35.0), clean tree. 61 paths and 83 operations, unchanged. brewpage-app v2.32.x to v2.34.x carried no contract change.

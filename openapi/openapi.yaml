@@ -3163,7 +3163,7 @@ components:
             - shared
           type: string
         ownerView:
-          description: Stored as sent; it changes nothing yet
+          description: Accepted for compatibility and stored as sent; it has no effect
           type: boolean
         write:
           description: 'visitors: each visitor writes their own entries; author: only you write'
@@ -3210,7 +3210,7 @@ components:
             - string
             - 'null'
         ownerView:
-          description: Stored as sent; it changes nothing yet
+          description: Accepted for compatibility and stored as sent; it has no effect
           type:
             - boolean
             - 'null'
@@ -3654,7 +3654,7 @@ info:
     url: https://www.apache.org/licenses/LICENSE-2.0
   termsOfService: https://brewpage.app/terms
   title: BrewPage API
-  version: 2.35.0
+  version: 2.36.0
 openapi: 3.1.0
 paths:
   /api/domains:

@@ -1,10 +1,10 @@
 {
-  "backendBuildVersion": "2.35.0",
-  "backendCommit": "46ff9a9bd5c4a0b4f455e81e584b82c6cd3144ff",
+  "backendBuildVersion": "2.36.0",
+  "backendCommit": "a97fe688ad21ca34ac3811f5eb6487eed84839aa",
   "backendDirty": false,
-  "backendSourceSha256": "3b540238e749a41f252ca7a7a0c35a9e12c1491f8f5c2c9447bd4f90864bbafa",
+  "backendSourceSha256": "bd0ce9259ecbe24249d54c5c3b82ba7f1b531050322033a97806cce58d52cfe2",
   "exporter": ".codex/scripts/export-openapi.py",
-  "jsonSha256": "07e96cea29713c822fbf1c9fb3527ff5330b32831175f552281a131857bb1d1a",
+  "jsonSha256": "d028e164cc505c50c8b728d3c144f4cef0189426c80dc2c62733ed8f65b2a8be",
   "locale": "en",
   "serverOrigin": "https://brewpage.app"
 }
