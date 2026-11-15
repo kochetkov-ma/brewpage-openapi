@@ -2134,7 +2134,7 @@ for (const scenario of [
 
 const GUIDE_TAIL = "Author side: entries are read in the Data tab or with get_page_data; set_page_data writes author entries, " +
   "configure_page_data changes settings, delete_page_data moderates. Each takes namespace + id + ownerToken, or the management link as manageUrl.";
-const GUIDE_LINKS_SENTENCE = "Give the user the page link (`link`) and the management link (`manageUrl`, private; Data tab shows entries).";
+const GUIDE_LINKS_SENTENCE = "Give the user `link` (the page) and `manageUrl` (private; its Data tab shows entries and files).";
 
 test("get_guide returns the generated Page data guide plus the author-side tail without calling the API", { timeout: 10_000 }, async (t) => {
   // GIVEN the guide text generated from the app's llms texts.
