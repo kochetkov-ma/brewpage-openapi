@@ -134,7 +134,7 @@ curl -X POST 'https://brewpage.app/api/sites?ns=public' \
   -F 'archive=@site.zip;type=application/zip'
 ```
 
-`PUT /api/sites/{namespace}/{id}` with `X-Owner-Token` and a new bundle replaces the entire file set at the same link; absent files are removed. Content replacement preserves hosting. MCP exposes `publish_site` and `republish_site`; SDK and CLI module specifications do not imply implemented clients.
+`PUT /api/sites/{namespace}/{id}` with `X-Owner-Token` and a new bundle replaces the entire file set at the same link; absent files are removed. Content replacement preserves hosting. MCP publishes a site with `publish_html` and replaces it with `update_html`, both with `files`; SDK and CLI module specifications do not imply implemented clients.
 
 ## Change Hosting
 

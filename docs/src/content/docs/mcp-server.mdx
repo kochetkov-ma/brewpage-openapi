@@ -8,13 +8,13 @@ order: 3
 
 Last updated: 2026-11-15
 
-`brewpage-mcp` 1.23.1 provides thirty-two tools to publish and manage HTML, Markdown, JSON, KV, files, and multi-file sites, and to read what visitors save on a page, from compatible MCP clients. It runs locally over stdio (Node.js 20 or newer) or remotely without install, and calls the BrewPage API.
+`brewpage-mcp` 2.0.0 provides 25 tools to publish and manage HTML, Markdown, JSON, KV, files, and multi-file sites, and to read what visitors save on a page, from compatible MCP clients. It runs locally over stdio (Node.js 20 or newer) or remotely without install, and calls the BrewPage API.
 
 ## Installation
 
 ### Remote (no install)
 
-One remote MCP server for every client: `https://brewpage.app/mcp` (Streamable HTTP, no authentication, same 32 tools). Add it by URL in Claude (a custom connector), ChatGPT (a custom MCP server) or any Streamable HTTP client.
+One remote MCP server for every client: `https://brewpage.app/mcp` (Streamable HTTP, no authentication, same 25 tools). Add it by URL in Claude (a custom connector), ChatGPT (a custom MCP server) or any Streamable HTTP client.
 
 Claude Code: `claude mcp add --transport http brewpage --scope user https://brewpage.app/mcp` (leave out `--scope user` to add it to the current project only), or in `.mcp.json`:
 
@@ -47,7 +47,7 @@ Local fallback (stdio, needs Node.js; the same tools): add to Claude Desktop's `
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@1.23.1"]
+      "args": ["-y", "brewpage-mcp@2.0.0"]
     }
   }
 }
@@ -58,7 +58,7 @@ Local fallback (stdio, needs Node.js; the same tools): add to Claude Desktop's `
 The remote command above is the default. Local fallback: register a project-scoped stdio server:
 
 ```bash
-claude mcp add --transport stdio --scope project brewpage -- npx -y brewpage-mcp@1.23.1
+claude mcp add --transport stdio --scope project brewpage -- npx -y brewpage-mcp@2.0.0
 ```
 
 This writes `.mcp.json` in the project root; user-scoped registration uses `--scope user`. See the [official Claude Code MCP guide](https://code.claude.com/docs/en/mcp).
@@ -66,7 +66,7 @@ This writes `.mcp.json` in the project root; user-scoped registration uses `--sc
 ### One-liner
 
 ```bash
-npx -y brewpage-mcp@1.23.1
+npx -y brewpage-mcp@2.0.0
 ```
 
 This starts a stdio server for an MCP client, not an interactive publishing shell. Other clients can use the same `npx` command and pinned arguments.
@@ -75,24 +75,17 @@ This starts a stdio server for an MCP client, not an interactive publishing shel
 
 | Tool | Description |
 |------|-------------|
-| `publish_html` | Publish HTML, Markdown, code or JSON with optional filename and toolbar |
-| `update_html` | Replace HTML/Markdown or code content with the owner token; omitted format preserves the stored format, except a whole HTML document makes a Markdown page an HTML page; optional `tags` replace the stored ones |
-| `get_page` | Fetch raw HTML page content; optional password |
-| `publish_file` | Fetch a file from a URL and upload it; HTML and Markdown become pages; optional filename |
-| `publish_site` | Publish `entryContent` or a `files` bundle; optional entry path |
-| `republish_site` | Replace the complete site bundle at the same ID/link; absent files are removed |
+| `publish_html` | Publish a page (`content`: HTML, Markdown, code or JSON, with optional filename and toolbar) or a static site (`files`, optional `entry`) |
+| `update_html` | Replace a page's content or every file of a site with the owner token (site files absent from the upload are removed); omitted format preserves the stored format, except a whole HTML document makes a Markdown page an HTML page; optional `tags` replace the stored ones |
+| `get_page` | Read a page (rendered HTML, or its code or text), a JSON document (`type: "json"`) or a KV value (`type: "kv"`, `key`); optional password; long content continues by `offset` |
+| `publish_file` | Fetch a file from a URL and upload it; HTML and Markdown become pages; optional filename, password and TTL |
 | `publish_json` | Publish a JSON object, array, or JSON-encoded string |
-| `get_json` | Fetch a JSON document; optional password |
 | `update_json` | Replace a JSON document with the owner token |
 | `publish_kv` | Create a KV store with an initial key/value |
 | `set_kv` | Set or replace a key in an owned KV store |
-| `get_kv` | Fetch a key's value; optional password |
-| `update_hosting` | Change eligible publication delivery mode using owner authority and hosting version |
 | `delete_resource` | Delete a resource (incl. sites) by namespace/id with owner token |
-| `set_visibility` | List or unlist a public publication in the gallery and sitemap; link unchanged |
+| `set_publication` | Change settings of a publication, only what you send: `listed`, `badgeHidden` (up to 5 hidden per profile), `title`, `password`, `extend`, `deliveryMode`; link unchanged |
 | `make_private` | Make a public publication private: new private link, the public link stops working; one-way |
-| `set_badge` | Hide or show the BrewPage badge on a publication of your profile, up to 5 hidden |
-| `set_title` | Rename an HTML page or site; the title stays on republish; link unchanged |
 | `bind_token` | Add an owner token to your profile with an admin token |
 | `mint_token` | Mint a profile token with an admin token; shown once |
 | `set_domain` | Connect a domain you own to an HTML page or site; returns the DNS records to create |
@@ -100,13 +93,26 @@ This starts a stdio server for an MCP client, not an interactive publishing shel
 | `check_domain` | Run a DNS check once the records exist; status `pending_dns` -> `verifying` -> `active` |
 | `remove_domain` | Remove a custom domain and free its slot; the BrewPage link keeps working |
 | `get_guide` | Read a short guide: Page data before writing a page that saves what visitors enter, or the custom-domain steps |
-| `get_page_data` | Read what visitors saved on your page: the settings and usage, or one list's entries |
+| `get_page_data` | Read what visitors saved on your page: the settings and usage, one list's entries, its uploaded files (`include: "files"`) or totals per answer (`countBy`) |
 | `set_page_data` | Write author entries (for example today's menu) without republishing the page |
-| `configure_page_data` | Change who can read a list and its limits; only what you name changes |
-| `delete_page_data` | Delete entries by id, or every entry in a time range |
+| `configure_page_data` | Turn Page data on or off, change who can read a list and its limits; only what you name changes |
+| `delete_page_data` | Delete entries (`docIds`) or files (`fileIds`) by id, everything in a time range, or the whole list (`all: true`) |
 | `search_gallery` | Browse public content or list owned resources with `mine` and `ownerToken` |
 | `get_stats` | Get platform-wide usage statistics |
 | `get_limits` | Get the current upload limits (`GET /api/limits`) |
+
+### Names from 1.x
+
+2.0.0 lists 25 tools where 1.x listed 32. The eight names that left the list are still callable with their old arguments, so saved prompts and allow-lists keep working; the answer ends with one note line naming the current tool.
+
+| Old name | Runs as |
+|----------|---------|
+| `publish_site` | `publish_html` with `files` |
+| `republish_site` | `update_html` with `files` |
+| `get_json`, `get_kv` | `get_page` with `type: "json"` or `type: "kv"` |
+| `set_visibility`, `set_badge`, `set_title`, `update_hosting` | `set_publication` with `listed`, `badgeHidden`, `title`, `deliveryMode` |
+
+A failed call answers with the server's reason and a `Next:` line that names the step to take.
 
 ## Custom Domains
 
@@ -118,7 +124,7 @@ check_domain(type="html", namespace="public", id="aBcDeFgHiJ")
 list_domains(type="html", namespace="public", id="aBcDeFgHiJ")
 ```
 
-`set_domain` prints the DNS records to create at your DNS provider, exactly as returned: a TXT record at `_brewpage.<host>` plus a CNAME to `domains.brewpage.app`; a root domain takes the A record shown, or ALIAS. Keep your MX (mail) records, replace an A, AAAA or CNAME record at the same name, and at Cloudflare set Proxy status to DNS only. After the records exist, one `check_domain` is enough: BrewPage keeps checking on its own (the first full check about 15 minutes after adding), and `list_domains` with the same `type`, `namespace` and `id` reads the status without a new check: `pending_dns`, then `verifying`, then `active`, usually within 30 minutes. HTTPS is issued automatically and the BrewPage link keeps working. If the records break later the status is `lost` and the domain is still served until `graceEndsAt`: restore the records and check again. The `Problem:` line of a result names the fix. `list_domains` without an address (admin token) shows all custom domains of the profile, `remove_domain` frees a slot. `publish_html` and `publish_site` take an optional `domain` to connect it while publishing. The assistant can read the steps with `get_guide(topic="custom-domain")`.
+`set_domain` prints the DNS records to create at your DNS provider, exactly as returned: a TXT record at `_brewpage.<host>` plus a CNAME to `domains.brewpage.app`; a root domain takes the A record shown, or ALIAS. Keep your MX (mail) records, replace an A, AAAA or CNAME record at the same name, and at Cloudflare set Proxy status to DNS only. After the records exist, one `check_domain` is enough: BrewPage keeps checking on its own (the first full check about 15 minutes after adding), and `list_domains` with the same `type`, `namespace` and `id` reads the status without a new check: `pending_dns`, then `verifying`, then `active`, usually within 30 minutes. HTTPS is issued automatically and the BrewPage link keeps working. If the records break later the status is `lost` and the domain is still served until `graceEndsAt`: restore the records and check again. The `Problem:` line of a result names the fix. `list_domains` without an address (admin token) shows all custom domains of the profile, `remove_domain` frees a slot. `publish_html` takes an optional `domain` to connect it while publishing a page or a site. The assistant can read the steps with `get_guide(topic="custom-domain")`.
 
 ## Page Data
 
@@ -132,45 +138,57 @@ get_page_data(namespace="priv-abc123", id="aBcDeFgHiJ", collection="guestbook")
 
 By default each visitor reads and writes only their own entries (`private`). A `shared` list is readable by everyone; with `write: "author"` only you write it, for example a menu. You, the author, read everything: in the Data tab behind the management link, or with `get_page_data`.
 
-`get_guide` returns the short reference the assistant reads before writing such a page. `publish_html` and `publish_site` take `state` on create and the page gets its own address `https://<label>.brewpage.app`; `update_html` and `republish_site` take it on update, where lists named in the call are added or updated and the others stay. `set_page_data` writes author entries without republishing, `configure_page_data` changes who can read a list and its limits, `delete_page_data` removes entries by id or by time range.
+`get_guide` returns the short reference the assistant reads before writing such a page. `publish_html` takes `state` on create, for a page and for a site, and the page gets its own address `https://<label>.brewpage.app`; `update_html` takes it on update, where lists named in the call are added or updated and the others stay, and prints `Page data: on - lists: …` or `Page data: off`. `set_page_data` writes author entries without republishing, `configure_page_data` turns Page data on or off and changes who can read a list and its limits, `delete_page_data` removes entries (`docIds`) or uploaded files (`fileIds`) by id, everything in a time range, or the whole list (`all: true`).
 
-After publishing, the assistant gives you the page link and the management link, keeps the owner token and shows it on request; neither is ever posted publicly. The four page-data tools take `namespace`, `id` and `ownerToken`, or the management link alone as `manageUrl`, which works in a later chat when the token is not at hand.
+`get_page_data` without `collection` shows the settings, the usage, each list with its entries and files, and the route that downloads a list as CSV. With `collection` it pages through the entries (`order` `-createdAt`, `createdAt`, `-updatedAt`, `updatedAt`, `-index`, `index`; `limit` 1-100); with `countBy` it answers totals per value of a field with declared `choices`; with `include: "files"` it lists the files visitors uploaded.
+
+```
+get_page_data(namespace="priv-abc123", id="aBcDeFgHiJ", collection="votes", countBy="choice")
+get_page_data(namespace="priv-abc123", id="aBcDeFgHiJ", collection="photos", include="files")
+delete_page_data(namespace="priv-abc123", id="aBcDeFgHiJ", collection="guestbook", all=true)
+```
+
+After publishing, the assistant gives you the page link and the management link (private: whoever has it can edit or delete the page and read what visitors saved), keeps the owner token for later updates and shows it on request; neither is ever posted publicly. The four page-data tools take `namespace`, `id` and `ownerToken`, or the management link alone as `manageUrl`, which works in a later chat when the token is not at hand.
 
 ## Visibility and Delivery
 
-All five publish tools accept optional `deliveryMode: "path" | "subdomain"`; it is sent as `X-Delivery-Mode`, without changing content bodies. Omitted namespace is private (a generated `priv-<random>` namespace): unlisted and not indexed; anyone with the link can still open it. `public` lists HTML, sites and files in the gallery and sitemap, so Google, Bing and AI search can find and index them; public pages are served on the brewpage.app domain for the strongest reach (a site always gets its own subdomain). Never put secrets in a public publication. Password-protected publications, JSON and KV are never listed.
+`publish_html` takes optional `deliveryMode: "path" | "subdomain"`; it is sent as `X-Delivery-Mode`, without changing content bodies. `set_publication` changes the mode later. Omitted namespace is private (a generated `priv-<random>` namespace): unlisted and not indexed; anyone with the link can still open it. `public` lists HTML, sites and files in the gallery and sitemap, so Google, Bing and AI search can find and index them; public pages are served on the brewpage.app domain for the strongest reach (a site always gets its own subdomain). Never put secrets in a public publication. Password-protected publications, JSON and KV are never listed.
 
-These tools wrap a subset of the backend-generated public REST contract. MCP TTL inputs are days: up to 30 days without an account, up to 90 with a free profile (an owner token held in the profile); a default applies when omitted; whole days such as `15`, `15d` or `15 days`. Use returned `expiresAt`. Tolerated-input adjustments come back in the response `notices` array, printed as `Notice (code): message`; `secret-detected` prints as `WARNING (code): message`; a live BrewPage token or manage link in public content prints first as `SECURITY ALERT (credential-published): …` (remove it and reset it). A minted `manageUrl` prints as `MANAGE LINK (private): …`: give it to the user privately, never publish it. Set `BREWPAGE_OWNER_TOKEN` (local server only) for a default owner token; outputs name it instead of printing it. Secrets allowed; likely ones are flagged in notices. For a secret: private namespace + password. `get_page` reads stored rendered HTML or format-specific code/text, rather than owner-only original source or a browser viewer.
+These tools wrap a subset of the backend-generated public REST contract. MCP TTL inputs are days: up to 30 days without an account, up to 90 with a free profile (an owner token held in the profile); a default applies when omitted; whole days such as `15`, `15d` or `15 days`. Use returned `expiresAt`. Tolerated-input adjustments come back in the response `notices` array, printed as `Notice (code): message`; `secret-detected` prints as `WARNING (code): message`; a live BrewPage token or manage link in public content prints first as `SECURITY ALERT (credential-published): …` (remove it and reset it). A minted `manageUrl` prints as `MANAGE LINK (private): …`: the assistant gives it to the user together with the page link; whoever has it can edit or delete the publication, so it is never posted publicly. Set `BREWPAGE_OWNER_TOKEN` (local server only) for a default owner token; outputs name it instead of printing it. Secrets allowed; likely ones are flagged in notices. For a secret: private namespace + password. `get_page` reads stored rendered HTML or format-specific code/text, rather than owner-only original source or a browser viewer.
 
 For a fresh publication, sites and HTML pages of format `HTML` outside `public` (including the generated unlisted namespace) always use **Dedicated subdomain**; omit `deliveryMode` there. An explicit `path` there is not rejected: the publication is created on its subdomain and the result reports `deliveryModeMatched: false`, `deliveryModeReason: "policy:subdomain-required"` and a `Delivery notice:` line. Everything else in any namespace (Markdown, code/text, files, JSON, KV, public HTML) defaults to **Promotion** (`path`) and may choose **Dedicated subdomain** (`subdomain`), including when password-protected. Markdown raw HTML is rendered through an allowlist (no scripts, styles, event handlers, forms or embeds; links `http`/`https`/`mailto`/`tel`/relative); earlier pages change only when republished. Promotion has stricter active-document restrictions. Each NEW site gets one publication-specific host for its complete bundle, preserving relative/root-relative paths; missing assets return 404 with no SPA fallback. Third-party widgets may need provider configuration.
 
 Use the server's primary `link` exactly, including the root slash. Never reconstruct a host from namespace or ID. Responses expose `routingCohort`, `deliveryMode`, `requestedDeliveryMode`, `effectiveDeliveryMode`, `deliveryModeMatched`, `modeLocked`, `hostingVersion`, `access`, and the trusted-apex `managementLink` when supplied. NEW password links are clean URLs: do not append `?p=`; browser readers unlock through the trusted gateway. API calls and owner tokens stay on the configured apex API origin.
 
-When `deliveryMode` is omitted for a `public` HTML or Markdown page, the server may publish it on its own subdomain if the page needs browser features a BrewPage link does not provide. `publish_html` then prints `deliveryModeReason: "auto:<codes>"` and a `Delivery notice:` line; pass `deliveryMode: "path"` to keep a BrewPage link, or change it later with `update_hosting`. `advisory:<codes>` (from `publish_html` or `update_html`) means the address was not changed but such features were found. Neither line appears when nothing applies.
+When `deliveryMode` is omitted for a `public` HTML or Markdown page, the server may publish it on its own subdomain if the page needs browser features a BrewPage link does not provide. `publish_html` then prints `deliveryModeReason: "auto:<codes>"` and a `Delivery notice:` line; pass `deliveryMode: "path"` to keep a BrewPage link, or change it later with `set_publication`. `advisory:<codes>` (from `publish_html` or `update_html`) means the address was not changed but such features were found. Neither line appears when nothing applies.
 
 When creation returns an existing publication, it keeps its actual link, cohort, and mode even when another mode was requested. OLD publications show **Existing link** with null mode metadata and retain their legacy links and behavior. Content updates and site republishing preserve hosting.
 
 ## Publish and Update
 
-Ask your assistant to publish the content, save the returned owner token, and share the returned primary link. `publish_html`, `publish_site`, `publish_json`, and `publish_kv` accept `password` and `ttlDays` (days: up to 30 without an account, up to 90 with a free profile; a default applies when omitted). `publish_file` accepts a source `url`, optional `namespace`, `filename`, and `deliveryMode`; it does not expose base64, password, or TTL inputs.
+Ask your assistant to publish the content, save the returned owner token, and share the returned primary link. `publish_html`, `publish_file`, `publish_json`, and `publish_kv` accept `password` and `ttlDays` (days: up to 30 days without an account, up to 90 with a free profile; a default applies when omitted). `publish_file` takes a source `url` (a public http(s) address, not a local path) and optional `namespace` and `filename`.
 
 ```text
-publish_html(content="<h1>Report</h1>", format="HTML", ttlDays=15)
-publish_site(files=[{"path":"index.html","content":"<link rel='stylesheet' href='/style.css'><h1>Site</h1>"},{"path":"style.css","content":"body{font-family:sans-serif}"}])
+publish_html(content="<h1>Report</h1>", format="html", ttlDays=15)
+publish_html(files=[{"path":"index.html","content":"<link rel='stylesheet' href='/style.css'><h1>Site</h1>"},{"path":"style.css","content":"body{font-family:sans-serif}"}])
+update_html(namespace="public", id="aBcDeFgHiJ", ownerToken="tok_...", files=[{"path":"index.html","content":"<h1>Updated site</h1>"}])
+get_page(type="json", namespace="public", id="aBcDeFgHiJ")
 ```
 
-For sites, provide exactly one of `entryContent` or a non-empty `files` array of `{path, content}`. `entry` defaults to `index.html`. `republish_site` requires `namespace`, `id`, and `ownerToken`; it replaces the full file set, removing files absent from the new bundle. It also accepts `entry`, `ttlDays`, and `tags` (replace the stored tags, `[]` clears, omitted keeps them); its TTL input is ignored (existing expiry is kept; a `ttl-ignored` notice is returned).
+`publish_html` takes exactly one of `content` (a page) or `files` (a site: a non-empty array of `{path, content}`); `entry` defaults to `index.html`; `format`, `filename` and `showTopBar` belong to a page. `update_html` requires `namespace`, `id`, and `ownerToken` and the same choice of `content` or `files`; for a site it replaces the full file set, removing files absent from the upload, and keeps the existing expiry. It also accepts `entry` and `tags` (replace the stored tags, `[]` clears, omitted keeps them).
 
 Call `get_limits` before publishing a large or multi-file site. A request is at most 25 MiB; a site at most 200 files, 5 MiB per file and 20 MiB in total; each path at most 380 characters. System files such as `.DS_Store` and `__MACOSX/` are skipped and never count; files with an unsupported extension or a too-long path are skipped and reported in notices. Without `entry`, the root `index.html` is the entry, else the shallowest HTML file. A site limit hit answers 400 with a message naming the limit, as does a PDF/Office file that is unreadable or password-protected; 413 means the request is over 25 MiB, has too many files and form fields, or a file name/path is too long; 422 means no servable file is left; 503 means busy: retry after `Retry-After` seconds (failed publish tools print it).
 
-### Change Hosting
+### Change Settings
 
-`update_hosting` changes an eligible NEW publication (not a site, not a non-public `html`-format HTML page) between Promotion and Dedicated subdomain. Required inputs: `type` (`html`, `file`, `json`, or `kv`), `namespace`, `id`, `ownerToken`, and `deliveryMode`; `expectedVersion` (current `hostingVersion`, integer ≥1) is optional, pass it when known.
+`set_publication` changes settings of a publication you own; only the arguments you send change and the link stays. Required inputs: `type` (`html`, `site`, `file`, `json`, or `kv`), `namespace`, `id`, `ownerToken`, and at least one of: `listed` (list or unlist a public publication in the gallery and sitemap), `badgeHidden` (hide or show the BrewPage badge, up to 5 hidden per profile), `title` (rename an HTML page or site, 1-200 characters; empty restores the title from the content), `password` (set it, or `null` to remove it; HTML pages, sites and files), `extend` (`true` keeps the publication for the longest time the profile allows), `deliveryMode`. Badge and title need the owner token in a BrewPage profile. Several settings in one call run one after another; the answer lists each outcome and stops at the first failure.
 
-It calls owner-only `PATCH /api/{html|files|json|kv}/{namespace}/{id}/hosting` with `{deliveryMode}` plus `expectedVersion` when given, and `X-Owner-Token`. Mismatches are reported, not rejected: a stale or omitted version still applies the choice (a stale one adds `deliveryModeReason: "policy:version-stale"`); sites and non-public `html`-format HTML pages stay on their subdomain (`policy:mode-locked`) and OLD links stay unchanged (`policy:classic-link`), each answered 200 with `deliveryModeMatched: false` and a `Delivery notice:` line. Wrong owner returns 403, a malformed version (not a positive integer) 400, and a paused real change 503. Selecting the current mode returns 200 without incrementing the version. Always use the returned primary link; the reserved publication host survives both directions.
+`deliveryMode` moves an eligible NEW publication (not a site, not a non-public `html`-format HTML page) between Promotion and Dedicated subdomain. Mismatches are reported, not rejected: sites and non-public `html`-format HTML pages stay on their subdomain (`policy:mode-locked`) and OLD links stay unchanged (`policy:classic-link`), each answered 200 with `deliveryModeMatched: false` and a `Delivery notice:` line; a paused real change answers 503. Always use the returned primary link; the reserved publication host survives both directions.
 
 ```text
-update_hosting(type="html", namespace="public", id="aBcDeFgHiJ", ownerToken="tok_...", deliveryMode="subdomain", expectedVersion=1)
+set_publication(type="html", namespace="public", id="aBcDeFgHiJ", ownerToken="tok_...", listed=false, title="Trip notes")
+set_publication(type="html", namespace="priv-abc123", id="aBcDeFgHiJ", ownerToken="tok_...", password="s3cret", extend=true)
+set_publication(type="html", namespace="public", id="aBcDeFgHiJ", ownerToken="tok_...", deliveryMode="subdomain")
 ```
 
 ### Delete a Resource
@@ -183,7 +201,7 @@ Every publish response includes your **owner token**. You need it to update or d
 
 Optional: sign in free (Google or any email) at https://account.brewpage.app to never lose your pages or tokens and to mint tokens that never expire. Not needed to publish.
 
-Pass it to owner-only tools and to `search_gallery(mine=true, ownerToken="tok_...")` to list your resources. The `publish_site`, `publish_json`, and `publish_kv` tools accept an existing `ownerToken` to group new content under the same owner.
+Pass it to owner-only tools and to `search_gallery(mine=true, ownerToken="tok_...")` to list your resources. The four publish tools accept an existing `ownerToken` to keep new content under the same owner.
 
 ## Configuration
 

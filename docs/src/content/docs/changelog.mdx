@@ -6,6 +6,10 @@ order: 5
 
 # Changelog
 
+## MCP 2.0.0 — 25 tools, one per job
+
+The tool list is shorter, 25 tools instead of 32, each described in a sentence, so an assistant reads far less before its first call. `publish_html` publishes a page (`content`) or a whole static site (`files`) and `update_html` replaces either; `get_page` reads a page, a JSON document or a KV value; `set_publication` changes a publication's settings in one call, including two that had no tool before: a password and a longer lifetime. Nothing breaks: the eight names that left the list (`publish_site`, `republish_site`, `get_json`, `get_kv`, `set_visibility`, `set_badge`, `set_title`, `update_hosting`) are still callable with their old arguments, and the answer names the current tool; move saved prompts and allow-lists when convenient. Page data: the assistant can show the files visitors uploaded, read poll totals in one call, delete files and clear a whole list. Every failed call names its next step.
+
 ## API contract 2.41.0 — custom domains name their next step
 
 Every custom-domain object (the domain answers and `customDomain` on publish) adds `nextStep`, a required plain-English next step with the exact routes of this domain: follow it and relay it to the user. 409 `NOT_ELIGIBLE` with `reason` `EXPIRED` now means the publication cannot come back: attach the custom domain to another publication. Still 61 paths and 83 operations.

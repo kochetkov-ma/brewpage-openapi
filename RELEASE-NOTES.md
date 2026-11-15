@@ -1,5 +1,14 @@
 # Release Notes
 
+## MCP 2.0.0 — 2026-11-15
+
+- A shorter tool list: 25 tools instead of 32, each described in a sentence. An assistant reads far less before its first call.
+- One tool per job. `publish_html` publishes a page (`content`) or a whole static site (`files`), and `update_html` replaces either. `get_page` reads a page, a JSON document or a KV value (`type`). `set_publication` changes the settings of a publication in one call: list or unlist it, hide the badge, rename it, and two things that had no tool before: set or remove a password and keep the publication longer.
+- Nothing breaks. The eight names that left the list (`publish_site`, `republish_site`, `get_json`, `get_kv`, `set_visibility`, `set_badge`, `set_title`, `update_hosting`) are still callable with their old arguments; the answer ends with one note naming the current tool. Move saved prompts, allow-lists and per-tool approvals to the current names when convenient: an old name is removed only in a later major version, after it has gone unused for three months in a row.
+- Page data: the assistant can now show the files visitors uploaded to a page (`get_page_data` with `include: "files"`), read poll totals in one call (`countBy`), sort entries by last change, delete uploaded files (`fileIds`) and clear a whole list (`all: true`). The overview shows files next to entries and names the route that downloads a list as CSV. The guide (`get_guide` topic `page-data`) follows BrewPage's Browser SDK text and now covers file uploads.
+- Clearer answers: after publishing, the assistant hands you the page link and the management link (private: whoever has it can edit or delete the page); every failed call says what went wrong and names the next step in a `Next:` line; long content is read in parts. `publish_file` takes a password and a TTL.
+- BrewPage counts the server's API calls by its `User-Agent` (version and transport: `brewpage-mcp/2.0.0 (stdio)` for the local server, `(remote)` for the hosted one) and nothing else. Install pins are `brewpage-mcp@2.0.0`; the remote server `https://brewpage.app/mcp` needs no change on your side.
+
 ## API contract 2.41.0 — 2026-11-15
 
 - Exported from brewpage-app source `30f1765fa9919c65bd1058f698795f4dbfd03119` (brewpage-app release v2.41.0), clean tree. 61 paths and 83 operations, unchanged. brewpage-app v2.40.x carried no contract change.

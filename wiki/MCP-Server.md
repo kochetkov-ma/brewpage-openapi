@@ -24,7 +24,7 @@ Use BrewPage directly from Claude Desktop, Claude Code, or any MCP client.
 
 ### Remote (no install)
 
-One remote MCP server for every client: `https://brewpage.app/mcp` (Streamable HTTP, no authentication, same 32 tools). Add it by URL in Claude (a custom connector), ChatGPT (a custom MCP server) or any Streamable HTTP client.
+One remote MCP server for every client: `https://brewpage.app/mcp` (Streamable HTTP, no authentication, same 25 tools). Add it by URL in Claude (a custom connector), ChatGPT (a custom MCP server) or any Streamable HTTP client.
 
 Claude Code: `claude mcp add --transport http brewpage --scope user https://brewpage.app/mcp` (leave out `--scope user` to add it to the current project only), or in `.mcp.json`:
 
@@ -57,7 +57,7 @@ Local fallback (stdio, needs Node.js; the same tools): edit `~/Library/Applicati
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@1.23.1"]
+      "args": ["-y", "brewpage-mcp@2.0.0"]
     }
   }
 }
@@ -67,14 +67,14 @@ Windows: `%APPDATA%\Claude\claude_desktop_config.json`
 
 ### Claude Code
 
-The remote command above is the default. Local fallback: run `claude mcp add --transport stdio --scope project brewpage -- npx -y brewpage-mcp@1.23.1`, or add this to project-root `.mcp.json`:
+The remote command above is the default. Local fallback: run `claude mcp add --transport stdio --scope project brewpage -- npx -y brewpage-mcp@2.0.0`, or add this to project-root `.mcp.json`:
 
 ```json
 {
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@1.23.1"]
+      "args": ["-y", "brewpage-mcp@2.0.0"]
     }
   }
 }
@@ -83,7 +83,7 @@ The remote command above is the default. Local fallback: run `claude mcp add --t
 ### Direct run
 
 ```bash
-npx -y brewpage-mcp@1.23.1
+npx -y brewpage-mcp@2.0.0
 ```
 
 ---
@@ -92,38 +92,33 @@ npx -y brewpage-mcp@1.23.1
 
 | Tool | What it does |
 |------|-------------|
-| `publish_html` | Publish HTML, Markdown, code or JSON → URL + token |
-| `publish_file` | Upload file from URL → URL + token; HTML and Markdown become pages |
-| `publish_site` | Publish a multi-file HTML site from HTML content (`entryContent`, `namespace?`, `password?`, `ttlDays?`) |
+| `publish_html` | Publish a page (`content`: HTML, Markdown, code or JSON) or a static site (`files`) → link, owner token, management link |
+| `update_html` | Replace a page's content or every file of a site with owner authority; the link stays |
+| `publish_file` | Upload file from URL → link, owner token, management link; HTML and Markdown become pages |
 | `delete_resource` | Delete with owner token (incl. sites) |
-| `set_visibility` | List or unlist a public publication; link unchanged |
+| `set_publication` | Change settings: `listed`, `badgeHidden` (profile, up to 5 hidden), `title`, `password`, `extend`, `deliveryMode`; only what you send changes |
 | `make_private` | Make a public publication private: new private link, one-way |
-| `set_badge` | Hide or show the BrewPage badge (profile, up to 5 hidden) |
-| `set_title` | Rename an HTML page or site; kept on republish |
 | `bind_token` | Add a token to your profile (admin token) |
 | `mint_token` | Mint a profile token, shown once (admin token) |
 | `set_domain` | Connect a domain you own to an HTML page or site → DNS records to create |
 | `check_domain` | Run a DNS check once the records exist; `pending_dns` → `verifying` → `active` |
 | `list_domains` | Read one custom domain's status without a check, or list the profile's custom domains (admin token) |
 | `remove_domain` | Remove a custom domain; BrewPage link keeps working |
-| `get_page` | Fetch the API's rendered HTML or raw code response; original authored source is owner-only |
+| `get_page` | Read a page (the API's rendered HTML or raw code), a JSON document (`type: "json"`) or a KV value (`type: "kv"`, `key`); long content continues by `offset` |
 | `get_stats` | Platform statistics |
 | `get_limits` | Current upload limits (`GET /api/limits`) |
-| `republish_site` | Replace a site's files with owner authority |
-| `update_html` | Update HTML with owner authority |
 | `publish_json` | Publish a JSON document |
-| `get_json` | Read a JSON document |
 | `update_json` | Update JSON with owner authority |
 | `publish_kv` | Create a KV store |
 | `set_kv` | Upsert a key with owner authority |
-| `get_kv` | Read a key |
-| `search_gallery` | Search the public gallery |
-| `update_hosting` | Change hosting with owner authority and the expected hosting version |
+| `search_gallery` | Search the public gallery; `mine: true` lists your own publications |
 | `get_guide` | Read a short guide: Page data before writing a page that saves what visitors enter, or the custom-domain steps |
-| `get_page_data` | Read what visitors saved on your page: settings and usage, or one list's entries |
+| `get_page_data` | Read what visitors saved on your page: settings and usage, one list's entries, its uploaded files (`include: "files"`) or totals per answer (`countBy`) |
 | `set_page_data` | Write author entries (for example today's menu) without republishing |
-| `configure_page_data` | Change who can read a list and its limits; only what you name changes |
-| `delete_page_data` | Delete entries by id or by time range |
+| `configure_page_data` | Turn Page data on or off, change who can read a list and its limits; only what you name changes |
+| `delete_page_data` | Delete entries (`docIds`) or files (`fileIds`) by id, by time range, or the whole list (`all: true`) |
+
+25 tools. The 1.x names `publish_site`, `republish_site`, `get_json`, `get_kv`, `set_visibility`, `set_badge`, `set_title` and `update_hosting` left the list in 2.0.0 and are still callable; each answer ends with a note naming the current tool. A failed call carries a `Next:` line with the step to take.
 
 Omitted `namespace` is private (a generated namespace): unlisted and not indexed; anyone with the link can still open it. `public` lists HTML, sites and files in the gallery and sitemap, so Google, Bing and AI search can index them. Password-protected publications are never listed. Keep the exact server-returned `link`, cohort and effective mode.
 
@@ -149,7 +144,7 @@ A published HTML page or site can save what its visitors enter: form answers, a 
 │                                                │
 │  Step 2: Claude calls publish_html             │
 │  → content: "# Meeting Notes\n..."            │
-│  → format: MARKDOWN                            │
+│  → format: markdown                            │
 │                                                │
 │  Step 3: You get the result                    │
 │  URL: https://brewpage.app/notes/aBcDeFgHiJ   │
@@ -166,15 +161,19 @@ A published HTML page or site can save what its visitors enter: form answers, a 
 | You say | Tool called |
 |---------|------------|
 | "Publish this HTML to BrewPage" | `publish_html` |
-| "Create a BrewPage with my notes in Markdown" | `publish_html` (MARKDOWN) |
+| "Create a BrewPage with my notes in Markdown" | `publish_html` (format markdown) |
 | "Upload this image to BrewPage" | `publish_file` |
-| "Make it password-protected with 'secret'" | `publish_html` (password) |
+| "Deploy this static site" | `publish_html` (files) |
+| "Make it password-protected with 'secret'" | `publish_html` (password); later: `set_publication` (password) |
 | "Set it to expire in 30 days" | `publish_html` (ttlDays) |
+| "Take it out of the gallery" / "Rename it" | `set_publication` (listed, title) |
+| "Read back the JSON I stored" | `get_page` (type json) |
 | "Delete my page demo/abc123, token tok_xyz" | `delete_resource` |
 | "Show BrewPage stats" | `get_stats` |
 | "How many files can a BrewPage site have?" | `get_limits` |
 | "Make a guestbook page that saves messages" | `get_guide`, then `publish_html` (state) |
 | "Show me what people wrote on my page" | `get_page_data` |
+| "How did the vote go?" | `get_page_data` (countBy) |
 | "Remove these spam entries" | `delete_page_data` |
 
 ---

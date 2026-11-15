@@ -16,22 +16,22 @@ license: apache-2.0
 
 ## Tools
 
-The `brewpage-mcp` server exposes thirty-two typed MCP tools; six are shown below, see the [package README](https://www.npmjs.com/package/brewpage-mcp) for the complete list. All write operations return an owner token; keep it to modify or delete the resource later.
+The `brewpage-mcp` server exposes 25 typed MCP tools; six are shown below, see the [package README](https://www.npmjs.com/package/brewpage-mcp) for the complete list. All write operations return an owner token; keep it to modify or delete the resource later.
 
 | Tool | Purpose | Key parameters |
 |------|---------|----------------|
-| `publish_html` | Publish HTML, Markdown, code or JSON content; returns public URL + owner token. | `content`, `format` (optional; detected when omitted), `namespace`, `password`, `ttlDays` (days: up to 30 without an account, up to 90 with a free profile; a default applies when omitted), `filename`, `showTopBar` |
-| `publish_file` | Upload a file by fetching it from a URL (images, PDFs, video, audio, code, archives). | `url`, `namespace`, `filename` |
-| `publish_site` | Publish a single-page or multi-file static HTML site. | `entryContent` *or* `files` (`[{path, content}]`), `entry` (default `index.html`), `namespace`, `password`, `ttlDays`, `ownerToken` |
+| `publish_html` | Publish a page (HTML, Markdown, code or JSON) or a multi-file static site; returns the share link, the owner token and the management link. | `content` *or* `files` (`[{path, content}]`), `entry` (site entry file, default `index.html`), `format` (optional; detected when omitted), `namespace`, `password`, `ttlDays` (days: up to 30 days without an account, up to 90 with a free profile; a default applies when omitted), `filename`, `showTopBar`, `ownerToken` |
+| `update_html` | Replace the content of a page or every file of a site; the link stays. | `namespace`, `id`, `content` *or* `files`, `ownerToken` |
+| `publish_file` | Upload a file by fetching it from a URL (images, PDFs, video, audio, code, archives). | `url`, `namespace`, `filename`, `password`, `ttlDays` |
 | `delete_resource` | Delete an HTML page, site, KV store, JSON document, or file using the owner token. | `type` (`html` \| `site` \| `kv` \| `json` \| `file`), `namespace`, `id`, `ownerToken` |
-| `get_page` | Fetch the content of a published HTML page by namespace + ID. | `namespace`, `id`, `password` (optional) |
-| `get_stats` | Platform-wide usage statistics (page count, file count, storage, daily totals). | `tz` (optional IANA timezone, default UTC) |
+| `get_page` | Read a published page, a JSON document or a KV value by namespace + ID. | `type` (`html` default \| `json` \| `kv`), `namespace`, `id`, `key` (KV), `password` (optional) |
+| `get_stats` | Platform-wide counts of publications created, deleted and viewed, today and all time. | `tz` (optional IANA timezone, default UTC) |
 
 ## Install
 
 ### Remote (no install)
 
-One remote MCP server for every client: `https://brewpage.app/mcp` (Streamable HTTP, no authentication, same 32 tools). Add it by URL in Claude (a custom connector), ChatGPT (a custom MCP server) or any Streamable HTTP client.
+One remote MCP server for every client: `https://brewpage.app/mcp` (Streamable HTTP, no authentication, same 25 tools). Add it by URL in Claude (a custom connector), ChatGPT (a custom MCP server) or any Streamable HTTP client.
 
 Claude Code: `claude mcp add --transport http brewpage --scope user https://brewpage.app/mcp` (leave out `--scope user` to add it to the current project only).
 
@@ -57,7 +57,7 @@ Claude Desktop local fallback: add to `~/Library/Application Support/Claude/clau
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@1.23.1"]
+      "args": ["-y", "brewpage-mcp@2.0.0"]
     }
   }
 }
@@ -70,7 +70,7 @@ Add to `~/.codex/config.toml`:
 ```toml
 [mcp_servers.brewpage]
 command = "npx"
-args = ["-y", "brewpage-mcp@1.23.1"]
+args = ["-y", "brewpage-mcp@2.0.0"]
 ```
 
 #### Cursor
@@ -82,7 +82,7 @@ Open **Settings > MCP** and add:
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@1.23.1"]
+      "args": ["-y", "brewpage-mcp@2.0.0"]
     }
   }
 }
@@ -96,7 +96,7 @@ Open the Cline MCP settings panel and add:
 {
   "brewpage": {
     "command": "npx",
-    "args": ["-y", "brewpage-mcp@1.23.1"]
+    "args": ["-y", "brewpage-mcp@2.0.0"]
   }
 }
 ```

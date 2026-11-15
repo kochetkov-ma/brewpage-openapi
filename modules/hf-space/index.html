@@ -35,18 +35,18 @@
 </div>
 
 <div>
-  <h2>MCP tools (six of thirty-two)</h2>
+  <h2>MCP tools (six of 25)</h2>
   <table>
     <thead>
       <tr><th>Tool</th><th>Purpose</th></tr>
     </thead>
     <tbody>
-      <tr><td><code>publish_html</code></td><td>Publish HTML, Markdown, code or JSON; returns public URL + owner token.</td></tr>
+      <tr><td><code>publish_html</code></td><td>Publish a page (HTML, Markdown, code or JSON) or a multi-file static site; returns the share link, the owner token and the management link.</td></tr>
+      <tr><td><code>update_html</code></td><td>Replace the content of a page or every file of a site; the link stays.</td></tr>
       <tr><td><code>publish_file</code></td><td>Upload a file by fetching it from a URL.</td></tr>
-      <tr><td><code>publish_site</code></td><td>Publish a single-page or multi-file static HTML site.</td></tr>
       <tr><td><code>delete_resource</code></td><td>Delete an HTML page, site, KV store, JSON document, or file using the owner token.</td></tr>
-      <tr><td><code>get_page</code></td><td>Fetch the content of a published HTML page by namespace + ID.</td></tr>
-      <tr><td><code>get_stats</code></td><td>Platform-wide usage statistics (pages, files, storage, daily totals).</td></tr>
+      <tr><td><code>get_page</code></td><td>Read a published page, a JSON document or a KV value by namespace + ID.</td></tr>
+      <tr><td><code>get_stats</code></td><td>Platform-wide counts of publications created, deleted and viewed, today and all time.</td></tr>
     </tbody>
   </table>
 </div>
@@ -54,7 +54,7 @@
 <div>
   <h2>Install</h2>
   <p>
-    Remote (no install): add <code>https://brewpage.app/mcp</code> as a remote MCP server (Streamable HTTP, no authentication, same 32 tools): a custom connector in Claude.ai and Claude Desktop, a custom MCP server in ChatGPT, or any Streamable HTTP client. Setup for every AI tool: <a href="https://brewpage.app/integrations">brewpage.app/integrations</a>.
+    Remote (no install): add <code>https://brewpage.app/mcp</code> as a remote MCP server (Streamable HTTP, no authentication, same 25 tools): a custom connector in Claude.ai and Claude Desktop, a custom MCP server in ChatGPT, or any Streamable HTTP client. Setup for every AI tool: <a href="https://brewpage.app/integrations">brewpage.app/integrations</a>.
   </p>
   <p>
     Local package, for clients that only start local servers (needs Node.js). Add this snippet to the client's MCP configuration (Claude Desktop, Codex CLI, Cursor, Cline):
@@ -63,7 +63,7 @@
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@1.23.1"]
+      "args": ["-y", "brewpage-mcp@2.0.0"]
     }
   }
 }</code></pre>

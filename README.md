@@ -49,7 +49,7 @@ Choosing a host? See how BrewPage compares with GitHub Pages, Netlify Drop, Tiin
 
 ## Why this matters for LLMs and agents
 
-AI agents frequently need to share structured outputs -- reports, artifacts, generated HTML, intermediate JSON state -- with users or downstream systems via a stable URL. BrewPage provides that as a zero-setup REST API: one `POST` call, one URL back. No OAuth, no S3 bucket configuration, no infrastructure. The MCP server (`brewpage-mcp`) wraps the API into thirty-two typed tools that any MCP-compatible agent (Claude, Codex, Gemini, Cursor) can call directly.
+AI agents frequently need to share structured outputs -- reports, artifacts, generated HTML, intermediate JSON state -- with users or downstream systems via a stable URL. BrewPage provides that as a zero-setup REST API: one `POST` call, one URL back. No OAuth, no S3 bucket configuration, no infrastructure. The MCP server (`brewpage-mcp`) wraps the API into 25 typed tools that any MCP-compatible agent (Claude, Codex, Gemini, Cursor) can call directly.
 
 ## Quick Start
 
@@ -175,7 +175,7 @@ Both imports run in one step and neither output is hand-edited: `node scripts/sy
 
 ## MCP Server
 
-The `brewpage-mcp` package provides a Model Context Protocol server with **32 tools** for AI-assisted content publishing and management. Selected tools appear below; see [`mcp-server/README.md`](mcp-server/README.md) for the complete list and documentation.
+The `brewpage-mcp` package provides a Model Context Protocol server with **25 tools** for AI-assisted content publishing and management. Selected tools appear below; see [`mcp-server/README.md`](mcp-server/README.md) for the complete list and documentation. Tool names of 1.x that left the list in 2.0.0 (`publish_site`, `set_visibility` and six more) are still callable; the MCP README maps each to its current tool.
 
 Package releases use `.github/workflows/release.yml` with package-scoped npm Trusted Publisher/OIDC for `kochetkov-ma/brewpage-openapi`, workflow `release.yml`, without an environment. CI needs no `NPM_TOKEN`, manual npm login or static-token rotation. Local `npm whoami` does not validate GitHub Actions OIDC authentication. Publication to the official MCP registry (`io.github.kochetkov-ma/brewpage-mcp`) is automatic via GitHub OIDC in the same workflow; no local `mcp-publisher` token is needed.
 
@@ -189,29 +189,27 @@ Rerunning historical tag workflows that used token authentication is unsupported
 
 | Tool | Description |
 |------|-------------|
-| `publish_html` | Publish HTML, Markdown, code or JSON content with optional password, TTL, filename, and top toolbar |
+| `publish_html` | Publish a page (HTML, Markdown, code or JSON) or a multi-file static site, with optional password, TTL and tags |
+| `update_html` | Replace the content of a page or every file of a site; the link stays |
 | `publish_file` | Upload a file from a URL |
-| `publish_site` | Publish a single-page or multi-file HTML site |
 | `delete_resource` | Delete any resource (HTML, site, KV, JSON, file) by owner token |
-| `set_visibility` | List or unlist a public publication in the gallery and sitemap |
+| `set_publication` | Change settings of a publication: list or unlist it, hide the badge (up to 5 per profile), rename it, set or remove a password, keep it longer, change its delivery mode |
 | `make_private` | Make a public publication private: new private link, the public link stops working |
-| `set_badge` | Hide or show the BrewPage badge on a publication of your profile, up to 5 hidden |
-| `set_title` | Rename an HTML page or site; the title stays on republish |
 | `set_domain` | Connect a domain you own to an HTML page or site; returns the DNS records to create |
 | `check_domain` | Run a DNS check once the records exist; status `pending_dns` -> `verifying` -> `active` |
 | `list_domains` | Read one custom domain's status and DNS records without a check, or list the profile's custom domains |
 | `remove_domain` | Remove a custom domain; the BrewPage link keeps working |
 | `get_guide` | Read a short guide: Page data before writing a page that saves what visitors enter, or the custom-domain steps |
-| `get_page_data` | Read what visitors saved on your page: settings and usage, or one list's entries |
+| `get_page_data` | Read what visitors saved on your page: settings and usage, one list's entries, its uploaded files, or totals per answer |
 | `set_page_data` | Write author entries (for example today's menu) without republishing |
-| `configure_page_data` | Change who can read a list and its limits |
-| `delete_page_data` | Delete entries by id or by time range |
-| `get_page` | Fetch a published HTML page and its content |
+| `configure_page_data` | Turn Page data on or off, change who can read a list and its limits |
+| `delete_page_data` | Delete entries or files by id, by time range, or a whole list |
+| `get_page` | Read a published page, a JSON document or a KV value |
 | `get_stats` | Get platform-wide usage statistics |
 
 ### Remote (no install)
 
-One remote MCP server for every client: `https://brewpage.app/mcp` (Streamable HTTP, no authentication, same 32 tools). Add it by URL in Claude (a custom connector), ChatGPT (a custom MCP server) or any Streamable HTTP client.
+One remote MCP server for every client: `https://brewpage.app/mcp` (Streamable HTTP, no authentication, same 25 tools). Add it by URL in Claude (a custom connector), ChatGPT (a custom MCP server) or any Streamable HTTP client.
 
 Claude Code: `claude mcp add --transport http brewpage --scope user https://brewpage.app/mcp` (leave out `--scope user` to add it to the current project only), or in `.mcp.json`:
 
@@ -244,7 +242,7 @@ Local fallback (stdio, needs Node.js; the same tools): add to `~/Library/Applica
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@1.23.1"]
+      "args": ["-y", "brewpage-mcp@2.0.0"]
     }
   }
 }
@@ -259,7 +257,7 @@ The remote command above is the default. Local fallback (stdio, needs Node.js): 
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@1.23.1"]
+      "args": ["-y", "brewpage-mcp@2.0.0"]
     }
   }
 }
@@ -318,7 +316,7 @@ BrewPage is described using [schema.org/SoftwareApplication](https://schema.org/
 |-----------|-------------|
 | OpenAPI 3.1 spec | Complete API contract for all public endpoints (YAML + JSON) |
 | Interactive docs | Astro + Scalar documentation site (GitHub Pages) |
-| MCP server | `brewpage-mcp` -- Claude Desktop/Code integration (32 tools) |
+| MCP server | `brewpage-mcp` -- Claude Desktop/Code integration (25 tools) |
 | Wiki | Code snippets, cheatsheet, tips & tricks |
 | Release notes | Changelog for API and public tooling |
 
