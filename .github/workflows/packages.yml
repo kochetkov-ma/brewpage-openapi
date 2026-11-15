@@ -164,3 +164,4 @@ jobs:
           tag_name: ${{ github.ref_name }}
           name: Page data packages ${{ steps.pack.outputs.version }}
           body_path: ${{ runner.temp }}/notes.md
+          make_latest: false
