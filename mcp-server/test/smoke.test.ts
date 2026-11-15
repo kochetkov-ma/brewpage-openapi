@@ -20,6 +20,17 @@ const EXPECTED_TOOL_NAMES = [
 const PACKAGE_VERSION = (JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8")) as { version: string }).version;
 const ENV_TOKEN = "EnvOwnerToken0123456789abcdefABC";
 
+/** `Next:` line of a failed API call when the tool knows no closer step, by HTTP status. */
+function defaultNext(status: number): string {
+  if (status >= 500) return "Next: temporary: repeat the same call once after a short wait; if it fails again, tell the user.";
+  if (status === 429) return "Next: rate limit: wait for Retry-After (about a minute when none is given), then repeat once; do not loop.";
+  if (status === 404) return "Next: nothing at this address: check namespace and id (and type); an expired or deleted publication does not come back.";
+  if (status === 413) return "Next: too large: shorten or split the content; get_limits shows the size limits.";
+  if (status === 401 || status === 403) return "Next: refused: the server answer says why; the same call again does not help.";
+  return "Next: the answer above names what to change; change it and repeat. The same call again fails the same way.";
+}
+const NO_OWNER_TOKEN_NEXT = "Next: pass ownerToken (local server: or set BREWPAGE_OWNER_TOKEN).";
+
 const NEW_RESPONSE = {
   id: "aBcDeFgHiJ", namespace: "public", ownerToken: "fixture-owner",
   link: "https://public-z9y8x7w6v5.brewpage.app/", url: "https://brewpage.app/stale-alias",
@@ -79,7 +90,7 @@ const DOMAIN_APEX_LINES = [
 const DOMAIN_LOST_ITEM = { ...DOMAIN_ACTIVE_ITEM, status: "lost", problem: "NOT_ELIGIBLE_PASSWORD", provider: "porkbun", graceEndsAt: "2026-11-13T00:00:00Z" };
 const DOMAIN_LOST_LINES = [
   "Domain: www.example.com", "Status: lost",
-  'Problem: NOT_ELIGIBLE_PASSWORD (the publication cannot take a custom domain now: remove the password (management link, or POST /api/{html|sites}/{ns}/{id}/password {"password":null}))',
+  "Problem: NOT_ELIGIBLE_PASSWORD (the publication cannot take a custom domain now: remove the password (set_publication with `password: null`, or the user removes it on the management link))",
   "Serving: true", "Domain URL: https://www.example.com/", `Shows: html public/aBcDeFgHiJ · ${NEW_RESPONSE.link}`, "DNS provider: porkbun",
   "Served until (graceEndsAt): 2026-11-13T00:00:00Z", "DNS records (records[], verbatim):",
   ...DOMAIN_LOST_ITEM.records.map((record) => `  ${JSON.stringify(record)}`),
@@ -494,8 +505,8 @@ for (const error of [
     const result = await f.call("update_hosting", { type: "html", namespace: "public", id: "aBcDeFgHiJ", ownerToken: "fixture-owner", deliveryMode: "path", expectedVersion: 1 });
     // THEN status/code remain visible and the call is not retried.
     assert.equal(result.isError, true, "server failure becomes a tool error");
-    const hint = error.status === 403 ? "\nWrong owner token for this publication. Use ownerToken from create." : "";
-    assert.equal(result.content[0].text, `Failed to update hosting (${error.status}): ${JSON.stringify({ code: error.code })}${hint}`, "status and code are retained exactly");
+    const next = error.status === 403 ? "Next: Wrong owner token for this publication. Use ownerToken from create." : defaultNext(error.status);
+    assert.equal(result.content[0].text, `Failed to update hosting (${error.status}): ${JSON.stringify({ code: error.code })}\n${next}`, "status, code and the next step are retained exactly");
     assert.equal(f.requests.length, 1, "failed mutation is not retried");
   });
 }
@@ -621,14 +632,15 @@ test("get_page keeps JSON HTTP errors and password headers without returning con
   // WHEN get_page attempts password-authenticated reading.
   const result = await f.call("get_page", { namespace: "public", id: "aBcDeFgHiJ", password: "fixture-password" });
   // THEN structured error semantics and request credential transport remain unchanged.
-  assert.deepEqual(result, { content: [{ type: "text", text: 'Failed to fetch page (403): {"code":"PASSWORD_REQUIRED","message":"Password required"}' }], isError: true }, "HTTP failure remains an exact MCP tool error");
+  assert.deepEqual(result, { content: [{ type: "text", text: 'Failed to fetch page (403): {"code":"PASSWORD_REQUIRED","message":"Password required"}\n' +
+    "Next: if it has a password, ask the user for it and send it as `password`; without it the content cannot be read." }], isError: true }, "HTTP failure remains an exact MCP tool error");
   assert.equal(f.requests[0].headers["x-password"], "fixture-password", "password stays in its existing request header");
 });
 
 for (const scenario of [
   { status: 200, body: { requestMaxBytes: 26214400, sites: { maxFiles: 200 } }, isError: undefined,
     text: `BrewPage limits (sizes in bytes, TTLs in days):\n\n${JSON.stringify({ requestMaxBytes: 26214400, sites: { maxFiles: 200 } }, null, 2)}` },
-  { status: 429, body: { status: 429 }, isError: true, text: `Failed to fetch limits (429): ${JSON.stringify({ status: 429 })}` },
+  { status: 429, body: { status: 429 }, isError: true, text: `Failed to fetch limits (429): ${JSON.stringify({ status: 429 })}\n${defaultNext(429)}` },
 ]) {
   test(`get_limits reads GET /api/limits and relays a ${scenario.status} answer verbatim`, { timeout: 10_000 }, async (t) => {
     // GIVEN synthetic limits endpoint answering with the scenario status.
@@ -685,12 +697,11 @@ for (const scenario of [
 
 const BUSY = { status: 503, error: "Service Unavailable" };
 for (const scenario of [
-  { tool: "publish_html", args: () => ({ content: "<h1>Fixture</h1>" }), text: `Failed to publish: ${JSON.stringify(BUSY)} Retry-After: 1.` },
-  { tool: "publish_file", args: (base: string) => ({ url: `${base}/source-file` }), text: `Failed to upload file: ${JSON.stringify(BUSY)} Retry-After: 1.` },
-  { tool: "publish_site", args: () => ({ entryContent: "<h1>Fixture</h1>" }), text: `Failed to publish site: ${JSON.stringify(BUSY)} Retry-After: 1.` },
-  { tool: "republish_site", args: () => ({ namespace: "public", id: "aBcDeFgHiJ", entryContent: "<h1>Fixture</h1>", ownerToken: "fixture-owner" }),
-    text: `Failed to republish site (503): ${JSON.stringify(BUSY)} Retry-After: 1.` },
-]) {
+  { tool: "publish_html", args: () => ({ content: "<h1>Fixture</h1>" }), operation: "publish" },
+  { tool: "publish_file", args: (base: string) => ({ url: `${base}/source-file` }), operation: "upload file" },
+  { tool: "publish_site", args: () => ({ entryContent: "<h1>Fixture</h1>" }), operation: "publish site" },
+  { tool: "republish_site", args: () => ({ namespace: "public", id: "aBcDeFgHiJ", entryContent: "<h1>Fixture</h1>", ownerToken: "fixture-owner" }), operation: "republish site" },
+].map((scenario) => ({ ...scenario, text: `Failed to ${scenario.operation} (503): ${JSON.stringify(BUSY)} Retry-After: 1.\n${defaultNext(503)}` }))) {
   test(`${scenario.tool} prints Retry-After on a busy 503`, { timeout: 10_000 }, async (t) => {
     // GIVEN a busy API answering 503 with Retry-After.
     const f = await fixture(t);
@@ -795,18 +806,18 @@ for (const scenario of [
 }
 
 for (const scenario of [
-  { tool: "update_html", args: { namespace: "public", id: "aBcDeFgHiJ", content: "x" } },
-  { tool: "delete_resource", args: { type: "site", namespace: "public", id: "aBcDeFgHiJ" } },
-  { tool: "set_visibility", args: { type: "html", namespace: "public", id: "aBcDeFgHiJ", listed: false } },
-  { tool: "make_private", args: { type: "html", namespace: "public", id: "aBcDeFgHiJ" } },
-  { tool: "set_badge", args: { type: "html", namespace: "public", id: "aBcDeFgHiJ", hidden: true } },
-  { tool: "set_title", args: { type: "html", namespace: "public", id: "aBcDeFgHiJ", title: "Trip notes" } },
-  { tool: "bind_token", args: { token: "fixture-bound-token" } },
-  { tool: "search_gallery", args: { mine: true } },
-  { tool: "set_domain", args: { ...DOMAIN_PUBLICATION, hostname: "www.example.com" } },
-  { tool: "list_domains", args: {} },
-  { tool: "check_domain", args: { hostname: "www.example.com" } },
-  { tool: "remove_domain", args: DOMAIN_PUBLICATION },
+  { tool: "update_html", operation: "update HTML", args: { namespace: "public", id: "aBcDeFgHiJ", content: "x" } },
+  { tool: "delete_resource", operation: "delete", args: { type: "site", namespace: "public", id: "aBcDeFgHiJ" } },
+  { tool: "set_visibility", operation: "set visibility", args: { type: "html", namespace: "public", id: "aBcDeFgHiJ", listed: false } },
+  { tool: "make_private", operation: "make private", args: { type: "html", namespace: "public", id: "aBcDeFgHiJ" } },
+  { tool: "set_badge", operation: "set badge", args: { type: "html", namespace: "public", id: "aBcDeFgHiJ", hidden: true } },
+  { tool: "set_title", operation: "set title", args: { type: "html", namespace: "public", id: "aBcDeFgHiJ", title: "Trip notes" } },
+  { tool: "bind_token", operation: "bind token", args: { token: "fixture-bound-token" } },
+  { tool: "search_gallery", operation: "search gallery", args: { mine: true } },
+  { tool: "set_domain", operation: "set domain", args: { ...DOMAIN_PUBLICATION, hostname: "www.example.com" } },
+  { tool: "list_domains", operation: "list domains", args: {} },
+  { tool: "check_domain", operation: "check domain", args: { hostname: "www.example.com" } },
+  { tool: "remove_domain", operation: "remove domain", args: DOMAIN_PUBLICATION },
 ]) {
   test(`${scenario.tool} without any owner token fails before HTTP`, { timeout: 10_000 }, async (t) => {
     // GIVEN no argument and no configured default.
@@ -815,7 +826,7 @@ for (const scenario of [
     const result = await f.call(scenario.tool, scenario.args);
     // THEN it reports the missing token without calling the API.
     assert.deepEqual({ isError: result.isError, text: result.content[0].text, requests: f.requests.length },
-      { isError: true, text: "No owner token: pass ownerToken (local server: or set BREWPAGE_OWNER_TOKEN).", requests: 0 }, "missing token is a local error");
+      { isError: true, text: `Failed to ${scenario.operation} (refused): no owner token was sent.\n${NO_OWNER_TOKEN_NEXT}`, requests: 0 }, "missing token is a local error");
   });
 }
 
@@ -981,15 +992,15 @@ test("owner tool 403 names the configured default token in its hint", { timeout:
   const result = await f.call("update_html", { namespace: "public", id: "aBcDeFgHiJ", content: "x" });
   // THEN the hint says which token was sent.
   assert.equal(result.content[0].text, 'Failed to update HTML (403): {"code":"OWNER_AUTHORIZATION_FAILED"}\n' +
-    "Wrong owner token for this publication. Use ownerToken from create. Sent: BREWPAGE_OWNER_TOKEN.", "403 hint is exact");
+    "Next: Wrong owner token for this publication. Use ownerToken from create. Sent: BREWPAGE_OWNER_TOKEN.", "403 hint is exact");
 });
 
 for (const scenario of [
   { label: "no profile owns the publication", response: { code: "OWNER_AUTHORIZATION_FAILED", message: "Rename needs a profile" },
-    hint: "\nRename needs a profile: sign in at https://account.brewpage.app, add this publication's owner token with bind_token, then retry." },
+    hint: "\nNext: Rename needs a profile: sign in at https://account.brewpage.app, add this publication's owner token with bind_token, then retry." },
   { label: "wrong token", response: { code: "OWNER_AUTHORIZATION_FAILED", message: "Owner authorization failed" },
-    hint: "\nWrong owner token for this publication. Use ownerToken from create." },
-  { label: "title refused", response: { message: "content rejected", result: { code: "failed", action: "rejected" } }, hint: "" },
+    hint: "\nNext: Wrong owner token for this publication. Use ownerToken from create." },
+  { label: "title refused", response: { message: "content rejected", result: { code: "failed", action: "rejected" } }, hint: `\n${defaultNext(403)}` },
 ]) {
   test(`set_title 403 hint for ${scenario.label}`, { timeout: 10_000 }, async (t) => {
     // GIVEN a 403 answer to a rename.
@@ -1015,23 +1026,23 @@ const BADGE_HIDDEN_LIMIT = { status: 409, error: "Conflict", message: BADGE_LIMI
 const NOT_PUBLIC = { status: 409, error: "Conflict", message: "Only a public publication can be made private.", code: "NOT_PUBLIC" };
 const ROTATE_LIMITED = { status: 429, error: "Too Many Requests", message: "Try again later.", code: "ROTATE_LIMITED", retryAfterSeconds: 3600 };
 const WRONG_OWNER = { status: 403, error: "Forbidden", message: "Owner authorization failed", code: "OWNER_AUTHORIZATION_FAILED" };
-const WRONG_OWNER_HINT = "\nWrong owner token for this publication. Use ownerToken from create.";
+const WRONG_OWNER_HINT = "\nNext: Wrong owner token for this publication. Use ownerToken from create.";
 
 for (const scenario of [
   { tool: "set_badge", args: { ...OWNER_PUBLICATION, hidden: true }, response: BADGE_HIDDEN_LIMIT, headers: NO_ANSWER_HEADERS,
-    prefix: "Failed to set badge (409): ", tail: "" },
+    prefix: "Failed to set badge (409): ", tail: `\n${defaultNext(409)}` },
   { tool: "set_badge", args: { ...OWNER_PUBLICATION, hidden: true }, response: WRONG_OWNER, headers: NO_ANSWER_HEADERS,
     prefix: "Failed to set badge (403): ", tail: WRONG_OWNER_HINT },
   { tool: "make_private", args: { ...OWNER_PUBLICATION, namespace: "my-ns" }, response: NOT_PUBLIC, headers: NO_ANSWER_HEADERS,
-    prefix: "Failed to make private (409): ", tail: "" },
+    prefix: "Failed to make private (409): ", tail: `\n${defaultNext(409)}` },
   { tool: "make_private", args: OWNER_PUBLICATION, response: ROTATE_LIMITED, headers: { "Retry-After": "3600" },
-    prefix: "Failed to make private (429): ", tail: " Retry-After: 3600." },
+    prefix: "Failed to make private (429): ", tail: ` Retry-After: 3600.\n${defaultNext(429)}` },
   { tool: "make_private", args: OWNER_PUBLICATION, response: WRONG_OWNER, headers: NO_ANSWER_HEADERS,
     prefix: "Failed to make private (403): ", tail: WRONG_OWNER_HINT },
   { tool: "publish_html", args: { content: "<style>.bp-badge{display:none}</style>" }, response: BADGE_TAMPERING, headers: NO_ANSWER_HEADERS,
-    prefix: "Failed to publish: ", tail: "" },
+    prefix: "Failed to publish (403): ", tail: `\n${defaultNext(403)}` },
   { tool: "update_html", args: { namespace: "public", id: "aBcDeFgHiJ", ownerToken: "fixture-owner", content: "<style>.bp-badge{display:none}</style>" },
-    response: BADGE_TAMPERING, headers: NO_ANSWER_HEADERS, prefix: "Failed to update HTML (403): ", tail: "" },
+    response: BADGE_TAMPERING, headers: NO_ANSWER_HEADERS, prefix: "Failed to update HTML (403): ", tail: `\n${defaultNext(403)}` },
 ]) {
   test(`${scenario.tool} relays ${scenario.response.status} ${scenario.response.code} verbatim`, { timeout: 10_000 }, async (t) => {
     // GIVEN a refusal from the API.
@@ -1094,7 +1105,7 @@ for (const scenario of [
     assert.deepEqual({ isError: result.isError, text: result.content[0].text, requests: f.requests.length }, {
       isError: true, requests: 1,
       text: `Failed to ${scenario.operation} (409): ${JSON.stringify(scenario.body)}\n` +
-        `Read-only old publication: cannot be updated. ${scenario.how} A new publication gets a new URL ` +
+        `Next: Read-only old publication: cannot be updated. ${scenario.how} A new publication gets a new URL ` +
         "and owner token; the old URL keeps its old content until it expires." + scenario.extra,
     }, "frozen update is relayed verbatim and hinted once");
   });
@@ -1104,18 +1115,18 @@ const goneBody = (segment: string) => ({ status: 404, error: "Not Found", messag
 const wrongTypeBody = (method: string, type: string, route: string) => ({ status: 404, error: "Not Found",
   message: `Wrong type: this id is ${type}. Use ${method} ${route}.`, code: "WRONG_RESOURCE_TYPE", resourceUrl: `https://brewpage.app${route}` });
 for (const scenario of [
-  { tool: "update_html", operation: "update HTML", args: { content: "x" }, segment: "html", hint: "\nUse the publish_html tool to publish a new copy." },
-  { tool: "republish_site", operation: "republish site", args: { entryContent: "<h1>x</h1>" }, segment: "sites", hint: "\nUse the publish_site tool to publish a new copy." },
-  { tool: "update_json", operation: "update JSON", args: { json: { a: 1 } }, segment: "json", hint: "\nUse the publish_json tool to publish a new copy." },
-  { tool: "set_kv", operation: "set KV", args: { key: "k", value: "v" }, segment: "kv", hint: "\nUse the publish_kv tool to publish a new copy." },
-  { tool: "delete_resource", operation: "delete", args: { type: "html" }, segment: "html", hint: "" },
+  { tool: "update_html", operation: "update HTML", args: { content: "x" }, segment: "html", hint: "\nNext: Use the publish_html tool to publish a new copy." },
+  { tool: "republish_site", operation: "republish site", args: { entryContent: "<h1>x</h1>" }, segment: "sites", hint: "\nNext: Use the publish_site tool to publish a new copy." },
+  { tool: "update_json", operation: "update JSON", args: { json: { a: 1 } }, segment: "json", hint: "\nNext: Use the publish_json tool to publish a new copy." },
+  { tool: "set_kv", operation: "set KV", args: { key: "k", value: "v" }, segment: "kv", hint: "\nNext: Use the publish_kv tool to publish a new copy." },
+  { tool: "delete_resource", operation: "delete", args: { type: "html" }, segment: "html", hint: `\n${defaultNext(404)}` },
 ].map((row) => ({ ...row, body: goneBody(row.segment) as Record<string, unknown> })).concat([
   { tool: "update_html", operation: "update HTML", args: { content: "x" }, segment: "html",
     body: wrongTypeBody("PUT", "json", "/api/json/public/aBcDeFgHiJ"),
-    hint: "\nWrong type for this id: repeat the write at resourceUrl (https://brewpage.app/api/json/public/aBcDeFgHiJ)." },
+    hint: "\nNext: Wrong type for this id: repeat the write at resourceUrl (https://brewpage.app/api/json/public/aBcDeFgHiJ)." },
   { tool: "delete_resource", operation: "delete", args: { type: "html" }, segment: "html",
     body: wrongTypeBody("DELETE", "kv", "/api/kv/public/aBcDeFgHiJ"),
-    hint: "\nWrong type for this id: repeat the write at resourceUrl (https://brewpage.app/api/kv/public/aBcDeFgHiJ)." },
+    hint: "\nNext: Wrong type for this id: repeat the write at resourceUrl (https://brewpage.app/api/kv/public/aBcDeFgHiJ)." },
 ])) {
   test(`${scenario.tool} 404 ${scenario.body.code ?? "gone"} relays the server answer plus its hint`, { timeout: 10_000 }, async (t) => {
     // GIVEN a deleted or expired publication.
@@ -1165,7 +1176,7 @@ for (const scenario of [
     const result = await f.call(scenario.tool, scenario.args);
     // THEN the tool error carries the server answer verbatim and the wait.
     assert.deepEqual({ isError: result.isError, text: result.content[0].text },
-      { isError: true, text: `${scenario.prefix}${JSON.stringify(RATE_LIMITED)} Retry-After: 60.` }, "429 answer and Retry-After are relayed exactly");
+      { isError: true, text: `${scenario.prefix}${JSON.stringify(RATE_LIMITED)} Retry-After: 60.\n${defaultNext(429)}` }, "429 answer and Retry-After are relayed exactly");
   });
 }
 
@@ -1229,7 +1240,8 @@ for (const scenario of [
     // THEN each value is one encoded segment and dot segments never reach the API.
     assert.deepEqual({ requests: f.requests.map(({ method, url }) => `${method} ${url}`), refused }, {
       requests: Object.values(TRAVERSAL_ENCODED).map((encoded) => `${scenario.method} ${scenario.url(encoded)}`),
-      refused: DOT_SEGMENTS.map((value) => `Invalid path value ${JSON.stringify(value)}: empty, "." and ".." are not allowed.`),
+      refused: DOT_SEGMENTS.map((value) => `Failed to run ${scenario.tool} (refused): Invalid path value ${JSON.stringify(value)}: empty, "." and ".." are not allowed.\n` +
+        "Next: send namespace, id, key or hostname exactly as a result printed them."),
     }, "backend URL stays under its API prefix");
   });
 }
@@ -1262,7 +1274,7 @@ const DOMAIN_REFUSALS: DomainRefusal[] = [
     tail: `\n${NEEDS_PROFILE_HEAD}; it is the BREWPAGE_OWNER_TOKEN value in this server's settings${NEEDS_PROFILE_STEP}repeat this call${NEEDS_PROFILE_TAIL}` },
   { ...SET_REFUSAL, response: RATE_LIMITED, headers: { "Retry-After": "60" }, prefix: "Failed to set domain (429): ", tail: " Retry-After: 60." },
   { ...SET_REFUSAL, response: DOMAIN_NOT_ELIGIBLE, prefix: "Failed to set domain (409): ",
-    tail: '\nThis publication cannot take a custom domain: remove the password (management link, or POST /api/{html|sites}/{ns}/{id}/password {"password":null}).' },
+    tail: "\nThis publication cannot take a custom domain: remove the password (set_publication with `password: null`, or the user removes it on the management link)." },
   { ...SET_REFUSAL, response: DOMAIN_CODE(409, "NOT_ELIGIBLE", { reason: "OWNERSHIP" }), prefix: "Failed to set domain (409): ",
     tail: "\nThis publication cannot take a custom domain: add its owner token to the profile " +
       '(bind_token with an admin profile token, or "Add existing token" at https://account.brewpage.app/tokens).' },
@@ -1312,7 +1324,8 @@ const DOMAIN_REFUSALS: DomainRefusal[] = [
     tail: "\nNo custom domain there: list_domains shows the profile's custom domains; set_domain connects one." },
   { tool: "remove_domain", args: DOMAIN_BY_HOSTNAME, response: DOMAIN_NOT_FOUND, headers: NO_HEADERS, prefix: "Failed to remove domain (404): ",
     tail: "\nNo custom domain there: list_domains shows the profile's custom domains; set_domain connects one." },
-];
+// The hint of a row is its `Next:` line; a row without one gets the line of its status.
+].map((row) => ({ ...row, tail: row.tail.includes("\n") ? row.tail.replace("\n", "\nNext: ") : `${row.tail}\n${defaultNext(row.response.status)}` }));
 
 for (const scenario of DOMAIN_REFUSALS) {
   const reason = (scenario.response as { reason?: string }).reason;
@@ -1330,13 +1343,13 @@ for (const scenario of DOMAIN_REFUSALS) {
 }
 
 for (const scenario of [
-  { tool: "check_domain", label: "no address", args: {} },
-  { tool: "check_domain", label: "hostname and publication", args: { ...DOMAIN_PUBLICATION, hostname: "www.example.com" } },
-  { tool: "check_domain", label: "partial publication", args: { type: "html", namespace: "public" } },
-  { tool: "remove_domain", label: "no address", args: {} },
-  { tool: "remove_domain", label: "hostname and id", args: { hostname: "www.example.com", id: "aBcDeFgHiJ" } },
-  { tool: "list_domains", label: "hostname and publication", args: { ...DOMAIN_PUBLICATION, hostname: "www.example.com" } },
-  { tool: "list_domains", label: "partial publication", args: { type: "site", id: "aBcDeFgHiJ" } },
+  { tool: "check_domain", operation: "check domain", label: "no address", args: {} },
+  { tool: "check_domain", operation: "check domain", label: "hostname and publication", args: { ...DOMAIN_PUBLICATION, hostname: "www.example.com" } },
+  { tool: "check_domain", operation: "check domain", label: "partial publication", args: { type: "html", namespace: "public" } },
+  { tool: "remove_domain", operation: "remove domain", label: "no address", args: {} },
+  { tool: "remove_domain", operation: "remove domain", label: "hostname and id", args: { hostname: "www.example.com", id: "aBcDeFgHiJ" } },
+  { tool: "list_domains", operation: "read domain", label: "hostname and publication", args: { ...DOMAIN_PUBLICATION, hostname: "www.example.com" } },
+  { tool: "list_domains", operation: "read domain", label: "partial publication", args: { type: "site", id: "aBcDeFgHiJ" } },
 ]) {
   test(`${scenario.tool} with ${scenario.label} fails before HTTP`, { timeout: 10_000 }, async (t) => {
     // GIVEN an owner token and arguments that name neither one hostname nor one publication.
@@ -1345,7 +1358,8 @@ for (const scenario of [
     const result = await f.call(scenario.tool, scenario.args);
     // THEN it explains both address forms without calling the API.
     assert.deepEqual({ isError: result.isError, text: result.content[0].text, requests: f.requests.length }, { isError: true, requests: 0,
-      text: "Provide either `hostname` (an admin profile token) or `type`, `namespace` and `id` (a profile token or an owner token added to the profile)." },
+      text: `Failed to ${scenario.operation} (refused): the call names the custom domain in two ways, or only in part.\n` +
+        "Next: pass either `hostname` (an admin profile token) or `type`, `namespace` and `id` (a profile token or an owner token added to the profile)." },
     "ambiguous domain address is a local error");
   });
 }
@@ -1617,22 +1631,26 @@ for (const scenario of [
   });
 }
 
-const NO_PAGE_ADDRESS = "Provide manageUrl (the page's management link), or namespace and id with ownerToken.";
-const NOT_A_MANAGE_LINK = "Not a management link. It looks like https://brewpage.app/manage/html/<namespace>/<id>#k=bpm_... and the part after # is required; a page link cannot stand in for it.";
-const MANAGE_LINK_MISMATCH = "manageUrl is for another publication than namespace and id. Send manageUrl alone.";
+/** Refusals before HTTP: the end of the failure's first line, then its `Next:` line. */
+const NO_PAGE_ADDRESS = "the call names no page.\nNext: pass manageUrl (the page's management link), or namespace and id with ownerToken.";
+const NOT_A_MANAGE_LINK = "manageUrl is not a management link.\n" +
+  "Next: pass the whole link, https://brewpage.app/manage/html/<namespace>/<id>#k=bpm_...: the part after # is required; a page link cannot stand in for it.";
+const MANAGE_LINK_MISMATCH = "manageUrl is for another publication than namespace and id.\nNext: send manageUrl alone.";
 const WITH_ENV_TOKEN = { BREWPAGE_OWNER_TOKEN: ENV_TOKEN };
+const PAGE_DATA_OPERATIONS: Record<string, string> = { get_page_data: "read page data", set_page_data: "write page data",
+  configure_page_data: "change page data settings", delete_page_data: "delete page data entries" };
 
 for (const scenario of [
   { label: "no address at all", env: {}, address: {}, text: NO_PAGE_ADDRESS },
   { label: "a namespace without an id", env: WITH_ENV_TOKEN, address: { namespace: "priv-abc123" }, text: NO_PAGE_ADDRESS },
   { label: "namespace and id without any owner token", env: {}, address: { namespace: "priv-abc123", id: "aBcDeFgHiJ" },
-    text: "No owner token: pass ownerToken or manageUrl (local server: or set BREWPAGE_OWNER_TOKEN)." },
+    text: "no owner token or management link was sent.\nNext: pass ownerToken or manageUrl (local server: or set BREWPAGE_OWNER_TOKEN)." },
   { label: "a page link as manageUrl", env: WITH_ENV_TOKEN, address: { ...PAGE, manageUrl: "https://priv-abc123-x.brewpage.app/" }, text: NOT_A_MANAGE_LINK },
   { label: "a management link without its key", env: WITH_ENV_TOKEN, address: { ...PAGE, manageUrl: MANAGE_LINK.split("#")[0] }, text: NOT_A_MANAGE_LINK },
   { label: "a management link with a cut key", env: WITH_ENV_TOKEN, address: { ...PAGE, manageUrl: MANAGE_LINK.slice(0, -3) }, text: NOT_A_MANAGE_LINK },
   { label: "text that is no link", env: WITH_ENV_TOKEN, address: { ...PAGE, manageUrl: "the management link" }, text: NOT_A_MANAGE_LINK },
   { label: "the management link of a KV store", env: WITH_ENV_TOKEN, address: { ...PAGE, manageUrl: MANAGE_LINK.replace("/html/", "/kv/") },
-    text: "Page data exists only on HTML pages and sites; this management link is for another kind of publication." },
+    text: "this management link is for another kind of publication.\nNext: Page data exists only on HTML pages and sites: pass the management link of the page or site." },
   { label: "a management link next to another namespace", env: WITH_ENV_TOKEN, address: { ...PAGE, namespace: "other", manageUrl: MANAGE_LINK }, text: MANAGE_LINK_MISMATCH },
   { label: "a management link next to another id", env: WITH_ENV_TOKEN, address: { ...PAGE, id: "ZyXwVuTsRq", manageUrl: MANAGE_LINK }, text: MANAGE_LINK_MISMATCH },
 ]) {
@@ -1647,7 +1665,8 @@ for (const scenario of [
     }
     // THEN every tool refuses with the same exact text, guesses no fallback credential and calls no API.
     assert.deepEqual({ tools: actual, requests: f.requests.length },
-      { tools: Object.fromEntries(PAGE_DATA_TOOL_CALLS.map((call) => [call.tool, { isError: true, text: scenario.text }])), requests: 0 },
+      { tools: Object.fromEntries(PAGE_DATA_TOOL_CALLS.map((call) => [call.tool,
+        { isError: true, text: `Failed to ${PAGE_DATA_OPERATIONS[call.tool]} (refused): ${scenario.text}` }])), requests: 0 },
       `${scenario.label} is refused before HTTP`);
   });
 }
@@ -1663,7 +1682,8 @@ for (const scenario of [
     const result = await f.call("delete_page_data", { ...PAGE, collection: "guestbook", ...scenario.args });
     // THEN nothing is deleted and the refusal says how to select.
     assert.deepEqual({ isError: result.isError, text: result.content[0].text, requests: f.requests.length },
-      { isError: true, text: "Provide `docIds`, or a time range (`after`, `before`). To empty a list send `before` with the current time.", requests: 0 },
+      { isError: true, text: "Failed to delete page data entries (refused): the call names no entries, or both `docIds` and a time range.\n" +
+        "Next: pass `docIds`, or a time range (`after`, `before`). To empty a list send `before` with the current time.", requests: 0 },
       `${scenario.label} never reaches the API`);
   });
 }
@@ -1684,15 +1704,16 @@ const ENTRY_SIZE_HINT = "Text and numbers only. The page's entry size limit is m
 const TOO_LARGE = { code: "STATE_TOO_LARGE", message: "This is too big to save in one entry. Make it shorter." };
 const STATE_RATE_LIMITED = { code: "STATE_RATE_LIMITED", message: "Too much at once. Try again in a moment.", retryAfterSeconds: 3 };
 const HUMAN_CHECK = { code: "STATE_CHALLENGE", siteKey: "1x00000000000000000000AA" };
+const HUMAN_CHECK_NEXT = "Next: the page asks for a human check that only a visitor's browser passes; repeating the call does not help.";
 const FOUR_DOCS = ["a", "b", "c", "d"].map((key) => ({ key, value: {} }));
 
 for (const scenario of [
   { tool: "set_page_data", label: "an entry over the size limit", args: { collection: "menu", docs: FOUR_DOCS }, failure: answer(413, TOO_LARGE),
-    text: [`Failed to write page data entry b (413): ${JSON.stringify(TOO_LARGE)}`, ENTRY_SIZE_HINT, "Saved before it: a (v1)", "Not attempted: c, d"] },
+    text: [`Failed to write page data entry b (413): ${JSON.stringify(TOO_LARGE)}`, `Next: ${ENTRY_SIZE_HINT}`, "Saved before it: a (v1)", "Not attempted: c, d"] },
   { tool: "set_page_data", label: "a human-check answer, relayed and never retried", args: { collection: "menu", docs: FOUR_DOCS }, failure: answer(429, HUMAN_CHECK),
-    text: [`Failed to write page data entry b (429): ${JSON.stringify(HUMAN_CHECK)}`, "Saved before it: a (v1)", "Not attempted: c, d"] },
+    text: [`Failed to write page data entry b (429): ${JSON.stringify(HUMAN_CHECK)}`, HUMAN_CHECK_NEXT, "Saved before it: a (v1)", "Not attempted: c, d"] },
   { tool: "delete_page_data", label: "a rate limit", args: { collection: "guestbook", docIds: ["d1", "d2", "d3"] }, failure: answer(429, STATE_RATE_LIMITED, { "Retry-After": "3" }),
-    text: [`Failed to delete page data entry d2 (429): ${JSON.stringify(STATE_RATE_LIMITED)} Retry-After: 3.`, "Deleted before it: 1 entry", "Not attempted: d3"] },
+    text: [`Failed to delete page data entry d2 (429): ${JSON.stringify(STATE_RATE_LIMITED)} Retry-After: 3.`, defaultNext(429), "Deleted before it: 1 entry", "Not attempted: d3"] },
 ]) {
   test(`${scenario.tool} batch stops at ${scenario.label} and reports done, failed and not attempted`, { timeout: 10_000 }, async (t) => {
     // GIVEN a batch whose second item the server refuses.
@@ -1714,7 +1735,7 @@ test("the hint of an entry over the size limit names the setting and states no n
   const result = await f.call("set_page_data", { ...PAGE, collection: "menu", docs: [{ key: "today", value: {} }] });
   // THEN the hint points at the page's own setting instead of quoting a size.
   const hint = result.content[0].text.split("\n")[1];
-  assert.deepEqual({ isError: result.isError, hint, digits: hint.replace(/\D/g, "") }, { isError: true, hint: ENTRY_SIZE_HINT, digits: "" },
+  assert.deepEqual({ isError: result.isError, hint, digits: hint.replace(/\D/g, "") }, { isError: true, hint: `Next: ${ENTRY_SIZE_HINT}`, digits: "" },
     "the size hint holds no number");
 });
 
@@ -1792,8 +1813,9 @@ for (const scenario of [
 }
 
 const STATE_TOOL_CALLS = [
-  { tool: "publish_html", args: NEW_HTML }, { tool: "update_html", args: HTML_UPDATE }, { tool: "publish_site", args: NEW_SITE },
-  { tool: "republish_site", args: SITE_UPDATE }, { tool: "configure_page_data", args: PAGE },
+  { tool: "publish_html", operation: "publish", args: NEW_HTML }, { tool: "update_html", operation: "update HTML", args: HTML_UPDATE },
+  { tool: "publish_site", operation: "publish site", args: NEW_SITE }, { tool: "republish_site", operation: "republish site", args: SITE_UPDATE },
+  { tool: "configure_page_data", operation: "change page data settings", args: PAGE },
 ];
 
 for (const state of ["on", "[1]", "7"]) {
@@ -1807,9 +1829,10 @@ for (const state of ["on", "[1]", "7"]) {
       actual[call.tool] = { isError: result.isError, text: result.content[0].text };
     }
     // THEN each refuses with the shape hint and nothing is published or changed.
-    const text = "`state` is not a JSON object. Shape: {\"collections\":{\"answers\":{\"mode\":\"private\"}}}; {} is enough.";
+    const text = "`state` is not a JSON object.\nNext: send `state` as an object such as {\"collections\":{\"answers\":{\"mode\":\"private\"}}}; {} is enough.";
     assert.deepEqual({ tools: actual, requests: f.requests.length },
-      { tools: Object.fromEntries(STATE_TOOL_CALLS.map((call) => [call.tool, { isError: true, text }])), requests: 0 }, `${state} is refused before HTTP`);
+      { tools: Object.fromEntries(STATE_TOOL_CALLS.map((call) => [call.tool, { isError: true, text: `Failed to ${call.operation} (refused): ${text}` }])), requests: 0 },
+      `${state} is refused before HTTP`);
   });
 }
 
@@ -1849,38 +1872,38 @@ const NONE_SAVED = "Saved before it: none";
 
 for (const scenario of [
   { tool: "get_page_data", label: "404 with the owner token", address: PAGE, args: {}, route: answer(404, GONE_PAGE),
-    text: [`Failed to read page data (404): ${JSON.stringify(GONE_PAGE)}`, PAGE_NOT_FOUND_TOKEN] },
+    text: [`Failed to read page data (404): ${JSON.stringify(GONE_PAGE)}`, `Next: ${PAGE_NOT_FOUND_TOKEN}`] },
   { tool: "get_page_data", label: "404 with the management link", address: { manageUrl: MANAGE_LINK }, args: { collection: "guestbook" }, route: answer(404, GONE_PAGE),
-    text: [`Failed to read page data entries (404): ${JSON.stringify(GONE_PAGE)}`, PAGE_NOT_FOUND_LINK] },
+    text: [`Failed to read page data entries (404): ${JSON.stringify(GONE_PAGE)}`, `Next: ${PAGE_NOT_FOUND_LINK}`] },
   { tool: "delete_page_data", label: "403 OWNER_AUTHORIZATION_FAILED with the owner token", address: PAGE, args: { collection: "guestbook", before: "2026-11-10T13:00:00Z" },
-    route: answer(403, NOT_OWNER), text: [`Failed to delete page data entries (403): ${JSON.stringify(NOT_OWNER)}`, PAGE_NOT_FOUND_TOKEN] },
+    route: answer(403, NOT_OWNER), text: [`Failed to delete page data entries (403): ${JSON.stringify(NOT_OWNER)}`, `Next: ${PAGE_NOT_FOUND_TOKEN}`] },
   { tool: "configure_page_data", label: "403 OWNER_AUTHORIZATION_FAILED with the management link", address: { manageUrl: MANAGE_LINK }, args: { state: POLL_STATE },
-    route: answer(403, NOT_OWNER), text: [`Failed to read page data settings (403): ${JSON.stringify(NOT_OWNER)}`, PAGE_NOT_FOUND_LINK] },
+    route: answer(403, NOT_OWNER), text: [`Failed to read page data settings (403): ${JSON.stringify(NOT_OWNER)}`, `Next: ${PAGE_NOT_FOUND_LINK}`] },
   { tool: "set_page_data", label: "400 STATE_INVALID", address: PAGE, args: ONE_DOC, route: answer(400, INVALID),
-    text: [`${WRITE_FAILED} (400): ${JSON.stringify(INVALID)}`, NONE_SAVED] },
+    text: [`${WRITE_FAILED} (400): ${JSON.stringify(INVALID)}`, defaultNext(400), NONE_SAVED] },
   { tool: "configure_page_data", label: "409 STATE_MODE_WIDENING", address: PAGE, args: { state: { collections: { drafts: { mode: "shared" } } } },
-    route: afterRead(answer(409, WIDENING)), text: [`Failed to change page data settings (409): ${JSON.stringify(WIDENING)}`] },
+    route: afterRead(answer(409, WIDENING)), text: [`Failed to change page data settings (409): ${JSON.stringify(WIDENING)}`, defaultNext(409)] },
   { tool: "set_page_data", label: "413 STATE_TOO_LARGE", address: PAGE, args: ONE_DOC, route: answer(413, TOO_LARGE),
-    text: [`${WRITE_FAILED} (413): ${JSON.stringify(TOO_LARGE)}`, ENTRY_SIZE_HINT, NONE_SAVED] },
+    text: [`${WRITE_FAILED} (413): ${JSON.stringify(TOO_LARGE)}`, `Next: ${ENTRY_SIZE_HINT}`, NONE_SAVED] },
   { tool: "set_page_data", label: "413 STATE_QUOTA", address: PAGE, args: ONE_DOC, route: answer(413, QUOTA),
-    text: [`${WRITE_FAILED} (413): ${JSON.stringify(QUOTA)}`, NONE_SAVED] },
+    text: [`${WRITE_FAILED} (413): ${JSON.stringify(QUOTA)}`, "Next: the page's Page data quota is full: delete_page_data frees room; get_page_data without `collection` shows the usage.", NONE_SAVED] },
   { tool: "set_page_data", label: "404 STATE_UNAVAILABLE on a page without settings", address: PAGE, args: ONE_DOC, route: answer(404, UNAVAILABLE),
-    text: [`${WRITE_FAILED} (404): ${JSON.stringify(UNAVAILABLE)}`, "Turn on page data first: configure_page_data, or publish with \"state\".", NONE_SAVED] },
+    text: [`${WRITE_FAILED} (404): ${JSON.stringify(UNAVAILABLE)}`, "Next: Turn on page data first: configure_page_data, or publish with \"state\".", NONE_SAVED] },
   { tool: "set_page_data", label: "429 STATE_RATE_LIMITED", address: PAGE, args: ONE_DOC, route: answer(429, STATE_RATE_LIMITED, { "Retry-After": "3" }),
-    text: [`${WRITE_FAILED} (429): ${JSON.stringify(STATE_RATE_LIMITED)} Retry-After: 3.`, NONE_SAVED] },
+    text: [`${WRITE_FAILED} (429): ${JSON.stringify(STATE_RATE_LIMITED)} Retry-After: 3.`, defaultNext(429), NONE_SAVED] },
   { tool: "get_page_data", label: "503 STATE_UNAVAILABLE while page data is switched off", address: PAGE, args: {}, route: answer(503, UNAVAILABLE, { "Retry-After": "300" }),
-    text: [`Failed to read page data (503): ${JSON.stringify(UNAVAILABLE)} Retry-After: 300.`] },
+    text: [`Failed to read page data (503): ${JSON.stringify(UNAVAILABLE)} Retry-After: 300.`, defaultNext(503)] },
   { tool: "set_page_data", label: "409 OLD_PUBLICATION_READ_ONLY", address: PAGE, args: ONE_DOC, route: answer(409, OLD_PAGE),
-    text: [`${WRITE_FAILED} (409): ${JSON.stringify(OLD_PAGE)}`, OLD_PAGE_HINT, NONE_SAVED] },
+    text: [`${WRITE_FAILED} (409): ${JSON.stringify(OLD_PAGE)}`, `Next: ${OLD_PAGE_HINT}`, NONE_SAVED] },
   ...[
     { status: 403, body: { code: "STATE_CROSS_ORIGIN", message: "Page data can be used only from the page itself." } },
     { status: 429, body: HUMAN_CHECK },
     { status: 403, body: { code: "STATE_MODE_FORBIDDEN", message: "Only the page's author can change this list." } },
     { status: 422, body: { code: "STATE_VALUE_REFUSED", message: "This can't be saved in a shared list. Use text and numbers, and link to files instead of embedding them." } },
   ].map(({ status, body }) => ({ tool: "set_page_data", label: `${status} ${body.code}, a visitor-side answer`, address: PAGE, args: ONE_DOC,
-    route: answer(status, body), text: [`${WRITE_FAILED} (${status}): ${JSON.stringify(body)}`, NONE_SAVED] })),
+    route: answer(status, body), text: [`${WRITE_FAILED} (${status}): ${JSON.stringify(body)}`, body === HUMAN_CHECK ? HUMAN_CHECK_NEXT : defaultNext(status), NONE_SAVED] })),
 ]) {
-  test(`${scenario.tool} relays ${scenario.label} verbatim with at most its one hint`, { timeout: 10_000 }, async (t) => {
+  test(`${scenario.tool} relays ${scenario.label} verbatim with its one Next line`, { timeout: 10_000 }, async (t) => {
     // GIVEN a page-data route that refuses the call.
     const f = await fixture(t);
     f.routeWith(scenario.route);

@@ -21,6 +21,10 @@ const INITIALIZE = { jsonrpc: "2.0", id: 1, method: "initialize",
   params: { protocolVersion: "2025-06-18", capabilities: {}, clientInfo: { name: "http-test", version: "0.0.0" } } };
 const LIMITS = { maxFileSizeBytes: 5242880 };
 const SOURCE_REFUSED = "Source URL refused: private or reserved address.";
+/** publish_file answer when the source download fails: the download's own message, then the step that works. */
+const sourceFailure = (message: string) => `Failed to upload file (source): ${message}\n` +
+  "Next: `url` must be a public http(s) address that answers without sign-in; a local path, a sandbox path or pasted content cannot be fetched. " +
+  "Text you hold (HTML, Markdown, code) publishes with publish_html `content`. The same URL again helps only after a time-out or a download limit.";
 const MIB = 1024 * 1024;
 
 interface RequestSnapshot { method: string; url: string; headers: IncomingHttpHeaders }
@@ -360,7 +364,7 @@ for (const target of ["http://127.0.0.1:{port}/source-file", "http://169.254.169
     const result = await client.callTool({ name: "publish_file", arguments: { url, namespace: "public" } });
     // THEN the download is refused and nothing reaches the backend or the source.
     assert.deepEqual({ result, backend: f.requests.length },
-      { result: { content: [{ type: "text", text: SOURCE_REFUSED }], isError: true }, backend: 0 }, `${url} is never fetched`);
+      { result: { content: [{ type: "text", text: sourceFailure(SOURCE_REFUSED) }], isError: true }, backend: 0 }, `${url} is never fetched`);
   });
 }
 
@@ -478,7 +482,7 @@ test("publish_file download budget is 10 per client address", { timeout: 15_000 
     texts.push(result.content[0].text);
   }
   // THEN the 11th is refused before any fetch.
-  assert.deepEqual(texts, [...Array(10).fill(SOURCE_REFUSED), "Download limit reached for this address; try again in a few minutes."],
+  assert.deepEqual(texts, [...Array(10).fill(sourceFailure(SOURCE_REFUSED)), sourceFailure("Download limit reached for this address; try again in a few minutes.")],
     "budget stops the 11th download");
 });
 
