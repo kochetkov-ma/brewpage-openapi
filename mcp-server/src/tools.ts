@@ -148,8 +148,15 @@ const PAGE_DATA_TURN_ON = "Turn on page data first: configure_page_data, or publ
 const PAGE_DATA_ENTRY_SIZE = "Text and numbers only. The page's entry size limit is maxDocBytes in its settings (get_page_data without collection shows them).";
 const PAGE_DATA_QUOTA_FULL = "the page's Page data quota is full: delete_page_data frees room; get_page_data without `collection` shows the usage.";
 const PAGE_DATA_HUMAN_CHECK = "the page asks for a human check that only a visitor's browser passes; repeating the call does not help.";
-const DELETE_SELECTOR_ERROR: Refusal = { why: "the call names no entries, or both `docIds` and a time range.",
-  next: "pass `docIds`, or a time range (`after`, `before`). To empty a list send `before` with the current time." };
+const DELETE_SELECTOR_ERROR: Refusal = { why: "the call names nothing to delete, or more than one of `docIds`, `fileIds`, a time range and `all`.",
+  next: "pass exactly one: `docIds`, `fileIds`, a time range (`after`, `before`), or `all: true` for every entry and file of the list." };
+/** `before` bound of `all: true`: later than any stored entry or file. */
+const DELETE_ALL_BEFORE = "9999-12-31T23:59:59Z";
+const NEEDS_COLLECTION: Refusal = { why: "`countBy` and `include: files` read one list and `collection` was not sent.",
+  next: "send `collection`; get_page_data with the page address alone shows the lists." };
+const COUNT_BY_ALONE: Refusal = { why: "`countBy` was sent together with `cursor` or `include: files`.",
+  next: "send `countBy` with `collection` alone: totals have no pages and count entries, not files." };
+const FILES_ORDER: Refusal = { why: "files are ordered by `createdAt` or `-createdAt` only.", next: "send one of them as `order`, or leave `order` out." };
 const CONTENT_OR_FILES: Refusal = { why: "`content` and `files` were both sent, or neither.",
   next: "send exactly one of `content` (a page) or `files` (a site)." };
 const PAGE_ONLY_ARGUMENT: Refusal = { why: "`format`, `filename` and `showTopBar` belong to a page and were sent with `files`.",
@@ -212,8 +219,33 @@ function pageDataPublishLines(data: Record<string, unknown>, state?: Record<stri
   return [`Page data: on${lists.length ? ` - lists: ${lists.join(", ")}` : ""}`, PAGE_DATA_SCRIPT_LINE];
 }
 
+/** Update result line for a `state` the server took: on with its lists, or off; none when no `state` was sent. */
+function pageDataUpdateLines(data: Record<string, unknown>, sent?: { value: Record<string, unknown> | null }): string[] {
+  if (!sent || notices(data).some((n) => STATE_NOT_TAKEN_CODES.has(n.code))) return [];
+  return sent.value === null ? ["Page data: off"] : pageDataPublishLines(data, sent.value).slice(0, 1);
+}
+
 function entriesText(count: number): string {
   return `${count} ${count === 1 ? "entry" : "entries"}`;
+}
+
+function filesText(count: number): string {
+  return `${count} ${count === 1 ? "file" : "files"}`;
+}
+
+/** Rows that fit the answer bound, whole; a first row over the bound alone is cut. */
+function rowsWithinBound(rows: string[]): string[] {
+  const kept: string[] = [];
+  let size = 0;
+  for (const row of rows) {
+    if (size + row.length + 1 > ENTRIES_TEXT_BOUND) {
+      if (kept.length === 0) kept.push(`${row.slice(0, ENTRY_CUT_CHARS)}...(+${row.length - ENTRY_CUT_CHARS} chars)`);
+      break;
+    }
+    kept.push(row);
+    size += row.length + 1;
+  }
+  return kept;
 }
 
 function bytesText(bytes: number): string {
@@ -221,29 +253,37 @@ function bytesText(bytes: number): string {
   return bytes < 1024 * 1024 ? `${Number((bytes / 1024).toFixed(1))} KiB` : `${Number((bytes / (1024 * 1024)).toFixed(1))} MiB`;
 }
 
-/** `{docs, bytes}` of a page-data answer; missing numbers read as 0. */
-function stateAmount(value: unknown): { docs: number; bytes: number } {
-  const { docs, bytes } = (isPlainObject(value) ? value : {}) as { docs?: unknown; bytes?: unknown };
-  return { docs: typeof docs === "number" ? docs : 0, bytes: typeof bytes === "number" ? bytes : 0 };
+/** `{docs, bytes, files, fileBytes}` of a page-data answer; missing numbers read as 0. */
+function stateAmount(value: unknown): { docs: number; bytes: number; files: number; fileBytes: number } {
+  const amount = (isPlainObject(value) ? value : {}) as Record<string, unknown>;
+  const number = (name: string) => typeof amount[name] === "number" ? amount[name] as number : 0;
+  return { docs: number("docs"), bytes: number("bytes"), files: number("files"), fileBytes: number("fileBytes") };
 }
 
-/** get_page_data overview (`StateConfigResponse`): usage, one line per list, settings, notices. */
-function pageDataOverviewLines(page: string, data: Record<string, unknown>, viaManageUrl: boolean): string[] {
+/** get_page_data overview (`StateConfigResponse`): usage, one line per list, settings, notices, then `csvLine` when a list exists. */
+function pageDataOverviewLines(page: string, data: Record<string, unknown>, viaManageUrl: boolean, csvLine: string): string[] {
   const usage = stateAmount(data.usage);
   const caps = stateAmount(data.caps);
   const lists = Array.isArray(data.collections) ? data.collections.filter(isPlainObject) : [];
+  const rules = isPlainObject(data.config) && isPlainObject(data.config.collections) ? data.config.collections : {};
+  const takesFiles = (name: unknown) => typeof name === "string" && isPlainObject(rules[name]) && rules[name].files === true;
   const lines = [`Page data: ${page}`];
   if (data.declared !== true) lines.push(`Page data is not set up on this page.`);
-  if (data.declared === true || usage.docs > 0) {
-    lines.push(`Usage: ${usage.docs} of ${caps.docs} entries - ${bytesText(usage.bytes)} of ${bytesText(caps.bytes)}`);
+  const shown = data.declared === true || usage.docs > 0 || usage.files > 0;
+  if (shown) {
+    const withFiles = usage.files > 0 || lists.some((list) => takesFiles(list.name));
+    lines.push(`Usage: ${usage.docs} of ${caps.docs} entries - ${bytesText(usage.bytes)} of ${bytesText(caps.bytes)}` +
+      (withFiles ? ` - ${usage.files} of ${filesText(caps.files)} - ${bytesText(usage.fileBytes)} of ${bytesText(caps.fileBytes)}` : ""));
     if (data.alert === true) lines.push(`ALERT: 80% or more of the quota is used.`);
     lines.push(...lists.map((list) => {
       const amount = stateAmount(list);
-      return `${list.name} - ${listRuleText(list)}${list.declared === false ? ", not declared" : ""} - ${entriesText(amount.docs)} - ${bytesText(amount.bytes)}`;
+      return `${list.name} - ${listRuleText(list)}${list.declared === false ? ", not declared" : ""} - ${entriesText(amount.docs)} - ${bytesText(amount.bytes)}` +
+        (amount.files > 0 || takesFiles(list.name) ? ` - ${filesText(amount.files)} - ${bytesText(amount.fileBytes)}` : "");
     }));
   }
   if (data.declared === true) lines.push(`Settings: ${JSON.stringify(data.config)}`);
   lines.push(...noticeLines(data, viaManageUrl));
+  if (shown && lists.length) lines.push(csvLine);
   return lines;
 }
 
@@ -1237,7 +1277,7 @@ export function createServer(options: ServerOptions = {}): McpServer {
         ];
         if (answer.expiresAt) lines.push(`Expires: ${answer.expiresAt}`);
         if (answer.result) lines.push(`Result: ${answer.result}`);
-        lines.push(...hostingResponseLines(answer));
+        lines.push(...pageDataUpdateLines(answer, sentState), ...hostingResponseLines(answer));
         if (answer.visibilityNotice) lines.push(``, String(answer.visibilityNotice));
         return textResult(lines.join("\n"));
       }
@@ -1252,14 +1292,8 @@ export function createServer(options: ServerOptions = {}): McpServer {
 
       if (!ok) return ownerFailure("update HTML", status, data, auth.fromEnv, answerHeaders);
 
-      return {
-        content: [
-          {
-            type: "text" as const,
-            text: formatUpdateResponse(data as Record<string, unknown>),
-          },
-        ],
-      };
+      const answer = data as Record<string, unknown>;
+      return textResult([formatUpdateResponse(answer), ...pageDataUpdateLines(answer, sentState)].join("\n"));
     }
   );
 
@@ -1808,6 +1842,11 @@ export function createServer(options: ServerOptions = {}): McpServer {
     return { ok: res.ok, status: res.status, data: await res.json().catch(() => null) as unknown, headers: res.headers };
   }
 
+  /** Names the credential header of a direct download; its value is never printed. */
+  function credentialHeaderText(target: PageTarget): string {
+    return target.viaManageUrl ? "the X-Manage-Key header (the key that ends the management link)" : "the X-Owner-Token header (the owner token)";
+  }
+
   const PAGE_ADDRESS_SCHEMA = {
     namespace: z.string().optional(),
     id: z.string().optional(),
@@ -1824,42 +1863,62 @@ export function createServer(options: ServerOptions = {}): McpServer {
       inputSchema: {
         ...PAGE_ADDRESS_SCHEMA,
         collection: z.string().optional().describe("List name"),
-        order: z.enum(["-createdAt", "createdAt", "-index", "index"]).optional().describe("Default -createdAt"),
+        order: z.enum(["-createdAt", "createdAt", "-updatedAt", "updatedAt", "-index", "index"]).optional().describe("Default -createdAt"),
         limit: z.number().int().min(1).max(100).optional().describe("Default 20"),
         cursor: z.string().optional().describe("`next` of the previous page"),
+        countBy: z.string().optional().describe("Field with declared `choices`: totals per value instead of entries"),
+        include: z.enum(["docs", "files"]).optional().describe("files = the list's uploaded files"),
       },
     },
-    async ({ namespace, id, ownerToken, manageUrl, collection, order, limit, cursor }) => {
+    async ({ namespace, id, ownerToken, manageUrl, collection, order, limit, cursor, countBy, include }) => {
       const target = pageTarget({ namespace, id, ownerToken, manageUrl });
       if ("refusal" in target) return refused("read page data", target.refusal);
+      const files = include === "files";
+      if (!collection && (countBy || files)) return refused("read page data", NEEDS_COLLECTION);
+      if (countBy && (cursor || files)) return refused("read page data", COUNT_BY_ALONE);
+      if (files && order !== undefined && order !== "-createdAt" && order !== "createdAt") return refused("read page data", FILES_ORDER);
+      const statePath = apiPath(target.namespace, target.id, "state");
       if (!collection) {
-        const { ok, status, data, headers } = await stateRequest("GET", apiPath(target.namespace, target.id, "state"), target);
+        const { ok, status, data, headers } = await stateRequest("GET", statePath, target);
         if (!ok) return pageDataFailure("read page data", status, data, target.viaManageUrl, headers);
-        return textResult(pageDataOverviewLines(target.page, (data ?? {}) as Record<string, unknown>, target.viaManageUrl).join("\n"));
+        const csvLine = `CSV of a list: GET ${baseUrl}${statePath}/<list>?format=csv with ${credentialHeaderText(target)}, or the Data tab of the management link.`;
+        return textResult(pageDataOverviewLines(target.page, (data ?? {}) as Record<string, unknown>, target.viaManageUrl, csvLine).join("\n"));
       }
-      const path = withQuery(apiPath(target.namespace, target.id, "state", collection),
-        [["order", order ?? "-createdAt"], ["limit", limit ?? 20], ["cursor", cursor || undefined]]);
-      const { ok, status, data, headers } = await stateRequest("GET", path, target);
-      if (!ok) return pageDataFailure("read page data entries", status, data, target.viaManageUrl, headers);
-      const { items, next } = (data ?? {}) as { items?: unknown; next?: unknown };
-      const entries = Array.isArray(items) ? items.filter(isPlainObject) : [];
-      const rows: string[] = [];
-      let size = 0;
-      for (const entry of entries) {
-        const row = JSON.stringify({ id: entry.id, key: entry.key, visitor: entry.visitor ?? null,
+      const listPath = apiPath(target.namespace, target.id, "state", collection);
+      if (countBy) {
+        const { ok, status, data, headers } = await stateRequest("GET", withQuery(`${listPath}/_stats`, [["countBy", countBy]]), target);
+        if (!ok) return pageDataFailure("read page data totals", status, data, target.viaManageUrl, headers);
+        const totals = (data ?? {}) as { count?: unknown; countBy?: unknown };
+        const counted = isPlainObject(totals.countBy) ? totals.countBy : undefined;
+        return textResult([`${collection} - ${entriesText(typeof totals.count === "number" ? totals.count : 0)}`,
+          ...(counted ? [`${String(counted.field)}: ${JSON.stringify(counted.counts ?? {})}`] : [])].join("\n"));
+      }
+      const what = files ? "read page data files" : "read page data entries";
+      const rowOf = files
+        ? (file: Record<string, unknown>) => JSON.stringify({ id: file.id, name: file.name ?? null, contentType: file.contentType,
+          sizeBytes: file.sizeBytes, visitor: file.visitor ?? null, createdAt: file.createdAt, url: file.url ?? null })
+        : (entry: Record<string, unknown>) => JSON.stringify({ id: entry.id, key: entry.key, visitor: entry.visitor ?? null,
           createdAt: entry.createdAt, updatedAt: entry.updatedAt, value: entry.value ?? null });
-        if (size + row.length + 1 > ENTRIES_TEXT_BOUND) {
-          // One GET per call: an entry over the bound alone is cut, later ones wait for the next call.
-          if (rows.length === 0) rows.push(`${row.slice(0, ENTRY_CUT_CHARS)}...(+${row.length - ENTRY_CUT_CHARS} chars)`);
-          break;
-        }
-        rows.push(row);
-        size += row.length + 1;
+      const read = async (size: number) => {
+        const path = withQuery(files ? `${listPath}/_files` : listPath, [["order", order ?? "-createdAt"], ["limit", size], ["cursor", cursor || undefined]]);
+        const answer = await stateRequest("GET", path, target);
+        const { items, next } = (answer.data ?? {}) as { items?: unknown; next?: unknown };
+        return { ...answer, rows: (Array.isArray(items) ? items.filter(isPlainObject) : []).map(rowOf), next };
+      };
+      let page = await read(limit ?? 20);
+      if (!page.ok) return pageDataFailure(what, page.status, page.data, target.viaManageUrl, page.headers);
+      const fit = rowsWithinBound(page.rows);
+      let rows = fit;
+      if (fit.length < page.rows.length) {
+        // A page over the bound is read once more at the size that fits, so its own `next` continues without a gap.
+        page = await read(fit.length);
+        if (!page.ok) return pageDataFailure(what, page.status, page.data, target.viaManageUrl, page.headers);
+        rows = page.rows.length === 1 ? rowsWithinBound(page.rows) : page.rows;
       }
-      const header = rows.length < entries.length
-        ? `${collection} - ${rows.length} of ${entriesText(entries.length)} shown (size bound) - for the rest repeat with limit=${rows.length}, then follow its next`
-        : `${collection} - ${entriesText(entries.length)} - ${typeof next === "string" && next ? `next: ${next}` : "end"}`;
-      return textResult([header, ...(rows.length ? [UNTRUSTED_ENTRIES_LINE, ...rows] : [])].join("\n"));
+      const header = `${collection} - ${files ? filesText(rows.length) : entriesText(rows.length)} - ${typeof page.next === "string" && page.next ? `next: ${page.next}` : "end"}`;
+      const tail = files && rows.length
+        ? [`Download a file: GET ${baseUrl}${listPath}/_files/<id> with ${credentialHeaderText(target)}.`] : [];
+      return textResult([header, ...(rows.length ? [UNTRUSTED_ENTRIES_LINE, ...rows] : []), ...tail].join("\n"));
     }
   );
 
@@ -1931,8 +1990,10 @@ export function createServer(options: ServerOptions = {}): McpServer {
       const listsBefore = isPlainObject(before.collections) ? before.collections : {};
       const listsAfter = isPlainObject(answer.config) && isPlainObject(answer.config.collections) ? answer.config.collections : {};
       const named = isPlainObject(change.value.collections) ? change.value.collections : {};
+      const turnedOn = (read.data as { declared?: unknown } | null)?.declared !== true && answer.declared !== false;
       return textResult([
         `Page data settings saved.`,
+        ...(turnedOn ? ["Page data: on", PAGE_DATA_SCRIPT_LINE] : []),
         ...Object.entries(named).map(([name, rule]) => configuredListLine(name, rule, listsBefore[name], listsAfter[name])),
         `Settings: ${JSON.stringify(answer.config)}`,
         ...noticeLines(answer, target.viaManageUrl),
@@ -1944,41 +2005,48 @@ export function createServer(options: ServerOptions = {}): McpServer {
     "delete_page_data",
     {
       ...toolMeta("Delete page data entries", DESTRUCTIVE),
-      description: "Delete entries of one list for good: by `docIds`, or all created between `after` and `before` (one bound is enough).",
+      description: "Delete entries of one list for good: by `docIds`, by `fileIds`, all created between `after` and `before` (one bound is enough), or `all`.",
       inputSchema: {
         ...PAGE_ADDRESS_SCHEMA,
         collection: z.string(),
         docIds: z.array(z.string()).min(1).max(20).optional().describe("1-20 entry ids"),
+        fileIds: z.array(z.string()).min(1).max(20).optional().describe("1-20 file ids"),
         after: z.string().optional(),
         before: z.string().optional().describe("ISO 8601 time"),
+        all: z.boolean().optional(),
       },
     },
-    async ({ namespace, id, ownerToken, manageUrl, collection, docIds, after, before }) => {
+    async ({ namespace, id, ownerToken, manageUrl, collection, docIds, fileIds, after, before, all }) => {
       const target = pageTarget({ namespace, id, ownerToken, manageUrl });
       if ("refusal" in target) return refused("delete page data entries", target.refusal);
-      const byIds = docIds !== undefined && docIds.length > 0;
-      if (byIds === Boolean(after || before)) return refused("delete page data entries", DELETE_SELECTOR_ERROR);
-      if (!byIds) {
-        const path = withQuery(apiPath(target.namespace, target.id, "state", collection), [["after", after || undefined], ["before", before || undefined]]);
-        const { ok, status, data, headers } = await stateRequest("DELETE", path, target);
+      const byRange = Boolean(after || before);
+      if ([docIds !== undefined, fileIds !== undefined, byRange, all === true].filter(Boolean).length !== 1) {
+        return refused("delete page data entries", DELETE_SELECTOR_ERROR);
+      }
+      if (byRange || all === true) {
+        const bounds: Array<[string, string | undefined]> = all === true ? [["before", DELETE_ALL_BEFORE]] : [["after", after || undefined], ["before", before || undefined]];
+        const { ok, status, data, headers } = await stateRequest("DELETE", withQuery(apiPath(target.namespace, target.id, "state", collection), bounds), target);
         if (!ok) return pageDataFailure("delete page data entries", status, data, target.viaManageUrl, headers);
         const count = (data as { deleted?: unknown } | null)?.deleted;
-        return textResult(`Deleted ${entriesText(typeof count === "number" ? count : 0)} from ${collection}.`);
+        // The API counts entries and files of the range together.
+        return textResult(`Deleted ${count === 1 ? "1 entry or file" : `${typeof count === "number" ? count : 0} entries and files`} from ${collection}.`);
       }
+      const [ids, segment, noun, amount] = fileIds !== undefined
+        ? [fileIds, "_files", "file", filesText] as const : [docIds!, "docs", "entry", entriesText] as const;
       let deleted = 0;
       let gone = 0;
-      for (const [index, docId] of docIds.entries()) {
-        const path = apiPath(target.namespace, target.id, "state", collection, "docs", docId);
+      for (const [index, itemId] of ids.entries()) {
+        const path = apiPath(target.namespace, target.id, "state", collection, segment, itemId);
         const { ok, status, data, headers } = await stateRequest("DELETE", path, target);
         if (ok) deleted++;
         else if (status === 404 && (data as { code?: unknown } | null)?.code === "STATE_NOT_FOUND") gone++;
         else {
-          const rest = docIds.slice(index + 1);
-          return pageDataFailure(`delete page data entry ${docId}`, status, data, target.viaManageUrl, headers,
-            [`Deleted before it: ${entriesText(deleted)}${gone ? `; already gone: ${gone}` : ""}`, ...(rest.length ? [`Not attempted: ${rest.join(", ")}`] : [])]);
+          const rest = ids.slice(index + 1);
+          return pageDataFailure(`delete page data ${noun} ${itemId}`, status, data, target.viaManageUrl, headers,
+            [`Deleted before it: ${amount(deleted)}${gone ? `; already gone: ${gone}` : ""}`, ...(rest.length ? [`Not attempted: ${rest.join(", ")}`] : [])]);
         }
       }
-      return textResult(`Deleted ${entriesText(deleted)} from ${collection}.${gone ? ` Already gone: ${gone}.` : ""}`);
+      return textResult(`Deleted ${amount(deleted)} from ${collection}.${gone ? ` Already gone: ${gone}.` : ""}`);
     }
   );
 

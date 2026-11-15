@@ -1619,19 +1619,31 @@ const listRule = (mode: string, extra: Record<string, unknown> = {}) =>
 const STORED_SETTINGS = { captcha: "auto", maxDocBytes: 16384, maxDocsPerVisitor: 20, maxBytesPerVisitor: 32768,
   collections: { guestbook: listRule("shared", { maxDocsPerVisitor: 5 }), wall: listRule("shared"), drafts: listRule("private") } };
 const OVERVIEW = {
-  alert: true, caps: { docs: 5000, bytes: 1048576 }, usage: { docs: 132, bytes: 49152 }, declared: true, tier: "anonymous",
+  alert: true, caps: { docs: 5000, bytes: 1048576, files: 50, fileBytes: 104857600 }, usage: { docs: 132, bytes: 49152, files: 2, fileBytes: 2048 },
+  declared: true, tier: "anonymous",
   collections: [
-    { name: "guestbook", declared: true, mode: "shared", write: "visitors", docs: 120, bytes: 42000 },
-    { name: "menu", declared: true, mode: "shared", write: "author", docs: 1, bytes: 300 },
-    { name: "stray", declared: false, mode: "private", write: "visitors", docs: 11, bytes: 6852 },
+    { name: "guestbook", declared: true, mode: "shared", write: "visitors", docs: 120, bytes: 42000, files: 0, fileBytes: 0 },
+    { name: "menu", declared: true, mode: "shared", write: "author", docs: 1, bytes: 300, files: 0, fileBytes: 0 },
+    { name: "stray", declared: false, mode: "private", write: "visitors", docs: 11, bytes: 6852, files: 2, fileBytes: 2048 },
   ],
   config: STORED_SETTINGS, notices: [] as Array<{ code: string; message: string }>,
 };
+/** `{origin}` stands for the fixture API's origin in an expected result text. */
+const CSV_LINE = "CSV of a list: GET {origin}/api/priv-abc123/aBcDeFgHiJ/state/<list>?format=csv with the X-Owner-Token header (the owner token), " +
+  "or the Data tab of the management link.";
 const OVERVIEW_LINES = [
-  "Page data: priv-abc123/aBcDeFgHiJ", "Usage: 132 of 5000 entries - 48 KiB of 1 MiB", "ALERT: 80% or more of the quota is used.",
-  "guestbook - shared - 120 entries - 41 KiB", "menu - shared, author writes - 1 entry - 300 B", "stray - private, not declared - 11 entries - 6.7 KiB",
-  `Settings: ${JSON.stringify(STORED_SETTINGS)}`,
+  "Page data: priv-abc123/aBcDeFgHiJ", "Usage: 132 of 5000 entries - 48 KiB of 1 MiB - 2 of 50 files - 2 KiB of 100 MiB", "ALERT: 80% or more of the quota is used.",
+  "guestbook - shared - 120 entries - 41 KiB", "menu - shared, author writes - 1 entry - 300 B", "stray - private, not declared - 11 entries - 6.7 KiB - 2 files - 2 KiB",
+  `Settings: ${JSON.stringify(STORED_SETTINGS)}`, CSV_LINE,
 ];
+const FILES = [
+  { id: "f1", url: null, name: "cat.webp", contentType: "image/webp", sizeBytes: 1024, visitor: "a1b2c3", createdAt: "2026-11-10T10:00:00Z" },
+  { id: "f2", url: "https://priv-abc123-abcdefghij.brewpage.app/_bp/state/wall/_files/f2", name: null, contentType: "application/pdf", sizeBytes: 1024,
+    visitor: "d4e5f6", createdAt: "2026-11-10T09:00:00Z" },
+];
+const fileRow = ({ id, name, contentType, sizeBytes, visitor, createdAt, url }: typeof FILES[number]) =>
+  JSON.stringify({ id, name, contentType, sizeBytes, visitor, createdAt, url });
+const PAGE_DATA_SCRIPT_LINE = `Page script: <script src="https://brewpage.app/js/state.js"></script>`;
 interface StateEntry { key: string; id: string; visitor: string | null; version: number; sizeBytes: number; createdAt: string; updatedAt: string; value: unknown }
 const ENTRIES: StateEntry[] = [
   { key: "k1", id: "d1", visitor: "a1b2c3", version: 1, sizeBytes: 20, createdAt: "2026-11-10T10:00:00Z", updatedAt: "2026-11-10T10:00:00Z", value: { text: "hi" } },
@@ -1669,6 +1681,18 @@ for (const scenario of [
     text: ["scores - 1 entry - end", UNTRUSTED_ENTRIES_LINE, entryRow(ENTRIES[0])].join("\n") },
   { tool: "get_page_data", label: "an empty list", args: { collection: "guestbook" }, route: answer(200, { items: [], next: null }),
     requests: [byToken("GET", `${STATE_PATH}/guestbook?order=-createdAt&limit=20`)], text: "guestbook - 0 entries - end" },
+  { tool: "get_page_data", label: "entries by last change", args: { collection: "guestbook", order: "-updatedAt", limit: 1 },
+    route: answer(200, { items: ENTRIES.slice(1), next: "CUR2" }), requests: [byToken("GET", `${STATE_PATH}/guestbook?order=-updatedAt&limit=1`)],
+    text: ["guestbook - 1 entry - next: CUR2", UNTRUSTED_ENTRIES_LINE, entryRow(ENTRIES[1])].join("\n") },
+  { tool: "get_page_data", label: "countBy as the totals route", args: { collection: "votes", countBy: "choice" },
+    route: answer(200, { count: 3, scope: "all", countBy: { field: "choice", counts: { a: 2, b: 1, other: 0 } } }),
+    requests: [byToken("GET", `${STATE_PATH}/votes/_stats?countBy=choice`)], text: "votes - 3 entries\nchoice: {\"a\":2,\"b\":1,\"other\":0}" },
+  { tool: "get_page_data", label: "include files as the file list", args: { collection: "wall", include: "files", order: "createdAt", limit: 5, cursor: "CUR2" },
+    route: answer(200, { items: FILES, next: null }), requests: [byToken("GET", `${STATE_PATH}/wall/_files?order=createdAt&limit=5&cursor=CUR2`)],
+    text: ["wall - 2 files - end", UNTRUSTED_ENTRIES_LINE, ...FILES.map(fileRow),
+      "Download a file: GET {origin}/api/priv-abc123/aBcDeFgHiJ/state/wall/_files/<id> with the X-Owner-Token header (the owner token)."].join("\n") },
+  { tool: "get_page_data", label: "include files of a list without files", args: { collection: "wall", include: "files" },
+    route: answer(200, { items: [], next: null }), requests: [byToken("GET", `${STATE_PATH}/wall/_files?order=-createdAt&limit=20`)], text: "wall - 0 files - end" },
   { tool: "set_page_data", label: "one PUT per entry, falsy values included",
     args: { collection: "menu", docs: [{ key: "espresso", value: { price: 2 } }, { key: "count", value: 0 }, { key: "note", value: "" }] },
     route: ((_request, count) => ({ status: 200, body: { key: "stored", id: `d${count}`, version: count } })) as Route,
@@ -1683,7 +1707,17 @@ for (const scenario of [
     requests: [byToken("DELETE", `${STATE_PATH}/guestbook/docs/d1`), byToken("DELETE", `${STATE_PATH}/guestbook/docs/d2`)], text: "Deleted 2 entries from guestbook." },
   { tool: "delete_page_data", label: "a time range as one DELETE", args: { collection: "guestbook", after: "2026-11-10T12:00:00Z", before: "2026-11-10T13:00:00Z" },
     route: answer(200, { deleted: 12 }), requests: [byToken("DELETE", `${STATE_PATH}/guestbook?after=2026-11-10T12%3A00%3A00Z&before=2026-11-10T13%3A00%3A00Z`)],
-    text: "Deleted 12 entries from guestbook." },
+    text: "Deleted 12 entries and files from guestbook." },
+  { tool: "delete_page_data", label: "all as one DELETE before the far bound", args: { collection: "guestbook", all: true },
+    route: answer(200, { deleted: 118 }), requests: [byToken("DELETE", `${STATE_PATH}/guestbook?before=9999-12-31T23%3A59%3A59Z`)],
+    text: "Deleted 118 entries and files from guestbook." },
+  { tool: "delete_page_data", label: "fileIds as one DELETE per file, a missing one already gone", args: { collection: "wall", fileIds: ["f1", "f2"] },
+    route: ((_request, count) => count === 2 ? { status: 404, body: { code: "STATE_NOT_FOUND", message: "No such file." } } : { status: 200, body: { deleted: 1 } }) as Route,
+    requests: [byToken("DELETE", `${STATE_PATH}/wall/_files/f1`), byToken("DELETE", `${STATE_PATH}/wall/_files/f2`)], text: "Deleted 1 file from wall. Already gone: 1." },
+  { tool: "configure_page_data", label: "a first turn-on with the on line and the script", args: { state: {} },
+    route: ((request) => ({ status: 200, body: request.method === "GET" ? { ...OVERVIEW, declared: false } : OVERVIEW })) as Route,
+    requests: [byToken("GET", STATE_PATH), byToken("PATCH", STATE_PATH, JSON.stringify(STORED_SETTINGS))],
+    text: `Page data settings saved.\nPage data: on\n${PAGE_DATA_SCRIPT_LINE}\nSettings: ${JSON.stringify(STORED_SETTINGS)}` },
 ]) {
   test(`${scenario.tool} maps ${scenario.label} to its owner API requests and result text`, { timeout: 10_000 }, async (t) => {
     // GIVEN a fake API answering as the owner page-data routes do.
@@ -1693,7 +1727,7 @@ for (const scenario of [
     const result = await f.call(scenario.tool, { ...PAGE, ...scenario.args });
     // THEN method, path, X-Owner-Token and body of each request are exact, and so is the result text.
     assert.deepEqual({ isError: result.isError, requests: pageRequests(f.requests), text: result.content[0].text },
-      { isError: undefined, requests: scenario.requests, text: scenario.text }, `${scenario.tool} ${scenario.label}: requests and result`);
+      { isError: undefined, requests: scenario.requests, text: scenario.text.replace("{origin}", f.baseUrl) }, `${scenario.tool} ${scenario.label}: requests and result`);
   });
 }
 
@@ -1799,19 +1833,32 @@ for (const scenario of [
   });
 }
 
+const DELETE_SELECTOR = "the call names nothing to delete, or more than one of `docIds`, `fileIds`, a time range and `all`.\n" +
+  "Next: pass exactly one: `docIds`, `fileIds`, a time range (`after`, `before`), or `all: true` for every entry and file of the list.";
+const NEEDS_COLLECTION = "`countBy` and `include: files` read one list and `collection` was not sent.\n" +
+  "Next: send `collection`; get_page_data with the page address alone shows the lists.";
+const COUNT_BY_ALONE = "`countBy` was sent together with `cursor` or `include: files`.\n" +
+  "Next: send `countBy` with `collection` alone: totals have no pages and count entries, not files.";
 for (const scenario of [
-  { label: "no selector", args: {} },
-  { label: "docIds together with a time range", args: { docIds: ["d1"], before: "2026-11-10T13:00:00Z" } },
+  { tool: "delete_page_data", label: "no selector", args: { collection: "guestbook" }, text: DELETE_SELECTOR },
+  { tool: "delete_page_data", label: "docIds together with a time range", args: { collection: "guestbook", docIds: ["d1"], before: "2026-11-10T13:00:00Z" }, text: DELETE_SELECTOR },
+  { tool: "delete_page_data", label: "docIds together with fileIds", args: { collection: "guestbook", docIds: ["d1"], fileIds: ["f1"] }, text: DELETE_SELECTOR },
+  { tool: "delete_page_data", label: "all together with a time range", args: { collection: "guestbook", all: true, after: "2026-11-10T13:00:00Z" }, text: DELETE_SELECTOR },
+  { tool: "get_page_data", label: "countBy without collection", args: { countBy: "choice" }, text: NEEDS_COLLECTION },
+  { tool: "get_page_data", label: "include files without collection", args: { include: "files" }, text: NEEDS_COLLECTION },
+  { tool: "get_page_data", label: "countBy together with cursor", args: { collection: "votes", countBy: "choice", cursor: "CUR2" }, text: COUNT_BY_ALONE },
+  { tool: "get_page_data", label: "countBy together with include files", args: { collection: "votes", countBy: "choice", include: "files" }, text: COUNT_BY_ALONE },
+  { tool: "get_page_data", label: "include files in an updatedAt order", args: { collection: "wall", include: "files", order: "-updatedAt" },
+    text: "files are ordered by `createdAt` or `-createdAt` only.\nNext: send one of them as `order`, or leave `order` out." },
 ]) {
-  test(`delete_page_data with ${scenario.label} fails before HTTP`, { timeout: 10_000 }, async (t) => {
+  test(`${scenario.tool} with ${scenario.label} fails before HTTP`, { timeout: 10_000 }, async (t) => {
     // GIVEN an owned page.
     const f = await fixture(t);
-    // WHEN the delete names no entries, or names them twice.
-    const result = await f.call("delete_page_data", { ...PAGE, collection: "guestbook", ...scenario.args });
-    // THEN nothing is deleted and the refusal says how to select.
+    // WHEN the call names nothing, or arguments that exclude each other.
+    const result = await f.call(scenario.tool, { ...PAGE, ...scenario.args });
+    // THEN no request is made and the refusal says what to send.
     assert.deepEqual({ isError: result.isError, text: result.content[0].text, requests: f.requests.length },
-      { isError: true, text: "Failed to delete page data entries (refused): the call names no entries, or both `docIds` and a time range.\n" +
-        "Next: pass `docIds`, or a time range (`after`, `before`). To empty a list send `before` with the current time.", requests: 0 },
+      { isError: true, text: `Failed to ${PAGE_DATA_OPERATIONS[scenario.tool]} (refused): ${scenario.text}`, requests: 0 },
       `${scenario.label} never reaches the API`);
   });
 }
@@ -1874,26 +1921,28 @@ const OVERSIZED = entryRow(bigEntry(1, 50_000));
 const ENTRY_CUT_CHARS = 40_000 - 64;
 
 for (const scenario of [
-  { label: "20 entries of 3.3k chars are cut at an entry boundary", items: TWENTY_BIG,
-    header: "guestbook - 12 of 20 entries shown (size bound) - for the rest repeat with limit=12, then follow its next", rows: TWENTY_BIG.slice(0, 12).map(entryRow) },
-  { label: "a single entry over the bound is cut", items: [bigEntry(1, 50_000), bigEntry(2, 10)],
-    header: "guestbook - 1 of 2 entries shown (size bound) - for the rest repeat with limit=1, then follow its next",
+  { label: "20 entries of 3.3k chars are read again at the 12 that fit", items: TWENTY_BIG, fit: 12,
+    header: "guestbook - 12 entries - next: CUR12", rows: TWENTY_BIG.slice(0, 12).map(entryRow) },
+  { label: "a single entry over the bound is cut", items: [bigEntry(1, 50_000), bigEntry(2, 10)], fit: 1,
+    header: "guestbook - 1 entry - next: CUR1",
     rows: [`${OVERSIZED.slice(0, ENTRY_CUT_CHARS)}...(+${OVERSIZED.length - ENTRY_CUT_CHARS} chars)`] },
 ]) {
   test(`get_page_data size bound: ${scenario.label}`, { timeout: 10_000 }, async (t) => {
-    // GIVEN an entries page longer than 40,000 chars.
+    // GIVEN an entries page longer than 40,000 chars; the API pages by the `limit` it is sent.
     const f = await fixture(t);
-    f.respond(200, { items: scenario.items, next: "CUR3" });
+    f.routeWith((request) => {
+      const size = Number(new URL(request.url, f.baseUrl).searchParams.get("limit"));
+      return { status: 200, body: { items: scenario.items.slice(0, size), next: `CUR${size}` } };
+    });
     // WHEN the owner reads it.
     const result = await f.call("get_page_data", { ...PAGE, collection: "guestbook", limit: 20 });
-    // THEN whole entries are printed up to the bound, the header says how to get the rest, and one GET was made.
+    // THEN a second GET asks for the entries that fit, and that page with its own `next` is the answer.
     assert.deepEqual({ isError: result.isError, requests: pageRequests(f.requests), text: result.content[0].text },
-      { isError: undefined, requests: [byToken("GET", `${STATE_PATH}/guestbook?order=-createdAt&limit=20`)],
+      { isError: undefined, requests: [20, scenario.fit].map((size) => byToken("GET", `${STATE_PATH}/guestbook?order=-createdAt&limit=${size}`)),
         text: [scenario.header, UNTRUSTED_ENTRIES_LINE, ...scenario.rows].join("\n") }, scenario.label);
   });
 }
 
-const PAGE_DATA_SCRIPT_LINE = `Page script: <script src="https://brewpage.app/js/state.js"></script>`;
 const LISTS_STATE = { collections: { answers: {}, guestbook: { mode: "shared" }, menu: { mode: "shared", write: "author" } } };
 const POLL_STATE = { collections: { poll: {} } };
 const SCORES_STATE = { collections: { scores: { mode: "shared", index: "score" } } };
@@ -1916,28 +1965,28 @@ for (const scenario of [
   { tool: "publish_html", label: "no state", args: NEW_HTML, method: "POST", read: jsonBody, sent: { content: "<p>x</p>" }, lines: [] },
   { tool: "publish_html", label: "null", args: { ...NEW_HTML, state: null }, method: "POST", read: jsonBody, sent: { content: "<p>x</p>" }, lines: [] },
   { tool: "update_html", label: "an object naming one list", args: { ...HTML_UPDATE, state: POLL_STATE }, method: "PUT", read: jsonBody,
-    sent: { content: "<p>y</p>", state: POLL_STATE }, lines: [] },
+    sent: { content: "<p>y</p>", state: POLL_STATE }, lines: ["Page data: on - lists: poll (private)"] },
   { tool: "update_html", label: "JSON text", args: { ...HTML_UPDATE, state: JSON.stringify(POLL_STATE) }, method: "PUT", read: jsonBody,
-    sent: { content: "<p>y</p>", state: POLL_STATE }, lines: [] },
+    sent: { content: "<p>y</p>", state: POLL_STATE }, lines: ["Page data: on - lists: poll (private)"] },
   { tool: "update_html", label: "no state", args: HTML_UPDATE, method: "PUT", read: jsonBody, sent: { content: "<p>y</p>" }, lines: [] },
-  { tool: "update_html", label: "null", args: { ...HTML_UPDATE, state: null }, method: "PUT", read: jsonBody, sent: { content: "<p>y</p>", state: null }, lines: [] },
+  { tool: "update_html", label: "null", args: { ...HTML_UPDATE, state: null }, method: "PUT", read: jsonBody, sent: { content: "<p>y</p>", state: null }, lines: ["Page data: off"] },
   { tool: "publish_site", label: "an object", args: { ...NEW_SITE, state: SCORES_STATE }, method: "POST", read: stateField,
     sent: { state: JSON.stringify(SCORES_STATE) }, lines: ["Page data: on - lists: scores (shared)", PAGE_DATA_SCRIPT_LINE] },
   { tool: "publish_site", label: "no state", args: NEW_SITE, method: "POST", read: stateField, sent: { state: null }, lines: [] },
   { tool: "republish_site", label: "JSON text", args: { ...SITE_UPDATE, state: JSON.stringify(POLL_STATE) }, method: "PUT", read: stateField,
-    sent: { state: JSON.stringify(POLL_STATE) }, lines: [] },
+    sent: { state: JSON.stringify(POLL_STATE) }, lines: ["Page data: on - lists: poll (private)"] },
   { tool: "republish_site", label: "no state", args: SITE_UPDATE, method: "PUT", read: stateField, sent: { state: null }, lines: [] },
-  { tool: "republish_site", label: "null", args: { ...SITE_UPDATE, state: null }, method: "PUT", read: stateField, sent: { state: "null" }, lines: [] },
+  { tool: "republish_site", label: "null", args: { ...SITE_UPDATE, state: null }, method: "PUT", read: stateField, sent: { state: "null" }, lines: ["Page data: off"] },
   { tool: "publish_html", label: "site files and an object", args: { ...NEW_FILES, state: SCORES_STATE }, method: "POST", read: stateField,
     sent: { state: JSON.stringify(SCORES_STATE) }, lines: ["Page data: on - lists: scores (shared)", PAGE_DATA_SCRIPT_LINE] },
-  { tool: "update_html", label: "site files and null", args: { ...FILES_UPDATE, state: null }, method: "PUT", read: stateField, sent: { state: "null" }, lines: [] },
+  { tool: "update_html", label: "site files and null", args: { ...FILES_UPDATE, state: null }, method: "PUT", read: stateField, sent: { state: "null" }, lines: ["Page data: off"] },
 ]) {
   test(`${scenario.tool} with ${scenario.label} as state sends it as given in one request`, { timeout: 10_000 }, async (t) => {
     // GIVEN a fake API that accepts the publish or update.
     const f = await fixture(t);
     // WHEN the tool runs with or without `state`.
     const result = await f.call(scenario.tool, scenario.args);
-    // THEN exactly one request carries `state` as a JSON member or a multipart field, and a create that took it says so.
+    // THEN exactly one request carries `state` as a JSON member or a multipart field, and the answer says on or off when it was taken.
     assert.deepEqual({ isError: result.isError, requests: f.requests.length, method: f.requests[0].method, sent: await scenario.read(f.requests[0]),
       lines: result.content[0].text.split("\n").filter((line) => /^Page (data|script):/.test(line)) },
     { isError: undefined, requests: 1, method: scenario.method, sent: scenario.sent, lines: scenario.lines },
