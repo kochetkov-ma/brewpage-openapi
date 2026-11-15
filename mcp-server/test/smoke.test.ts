@@ -1276,7 +1276,7 @@ const DOMAIN_REFUSALS: DomainRefusal[] = [
     RETIRED: "its address was retired: connect the custom domain to a live publication",
     TYPE: "only HTML pages and sites can",
     FORMAT: "the page is not format html: publish it as format html",
-    EXPIRED: "it has expired: extend it, or connect the custom domain to another publication",
+    EXPIRED: "it has expired and cannot come back: connect the custom domain to another publication",
     MODE: "it is not on its own subdomain: set the domain on it again (set_domain with the same hostname), which moves it to its own subdomain",
   }).map(([reason, step]) => ({ ...SET_REFUSAL, response: DOMAIN_CODE(409, "NOT_ELIGIBLE", { reason }), prefix: "Failed to set domain (409): ",
     tail: `\nThis publication cannot take a custom domain: ${step}.` })),
