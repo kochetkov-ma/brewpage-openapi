@@ -8,7 +8,7 @@ import { realpathSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 import { createMcpHandler, InMemoryTransport, isLegacyRequest, LATEST_PROTOCOL_VERSION, type JSONRPCMessage } from "@modelcontextprotocol/server";
 import { NodeStreamableHTTPServerTransport, toWebRequest } from "@modelcontextprotocol/node";
-import { createServer, OWNER_TOKEN_ENV, USER_AGENT } from "./tools.js";
+import { createServer, OWNER_TOKEN_ENV, REMOTE, USER_AGENT, userAgentFor } from "./tools.js";
 import { classifyClient, UsageMetrics, type ClientClass } from "./metrics.js";
 
 const MIB = 1024 * 1024;
@@ -53,7 +53,7 @@ const DIAL_RETRY_PAUSE_MS = 500;
 const DRAIN_MS = 30_000;
 const MAX_LOGGED_METHOD = 64;
 const VERSION = USER_AGENT.split("/")[1];
-const REMOTE_USER_AGENT = `${USER_AGENT} (remote)`;
+const REMOTE_USER_AGENT = userAgentFor(REMOTE);
 const PARSE_ERROR = -32700;
 const INVALID_REQUEST = -32600;
 const METHOD_NOT_FOUND = -32601;
@@ -572,7 +572,7 @@ async function main(): Promise<void> {
       const server = createServer({
         baseUrl: config.backendUrl,
         publicOrigin: config.publicOrigin,
-        userAgent: REMOTE_USER_AGENT,
+        profile: REMOTE,
         headers: forwarded,
         fetchSource: (url) => shared || takeDownload(client)
           ? fetchSourceSafely(url, isBlockedSource, abort.signal)

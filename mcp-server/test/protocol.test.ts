@@ -134,15 +134,25 @@ for (const [transport, connect] of [["stdio", stdio], ["HTTP", http]] as const) 
   }
 }
 
-const SERVER_INSTRUCTIONS = [
-  "BrewPage publishes HTML, Markdown, sites, files, JSON and KV and returns a share link plus an owner token. Keep the owner token private and send it as ownerToken on every later call for that publication; it cannot be recovered. A page that must save what its visitors enter (form answers, guestbook, votes, scores, game progress) needs Page data: read get_guide topic page-data BEFORE writing the page, then publish with the state argument.",
-  "After publishing, give the user the page link and the management link from the result. Say that the management link is private: whoever has it can edit or delete the page, and its Data tab shows what visitors saved.",
-  "KV and JSON tools hold your own data. Page data holds what a page's visitors save: get_page_data reads it, set_page_data writes author entries, configure_page_data changes who can read a list, delete_page_data moderates. In a later chat these four take the management link as manageUrl.",
+/** Only the local server names the env default of the owner token. */
+const serverInstructions = (envDefault: string) => [
+  "BrewPage publishes HTML, Markdown, sites, files, JSON and KV and returns a share link plus an owner token. Give the user the page link and the management link from the result; the management link is private: whoever has it can edit or delete the page and read what visitors saved. " +
+    `Keep the owner token: it cannot be recovered, and every later call for that publication takes it as ownerToken${envDefault}.`,
+  "Shared arguments. namespace: public = listed in the gallery and sitemap and indexed by Google, Bing and AI search, for anything meant to be found; omitted = private (a generated priv-* namespace, unlisted, opened only by its link); JSON and KV are never listed. " +
+    "ttlDays: up to 30 days without an account, up to 90 with a free profile (an ownerToken held in the profile); omitted = the default. password: readers must enter it. " +
+    "deliveryMode: path = a brewpage.app link, subdomain = the publication's own subdomain; omitted = chosen by type. Owner tokens and management links never go into published content; other secrets fit a private namespace plus a password.",
+  "A page that must save what its visitors enter (form answers, guestbook, votes, scores, game progress) needs Page data: read get_guide topic page-data BEFORE writing the page, then publish with the state argument. " +
+    "get_page_data reads it, set_page_data writes author entries, configure_page_data changes settings, delete_page_data moderates; each takes namespace, id and ownerToken, or the management link as manageUrl.",
   "HTML pages and sites show a small BrewPage badge; page code must not hide or alter it. A profile can turn it off on up to 5 pages (set_badge).",
-  "A custom domain, only when the user asks for their own domain: set_domain, the user creates the returned DNS records at their DNS provider, check_domain once, then list_domains reads the status until it is active. Steps and fixes: get_guide topic custom-domain.",
+  "A custom domain, only when the user asks for their own domain: set_domain, the user creates the returned DNS records, check_domain once, then list_domains until it is active. Steps and fixes: get_guide topic custom-domain.",
 ].join("\n");
+const INSTRUCTIONS_BY_TRANSPORT = {
+  stdio: { text: serverInstructions(" (local server: env BREWPAGE_OWNER_TOKEN is the default)"), firstParagraph: 448 },
+  HTTP: { text: serverInstructions(""), firstParagraph: 392 },
+};
 
 for (const [transport, connect] of [["stdio", stdio], ["HTTP", http]] as const) {
+  const SERVER_INSTRUCTIONS = INSTRUCTIONS_BY_TRANSPORT[transport].text;
   for (const row of [
     { label: `server/discover ${MODERN}`, method: "server/discover", params: envelope(MODERN), version: MODERN },
     { label: "initialize 2025-11-25", method: "initialize", version: undefined,
@@ -157,14 +167,15 @@ for (const [transport, connect] of [["stdio", stdio], ["HTTP", http]] as const) 
       // THEN the handshake carries the five instruction paragraphs, the first within 512 chars, and calls no API.
       assert.deepEqual({ instructions: result?.instructions, paragraphs: SERVER_INSTRUCTIONS.split("\n").length,
         firstParagraph: SERVER_INSTRUCTIONS.split("\n")[0].length, upstream: api.requests.length },
-      { instructions: SERVER_INSTRUCTIONS, paragraphs: 5, firstParagraph: 440, upstream: 0 }, `${transport} ${row.label}: server instructions`);
+      { instructions: SERVER_INSTRUCTIONS, paragraphs: 5, firstParagraph: INSTRUCTIONS_BY_TRANSPORT[transport].firstParagraph, upstream: 0 },
+      `${transport} ${row.label}: server instructions`);
     });
   }
 }
 
 for (const scenario of [
-  { transport: "stdio", mode: "auto", negotiated: MODERN, userAgent: `brewpage-mcp/${PACKAGE_VERSION}` },
-  { transport: "stdio", mode: "legacy", negotiated: "2025-11-25", userAgent: `brewpage-mcp/${PACKAGE_VERSION}` },
+  { transport: "stdio", mode: "auto", negotiated: MODERN, userAgent: `brewpage-mcp/${PACKAGE_VERSION} (stdio)` },
+  { transport: "stdio", mode: "legacy", negotiated: "2025-11-25", userAgent: `brewpage-mcp/${PACKAGE_VERSION} (stdio)` },
   { transport: "HTTP", mode: "auto", negotiated: MODERN, userAgent: `brewpage-mcp/${PACKAGE_VERSION} (remote)` },
   { transport: "HTTP", mode: "legacy", negotiated: "2025-11-25", userAgent: `brewpage-mcp/${PACKAGE_VERSION} (remote)` },
 ] as const) {

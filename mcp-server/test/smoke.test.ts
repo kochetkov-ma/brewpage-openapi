@@ -221,16 +221,15 @@ test("tool and input descriptions state facts, not model directives or other too
   assert.deepEqual(offending, [], "directory policy: descriptions contain only neutral facts");
 });
 
-test("PDF/Office 400 hints use the contract 2.8.5 wording", { timeout: 10_000 }, async (t) => {
+test("no description restates the PDF/Office 400 errors; the server answer carries them", { timeout: 10_000 }, async (t) => {
   // GIVEN local MCP connected to a synthetic API.
   const f = await fixture(t);
   // WHEN client discovers tools.
   const { tools } = await f.client.listTools();
-  // THEN only the site tools mention PDF/Office, as unreadable or password-protected.
+  // THEN no tool mentions PDF/Office.
   const actual = Object.fromEntries(tools.map(({ name, description }) => [name, (description ?? "").match(/PDF\/Office[^;]*/g) ?? []]));
-  const expected = Object.fromEntries(EXPECTED_TOOL_NAMES.map((name) =>
-    [name, ["publish_site", "republish_site"].includes(name) ? ["PDF/Office file unreadable or password-protected"] : []]));
-  assert.deepEqual(actual, expected, "PDF/Office 400 wording matches the contract");
+  const expected = Object.fromEntries(EXPECTED_TOOL_NAMES.map((name) => [name, []]));
+  assert.deepEqual(actual, expected, "PDF/Office error wording is absent from every description");
 });
 
 const BADGE_SENTENCE = "Page code must not hide or alter the BrewPage badge; a profile can turn the badge off for a page.";
@@ -680,7 +679,7 @@ for (const scenario of [
     await f.call(scenario.tool, scenario.args(f.baseUrl));
     // THEN every request carries the versioned agent name.
     assert.deepEqual(f.requests.map((request) => request.headers["user-agent"]),
-      Array(scenario.requests ?? 1).fill(`brewpage-mcp/${PACKAGE_VERSION}`), "every request carries the identifying User-Agent");
+      Array(scenario.requests ?? 1).fill(`brewpage-mcp/${PACKAGE_VERSION} (stdio)`), "every request carries the identifying User-Agent");
   });
 }
 
@@ -1090,18 +1089,14 @@ for (const scenario of [
     const f = await fixture(t);
     f.respond(409, scenario.body);
     // WHEN its owner updates it.
-    const { tools } = await f.client.listTools();
     const result = await f.call(scenario.tool, { namespace: "public", id: "aBcDeFgHiJ", ownerToken: "fixture-owner", ...scenario.args });
-    // THEN the tool warns up front and the failure keeps the server body plus the publish-anew hint, without retry.
-    assert.deepEqual({
-      described: tools.find(({ name }) => name === scenario.tool)!.description!.includes("Old publications (made before 5 October 2026) are read-only: 409 OLD_PUBLICATION_READ_ONLY with createUrl to publish anew."),
-      isError: result.isError, text: result.content[0].text, requests: f.requests.length,
-    }, {
-      described: true, isError: true, requests: 1,
+    // THEN the failure keeps the server body plus the publish-anew hint, without retry.
+    assert.deepEqual({ isError: result.isError, text: result.content[0].text, requests: f.requests.length }, {
+      isError: true, requests: 1,
       text: `Failed to ${scenario.operation} (409): ${JSON.stringify(scenario.body)}\n` +
         `Read-only old publication: cannot be updated. ${scenario.how} A new publication gets a new URL ` +
         "and owner token; the old URL keeps its old content until it expires." + scenario.extra,
-    }, "frozen update is described, relayed verbatim and hinted once");
+    }, "frozen update is relayed verbatim and hinted once");
   });
 }
 
@@ -1430,27 +1425,16 @@ test("only publish_html and publish_site take the optional domain argument", { t
 
 const DOMAIN_WHO = "Free with a BrewPage profile, up to 5 custom domains: a profile token works at once, an owner token after it is added to a profile " +
   '(sign-in at https://account.brewpage.app/tokens, "Add existing token").';
-const DOMAIN_ADDRESSED = "Addressed by publication (type, namespace, id; a profile token or an owner token added to the profile) or by hostname (an admin profile token).";
-const DOMAIN_HOSTNAME_ARGUMENT = "Custom domain as a bare hostname, e.g. www.example.com; instead of type, namespace and id";
-const DOMAIN_CREATE_ARGUMENT = "Optional custom domain for the new publication: a bare hostname the user owns (www.example.com or example.com, no scheme or path). " +
-  "Needs a profile token or an owner token added to a free BrewPage profile, and no password. The publication is always created; " +
-  "the result lists the DNS records for the domain owner to create, or says why the custom domain was not set.";
+const DOMAIN_HOSTNAME_ARGUMENT = "Instead of type, namespace and id";
+const DOMAIN_CREATE_ARGUMENT = "Custom domain the user owns, a bare hostname";
 const DOMAIN_DESCRIPTIONS = {
-  set_domain: "Connect a custom domain (a hostname the user owns) to one HTML page of format html or one site, without a password. " + DOMAIN_WHO +
-    " Returns the DNS records for the domain owner to create at their DNS provider exactly as returned: MX/mail records stay, " +
-    "an A, AAAA or CNAME record at the same name is replaced, at Cloudflare Proxy status is DNS only. " +
-    "One DNS check after the records exist is enough: BrewPage keeps checking on its own (first full check about 15 minutes after adding); " +
-    "usually live within 30 minutes, HTTPS is automatic. Status: pending_dns -> verifying -> active (lost when the DNS records break later); `problem` names the fix. " +
-    `A hostname already in the profile moves to this publication; the BrewPage link keeps working. ${DOMAIN_PROVIDER_TEXT} Steps and fixes: guide topic \`custom-domain\`.`,
-  list_domains: "Read custom domains without running a DNS check: status, `problem`, DNS records and the publication shown. " +
-    "No address: every custom domain of the profile plus how many it holds and may hold. With type, namespace and id, or with hostname: that one custom domain.",
-  check_domain: "Run a DNS check of a custom domain now and return its status, `problem` and DNS records. " +
-    "One check after the DNS records exist is enough: BrewPage keeps checking on its own (`nextCheckAt`) and reading the status needs no check; " +
-    "another check fits only after a DNS change. Status: pending_dns (DNS records not seen yet), verifying (DNS records found, HTTPS being issued), active (live), " +
-    "lost (DNS records broke after going live; still served until `graceEndsAt`; restored records and one more check bring it back). `problem` names the fix. " +
-    `${DOMAIN_ADDRESSED} A repeat within seconds answers 429 with Retry-After.`,
-  remove_domain: "Remove a custom domain from the profile: it stops showing the publication and its slot is free at once. The BrewPage link keeps working. " +
-    `${DOMAIN_ADDRESSED} DNS records at the DNS provider stay until the domain owner deletes them.`,
+  set_domain: "Connect a custom domain the user owns to an HTML page of format html or a site, without a password. " +
+    "Needs a profile token, or an owner token added to a free BrewPage profile (up to 5 domains). " +
+    "Returns the DNS records for the user to create exactly as returned.",
+  list_domains: "Read custom domains without a DNS check: status, `problem`, DNS records. No address: every domain of the profile (admin profile token).",
+  check_domain: "Run a DNS check of a custom domain now; one check after the DNS records exist is enough. " +
+    "Status: pending_dns, verifying, active, lost. A repeat within seconds answers 429.",
+  remove_domain: "Remove a custom domain from the profile; the BrewPage link keeps working.",
 };
 
 test("custom-domain descriptions state who, what, the records step, one check and every status", { timeout: 10_000 }, async (t) => {
@@ -1468,10 +1452,10 @@ test("custom-domain descriptions state who, what, the records step, one check an
     listAddress: Object.keys(described("list_domains").inputSchema.properties!).sort(),
     listRequired: described("list_domains").inputSchema.required ?? [],
     statuses: Object.keys(DOMAIN_STATUSES),
-    statusesNamed: Object.keys(DOMAIN_STATUSES).filter((status) => DOMAIN_DESCRIPTIONS.check_domain.includes(`${status} (`)),
+    statusesNamed: Object.keys(DOMAIN_STATUSES).filter((status) => new RegExp(`[ ,]${status}[,.]`).test(DOMAIN_DESCRIPTIONS.check_domain)),
   }, {
     descriptions: DOMAIN_DESCRIPTIONS,
-    hostnames: ["Bare hostname the user owns: www.example.com or example.com, no scheme or path", DOMAIN_HOSTNAME_ARGUMENT, DOMAIN_HOSTNAME_ARGUMENT, DOMAIN_HOSTNAME_ARGUMENT],
+    hostnames: ["Bare hostname: www.example.com", DOMAIN_HOSTNAME_ARGUMENT, DOMAIN_HOSTNAME_ARGUMENT, DOMAIN_HOSTNAME_ARGUMENT],
     createArguments: [DOMAIN_CREATE_ARGUMENT, DOMAIN_CREATE_ARGUMENT],
     listAddress: ["hostname", "id", "namespace", "ownerToken", "type"],
     listRequired: [],
@@ -1834,15 +1818,17 @@ test("state is optional on the four page tools, required on configure_page_data 
   const f = await fixture(t);
   // WHEN client discovers tools.
   const { tools } = await f.client.listTools();
-  // THEN only those five take `state` (publish_file has none) and the two create descriptions end with the generated call shapes.
+  // THEN only those five take `state` (publish_file has none); the two create descriptions point at the guide and none carries the call shapes.
   assert.deepEqual({
     stateArgument: Object.fromEntries(tools.filter(({ inputSchema }) => "state" in (inputSchema.properties ?? {}))
       .map(({ name, inputSchema }) => [name, inputSchema.required?.includes("state") ?? false])),
-    callShapes: tools.filter(({ description }) => (description ?? "").endsWith(`Page script calls: ${PAGE_DATA_CALLS}`)).map(({ name }) => name),
+    guidePointer: tools.filter(({ description }) => (description ?? "").includes("needs `state` and the script named in guide topic `page-data`.")).map(({ name }) => name),
+    callShapes: tools.filter(({ description }) => (description ?? "").includes(PAGE_DATA_CALLS)).map(({ name }) => name),
   }, {
     stateArgument: { publish_html: false, publish_site: false, republish_site: false, update_html: false, configure_page_data: true },
-    callShapes: ["publish_html", "publish_site"],
-  }, "state argument placement and the call-shapes line match the design");
+    guidePointer: ["publish_html", "publish_site"],
+    callShapes: [],
+  }, "state argument placement and the guide pointer match the design");
 });
 
 const PAGE_NOT_FOUND_TOKEN = "Page not found, or this token does not manage it.";
