@@ -1,0 +1,85 @@
+{
+  "name": "brewpage-data",
+  "version": "0.1.0",
+  "description": "Typed loader and React, Vue and custom-element wrappers for BrewPage Page data: pages that save what visitors enter",
+  "type": "module",
+  "sideEffects": [
+    "./dist/elements.js"
+  ],
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./react": {
+      "types": "./dist/react.d.ts",
+      "default": "./dist/react.js"
+    },
+    "./vue": {
+      "types": "./dist/vue.d.ts",
+      "default": "./dist/vue.js"
+    },
+    "./elements": {
+      "types": "./dist/elements.d.ts",
+      "default": "./dist/elements.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "test": "npm run build && node --test test/surface.test.mjs",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "brewpage",
+    "page-data",
+    "hosting",
+    "html",
+    "react",
+    "vue",
+    "web-components",
+    "custom-elements",
+    "guestbook",
+    "forms"
+  ],
+  "author": {
+    "name": "Maksim Kochetkov",
+    "url": "https://github.com/kochetkov-ma"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/kochetkov-ma/brewpage-openapi.git",
+    "directory": "packages/data"
+  },
+  "homepage": "https://brewpage.app/page-data",
+  "bugs": {
+    "url": "https://github.com/kochetkov-ma/brewpage-openapi/issues"
+  },
+  "peerDependencies": {
+    "react": ">=18.0.0",
+    "vue": ">=3.2.0"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    },
+    "vue": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@types/react": "19.3.0",
+    "react": "19.3.1",
+    "typescript": "5.9.3",
+    "vue": "3.5.45"
+  }
+}
