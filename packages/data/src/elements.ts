@@ -11,7 +11,7 @@ async function open(): Promise<PageData> {
 const Base: typeof HTMLElement =
   typeof HTMLElement === "undefined" ? (class {} as unknown as typeof HTMLElement) : HTMLElement;
 
-/** `<bp-page-data>`: reflects `role` and `reason`, fires `bp-state` with `{state, reason}`. */
+/** `<bp-page-data>`: reflects `data-role` (never ARIA `role`) and `reason`, fires `bp-state` with `{state, reason}`. */
 export class BpPageDataElement extends Base {
   #live = false;
 
@@ -23,9 +23,9 @@ export class BpPageDataElement extends Base {
       else this.removeAttribute("reason");
       if (data.state) {
         data.state.onRole((role) => {
-          if (this.#live) this.setAttribute("role", role);
+          if (this.#live) this.setAttribute("data-role", role);
         });
-      } else this.removeAttribute("role");
+      } else this.removeAttribute("data-role");
       this.dispatchEvent(new CustomEvent<PageData>("bp-state", { detail: data, bubbles: true, composed: true }));
     });
   }

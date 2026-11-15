@@ -186,7 +186,7 @@ For plain HTML and any framework that renders custom elements (Astro, Solid, Qwi
 
 | Element | Behaviour |
 |---|---|
-| `<bp-page-data>` | reflects the attributes `role` and `reason`; fires `bp-state` with `detail = { state, reason }` |
+| `<bp-page-data>` | reflects the attributes `data-role` (`owner` or `visitor`) and `reason`; fires `bp-state` with `detail = { state, reason }` |
 | `<bp-count list count-by value>` | its text is the list's live count, or the count of one `value` when `count-by` and `value` are set |
 
 ## Files
