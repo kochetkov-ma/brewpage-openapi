@@ -1,10 +1,11 @@
 import { McpServer, type StandardSchemaWithJSON, type ToolAnnotations } from "@modelcontextprotocol/server";
 import { z } from "zod";
+import { RETIRED_ARGUMENT, RETIRED_TOOLS, retiredNote } from "./compat.js";
 import { DOMAIN_PROBLEMS, DOMAIN_STATUSES } from "./guides/custom-domain.js";
 import { PAGE_DATA_GUIDE } from "./guides/page-data.js";
 
 export const DEFAULT_BASE_URL = "https://brewpage.app";
-export const USER_AGENT = "brewpage-mcp/1.23.1";
+export const USER_AGENT = "brewpage-mcp/2.0.0";
 export const OWNER_TOKEN_ENV = "BREWPAGE_OWNER_TOKEN";
 
 /** What a transport serves: texts and the listed tool set only, never a limit or a guard. */
@@ -36,7 +37,7 @@ export function serverInstructions(profile: Profile = LOCAL): string {
       "deliveryMode: path = a brewpage.app link, subdomain = the publication's own subdomain; omitted = chosen by type. Owner tokens and management links never go into published content; other secrets fit a private namespace plus a password.",
     "A page that must save what its visitors enter (form answers, guestbook, votes, scores, game progress) needs Page data: read get_guide topic page-data BEFORE writing the page, then publish with the state argument. " +
       "get_page_data reads it, set_page_data writes author entries, configure_page_data changes settings, delete_page_data moderates; each takes namespace, id and ownerToken, or the management link as manageUrl.",
-    "HTML pages and sites show a small BrewPage badge; page code must not hide or alter it. A profile can turn it off on up to 5 pages (set_badge).",
+    "HTML pages and sites show a small BrewPage badge; page code must not hide or alter it. A profile can turn it off on up to 5 pages (set_publication).",
     "A custom domain, only when the user asks for their own domain: set_domain, the user creates the returned DNS records, check_domain once, then list_domains until it is active. Steps and fixes: get_guide topic custom-domain.",
   ].join("\n");
 }
@@ -86,8 +87,6 @@ const SHARED_TEXTS = {
   /** `namespace` of publish_html and publish_file. */
   namespace: { instructions: NAMESPACE_REMINDER,
     inline: `${NAMESPACE_PUBLIC_REACH}, served on the brewpage.app domain itself; unsuitable for secrets or personal data. ${NAMESPACE_PRIVATE_DEFAULT}${NAMESPACE_FORMAT}` },
-  siteNamespace: { instructions: NAMESPACE_REMINDER,
-    inline: `${NAMESPACE_PUBLIC_REACH}; unsuitable for secrets or personal data. A site always gets its own subdomain. ${NAMESPACE_PRIVATE_DEFAULT}${NAMESPACE_FORMAT}` },
   /** `namespace` of publish_json and publish_kv: data is never listed. */
   dataNamespace: { instructions: "`public` or omitted = private; never listed",
     inline: "Omit (default): private. `public`: the shared public namespace. JSON and KV are never listed in the gallery or indexed; " +
@@ -130,7 +129,7 @@ const PAGE_DATA_SCRIPT_LINE = `Page script: <script src="https://brewpage.app/js
 /** Notices after which a sent `state` is not in effect on the page. */
 const STATE_NOT_TAKEN_CODES = new Set(["state-unavailable", "state-needs-html"]);
 const NEEDS_SUBDOMAIN_CODE = "state-needs-subdomain";
-const NEEDS_SUBDOMAIN_NEXT = "Next: update_hosting type=html deliveryMode=subdomain";
+const NEEDS_SUBDOMAIN_NEXT = "Next: set_publication type=html deliveryMode=subdomain";
 const NEEDS_SUBDOMAIN_KEY_TAIL = " (needs the owner token; without it the user opens the management link and gives the page its own address there)";
 
 const MANAGE_URL_ARGUMENT = "Management link; replaces namespace, id and ownerToken";
@@ -151,8 +150,15 @@ const PAGE_DATA_QUOTA_FULL = "the page's Page data quota is full: delete_page_da
 const PAGE_DATA_HUMAN_CHECK = "the page asks for a human check that only a visitor's browser passes; repeating the call does not help.";
 const DELETE_SELECTOR_ERROR: Refusal = { why: "the call names no entries, or both `docIds` and a time range.",
   next: "pass `docIds`, or a time range (`after`, `before`). To empty a list send `before` with the current time." };
-const SITE_CONTENT_ERROR: Refusal = { why: "`entryContent` and `files` were both sent, or neither.",
-  next: "send exactly one of `entryContent` (single-page) or `files` (multi-page)." };
+const CONTENT_OR_FILES: Refusal = { why: "`content` and `files` were both sent, or neither.",
+  next: "send exactly one of `content` (a page) or `files` (a site)." };
+const PAGE_ONLY_ARGUMENT: Refusal = { why: "`format`, `filename` and `showTopBar` belong to a page and were sent with `files`.",
+  next: "send `files` without them; a file's own extension sets its type." };
+const NO_KV_KEY: Refusal = { why: "`type: kv` was sent without `key`.", next: "send the `key` to read." };
+const NO_SETTING: Refusal = { why: "the call names no setting.",
+  next: "send at least one of `listed`, `badgeHidden`, `title`, `password`, `extend`, `deliveryMode`." };
+/** Publication types a setting exists on, where that is not all five. */
+const SETTING_TYPES: Record<string, readonly string[]> = { title: ["html", "site"], password: ["html", "site", "file"] };
 const SOURCE_NEXT = "`url` must be a public http(s) address that answers without sign-in; a local path, a sandbox path or pasted content cannot be fetched. " +
   "Text you hold (HTML, Markdown, code) publishes with publish_html `content`. The same URL again helps only after a time-out or a download limit.";
 const SOURCE_NOT_A_URL: Refusal = { why: "`url` is not an http(s) URL.", next: SOURCE_NEXT };
@@ -300,7 +306,7 @@ const CUSTOM_DOMAIN_GUIDE = [
   "  403 DOMAIN_NEEDS_ACCOUNT = the owner token is in no profile: give the user the owner token (it is theirs) to add there, then repeat the call. With an admin profile token bind_token adds it instead.",
   `Domain: ${DOMAIN_PROVIDER_TEXT}`,
   "Steps:",
-  "1) set_domain (type, namespace, id, hostname), or `domain` on publish_html / publish_site. The hostname is bare: www.example.com or example.com, no scheme or path.",
+  "1) set_domain (type, namespace, id, hostname), or `domain` on publish_html. The hostname is bare: www.example.com or example.com, no scheme or path.",
   "2) Give the user exactly the DNS records of the result to create at their DNS provider (`host` is the name DNS panels ask for); never values from memory.",
   "   MX/mail records stay; an A, AAAA or CNAME record at the same name is replaced. At Cloudflare set Proxy status to DNS only.",
   "3) When the user says the records exist: check_domain once.",
@@ -455,7 +461,7 @@ function retryAfterText(status: number, headers?: Headers): string {
 
 /** Create tool for each content update: a 404 update means the row is gone, so the agent publishes anew. */
 const PUBLISH_TOOL_FOR: Record<string, string> = {
-  "update HTML": "publish_html", "republish site": "publish_site", "update JSON": "publish_json", "set KV": "publish_kv",
+  "update HTML": "publish_html", "republish site": "publish_html", "update JSON": "publish_json", "set KV": "publish_kv",
 };
 
 /** Bracket of a failure's first line: an HTTP status, or the stage that failed beside the API. */
@@ -568,8 +574,7 @@ const DELIVERY_MODE_SCHEMA = z.enum(["path", "subdomain"]).optional();
 /** One order of the `type` enum for every tool that addresses a publication of any kind. */
 const PUBLICATION_TYPES = ["html", "site", "file", "json", "kv"] as const;
 const SITE_FILES_SCHEMA = z.array(z.object({ path: z.string(), content: z.string() })).optional()
-  .describe("Site files `{path, content}`, text only; instead of `entryContent`");
-const SITE_ENTRY_CONTENT_SCHEMA = z.string().optional().describe("One page; instead of `files`");
+  .describe("Site files; instead of `content`");
 const SITE_ENTRY_SCHEMA = z.string().optional().describe("Site entry file, default index.html");
 
 /** Hosting fields only when the requested mode was not applied; reasons and notices always. */
@@ -620,7 +625,7 @@ function ownerLinkLines(data: Record<string, unknown>): string[] {
   if (typeof data.manageUrl === "string" && data.manageUrl.length > 0) {
     lines.push(``, `MANAGE LINK (private): ${data.manageUrl}`, `Give it to the user with the link: anyone who has it can edit or delete this publication. Never post it publicly.`);
   }
-  if (data.listed === true && !hasCredentialNotice(data)) lines.push(``, `VISIBILITY: public, listed. Unlist: set_visibility listed=false`);
+  if (data.listed === true && !hasCredentialNotice(data)) lines.push(``, `VISIBILITY: public, listed. Unlist: set_publication listed=false`);
   return lines;
 }
 
@@ -755,8 +760,9 @@ export function createServer(options: ServerOptions = {}): McpServer {
   const apiFetch = options.fetch ?? fetch;
   const server = new McpServer({
     name: "brewpage-mcp",
-    version: "1.23.1",
+    version: "2.0.0",
   }, { instructions: serverInstructions(profile) });
+  const registered = new Set<string>();
 
   /** The one registration point of every tool: a tool the profile does not list is not registered. */
   function tool<Shape extends ToolShape>(
@@ -765,19 +771,31 @@ export function createServer(options: ServerOptions = {}): McpServer {
     handler: (args: z.infer<z.ZodObject<Shape>>) => ToolAnswer | Promise<ToolAnswer>
   ): void {
     if (profile.tools && !profile.tools.has(name)) return;
+    registered.add(name);
     const { hidden = [], inputSchema: shape, ...listing } = spec;
-    const validator: z.ZodType<z.infer<z.ZodObject<Shape>>> = z.object(shape);
-    server.registerTool(name, { ...listing, inputSchema: advertised(validator, hidden) }, async (args) => {
-      try {
-        return await handler(args);
-      } catch (error) {
-        if (isClientAbort(error)) throw error;
-        const said = error instanceof Error ? error.message : String(error);
-        if (error instanceof PathRefusal) return failure(`run ${name}`, "refused", said, "send namespace, id, key or hostname exactly as a result printed them.");
-        if (isTimeout(error)) return failure(`run ${name}`, "timeout", "BrewPage did not answer in time.");
-        return failure(`run ${name}`, "error", said, "repeat the same call once; if it fails again, tell the user.");
-      }
+    // The old-name mark is validated with the rest, never listed and never handed to the tool.
+    const validator = z.object({ ...shape, [RETIRED_ARGUMENT]: z.string().optional() });
+    server.registerTool(name, { ...listing, inputSchema: advertised(validator, [...hidden, RETIRED_ARGUMENT]) }, async (sent) => {
+      const { [RETIRED_ARGUMENT]: retired, ...args } = sent as Record<string, unknown>;
+      const answer = await answered(name, () => handler(args as z.infer<z.ZodObject<Shape>>));
+      const note = retiredNote(retired, name);
+      if (!note) return answer;
+      const last = answer.content.at(-1)!;
+      return { ...answer, content: [...answer.content.slice(0, -1), { ...last, text: `${last.text}\n${note}` }] };
     });
+  }
+
+  /** A tool's answer; anything it throws, a client's cancel apart, becomes a failure answer. */
+  async function answered(name: string, run: () => ToolAnswer | Promise<ToolAnswer>): Promise<ToolAnswer> {
+    try {
+      return await run();
+    } catch (error) {
+      if (isClientAbort(error)) throw error;
+      const said = error instanceof Error ? error.message : String(error);
+      if (error instanceof PathRefusal) return failure(`run ${name}`, "refused", said, "send namespace, id, key or hostname exactly as a result printed them.");
+      if (isTimeout(error)) return failure(`run ${name}`, "timeout", "BrewPage did not answer in time.");
+      return failure(`run ${name}`, "error", said, "repeat the same call once; if it fails again, tell the user.");
+    }
   }
 
   /** The one failure answer: what failed with the answer verbatim, one `Next:` line, then batch lines; reports the closed reason. */
@@ -907,14 +925,37 @@ export function createServer(options: ServerOptions = {}): McpServer {
     return lines.join("\n");
   }
 
+  type SiteFile = { path: string; content: string };
+  /** Multipart body of a site upload: every file under its path, then `state` as JSON text when sent. */
+  function siteForm(files: SiteFile[], stateText?: string): FormData {
+    const form = new FormData();
+    if (stateText !== undefined) form.append("state", stateText);
+    for (const file of files) {
+      form.append("files", new Blob([file.content], { type: "text/html" }), file.path);
+      form.append("paths", file.path);
+    }
+    return form;
+  }
+
+  /** Site lines of a create or replace answer, after the title. */
+  function siteDetailLines(site: Record<string, unknown>): string[] {
+    const lines = [`Entry file: ${site.entryFile || "index.html"}`, `Files: ${site.fileCount || 1}`];
+    if (site.totalSizeBytes !== undefined) lines.push(`Size: ${site.totalSizeBytes} bytes`);
+    if (site.ownerLink) lines.push(`Owner link: ${site.ownerLink}`);
+    if (Array.isArray(site.tags) && site.tags.length) lines.push(`Tags: ${(site.tags as string[]).join(", ")}`);
+    return lines;
+  }
+
   tool(
     "publish_html",
     {
-      ...toolMeta("Publish HTML, Markdown, code or JSON page", ADDITIVE),
-      description: "Publish a page (`content`: HTML, Markdown, code or JSON, max 5 MiB). " + shared("returns") +
-        " A page that " + PAGE_STATE_SENTENCE + shared("badge"),
+      ...toolMeta("Publish page or site", ADDITIVE),
+      description: "Publish a page (`content`: HTML, Markdown, code or JSON, max 5 MiB) or a static site (`files`: HTML, CSS, JS as text; 200 files, 20 MiB in total). " +
+        shared("returns") + " A page that " + PAGE_STATE_SENTENCE + shared("badge"),
       inputSchema: {
-        content: z.string(),
+        content: z.string().optional(),
+        files: SITE_FILES_SCHEMA,
+        entry: SITE_ENTRY_SCHEMA,
         deliveryMode: DELIVERY_MODE_SCHEMA,
         format: z
           .string()
@@ -939,28 +980,44 @@ export function createServer(options: ServerOptions = {}): McpServer {
         state: stateSchema(STATE_CREATE_DESCRIPTION),
       },
     },
-    async ({ content, format, namespace, password, ttlDays, filename, showTopBar, deliveryMode, tags, domain, ownerToken, state }) => {
+    async ({ content, files, entry, format, namespace, password, ttlDays, filename, showTopBar, deliveryMode, tags, domain, ownerToken, state }) => {
+      const site = Array.isArray(files) && files.length > 0 ? files : undefined;
+      const operation = site ? "publish site" : "publish";
+      if ((content !== undefined) === (site !== undefined)) return refused(operation, CONTENT_OR_FILES);
+      if (site && (format !== undefined || filename !== undefined || showTopBar !== undefined)) return refused(operation, PAGE_ONLY_ARGUMENT);
       const sentState = state === undefined ? undefined : parseStateArgument(state);
-      if (sentState && "refusal" in sentState) return refused("publish", sentState.refusal);
+      if (sentState && "refusal" in sentState) return refused(operation, sentState.refusal);
       const effectiveNamespace = resolveNamespace(namespace);
-      const path = withQuery(apiPath("html"), [["ns", effectiveNamespace], ["format", format?.toLowerCase()], ["ttl", ttlDays],
-        ["tags", tags?.length ? tags.join(",") : undefined], ["domain", domain || undefined]]);
-      const body: Record<string, unknown> = { content };
-      if (filename) body.filename = filename;
-      if (showTopBar !== undefined) body.showTopBar = showTopBar;
-      // A create changes no page data on null, so null is not sent.
-      if (sentState?.value) body.state = sentState.value;
-
       const headers: Record<string, string> = {};
       if (password) headers["X-Password"] = password;
       if (deliveryMode) headers["X-Delivery-Mode"] = deliveryMode;
       const owner = ownerTokenFor(ownerToken).token;
       if (owner) headers["X-Owner-Token"] = owner;
+      const answer = { effectiveNamespace, sentOwnerToken: owner, requestedDomain: domain || undefined, sentState: sentState?.value };
+
+      if (site) {
+        // A create changes no page data on null, so null is not sent.
+        const form = siteForm(site, sentState?.value ? JSON.stringify(sentState.value) : undefined);
+        const url = baseUrl + withQuery(apiPath("sites"),
+          [["entry", entry || undefined], ["ns", effectiveNamespace], ["ttl", ttlDays || undefined],
+            ["tags", tags?.length ? tags.join(",") : undefined], ["domain", domain || undefined]]);
+        const res = await bpFetch(url, { method: "POST", headers, body: form });
+        const data = await res.json().catch(() => null) as Record<string, unknown> | null;
+        if (!res.ok) return failure(operation, res.status, data, undefined, res.headers);
+        return textResult(formatPublishResponse(data!, { ...answer,
+          site: { lead: `Site published successfully!`, details: siteDetailLines(data!), purpose: "view info or delete this site" } }));
+      }
+
+      const path = withQuery(apiPath("html"), [["ns", effectiveNamespace], ["format", format?.toLowerCase()], ["ttl", ttlDays],
+        ["tags", tags?.length ? tags.join(",") : undefined], ["domain", domain || undefined]]);
+      const body: Record<string, unknown> = { content };
+      if (filename) body.filename = filename;
+      if (showTopBar !== undefined) body.showTopBar = showTopBar;
+      if (sentState?.value) body.state = sentState.value;
       const { ok, status, data, headers: answerHeaders } = await apiRequest("POST", path, body, headers);
 
       if (!ok) return failure("publish", status, data, undefined, answerHeaders);
-      return textResult(formatPublishResponse(data as Record<string, unknown>,
-        { effectiveNamespace, sentOwnerToken: owner, requestedDomain: domain || undefined, sentState: sentState?.value }));
+      return textResult(formatPublishResponse(data as Record<string, unknown>, answer));
     }
   );
 
@@ -1017,33 +1074,6 @@ export function createServer(options: ServerOptions = {}): McpServer {
   );
 
   tool(
-    "update_hosting",
-    {
-      ...toolMeta("Change delivery mode", ADDITIVE),
-      description: "Change the delivery mode of a publication: path = a brewpage.app link, subdomain = its own subdomain. Sites and HTML pages outside `public` stay on their own subdomain.",
-      inputSchema: {
-        type: z.enum(["html", "file", "json", "kv"]),
-        namespace: z.string(),
-        id: z.string(),
-        ownerToken: z.string().optional(),
-        deliveryMode: z.enum(["path", "subdomain"]),
-        expectedVersion: z.number().int().min(1).max(Number.MAX_SAFE_INTEGER).optional().describe("The current hostingVersion"),
-      },
-    },
-    async ({ type, namespace, id, ownerToken, deliveryMode, expectedVersion }) => {
-      const auth = ownerTokenFor(ownerToken);
-      if (!auth.token) return refused("update hosting", NO_OWNER_TOKEN);
-      const path = apiPath(TYPE_SEGMENTS[type], namespace, id, "hosting");
-      const { ok, status, data, headers: answerHeaders } = await apiRequest("PATCH", path, { deliveryMode, expectedVersion },
-        { "X-Owner-Token": auth.token });
-      if (!ok) return ownerFailure("update hosting", status, data, auth.fromEnv, answerHeaders);
-      return {
-        content: [{ type: "text" as const, text: formatUpdateResponse(data as Record<string, unknown>) }],
-      };
-    }
-  );
-
-  tool(
     "delete_resource",
     {
       ...toolMeta("Delete publication", DESTRUCTIVE),
@@ -1076,18 +1106,31 @@ export function createServer(options: ServerOptions = {}): McpServer {
   tool(
     "get_page",
     {
-      ...toolMeta("Read page", READ_ONLY),
-      description: "Read the stored content of a page: rendered HTML, or its code or text.",
+      ...toolMeta("Read page, JSON or KV value", READ_ONLY),
+      description: "Read stored content: a page (rendered HTML, or its code or text), a JSON document or a KV value; long content is cut and continues by `offset`.",
       inputSchema: {
+        type: z.enum(["html", "json", "kv"]).optional().describe("Default html"),
         namespace: z.string(),
         id: z.string(),
+        key: z.string().optional().describe("KV key"),
         password: z.string().optional(),
         offset: OFFSET_SCHEMA,
       },
     },
-    async ({ namespace, id, password, offset }) => {
+    async ({ type = "html", namespace, id, key, password, offset }) => {
       const headers: Record<string, string> = {};
       if (password) headers["X-Password"] = password;
+
+      if (type !== "html") {
+        const operation = type === "json" ? "fetch JSON" : "fetch KV";
+        if (type === "kv" && key === undefined) return refused(operation, NO_KV_KEY);
+        const path = type === "json" ? apiPath("json", namespace, id) : apiPath("kv", namespace, id, key!);
+        const { ok, status, data, headers: answerHeaders } = await apiRequest("GET", path, undefined, headers);
+        if (!ok) return failure(operation, status, data, status === 401 || status === 403 ? PASSWORD_NEXT : undefined, answerHeaders);
+        const read = readPart(JSON.stringify(data), offset);
+        if ("refusal" in read) return refused(operation, read.refusal);
+        return textResult([...read.header, read.part].join("\n"));
+      }
 
       const { ok, status, data, headers: responseHeaders } = await apiRequest(
         "GET",
@@ -1148,172 +1191,60 @@ export function createServer(options: ServerOptions = {}): McpServer {
   );
 
   tool(
-    "publish_site",
+    "update_html",
     {
-      ...toolMeta("Publish site", ADDITIVE),
-      description: "Publish a static site (`files`: HTML, CSS, JS as text; 200 files, 20 MiB in total), or one page as `entryContent`. " + shared("returns") +
-        " A site that " + PAGE_STATE_SENTENCE + shared("badge"),
-      inputSchema: {
-        deliveryMode: DELIVERY_MODE_SCHEMA,
-        entryContent: SITE_ENTRY_CONTENT_SCHEMA,
-        files: SITE_FILES_SCHEMA,
-        entry: SITE_ENTRY_SCHEMA,
-        namespace: described(z.string().optional(), shared("siteNamespace")),
-        password: z.string().optional(),
-        ttlDays: ttlSchema(),
-        tags: z.array(z.string()).optional(),
-        domain: z.string().optional().describe(DOMAIN_ARGUMENT),
-        ownerToken: z.string().optional().describe(CREATE_OWNER_TOKEN_DESCRIPTION),
-        state: stateSchema(STATE_CREATE_DESCRIPTION),
-      },
-    },
-    async ({ entryContent, files, entry, namespace, password, ttlDays, tags, ownerToken, deliveryMode, domain, state }) => {
-      const hasEntry = typeof entryContent === "string";
-      const hasFiles = Array.isArray(files) && files.length > 0;
-      if (hasEntry === hasFiles) return refused("publish site", SITE_CONTENT_ERROR);
-      const sentState = state === undefined ? undefined : parseStateArgument(state);
-      if (sentState && "refusal" in sentState) return refused("publish site", sentState.refusal);
-
-      const formData = new FormData();
-      // A create changes no page data on null, so null is not sent.
-      if (sentState?.value) formData.append("state", JSON.stringify(sentState.value));
-      if (hasFiles) {
-        for (const f of files!) {
-          formData.append("files", new Blob([f.content], { type: "text/html" }), f.path);
-          formData.append("paths", f.path);
-        }
-      } else {
-        const entryBlob = new Blob([entryContent!], { type: "text/html" });
-        const entryName = entry || "index.html";
-        formData.append("files", entryBlob, entryName);
-        formData.append("paths", entryName);
-      }
-      const headers: Record<string, string> = {};
-      if (password) headers["X-Password"] = password;
-      const owner = ownerTokenFor(ownerToken).token;
-      if (owner) headers["X-Owner-Token"] = owner;
-      if (deliveryMode) headers["X-Delivery-Mode"] = deliveryMode;
-
-      const effectiveNamespace = resolveNamespace(namespace);
-      const url = baseUrl + withQuery(apiPath("sites"),
-        [["entry", entry || undefined], ["ns", effectiveNamespace], ["ttl", ttlDays || undefined],
-          ["tags", tags?.length ? tags.join(",") : undefined], ["domain", domain || undefined]]);
-      const res = await bpFetch(url, { method: "POST", headers, body: formData });
-      const data = await res.json().catch(() => null);
-
-      if (!res.ok) return failure("publish site", res.status, data, undefined, res.headers);
-
-      const site = data as Record<string, unknown>;
-      const details = [`Entry file: ${site.entryFile || "index.html"}`, `Files: ${site.fileCount || 1}`];
-      if (site.totalSizeBytes !== undefined) details.push(`Size: ${site.totalSizeBytes} bytes`);
-      if (site.ownerLink) details.push(`Owner link: ${site.ownerLink}`);
-      if (Array.isArray(site.tags) && site.tags.length) details.push(`Tags: ${(site.tags as string[]).join(", ")}`);
-      return textResult(formatPublishResponse(site, { effectiveNamespace, sentOwnerToken: owner, requestedDomain: domain || undefined,
-        sentState: sentState?.value, site: { lead: `Site published successfully!`, details, purpose: "view info or delete this site" } }));
-    }
-  );
-
-  tool(
-    "republish_site",
-    {
-      ...toolMeta("Republish site", REPLACING),
-      description: "Replace every file of an existing site (`files`, or one page as `entryContent`); files absent from the upload are removed. The link and the expiry stay." +
+      ...toolMeta("Update page or site", REPLACING),
+      description: "Replace the content of an existing page (`content`) or every file of an existing site (`files`; files absent from the upload are removed). The link stays." +
         shared("badge"),
       inputSchema: {
         namespace: z.string(),
         id: z.string(),
-        ownerToken: z.string().optional(),
-        entryContent: SITE_ENTRY_CONTENT_SCHEMA,
+        content: z.string().optional(),
         files: SITE_FILES_SCHEMA,
         entry: SITE_ENTRY_SCHEMA,
-        ttlDays: TTL_VALIDATOR,
-        tags: z.array(z.string()).optional().describe("Replace the stored tags"),
-        state: stateSchema(STATE_UPDATE_DESCRIPTION),
-      },
-      hidden: ["ttlDays"],
-    },
-    async ({ namespace, id, ownerToken, entryContent, files, entry, ttlDays, tags, state }) => {
-      const hasEntry = typeof entryContent === "string";
-      const hasFiles = Array.isArray(files) && files.length > 0;
-      if (hasEntry === hasFiles) return refused("republish site", SITE_CONTENT_ERROR);
-      const sentState = state === undefined ? undefined : parseStateArgument(state);
-      if (sentState && "refusal" in sentState) return refused("republish site", sentState.refusal);
-
-      const formData = new FormData();
-      if (sentState) formData.append("state", JSON.stringify(sentState.value));
-      if (hasFiles) {
-        for (const f of files!) {
-          formData.append("files", new Blob([f.content], { type: "text/html" }), f.path);
-          formData.append("paths", f.path);
-        }
-      } else {
-        const entryBlob = new Blob([entryContent!], { type: "text/html" });
-        const entryName = entry || "index.html";
-        formData.append("files", entryBlob, entryName);
-        formData.append("paths", entryName);
-      }
-
-      const auth = ownerTokenFor(ownerToken);
-      if (!auth.token) return refused("republish site", NO_OWNER_TOKEN);
-      const headers: Record<string, string> = { "X-Owner-Token": auth.token };
-
-      const url = baseUrl + withQuery(apiPath("sites", namespace, id), [["entry", entry || undefined],
-        ["ttl", ttlDays || undefined], ["tags", tags?.join(",")]]);
-      const res = await bpFetch(url, { method: "PUT", headers, body: formData });
-      const data = await res.json().catch(() => null);
-
-      if (!res.ok) return ownerFailure("republish site", res.status, data, auth.fromEnv, res.headers);
-
-      const site = data as Record<string, unknown>;
-      const lines = [
-        ...credentialAlertLines(site),
-        `Site republished successfully (full replace)!`,
-        ``,
-        `URL: ${site.link || "N/A"}`,
-        `Namespace: ${site.namespace || namespace}`,
-        `ID: ${site.id || id}`,
-        ...titleLines(site),
-        `Entry file: ${site.entryFile || "index.html"}`,
-        `Files: ${site.fileCount || 1}`,
-      ];
-      if (site.totalSizeBytes !== undefined) lines.push(`Size: ${site.totalSizeBytes} bytes`);
-      if (site.ownerLink) lines.push(`Owner link: ${site.ownerLink}`);
-      if (Array.isArray(site.tags) && site.tags.length) lines.push(`Tags: ${(site.tags as string[]).join(", ")}`);
-      if (site.expiresAt) lines.push(`Expires: ${site.expiresAt}`);
-      if (site.result) lines.push(`Result: ${site.result}`);
-      lines.push(...hostingResponseLines(site));
-      if (site.visibilityNotice) lines.push(``, String(site.visibilityNotice));
-
-      return {
-        content: [{ type: "text" as const, text: lines.join("\n") }],
-      };
-    }
-  );
-
-  tool(
-    "update_html",
-    {
-      ...toolMeta("Update page", REPLACING),
-      description: "Replace the content of an existing page. The link stays." + shared("badge"),
-      inputSchema: {
-        namespace: z.string(),
-        id: z.string(),
-        content: z.string(),
         ownerToken: z.string().optional(),
         format: z.string().optional().describe("Omitted: the stored format stays"),
         tags: z.array(z.string()).optional().describe("Replace the stored tags"),
         state: stateSchema(STATE_UPDATE_DESCRIPTION),
       },
     },
-    async ({ namespace, id, content, ownerToken, format, tags, state }) => {
+    async ({ namespace, id, content, files, entry, ownerToken, format, tags, state }) => {
+      const site = Array.isArray(files) && files.length > 0 ? files : undefined;
+      const operation = site ? "republish site" : "update HTML";
+      if ((content !== undefined) === (site !== undefined)) return refused(operation, CONTENT_OR_FILES);
+      if (site && format !== undefined) return refused(operation, PAGE_ONLY_ARGUMENT);
       const sentState = state === undefined ? undefined : parseStateArgument(state);
-      if (sentState && "refusal" in sentState) return refused("update HTML", sentState.refusal);
+      if (sentState && "refusal" in sentState) return refused(operation, sentState.refusal);
+      const auth = ownerTokenFor(ownerToken);
+      if (!auth.token) return refused(operation, NO_OWNER_TOKEN);
+
+      if (site) {
+        const form = siteForm(site, sentState ? JSON.stringify(sentState.value) : undefined);
+        const url = baseUrl + withQuery(apiPath("sites", namespace, id), [["entry", entry || undefined], ["tags", tags?.join(",")]]);
+        const res = await bpFetch(url, { method: "PUT", headers: { "X-Owner-Token": auth.token }, body: form });
+        const data = await res.json().catch(() => null) as Record<string, unknown> | null;
+        if (!res.ok) return ownerFailure(operation, res.status, data, auth.fromEnv, res.headers);
+        const answer = data!;
+        const lines = [
+          ...credentialAlertLines(answer),
+          `Site republished successfully (full replace)!`,
+          ``,
+          `URL: ${answer.link || "N/A"}`,
+          `Namespace: ${answer.namespace || namespace}`,
+          `ID: ${answer.id || id}`,
+          ...titleLines(answer),
+          ...siteDetailLines(answer),
+        ];
+        if (answer.expiresAt) lines.push(`Expires: ${answer.expiresAt}`);
+        if (answer.result) lines.push(`Result: ${answer.result}`);
+        lines.push(...hostingResponseLines(answer));
+        if (answer.visibilityNotice) lines.push(``, String(answer.visibilityNotice));
+        return textResult(lines.join("\n"));
+      }
+
       const body: Record<string, unknown> = { content };
       if (format) body.format = format;
       if (sentState) body.state = sentState.value;
-
-      const auth = ownerTokenFor(ownerToken);
-      if (!auth.token) return refused("update HTML", NO_OWNER_TOKEN);
       const path = withQuery(apiPath("html", namespace, id), [["tags", tags?.join(",")]]);
       const { ok, status, data, headers: answerHeaders } = await apiRequest("PUT", path, body, {
         "X-Owner-Token": auth.token,
@@ -1372,37 +1303,6 @@ export function createServer(options: ServerOptions = {}): McpServer {
 
       if (!res.ok) return failure("publish JSON", res.status, data, undefined, res.headers);
       return textResult(formatPublishResponse(data as Record<string, unknown>, { effectiveNamespace, sentOwnerToken: owner, listable: false }));
-    }
-  );
-
-  tool(
-    "get_json",
-    {
-      ...toolMeta("Read JSON document", READ_ONLY),
-      description: "Read a JSON document.",
-      inputSchema: {
-        namespace: z.string(),
-        id: z.string(),
-        password: z.string().optional(),
-        offset: OFFSET_SCHEMA,
-      },
-    },
-    async ({ namespace, id, password, offset }) => {
-      const headers: Record<string, string> = {};
-      if (password) headers["X-Password"] = password;
-
-      const path = apiPath("json", namespace, id);
-      const { ok, status, data, headers: answerHeaders } = await apiRequest(
-        "GET",
-        path,
-        undefined,
-        headers
-      );
-
-      if (!ok) return failure("fetch JSON", status, data, status === 401 || status === 403 ? PASSWORD_NEXT : undefined, answerHeaders);
-      const read = readPart(JSON.stringify(data), offset);
-      if ("refusal" in read) return refused("fetch JSON", read.refusal);
-      return textResult([...read.header, read.part].join("\n"));
     }
   );
 
@@ -1528,38 +1428,6 @@ export function createServer(options: ServerOptions = {}): McpServer {
   );
 
   tool(
-    "get_kv",
-    {
-      ...toolMeta("Read KV value", READ_ONLY),
-      description: "Read a value of a KV store.",
-      inputSchema: {
-        namespace: z.string(),
-        id: z.string(),
-        key: z.string(),
-        password: z.string().optional(),
-        offset: OFFSET_SCHEMA,
-      },
-    },
-    async ({ namespace, id, key, password, offset }) => {
-      const headers: Record<string, string> = {};
-      if (password) headers["X-Password"] = password;
-
-      const path = apiPath("kv", namespace, id, key);
-      const { ok, status, data, headers: answerHeaders } = await apiRequest(
-        "GET",
-        path,
-        undefined,
-        headers
-      );
-
-      if (!ok) return failure("fetch KV", status, data, status === 401 || status === 403 ? PASSWORD_NEXT : undefined, answerHeaders);
-      const read = readPart(JSON.stringify(data), offset);
-      if ("refusal" in read) return refused("fetch KV", read.refusal);
-      return textResult([...read.header, read.part].join("\n"));
-    }
-  );
-
-  tool(
     "get_limits",
     {
       ...toolMeta("Get upload limits", READ_ONLY),
@@ -1628,27 +1496,94 @@ export function createServer(options: ServerOptions = {}): McpServer {
     }
   );
 
+  /** One setting of a set_publication call: its API call and its outcome lines. */
+  interface SettingStep {
+    setting: string;
+    operation: string;
+    method: string;
+    action: string;
+    body?: Record<string, unknown>;
+    lines: (result: Record<string, unknown>) => string[];
+  }
+
   tool(
-    "set_visibility",
+    "set_publication",
     {
-      ...toolMeta("Set gallery visibility", SETTING),
-      description: "List or unlist a public publication in the gallery and sitemap. Link unchanged.",
+      ...toolMeta("Change publication settings", SETTING),
+      description: "Change settings of a publication; only the arguments sent change. Badge and title need the owner token in a BrewPage profile.",
       inputSchema: {
-        type: z.enum(PUBLICATION_TYPES).describe("Only public html, site and file can be listed"),
+        type: z.enum(PUBLICATION_TYPES),
         namespace: z.string(),
         id: z.string(),
-        listed: z.boolean().describe("true = listed, false = unlisted"),
         ownerToken: z.string().optional(),
+        listed: z.boolean().optional().describe("Listed in the gallery and sitemap (public html, site, file)"),
+        badgeHidden: z.boolean().optional().describe("Hide the BrewPage badge; up to 5 per profile"),
+        title: z.string().optional().describe("1-200 characters; empty = the title from the content"),
+        password: z.string().nullable().optional().describe("`null` removes it"),
+        extend: z.boolean().optional().describe("true = keep it for the longest time the profile allows"),
+        deliveryMode: DELIVERY_MODE_SCHEMA,
+        expectedVersion: z.number().int().min(1).max(Number.MAX_SAFE_INTEGER).optional(),
+        // Accepted, not listed: answers the current badge or title state through the same route, changing nothing.
+        current: z.enum(["badge", "title"]).optional(),
       },
+      hidden: ["expectedVersion", "current"],
     },
-    async ({ type, namespace, id, listed, ownerToken }) => {
+    async ({ type, namespace, id, ownerToken, listed, badgeHidden, title, password, extend, deliveryMode, expectedVersion, current }) => {
+      const steps: SettingStep[] = [];
+      if (listed !== undefined) {
+        steps.push({ setting: "listed", operation: "set visibility", method: "POST", action: "visibility", body: { listed },
+          lines: (result) => [...credentialAlertLines(result), `LISTED: ${result.listed} · link unchanged`, ...noticeLines(result)] });
+      }
+      if (badgeHidden !== undefined || current === "badge") {
+        steps.push({ setting: "badgeHidden", operation: "set badge", method: "POST", action: "badge", body: badgeHidden === undefined ? {} : { hidden: badgeHidden },
+          lines: (result) => [
+            ...credentialAlertLines(result),
+            `BADGE: ${result.hidden === true ? "hidden" : "shown"}${typeof result.used === "number" && result.used > 0 ? ` · ${result.used} of ${result.limit} hidden in the profile` : ""} · link unchanged`,
+            ...noticeLines(result),
+            ...(notices(result).some((n) => n.code === BADGE_NEEDS_PROFILE_CODE) ? [BADGE_NEEDS_PROFILE_NEXT] : []),
+          ] });
+      }
+      if (title !== undefined || current === "title") {
+        steps.push({ setting: "title", operation: "set title", method: "POST", action: "title", body: title === undefined ? {} : { title },
+          lines: (result) => [...credentialAlertLines(result),
+            `TITLE: ${result.title} · ${result.custom === true ? "set by owner, kept on republish" : "from the content"} · link unchanged`, ...noticeLines(result)] });
+      }
+      if (password !== undefined) {
+        steps.push({ setting: "password", operation: "set password", method: "POST", action: "password", body: { password },
+          lines: (result) => [...credentialAlertLines(result),
+            `PASSWORD: ${result.access === "protected" ? "set" : "removed"} · listed: ${result.listed === true} · link unchanged`, ...noticeLines(result)] });
+      }
+      if (extend === true) {
+        steps.push({ setting: "extend", operation: "extend", method: "POST", action: "extend",
+          lines: (result) => [`EXPIRES: ${result.expiresAt} · link unchanged`, ...noticeLines(result)] });
+      }
+      if (deliveryMode !== undefined) {
+        steps.push({ setting: "deliveryMode", operation: "update hosting", method: "PATCH", action: "hosting", body: { deliveryMode, expectedVersion },
+          lines: (result) => [formatUpdateResponse(result)] });
+      }
+      if (steps.length === 0) return refused("change settings", NO_SETTING);
       const auth = ownerTokenFor(ownerToken);
-      if (!auth.token) return refused("set visibility", NO_OWNER_TOKEN);
-      const path = apiPath(TYPE_SEGMENTS[type], namespace, id, "visibility");
-      const { ok, status, data, headers: answerHeaders } = await apiRequest("POST", path, { listed }, { "X-Owner-Token": auth.token });
-      if (!ok) return ownerFailure("set visibility", status, data, auth.fromEnv, answerHeaders);
-      const result = data as Record<string, unknown>;
-      return textResult([...credentialAlertLines(result), `LISTED: ${result.listed} · link unchanged`, ...noticeLines(result)].join("\n"));
+      if (!auth.token) return refused(steps[0].operation, NO_OWNER_TOKEN);
+      const misplaced = steps.find((step) => SETTING_TYPES[step.setting] && !SETTING_TYPES[step.setting].includes(type));
+      if (misplaced) {
+        return refused(misplaced.operation, { why: `\`${misplaced.setting}\` does not exist on type ${type}.`,
+          next: `send it only for type ${SETTING_TYPES[misplaced.setting].join(", ")}.` });
+      }
+
+      // One API call per setting, in the listed order; the first failure stops the rest.
+      const done: string[] = [];
+      for (const [index, step] of steps.entries()) {
+        const path = apiPath(TYPE_SEGMENTS[type], namespace, id, step.action);
+        const { ok, status, data, headers: answerHeaders } = await apiRequest(step.method, path, step.body, { "X-Owner-Token": auth.token });
+        if (!ok) {
+          const rest = steps.slice(index + 1).map((later) => later.setting);
+          const batch = steps.length === 1 ? [] : [...(done.length ? ["Changed before it:", ...done] : ["Changed before it: none"]),
+            ...(rest.length ? [`Not attempted: ${rest.join(", ")}`] : [])];
+          return failure(step.operation, status, data, ownerNext(step.operation, status, data, auth.fromEnv), answerHeaders, batch);
+        }
+        done.push(...step.lines((data ?? {}) as Record<string, unknown>));
+      }
+      return textResult(done.join("\n"));
     }
   );
 
@@ -1682,63 +1617,6 @@ export function createServer(options: ServerOptions = {}): McpServer {
         ...noticeLines(result),
         ...ownerLinkLines(result),
       ].join("\n"));
-    }
-  );
-
-  tool(
-    "set_badge",
-    {
-      ...toolMeta("Hide or show badge", SETTING),
-      description: "Hide or show the BrewPage badge on a publication; needs the owner token in a BrewPage profile, up to 5 hidden per profile.",
-      inputSchema: {
-        type: z.enum(PUBLICATION_TYPES),
-        namespace: z.string(),
-        id: z.string(),
-        hidden: z.boolean().optional().describe("Omitted: the current state"),
-        ownerToken: z.string().optional(),
-      },
-    },
-    async ({ type, namespace, id, hidden, ownerToken }) => {
-      const auth = ownerTokenFor(ownerToken);
-      if (!auth.token) return refused("set badge", NO_OWNER_TOKEN);
-      const path = apiPath(TYPE_SEGMENTS[type], namespace, id, "badge");
-      const { ok, status, data, headers: answerHeaders } = await apiRequest("POST", path, hidden === undefined ? {} : { hidden },
-        { "X-Owner-Token": auth.token });
-      if (!ok) return ownerFailure("set badge", status, data, auth.fromEnv, answerHeaders);
-      const result = data as Record<string, unknown>;
-      const used = typeof result.used === "number" && result.used > 0 ? ` · ${result.used} of ${result.limit} hidden in the profile` : "";
-      return textResult([
-        ...credentialAlertLines(result),
-        `BADGE: ${result.hidden === true ? "hidden" : "shown"}${used} · link unchanged`,
-        ...noticeLines(result),
-        ...(notices(result).some((n) => n.code === BADGE_NEEDS_PROFILE_CODE) ? [BADGE_NEEDS_PROFILE_NEXT] : []),
-      ].join("\n"));
-    }
-  );
-
-  tool(
-    "set_title",
-    {
-      ...toolMeta("Rename page or site", SETTING),
-      description: "Rename an HTML page or site; needs the owner token in a BrewPage profile.",
-      inputSchema: {
-        type: z.enum(["html", "site"]),
-        namespace: z.string(),
-        id: z.string(),
-        title: z.string().optional().describe("1-200 characters; empty = the title from the content; omitted: the current title"),
-        ownerToken: z.string().optional(),
-      },
-    },
-    async ({ type, namespace, id, title, ownerToken }) => {
-      const auth = ownerTokenFor(ownerToken);
-      if (!auth.token) return refused("set title", NO_OWNER_TOKEN);
-      const path = apiPath(TYPE_SEGMENTS[type], namespace, id, "title");
-      const { ok, status, data, headers: answerHeaders } = await apiRequest("POST", path, title === undefined ? {} : { title },
-        { "X-Owner-Token": auth.token });
-      if (!ok) return ownerFailure("set title", status, data, auth.fromEnv, answerHeaders);
-      const result = data as Record<string, unknown>;
-      const source = result.custom === true ? "set by owner, kept on republish" : "from the content";
-      return textResult([...credentialAlertLines(result), `TITLE: ${result.title} · ${source} · link unchanged`, ...noticeLines(result)].join("\n"));
     }
   );
 
@@ -2117,5 +1995,10 @@ export function createServer(options: ServerOptions = {}): McpServer {
     async ({ topic }) => textResult(topic === "custom-domain" ? CUSTOM_DOMAIN_GUIDE : PAGE_DATA_GUIDE + PAGE_DATA_GUIDE_TAIL)
   );
 
+  // Start check of the old-name table: every row runs as a tool this server registered.
+  for (const [old, { tool: current }] of RETIRED_TOOLS) {
+    if (!profile.tools && !registered.has(current)) throw new Error(`Old tool name ${old} maps to ${current}, which is not registered.`);
+    if (registered.has(old)) throw new Error(`Old tool name ${old} is a registered tool.`);
+  }
   return server;
 }

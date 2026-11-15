@@ -10,12 +10,26 @@ import { DOMAIN_PROBLEMS, DOMAIN_STATUSES } from "../src/guides/custom-domain.js
 import { PAGE_DATA_CALLS, PAGE_DATA_GUIDE } from "../src/guides/page-data.js";
 
 const EXPECTED_TOOL_NAMES = [
-  "publish_html", "publish_file", "delete_resource", "get_page", "get_stats", "publish_site",
-  "republish_site", "update_html", "publish_json", "get_json", "update_json", "publish_kv",
-  "set_kv", "get_kv", "search_gallery", "update_hosting", "get_limits", "set_visibility", "make_private", "set_badge", "set_title",
+  "publish_html", "publish_file", "delete_resource", "get_page", "get_stats",
+  "update_html", "publish_json", "update_json", "publish_kv",
+  "set_kv", "search_gallery", "get_limits", "set_publication", "make_private",
   "bind_token", "mint_token", "set_domain", "list_domains", "check_domain", "remove_domain",
   "get_page_data", "set_page_data", "configure_page_data", "delete_page_data", "get_guide",
 ];
+
+const SITE_MAPPING = "`entryContent` is now one file in `files`";
+/** Old tool name -> [current tool, argument mapping of its note line]; old names are called, never listed. */
+const RETIRED_TOOLS: Record<string, [string, string]> = {
+  publish_site: ["publish_html", SITE_MAPPING], republish_site: ["update_html", SITE_MAPPING],
+  get_json: ["get_page", "with `type: json`"], get_kv: ["get_page", "with `type: kv`"],
+  set_visibility: ["set_publication", "same arguments"], set_badge: ["set_publication", "`hidden` is now `badgeHidden`"],
+  set_title: ["set_publication", "same arguments"], update_hosting: ["set_publication", "same arguments"],
+};
+/** Answer text as the server ends it for a call by `tool`: an old name adds its note as the last line. */
+function noted(tool: string, text: string): string {
+  const retired = RETIRED_TOOLS[tool];
+  return retired ? `${text}\nNote: ${tool} is now ${retired[0]} (${retired[1]}); the old name still works.` : text;
+}
 
 const PACKAGE_VERSION = (JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8")) as { version: string }).version;
 const ENV_TOKEN = "EnvOwnerToken0123456789abcdefABC";
@@ -166,7 +180,7 @@ async function fixture(t: TestContext, env: Record<string, string> = {}) {
   };
 }
 
-test("MCP exposes exactly 32 tools and optional create-only delivery choice", { timeout: 10_000 }, async (t) => {
+test("MCP exposes exactly 25 tools and optional create-only delivery choice", { timeout: 10_000 }, async (t) => {
   // GIVEN local MCP connected to a synthetic API.
   const f = await fixture(t);
   // WHEN client discovers tools.
@@ -175,16 +189,17 @@ test("MCP exposes exactly 32 tools and optional create-only delivery choice", { 
   assert.deepEqual(tools.map(({ name }) => name).sort(), [...EXPECTED_TOOL_NAMES].sort(), "registered tool names match the contract");
   const listed = (name: string, argument: string) => tools.find((item) => item.name === name)!.inputSchema.properties![argument] ?? null;
   assert.deepEqual({
-    modes: Object.fromEntries(["publish_html", "publish_site", "publish_file", "publish_json", "publish_kv"].map((name) => [name, listed(name, "deliveryMode")])),
+    modes: Object.fromEntries(["publish_html", "publish_file", "publish_json", "publish_kv"].map((name) => [name, listed(name, "deliveryMode")])),
     required: tools.filter(({ inputSchema }) => inputSchema.required?.includes("deliveryMode") && !("deliveryMode" in inputSchema.properties!)).map(({ name }) => name),
-    republishTtl: listed("republish_site", "ttlDays"),
+    accepted: [listed("update_html", "ttlDays"), listed("set_publication", "expectedVersion"), listed("set_publication", "current")],
+    oldNameMark: tools.filter(({ inputSchema }) => "_retired" in inputSchema.properties!).map(({ name }) => name),
     createTtl: listed("publish_kv", "ttlDays"),
     schemaKey: tools.filter(({ inputSchema }) => "$schema" in inputSchema).map(({ name }) => name),
   }, {
-    modes: { publish_html: { type: "string", enum: ["path", "subdomain"] }, publish_site: { type: "string", enum: ["path", "subdomain"] },
-      publish_file: null, publish_json: null, publish_kv: null },
+    modes: { publish_html: { type: "string", enum: ["path", "subdomain"] }, publish_file: null, publish_json: null, publish_kv: null },
     required: [],
-    republishTtl: null,
+    accepted: [null, null, null],
+    oldNameMark: [],
     createTtl: { description: "Days to keep it: up to 30 days without an account, up to 90 with a free profile (an ownerToken held in the profile). Omitted: the default. The result states the expiry.",
       type: "number", exclusiveMinimum: 0 },
     schemaKey: [],
@@ -198,18 +213,17 @@ const ADDITIVE = { readOnlyHint: false, destructiveHint: false };
 const REPLACING = { ...DESTRUCTIVE, idempotentHint: true };
 const SETTING = { ...ADDITIVE, idempotentHint: true };
 const EXPECTED_TOOL_META: Record<string, [string, Record<string, boolean>]> = {
-  get_page: ["Read page", READ_ONLY], get_json: ["Read JSON document", READ_ONLY], get_kv: ["Read KV value", READ_ONLY],
+  get_page: ["Read page, JSON or KV value", READ_ONLY],
   get_stats: ["Get platform statistics", READ_ONLY], get_limits: ["Get upload limits", READ_ONLY],
   search_gallery: ["Search public gallery", READ_ONLY],
-  delete_resource: ["Delete publication", DESTRUCTIVE], update_html: ["Update page", REPLACING],
+  delete_resource: ["Delete publication", DESTRUCTIVE], update_html: ["Update page or site", REPLACING],
   update_json: ["Update JSON document", REPLACING], set_kv: ["Set KV value", REPLACING],
-  republish_site: ["Republish site", REPLACING],
-  publish_html: ["Publish HTML, Markdown, code or JSON page", ADDITIVE], publish_file: ["Publish file from URL", ADDITIVE],
-  publish_site: ["Publish site", ADDITIVE], publish_json: ["Publish JSON document", ADDITIVE],
-  publish_kv: ["Publish KV entry", ADDITIVE], set_visibility: ["Set gallery visibility", SETTING],
-  update_hosting: ["Change delivery mode", ADDITIVE], bind_token: ["Add token to profile", ADDITIVE],
-  mint_token: ["Mint profile token", ADDITIVE], set_title: ["Rename page or site", SETTING],
-  make_private: ["Make private", DESTRUCTIVE], set_badge: ["Hide or show badge", SETTING],
+  publish_html: ["Publish page or site", ADDITIVE], publish_file: ["Publish file from URL", ADDITIVE],
+  publish_json: ["Publish JSON document", ADDITIVE],
+  publish_kv: ["Publish KV entry", ADDITIVE], set_publication: ["Change publication settings", SETTING],
+  bind_token: ["Add token to profile", ADDITIVE],
+  mint_token: ["Mint profile token", ADDITIVE],
+  make_private: ["Make private", DESTRUCTIVE],
   set_domain: ["Connect custom domain", SETTING], list_domains: ["List custom domains", READ_ONLY],
   check_domain: ["Check custom domain DNS", ADDITIVE], remove_domain: ["Remove custom domain", DESTRUCTIVE],
   get_page_data: ["Read page data", READ_ONLY], set_page_data: ["Write author entries", REPLACING],
@@ -258,24 +272,34 @@ test("no description restates the PDF/Office 400 errors; the server answer carri
 
 const BADGE_SENTENCE = "Page code must not hide or alter the BrewPage badge; a profile can turn the badge off for a page.";
 
-test("the four tools that send page code carry the badge sentence; listing reads as list or unlist", { timeout: 10_000 }, async (t) => {
+test("the two tools that send page code carry the badge sentence; the settings tool words each setting", { timeout: 10_000 }, async (t) => {
   // GIVEN local MCP connected to a synthetic API.
   const f = await fixture(t);
   // WHEN client discovers tools.
   const { tools } = await f.client.listTools();
-  const described = (name: string) => tools.find((tool) => tool.name === name)!;
-  // THEN exactly those four carry the badge sentence, and set_visibility says list or unlist.
+  const settings = tools.find((tool) => tool.name === "set_publication")!;
+  // THEN exactly those two carry the badge sentence, and set_publication lists its settings with `password` open to null.
   assert.deepEqual({
     badge: tools.filter(({ description }) => (description ?? "").includes(BADGE_SENTENCE)).map(({ name }) => name).sort(),
     mentions: tools.filter(({ description }) => (description ?? "").includes("BrewPage badge")).map(({ name }) => name).sort(),
-    visibility: described("set_visibility").description,
-    listed: (described("set_visibility").inputSchema.properties!.listed as { description: string }).description,
+    settings: { description: settings.description, required: settings.inputSchema.required, properties: settings.inputSchema.properties },
   }, {
-    badge: ["publish_html", "publish_site", "republish_site", "update_html"],
-    mentions: ["publish_html", "publish_site", "republish_site", "set_badge", "update_html"],
-    visibility: "List or unlist a public publication in the gallery and sitemap. Link unchanged.",
-    listed: "true = listed, false = unlisted",
-  }, "badge sentence placement and listing wording are exact");
+    badge: ["publish_html", "update_html"],
+    mentions: ["publish_html", "update_html"],
+    settings: {
+      description: "Change settings of a publication; only the arguments sent change. Badge and title need the owner token in a BrewPage profile.",
+      required: ["type", "namespace", "id"],
+      properties: {
+        type: { type: "string", enum: ["html", "site", "file", "json", "kv"] }, namespace: { type: "string" }, id: { type: "string" }, ownerToken: { type: "string" },
+        listed: { description: "Listed in the gallery and sitemap (public html, site, file)", type: "boolean" },
+        badgeHidden: { description: "Hide the BrewPage badge; up to 5 per profile", type: "boolean" },
+        title: { description: "1-200 characters; empty = the title from the content", type: "string" },
+        password: { description: "`null` removes it", type: ["string", "null"] },
+        extend: { description: "true = keep it for the longest time the profile allows", type: "boolean" },
+        deliveryMode: { type: "string", enum: ["path", "subdomain"] },
+      },
+    },
+  }, "badge sentence placement and the settings schema are exact");
 });
 
 for (const scenario of [
@@ -492,22 +516,24 @@ for (const scenario of HTML_REASON_TOOLS.flatMap((tool) => [
   });
 }
 
-for (const { type, version } of [
-  { type: "html", version: { expectedVersion: 1 } }, { type: "file", version: { expectedVersion: 1 } },
-  { type: "json", version: { expectedVersion: 1 } }, { type: "kv", version: { expectedVersion: 1 } }, { type: "html", version: {} },
+for (const { tool, type, version } of [
+  { tool: "update_hosting", type: "html", version: { expectedVersion: 1 } }, { tool: "update_hosting", type: "file", version: { expectedVersion: 1 } },
+  { tool: "update_hosting", type: "json", version: { expectedVersion: 1 } }, { tool: "update_hosting", type: "kv", version: { expectedVersion: 1 } },
+  { tool: "update_hosting", type: "html", version: {} },
+  { tool: "set_publication", type: "html", version: {} }, { tool: "set_publication", type: "file", version: { expectedVersion: 1 } },
 ]) {
-  test(`update_hosting maps ${type} to owner-only apex PATCH with ${JSON.stringify(version)}`, { timeout: 10_000 }, async (t) => {
+  test(`${tool} maps ${type} to owner-only apex PATCH with ${JSON.stringify(version)}`, { timeout: 10_000 }, async (t) => {
     // GIVEN successful hosting projection.
     const f = await fixture(t);
     f.respond(200, { ...NEW_RESPONSE, hostingVersion: 2 });
     // WHEN owner changes mode with or without a known version.
-    const result = await f.call("update_hosting", { type, namespace: "public", id: "aBcDeFgHiJ", ownerToken: "fixture-owner", deliveryMode: "subdomain", ...version });
+    const result = await f.call(tool, { type, namespace: "public", id: "aBcDeFgHiJ", ownerToken: "fixture-owner", deliveryMode: "subdomain", ...version });
     // THEN correct API segment, owner header and body are used; an omitted version is not invented.
     assert.deepEqual(f.requests.map(({ method, url, headers, body }) => ({ method, url, owner: headers["x-owner-token"], body: JSON.parse(body) })), [
       { method: "PATCH", url: `/api/${type === "file" ? "files" : type}/public/aBcDeFgHiJ/hosting`, owner: "fixture-owner", body: { deliveryMode: "subdomain", ...version } },
     ], "hosting mutation targets the configured API origin");
     assert.equal(result.isError, undefined, "hosting change succeeds");
-    assert.equal(result.content[0].text, `Updated successfully!\n\nURL: ${NEW_RESPONSE.link}\nNamespace: public\nID: aBcDeFgHiJ`, "an applied mode answers the link without hosting fields");
+    assert.equal(result.content[0].text, noted(tool, `Updated successfully!\n\nURL: ${NEW_RESPONSE.link}\nNamespace: public\nID: aBcDeFgHiJ`), "an applied mode answers the link without hosting fields");
   });
 }
 
@@ -525,7 +551,7 @@ for (const error of [
     // THEN status/code remain visible and the call is not retried.
     assert.equal(result.isError, true, "server failure becomes a tool error");
     const next = error.status === 403 ? "Next: Wrong owner token for this publication. Use ownerToken from create." : defaultNext(error.status);
-    assert.equal(result.content[0].text, `Failed to update hosting (${error.status}): ${JSON.stringify({ code: error.code })}\n${next}`, "status, code and the next step are retained exactly");
+    assert.equal(result.content[0].text, noted("update_hosting", `Failed to update hosting (${error.status}): ${JSON.stringify({ code: error.code })}\n${next}`), "status, code and the next step are retained exactly");
     assert.equal(f.requests.length, 1, "failed mutation is not retried");
   });
 }
@@ -555,7 +581,7 @@ test("same-mode hosting result keeps the server link", { timeout: 10_000 }, asyn
   // WHEN owner selects already-effective mode.
   const result = await f.call("update_hosting", { type: "html", namespace: "public", id: "aBcDeFgHiJ", ownerToken: "fixture-owner", deliveryMode: "subdomain", expectedVersion: 1 });
   // THEN MCP rewrites no address and prints no hosting fields.
-  assert.equal(result.content[0].text, `Updated successfully!\n\nURL: ${NEW_RESPONSE.link}\nNamespace: public\nID: aBcDeFgHiJ`, "no-op link remains verbatim");
+  assert.equal(result.content[0].text, noted("update_hosting", `Updated successfully!\n\nURL: ${NEW_RESPONSE.link}\nNamespace: public\nID: aBcDeFgHiJ`), "no-op link remains verbatim");
 });
 
 test("fresh site path request is published on subdomain and reported, without client coercion", { timeout: 10_000 }, async (t) => {
@@ -718,8 +744,10 @@ for (const scenario of [
   { tool: "publish_file", args: (base: string) => ({ url: `${base}/source-file` }), operation: "upload file" },
   { tool: "publish_site", args: () => ({ entryContent: "<h1>Fixture</h1>" }), operation: "publish site" },
   { tool: "republish_site", args: () => ({ namespace: "public", id: "aBcDeFgHiJ", entryContent: "<h1>Fixture</h1>", ownerToken: "fixture-owner" }), operation: "republish site" },
-].map((scenario) => ({ ...scenario, text: `Failed to ${scenario.operation} (503): ${JSON.stringify(BUSY)} Retry-After: 1.\n${defaultNext(503)}` }))) {
-  test(`${scenario.tool} prints Retry-After on a busy 503`, { timeout: 10_000 }, async (t) => {
+  { tool: "publish_html", args: () => ({ files: [{ path: "index.html", content: "<h1>Fixture</h1>" }] }), operation: "publish site" },
+  { tool: "update_html", args: () => ({ namespace: "public", id: "aBcDeFgHiJ", files: [{ path: "index.html", content: "<h1>Fixture</h1>" }], ownerToken: "fixture-owner" }), operation: "republish site" },
+].map((scenario) => ({ ...scenario, text: noted(scenario.tool, `Failed to ${scenario.operation} (503): ${JSON.stringify(BUSY)} Retry-After: 1.\n${defaultNext(503)}`) }))) {
+  test(`${scenario.tool} prints Retry-After on a busy 503 of ${scenario.operation}`, { timeout: 10_000 }, async (t) => {
     // GIVEN a busy API answering 503 with Retry-After.
     const f = await fixture(t);
     f.respond(503, BUSY, { "Retry-After": "1" });
@@ -829,6 +857,9 @@ for (const scenario of [
   { tool: "make_private", operation: "make private", args: { type: "html", namespace: "public", id: "aBcDeFgHiJ" } },
   { tool: "set_badge", operation: "set badge", args: { type: "html", namespace: "public", id: "aBcDeFgHiJ", hidden: true } },
   { tool: "set_title", operation: "set title", args: { type: "html", namespace: "public", id: "aBcDeFgHiJ", title: "Trip notes" } },
+  { tool: "update_hosting", operation: "update hosting", args: { type: "html", namespace: "public", id: "aBcDeFgHiJ", deliveryMode: "path" } },
+  { tool: "set_publication", operation: "set password", args: { type: "html", namespace: "public", id: "aBcDeFgHiJ", password: null, extend: true } },
+  { tool: "update_html", operation: "republish site", args: { namespace: "public", id: "aBcDeFgHiJ", files: [{ path: "index.html", content: "x" }] } },
   { tool: "bind_token", operation: "bind token", args: { token: "fixture-bound-token" } },
   { tool: "search_gallery", operation: "search gallery", args: { mine: true } },
   { tool: "set_domain", operation: "set domain", args: { ...DOMAIN_PUBLICATION, hostname: "www.example.com" } },
@@ -843,7 +874,7 @@ for (const scenario of [
     const result = await f.call(scenario.tool, scenario.args);
     // THEN it reports the missing token without calling the API.
     assert.deepEqual({ isError: result.isError, text: result.content[0].text, requests: f.requests.length },
-      { isError: true, text: `Failed to ${scenario.operation} (refused): no owner token was sent.\n${NO_OWNER_TOKEN_NEXT}`, requests: 0 }, "missing token is a local error");
+      { isError: true, text: noted(scenario.tool, `Failed to ${scenario.operation} (refused): no owner token was sent.\n${NO_OWNER_TOKEN_NEXT}`), requests: 0 }, "missing token is a local error");
   });
 }
 
@@ -901,6 +932,28 @@ for (const scenario of [
     response: { title: "My docs", custom: true },
     request: { method: "POST", url: "/api/sites/my-ns/aBcDeFgHiJ/title", body: "{}" },
     text: "TITLE: My docs · set by owner, kept on republish · link unchanged" },
+  { tool: "set_publication", args: { type: "site", namespace: "my-ns", id: "aBcDeFgHiJ", listed: true }, status: 200,
+    response: { listed: true, access: "public", link: NEW_RESPONSE.link },
+    request: { method: "POST", url: "/api/sites/my-ns/aBcDeFgHiJ/visibility", body: '{"listed":true}' }, text: "LISTED: true · link unchanged" },
+  { tool: "set_publication", args: { type: "html", namespace: "public", id: "aBcDeFgHiJ", badgeHidden: true }, status: 200,
+    response: { hidden: true, used: 1, limit: 5 },
+    request: { method: "POST", url: "/api/html/public/aBcDeFgHiJ/badge", body: '{"hidden":true}' },
+    text: "BADGE: hidden · 1 of 5 hidden in the profile · link unchanged" },
+  { tool: "set_publication", args: { type: "html", namespace: "public", id: "aBcDeFgHiJ", title: "Trip notes" }, status: 200,
+    response: { title: "Trip notes", custom: true },
+    request: { method: "POST", url: "/api/html/public/aBcDeFgHiJ/title", body: '{"title":"Trip notes"}' },
+    text: "TITLE: Trip notes · set by owner, kept on republish · link unchanged" },
+  { tool: "set_publication", args: { type: "file", namespace: "public", id: "aBcDeFgHiJ", password: "reader-secret" }, status: 200,
+    response: { access: "protected", listed: false },
+    request: { method: "POST", url: "/api/files/public/aBcDeFgHiJ/password", body: '{"password":"reader-secret"}' },
+    text: "PASSWORD: set · listed: false · link unchanged" },
+  { tool: "set_publication", args: { type: "html", namespace: "public", id: "aBcDeFgHiJ", password: null }, status: 200,
+    response: { access: "public", listed: true },
+    request: { method: "POST", url: "/api/html/public/aBcDeFgHiJ/password", body: '{"password":null}' },
+    text: "PASSWORD: removed · listed: true · link unchanged" },
+  { tool: "set_publication", args: { type: "kv", namespace: "public", id: "aBcDeFgHiJ", extend: true }, status: 200,
+    response: { expiresAt: "2027-02-13T00:00:00Z" },
+    request: { method: "POST", url: "/api/kv/public/aBcDeFgHiJ/extend", body: "" }, text: "EXPIRES: 2027-02-13T00:00:00Z · link unchanged" },
   { tool: "bind_token", args: { token: "fixture-bound-token-0123456789ab" }, status: 200, response: { bound: true, id: "x", active: 3, max: 10 },
     request: { method: "POST", url: "/api/owner-token/bind", body: '{"token":"fixture-bound-token-0123456789ab"}' }, text: "BOUND …89ab · 3/10 active" },
   { tool: "mint_token", args: { label: "ci", scope: "admin", expiresIn: "90d" }, status: 201,
@@ -950,7 +1003,62 @@ for (const scenario of [
     // THEN request, owner header and output are exact.
     assert.deepEqual({ requests: f.requests.map(({ method, url, headers, body }) => ({ method, url, owner: headers["x-owner-token"], body })),
       text: result.content[0].text, isError: result.isError },
-    { requests: [{ ...scenario.request, owner: ENV_TOKEN }], text: scenario.text, isError: undefined }, "owner tool contract is exact");
+    { requests: [{ ...scenario.request, owner: ENV_TOKEN }], text: noted(scenario.tool, scenario.text), isError: undefined }, "owner tool contract is exact");
+  });
+}
+
+const SEVERAL_SETTINGS = { type: "html", namespace: "public", id: "aBcDeFgHiJ", ownerToken: "fixture-owner", deliveryMode: "path", extend: true, password: null, listed: true };
+for (const scenario of [
+  { label: "every setting applies in the listed order", failAt: 0, isError: undefined,
+    calls: ["POST visibility", "POST password", "POST extend", "PATCH hosting"],
+    text: ["LISTED: true · link unchanged", "PASSWORD: removed · listed: true · link unchanged", "EXPIRES: 2027-02-13T00:00:00Z · link unchanged",
+      "Updated successfully!", "", `URL: ${NEW_RESPONSE.link}`, "Namespace: public", "ID: aBcDeFgHiJ", "Expires: 2027-02-13T00:00:00Z"].join("\n") },
+  { label: "the first failure stops the rest", failAt: 2, isError: true, calls: ["POST visibility", "POST password"],
+    text: ['Failed to set password (409): {"code":"NOT_ELIGIBLE"}', defaultNext(409), "Changed before it:", "LISTED: true · link unchanged",
+      "Not attempted: extend, deliveryMode"].join("\n") },
+]) {
+  test(`set_publication with several settings: ${scenario.label}`, { timeout: 10_000 }, async (t) => {
+    // GIVEN an API that answers each setting route, refusing request number `failAt`.
+    const f = await fixture(t);
+    f.routeWith((_request, count) => count === scenario.failAt ? { status: 409, body: { code: "NOT_ELIGIBLE" } }
+      : { status: 200, body: { ...NEW_RESPONSE, listed: true, expiresAt: "2027-02-13T00:00:00Z" } });
+    // WHEN one call names four settings.
+    const result = await f.call("set_publication", SEVERAL_SETTINGS);
+    // THEN one API call per setting runs in the tool's order and the answer lists each outcome.
+    assert.deepEqual({ calls: f.requests.map(({ method, url }) => `${method} ${url.split("/").at(-1)}`), text: result.content[0].text, isError: result.isError },
+      { calls: scenario.calls, text: scenario.text, isError: scenario.isError }, "settings run one by one and stop at the first failure");
+  });
+}
+
+const OWNER_PUBLICATION = { type: "html", namespace: "public", id: "aBcDeFgHiJ", ownerToken: "fixture-owner" };
+const ONE_FILE = [{ path: "index.html", content: "x" }];
+const CONTENT_OR_FILES = "`content` and `files` were both sent, or neither.\nNext: send exactly one of `content` (a page) or `files` (a site).";
+const PAGE_ONLY = "`format`, `filename` and `showTopBar` belong to a page and were sent with `files`.\nNext: send `files` without them; a file's own extension sets its type.";
+for (const scenario of [
+  { tool: "set_publication", label: "no setting", args: OWNER_PUBLICATION,
+    text: "Failed to change settings (refused): the call names no setting.\nNext: send at least one of `listed`, `badgeHidden`, `title`, `password`, `extend`, `deliveryMode`." },
+  { tool: "set_publication", label: "a title on a file", args: { ...OWNER_PUBLICATION, type: "file", title: "x" },
+    text: "Failed to set title (refused): `title` does not exist on type file.\nNext: send it only for type html, site." },
+  { tool: "set_publication", label: "a password on a KV store", args: { ...OWNER_PUBLICATION, type: "kv", listed: false, password: "x" },
+    text: "Failed to set password (refused): `password` does not exist on type kv.\nNext: send it only for type html, site, file." },
+  { tool: "publish_html", label: "content with files", args: { content: "x", files: ONE_FILE }, text: `Failed to publish site (refused): ${CONTENT_OR_FILES}` },
+  { tool: "publish_html", label: "neither content nor files", args: { namespace: "public" }, text: `Failed to publish (refused): ${CONTENT_OR_FILES}` },
+  { tool: "publish_html", label: "a page argument with files", args: { files: ONE_FILE, showTopBar: true }, text: `Failed to publish site (refused): ${PAGE_ONLY}` },
+  { tool: "update_html", label: "content with files", args: { ...OWNER_PUBLICATION, content: "x", files: ONE_FILE }, text: `Failed to republish site (refused): ${CONTENT_OR_FILES}` },
+  { tool: "update_html", label: "a format with files", args: { ...OWNER_PUBLICATION, files: ONE_FILE, format: "html" }, text: `Failed to republish site (refused): ${PAGE_ONLY}` },
+  { tool: "get_page", label: "a KV read without a key", args: { type: "kv", namespace: "public", id: "aBcDeFgHiJ" },
+    text: "Failed to fetch KV (refused): `type: kv` was sent without `key`.\nNext: send the `key` to read." },
+  { tool: "publish_site", label: "entryContent with files", args: { entryContent: "x", files: ONE_FILE }, text: `Failed to publish (refused): ${CONTENT_OR_FILES}` },
+  { tool: "republish_site", label: "neither entryContent nor files", args: OWNER_PUBLICATION, text: `Failed to update HTML (refused): ${CONTENT_OR_FILES}` },
+]) {
+  test(`${scenario.tool} refuses ${scenario.label} before HTTP`, { timeout: 10_000 }, async (t) => {
+    // GIVEN a call whose arguments exclude each other, name nothing, or do not fit the type.
+    const f = await fixture(t);
+    // WHEN the tool runs.
+    const result = await f.call(scenario.tool, scenario.args);
+    // THEN it is refused with the step that works and nothing is sent.
+    assert.deepEqual({ isError: result.isError, text: result.content[0].text, requests: f.requests.length },
+      { isError: true, text: noted(scenario.tool, scenario.text), requests: 0 }, "refusal is local and exact");
   });
 }
 
@@ -969,7 +1077,7 @@ test("publish_kv prints the private manage link, the listing hint and warning-cl
     "Notice (ttl-clamped): TTL clamped.",
     "MANAGE LINK (private): https://brewpage.app/manage/kv/public/aBcDeFgHiJ#k=bpm_fixture",
     "Give it to the user with the link: anyone who has it can edit or delete this publication. Never post it publicly.",
-    "VISIBILITY: public, listed. Unlist: set_visibility listed=false",
+    "VISIBILITY: public, listed. Unlist: set_publication listed=false",
   ], "warning, manage link and listing lines are exact");
 });
 
@@ -986,7 +1094,7 @@ for (const scenario of [
   { label: "no credential notice -> unchanged listed result",
     notices: [{ code: "ttl-clamped", message: "TTL clamped." }],
     head: ["Published successfully!", "", "URL: https://public-z9y8x7w6v5.brewpage.app/"],
-    relayed: ["Notice (ttl-clamped): TTL clamped.", "VISIBILITY: public, listed. Unlist: set_visibility listed=false"] },
+    relayed: ["Notice (ttl-clamped): TTL clamped.", "VISIBILITY: public, listed. Unlist: set_publication listed=false"] },
 ]) {
   test(`publish_html ${scenario.label}`, { timeout: 10_000 }, async (t) => {
     // GIVEN a listed public result with the scenario's notices.
@@ -1027,11 +1135,10 @@ for (const scenario of [
     const result = await f.call("set_title", { type: "html", namespace: "public", id: "aBcDeFgHiJ", title: "x", ownerToken: "fixture-owner" });
     // THEN the server body is verbatim and the hint matches the cause.
     assert.deepEqual({ text: result.content[0].text, isError: result.isError },
-      { text: `Failed to set title (403): ${JSON.stringify(scenario.response)}${scenario.hint}`, isError: true }, "403 hint follows the cause");
+      { text: noted("set_title", `Failed to set title (403): ${JSON.stringify(scenario.response)}${scenario.hint}`), isError: true }, "403 hint follows the cause");
   });
 }
 
-const OWNER_PUBLICATION = { type: "html", namespace: "public", id: "aBcDeFgHiJ", ownerToken: "fixture-owner" };
 const NO_ANSWER_HEADERS: Record<string, string> = {};
 const BADGE_REFUSAL_MESSAGE = "Publishing refused: hiding, removing or changing the BrewPage badge is not allowed. " +
   "Remove the CSS or script that targets the badge and publish again. Signed in, you can turn the badge off on up to 5 publications.";
@@ -1069,7 +1176,7 @@ for (const scenario of [
     const result = await f.call(scenario.tool, scenario.args);
     // THEN the server answer is verbatim, with Retry-After or the wrong-token hint only where they apply, and no retry.
     assert.deepEqual({ isError: result.isError, text: result.content[0].text, requests: f.requests.length },
-      { isError: true, text: `${scenario.prefix}${JSON.stringify(scenario.response)}${scenario.tail}`, requests: 1 }, "refusal relay is exact");
+      { isError: true, text: noted(scenario.tool, `${scenario.prefix}${JSON.stringify(scenario.response)}${scenario.tail}`), requests: 1 }, "refusal relay is exact");
   });
 }
 
@@ -1121,9 +1228,9 @@ for (const scenario of [
     // THEN the failure keeps the server body plus the publish-anew hint, without retry.
     assert.deepEqual({ isError: result.isError, text: result.content[0].text, requests: f.requests.length }, {
       isError: true, requests: 1,
-      text: `Failed to ${scenario.operation} (409): ${JSON.stringify(scenario.body)}\n` +
+      text: noted(scenario.tool, `Failed to ${scenario.operation} (409): ${JSON.stringify(scenario.body)}\n` +
         `Next: Read-only old publication: cannot be updated. ${scenario.how} A new publication gets a new URL ` +
-        "and owner token; the old URL keeps its old content until it expires." + scenario.extra,
+        "and owner token; the old URL keeps its old content until it expires." + scenario.extra),
     }, "frozen update is relayed verbatim and hinted once");
   });
 }
@@ -1133,7 +1240,8 @@ const wrongTypeBody = (method: string, type: string, route: string) => ({ status
   message: `Wrong type: this id is ${type}. Use ${method} ${route}.`, code: "WRONG_RESOURCE_TYPE", resourceUrl: `https://brewpage.app${route}` });
 for (const scenario of [
   { tool: "update_html", operation: "update HTML", args: { content: "x" }, segment: "html", hint: "\nNext: Use the publish_html tool to publish a new copy." },
-  { tool: "republish_site", operation: "republish site", args: { entryContent: "<h1>x</h1>" }, segment: "sites", hint: "\nNext: Use the publish_site tool to publish a new copy." },
+  { tool: "republish_site", operation: "republish site", args: { entryContent: "<h1>x</h1>" }, segment: "sites", hint: "\nNext: Use the publish_html tool to publish a new copy." },
+  { tool: "update_html", operation: "republish site", args: { files: [{ path: "index.html", content: "x" }] }, segment: "sites", hint: "\nNext: Use the publish_html tool to publish a new copy." },
   { tool: "update_json", operation: "update JSON", args: { json: { a: 1 } }, segment: "json", hint: "\nNext: Use the publish_json tool to publish a new copy." },
   { tool: "set_kv", operation: "set KV", args: { key: "k", value: "v" }, segment: "kv", hint: "\nNext: Use the publish_kv tool to publish a new copy." },
   { tool: "delete_resource", operation: "delete", args: { type: "html" }, segment: "html", hint: `\n${defaultNext(404)}` },
@@ -1145,7 +1253,7 @@ for (const scenario of [
     body: wrongTypeBody("DELETE", "kv", "/api/kv/public/aBcDeFgHiJ"),
     hint: "\nNext: Wrong type for this id: repeat the write at resourceUrl (https://brewpage.app/api/kv/public/aBcDeFgHiJ)." },
 ])) {
-  test(`${scenario.tool} 404 ${scenario.body.code ?? "gone"} relays the server answer plus its hint`, { timeout: 10_000 }, async (t) => {
+  test(`${scenario.tool} 404 ${scenario.body.code ?? "gone"} of ${scenario.operation} relays the server answer plus its hint`, { timeout: 10_000 }, async (t) => {
     // GIVEN a deleted or expired publication.
     const f = await fixture(t);
     f.respond(404, scenario.body);
@@ -1154,7 +1262,7 @@ for (const scenario of [
     // THEN body relayed verbatim; wrong type names resourceUrl, else an update names its publish tool; no retry.
     assert.deepEqual({ isError: result.isError, text: result.content[0].text, requests: f.requests.length }, {
       isError: true, requests: 1,
-      text: `Failed to ${scenario.operation} (404): ${JSON.stringify(scenario.body)}${scenario.hint}`,
+      text: noted(scenario.tool, `Failed to ${scenario.operation} (404): ${JSON.stringify(scenario.body)}${scenario.hint}`),
     }, "404 relay and publish-tool hint are exact");
   });
 }
@@ -1202,11 +1310,11 @@ const LISTED_PRIVATE = "Private: not listed. Anyone with the link can open it. T
 for (const scenario of [
   { tool: "publish_html", args: { content: "x" }, kind: "domain", notice: LISTED_PRIVATE },
   { tool: "publish_file", args: {}, kind: "domain", notice: LISTED_PRIVATE },
-  { tool: "publish_site", args: { entryContent: "<h1>x</h1>" }, kind: "site", notice: LISTED_PRIVATE },
+  { tool: "publish_html", args: { files: [{ path: "index.html", content: "<h1>x</h1>" }] }, kind: "domain", notice: LISTED_PRIVATE },
   { tool: "publish_json", args: { json: { a: 1 } }, kind: "data", notice: "Private: not listed. Anyone with the link can open it." },
   { tool: "publish_kv", args: { key: "k", value: "v" }, kind: "data", notice: "Private: not listed. Anyone with the link can open it." },
 ]) {
-  test(`${scenario.tool} describes namespace ${scenario.kind} reach and prints the matching private notice`, { timeout: 10_000 }, async (t) => {
+  test(`${scenario.tool} ${Object.keys(scenario.args)[0] ?? "url"} describes namespace ${scenario.kind} reach and prints the matching private notice`, { timeout: 10_000 }, async (t) => {
     // GIVEN a private create answer.
     const f = await fixture(t);
     f.respond(201, PRIVATE_RESPONSE);
@@ -1216,7 +1324,6 @@ for (const scenario of [
     const result = await f.call(scenario.tool, { ...scenario.args, ...(scenario.tool === "publish_file" ? { url: `${f.baseUrl}/source-file` } : {}) });
     // THEN the description states the type's public reach without hedges and the notice fits the type.
     const kind = text.includes("served on the brewpage.app domain itself") ? "domain"
-      : text.includes("A site always gets its own subdomain.") ? "site"
       : text.includes("JSON and KV are never listed in the gallery or indexed") ? "data" : "none";
     assert.deepEqual({
       kind, privateDefault: /Omit \(default\): private[.,]/.test(text), hedged: /eligib|may permit|secure|qualif/i.test(text),
@@ -1245,8 +1352,11 @@ for (const scenario of [
   { tool: "set_domain", method: "PUT", args: (v: string) => ({ type: "html", namespace: v, id: v, hostname: "www.example.com" }), url: (e: string) => `/api/publications/html/${e}/${e}/domain` },
   { tool: "check_domain", method: "POST", args: (v: string) => ({ hostname: v }), url: (e: string) => `/api/domains/${e}/check` },
   { tool: "remove_domain", method: "DELETE", args: (v: string) => ({ type: "site", namespace: v, id: v }), url: (e: string) => `/api/publications/site/${e}/${e}/domain` },
+  { tool: "get_page", method: "GET", args: (v: string) => ({ type: "kv", namespace: v, id: v, key: v }), url: (e: string) => `/api/kv/${e}/${e}/${e}` },
+  { tool: "update_html", method: "PUT", args: (v: string) => ({ namespace: v, id: v, files: [{ path: "index.html", content: "x" }] }), url: (e: string) => `/api/sites/${e}/${e}` },
+  { tool: "set_publication", method: "POST", args: (v: string) => ({ type: "site", namespace: v, id: v, password: null }), url: (e: string) => `/api/sites/${e}/${e}/password` },
 ]) {
-  test(`${scenario.tool} keeps traversal input inside its API path and refuses dot segments before HTTP`, { timeout: 20_000 }, async (t) => {
+  test(`${scenario.tool} keeps traversal input inside ${scenario.url("x")} and refuses dot segments before HTTP`, { timeout: 20_000 }, async (t) => {
     // GIVEN a configured owner token and traversal-shaped values in every path field.
     const f = await fixture(t, { BREWPAGE_OWNER_TOKEN: ENV_TOKEN });
     f.respond(200, NEW_RESPONSE);
@@ -1257,8 +1367,8 @@ for (const scenario of [
     // THEN each value is one encoded segment and dot segments never reach the API.
     assert.deepEqual({ requests: f.requests.map(({ method, url }) => `${method} ${url}`), refused }, {
       requests: Object.values(TRAVERSAL_ENCODED).map((encoded) => `${scenario.method} ${scenario.url(encoded)}`),
-      refused: DOT_SEGMENTS.map((value) => `Failed to run ${scenario.tool} (refused): Invalid path value ${JSON.stringify(value)}: empty, "." and ".." are not allowed.\n` +
-        "Next: send namespace, id, key or hostname exactly as a result printed them."),
+      refused: DOT_SEGMENTS.map((value) => noted(scenario.tool, `Failed to run ${RETIRED_TOOLS[scenario.tool]?.[0] ?? scenario.tool} (refused): ` +
+        `Invalid path value ${JSON.stringify(value)}: empty, "." and ".." are not allowed.\nNext: send namespace, id, key or hostname exactly as a result printed them.`)),
     }, "backend URL stays under its API prefix");
   });
 }
@@ -1398,6 +1508,7 @@ const UNAVAILABLE_NOTICE = { code: "domain-unavailable", message: "Custom domain
 const PUBLISH_DOMAIN_TOOLS = [
   { tool: "publish_html", args: { content: "<h1>Fixture</h1>" }, path: "/api/html" },
   { tool: "publish_site", args: { entryContent: "<h1>Fixture</h1>" }, path: "/api/sites" },
+  { tool: "publish_html", args: { files: [{ path: "index.html", content: "<h1>Fixture</h1>" }] }, path: "/api/sites" },
 ];
 
 for (const scenario of PUBLISH_DOMAIN_TOOLS.flatMap((target) => [
@@ -1422,7 +1533,7 @@ for (const scenario of PUBLISH_DOMAIN_TOOLS.flatMap((target) => [
   { ...target, label: "answer without domain fields", domain: "www.example.com", extra: {}, relayed: [`${DOMAIN_NOT_SET} set_domain connects it later.`] },
   { ...target, label: "no domain argument", domain: undefined, extra: {}, relayed: [] },
 ])) {
-  test(`${scenario.tool} domain argument: ${scenario.label}`, { timeout: 10_000 }, async (t) => {
+  test(`${scenario.tool} to ${scenario.path} domain argument: ${scenario.label}`, { timeout: 10_000 }, async (t) => {
     // GIVEN a create answer with the scenario's domain fields.
     const f = await fixture(t);
     f.respond(201, { ...NEW_RESPONSE, ...scenario.extra });
@@ -1440,16 +1551,16 @@ for (const scenario of PUBLISH_DOMAIN_TOOLS.flatMap((target) => [
   });
 }
 
-test("only publish_html and publish_site take the optional domain argument", { timeout: 10_000 }, async (t) => {
+test("only publish_html takes the optional domain argument", { timeout: 10_000 }, async (t) => {
   // GIVEN local MCP connected to a synthetic API.
   const f = await fixture(t);
   // WHEN client discovers tools.
   const { tools } = await f.client.listTools();
-  // THEN `domain` is an optional string on the two create tools that can take a custom domain.
+  // THEN `domain` is an optional string on the one create tool that can take a custom domain.
   const actual = Object.fromEntries(tools.filter(({ name }) => name.startsWith("publish_")).map(({ name, inputSchema }) =>
     [name, { type: (inputSchema.properties!.domain as { type?: string } | undefined)?.type ?? null, required: inputSchema.required?.includes("domain") ?? false }]));
   assert.deepEqual(actual, {
-    publish_html: { type: "string", required: false }, publish_site: { type: "string", required: false },
+    publish_html: { type: "string", required: false },
     publish_file: { type: null, required: false }, publish_json: { type: null, required: false }, publish_kv: { type: null, required: false },
   }, "domain argument placement matches the API");
 });
@@ -1479,7 +1590,7 @@ test("custom-domain descriptions state who, what, the records step, one check an
   assert.deepEqual({
     descriptions: Object.fromEntries(Object.keys(DOMAIN_DESCRIPTIONS).map((name) => [name, described(name).description])),
     hostnames: ["set_domain", "list_domains", "check_domain", "remove_domain"].map((name) => argument(name, "hostname")),
-    createArguments: ["publish_html", "publish_site"].map((name) => argument(name, "domain")),
+    createArguments: ["publish_html"].map((name) => argument(name, "domain")),
     listAddress: Object.keys(described("list_domains").inputSchema.properties!).sort(),
     listRequired: described("list_domains").inputSchema.required ?? [],
     statuses: Object.keys(DOMAIN_STATUSES),
@@ -1487,7 +1598,7 @@ test("custom-domain descriptions state who, what, the records step, one check an
   }, {
     descriptions: DOMAIN_DESCRIPTIONS,
     hostnames: ["Bare hostname: www.example.com", DOMAIN_HOSTNAME_ARGUMENT, DOMAIN_HOSTNAME_ARGUMENT, DOMAIN_HOSTNAME_ARGUMENT],
-    createArguments: [DOMAIN_CREATE_ARGUMENT, DOMAIN_CREATE_ARGUMENT],
+    createArguments: [DOMAIN_CREATE_ARGUMENT],
     listAddress: ["hostname", "id", "namespace", "ownerToken", "type"],
     listRequired: [],
     statuses: ["pending_dns", "verifying", "active", "lost"],
@@ -1794,6 +1905,8 @@ const NEW_HTML = { content: "<p>x</p>", namespace: "public" };
 const HTML_UPDATE = { ...PAGE, content: "<p>y</p>" };
 const NEW_SITE = { entryContent: "<p>x</p>", namespace: "public" };
 const SITE_UPDATE = { ...PAGE, entryContent: "<p>y</p>" };
+const NEW_FILES = { files: [{ path: "index.html", content: "<p>x</p>" }], namespace: "public" };
+const FILES_UPDATE = { ...PAGE, files: [{ path: "index.html", content: "<p>y</p>" }] };
 
 for (const scenario of [
   { tool: "publish_html", label: "an object", args: { ...NEW_HTML, state: LISTS_STATE }, method: "POST", read: jsonBody, sent: { content: "<p>x</p>", state: LISTS_STATE },
@@ -1815,6 +1928,9 @@ for (const scenario of [
     sent: { state: JSON.stringify(POLL_STATE) }, lines: [] },
   { tool: "republish_site", label: "no state", args: SITE_UPDATE, method: "PUT", read: stateField, sent: { state: null }, lines: [] },
   { tool: "republish_site", label: "null", args: { ...SITE_UPDATE, state: null }, method: "PUT", read: stateField, sent: { state: "null" }, lines: [] },
+  { tool: "publish_html", label: "site files and an object", args: { ...NEW_FILES, state: SCORES_STATE }, method: "POST", read: stateField,
+    sent: { state: JSON.stringify(SCORES_STATE) }, lines: ["Page data: on - lists: scores (shared)", PAGE_DATA_SCRIPT_LINE] },
+  { tool: "update_html", label: "site files and null", args: { ...FILES_UPDATE, state: null }, method: "PUT", read: stateField, sent: { state: "null" }, lines: [] },
 ]) {
   test(`${scenario.tool} with ${scenario.label} as state sends it as given in one request`, { timeout: 10_000 }, async (t) => {
     // GIVEN a fake API that accepts the publish or update.
@@ -1832,6 +1948,7 @@ for (const scenario of [
 const STATE_TOOL_CALLS = [
   { tool: "publish_html", operation: "publish", args: NEW_HTML }, { tool: "update_html", operation: "update HTML", args: HTML_UPDATE },
   { tool: "publish_site", operation: "publish site", args: NEW_SITE }, { tool: "republish_site", operation: "republish site", args: SITE_UPDATE },
+  { tool: "publish_html", operation: "publish site", args: NEW_FILES }, { tool: "update_html", operation: "republish site", args: FILES_UPDATE },
   { tool: "configure_page_data", operation: "change page data settings", args: PAGE },
 ];
 
@@ -1843,30 +1960,31 @@ for (const state of ["on", "[1]", "7"]) {
     const actual: Record<string, unknown> = {};
     for (const call of STATE_TOOL_CALLS) {
       const result = await f.call(call.tool, { ...call.args, state });
-      actual[call.tool] = { isError: result.isError, text: result.content[0].text };
+      actual[`${call.tool}: ${call.operation}`] = { isError: result.isError, text: result.content[0].text };
     }
     // THEN each refuses with the shape hint and nothing is published or changed.
     const text = "`state` is not a JSON object.\nNext: send `state` as an object such as {\"collections\":{\"answers\":{\"mode\":\"private\"}}}; {} is enough.";
     assert.deepEqual({ tools: actual, requests: f.requests.length },
-      { tools: Object.fromEntries(STATE_TOOL_CALLS.map((call) => [call.tool, { isError: true, text: `Failed to ${call.operation} (refused): ${text}` }])), requests: 0 },
+      { tools: Object.fromEntries(STATE_TOOL_CALLS.map((call) => [`${call.tool}: ${call.operation}`,
+        { isError: true, text: noted(call.tool, `Failed to ${call.operation} (refused): ${text}`) }])), requests: 0 },
       `${state} is refused before HTTP`);
   });
 }
 
-test("state is optional on the four page tools, required on configure_page_data and absent elsewhere", { timeout: 10_000 }, async (t) => {
+test("state is optional on the two page tools, required on configure_page_data and absent elsewhere", { timeout: 10_000 }, async (t) => {
   // GIVEN local MCP connected to a synthetic API.
   const f = await fixture(t);
   // WHEN client discovers tools.
   const { tools } = await f.client.listTools();
-  // THEN only those five take `state` (publish_file has none); the two create descriptions point at the guide and none carries the call shapes.
+  // THEN only those three take `state` (publish_file has none); the create description points at the guide and none carries the call shapes.
   assert.deepEqual({
     stateArgument: Object.fromEntries(tools.filter(({ inputSchema }) => "state" in (inputSchema.properties ?? {}))
       .map(({ name, inputSchema }) => [name, inputSchema.required?.includes("state") ?? false])),
     guidePointer: tools.filter(({ description }) => (description ?? "").includes("needs `state` and the script named in guide topic `page-data`.")).map(({ name }) => name),
     callShapes: tools.filter(({ description }) => (description ?? "").includes(PAGE_DATA_CALLS)).map(({ name }) => name),
   }, {
-    stateArgument: { publish_html: false, publish_site: false, republish_site: false, update_html: false, configure_page_data: true },
-    guidePointer: ["publish_html", "publish_site"],
+    stateArgument: { publish_html: false, update_html: false, configure_page_data: true },
+    guidePointer: ["publish_html"],
     callShapes: [],
   }, "state argument placement and the guide pointer match the design");
 });
@@ -1935,7 +2053,7 @@ for (const scenario of [
 const NEEDS_OWN_ADDRESS = { code: "state-needs-subdomain", message: "This page wants to save data, but it needs its own address." };
 const MODE_KEPT = { code: "state-mode-kept", message: "List drafts stays private (visitor entries exist); use a new list name for a shared one." };
 const NEEDS_OWN_ADDRESS_LINE = `Notice (${NEEDS_OWN_ADDRESS.code}): ${NEEDS_OWN_ADDRESS.message}`;
-const NEXT_OWN_ADDRESS = "Next: update_hosting type=html deliveryMode=subdomain";
+const NEXT_OWN_ADDRESS = "Next: set_publication type=html deliveryMode=subdomain";
 const NEXT_OWN_ADDRESS_BY_LINK = `${NEXT_OWN_ADDRESS} (needs the owner token; without it the user opens the management link and gives the page its own address there)`;
 const withNotice = (notice: { code: string; message: string }) => answer(200, { ...NEW_RESPONSE, ...OVERVIEW, notices: [notice] });
 
@@ -1988,7 +2106,7 @@ const CUSTOM_DOMAIN_GUIDE = [
   "  403 DOMAIN_NEEDS_ACCOUNT = the owner token is in no profile: give the user the owner token (it is theirs) to add there, then repeat the call. With an admin profile token bind_token adds it instead.",
   `Domain: ${DOMAIN_PROVIDER_TEXT}`,
   "Steps:",
-  "1) set_domain (type, namespace, id, hostname), or `domain` on publish_html / publish_site. The hostname is bare: www.example.com or example.com, no scheme or path.",
+  "1) set_domain (type, namespace, id, hostname), or `domain` on publish_html. The hostname is bare: www.example.com or example.com, no scheme or path.",
   "2) Give the user exactly the DNS records of the result to create at their DNS provider (`host` is the name DNS panels ask for); never values from memory.",
   "   MX/mail records stay; an A, AAAA or CNAME record at the same name is replaced. At Cloudflare set Proxy status to DNS only.",
   "3) When the user says the records exist: check_domain once.",

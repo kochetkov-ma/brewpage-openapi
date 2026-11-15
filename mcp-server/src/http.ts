@@ -8,6 +8,7 @@ import { realpathSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 import { createMcpHandler, InMemoryTransport, isLegacyRequest, LATEST_PROTOCOL_VERSION, type JSONRPCMessage } from "@modelcontextprotocol/server";
 import { NodeStreamableHTTPServerTransport, toWebRequest } from "@modelcontextprotocol/node";
+import { currentCall } from "./compat.js";
 import { createServer, OWNER_TOKEN_ENV, REMOTE, USER_AGENT, userAgentFor } from "./tools.js";
 import { classifyClient, UsageMetrics, type ClientClass } from "./metrics.js";
 
@@ -547,8 +548,13 @@ async function main(): Promise<void> {
       }
       if (Array.isArray(message)) return rpcError(res, 400, INVALID_REQUEST, "Batch requests are not supported.");
       if (message === null || typeof message !== "object") return rpcError(res, 400, INVALID_REQUEST, "Invalid Request.");
+      // An old tool name runs as its current tool from here on: pool, log line and SDK see the current name.
+      const askedName = (message as { params?: { name?: unknown } | null }).params?.name;
+      message = currentCall(message);
       const rpc = message as { method?: unknown; params?: { name?: unknown } | null };
       const toolName = rpc.method === "tools/call" ? rpc.params?.name : undefined;
+      // 2026-07-28 mirrors the tool name in a header the SDK checks against the body: it follows the rewrite.
+      if (typeof toolName === "string" && toolName !== askedName && req.headers["mcp-name"] === askedName) req.headers["mcp-name"] = toolName;
       entry.method = typeof rpc.method === "string" ? rpc.method.slice(0, MAX_LOGGED_METHOD) : null;
       entry.tool = rpc.method === "tools/call" ? (typeof toolName === "string" && toolNames.has(toolName) ? toolName : "unknown") : null;
       usage.client = classifyClient(egress, (req.headers["user-agent"] ?? "").slice(0, MAX_LOGGED_METHOD));

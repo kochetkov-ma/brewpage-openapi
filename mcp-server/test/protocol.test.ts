@@ -17,9 +17,9 @@ const CLIENT_IP = "198.51.100.7";
 const LIMITS = { maxFileSizeBytes: 5242880 };
 /** Registration order, as tools/list returns it. */
 const EXPECTED_TOOL_NAMES = [
-  "publish_html", "publish_file", "update_hosting", "delete_resource", "get_page", "get_stats", "publish_site",
-  "republish_site", "update_html", "publish_json", "get_json", "update_json", "publish_kv",
-  "set_kv", "get_kv", "get_limits", "search_gallery", "set_visibility", "make_private", "set_badge", "set_title", "bind_token", "mint_token",
+  "publish_html", "publish_file", "delete_resource", "get_page", "get_stats",
+  "update_html", "publish_json", "update_json", "publish_kv",
+  "set_kv", "get_limits", "search_gallery", "set_publication", "make_private", "bind_token", "mint_token",
   "set_domain", "list_domains", "check_domain", "remove_domain",
   "get_page_data", "set_page_data", "configure_page_data", "delete_page_data", "get_guide",
 ];
@@ -119,7 +119,7 @@ const PROTOCOL_MATRIX = [
 
 for (const [transport, connect] of [["stdio", stdio], ["HTTP", http]] as const) {
   for (const row of PROTOCOL_MATRIX) {
-    test(`${transport} ${row.label} negotiates ${row.negotiated} and lists all 32 tools`, { timeout: 15_000 }, async (t) => {
+    test(`${transport} ${row.label} negotiates ${row.negotiated} and lists all 25 tools`, { timeout: 15_000 }, async (t) => {
       // GIVEN the built entry on a stub API.
       const api = await backend(t);
       const send = await connect(t, api.url);
@@ -143,7 +143,7 @@ const serverInstructions = (envDefault: string) => [
     "deliveryMode: path = a brewpage.app link, subdomain = the publication's own subdomain; omitted = chosen by type. Owner tokens and management links never go into published content; other secrets fit a private namespace plus a password.",
   "A page that must save what its visitors enter (form answers, guestbook, votes, scores, game progress) needs Page data: read get_guide topic page-data BEFORE writing the page, then publish with the state argument. " +
     "get_page_data reads it, set_page_data writes author entries, configure_page_data changes settings, delete_page_data moderates; each takes namespace, id and ownerToken, or the management link as manageUrl.",
-  "HTML pages and sites show a small BrewPage badge; page code must not hide or alter it. A profile can turn it off on up to 5 pages (set_badge).",
+  "HTML pages and sites show a small BrewPage badge; page code must not hide or alter it. A profile can turn it off on up to 5 pages (set_publication).",
   "A custom domain, only when the user asks for their own domain: set_domain, the user creates the returned DNS records, check_domain once, then list_domains until it is active. Steps and fixes: get_guide topic custom-domain.",
 ].join("\n");
 const INSTRUCTIONS_BY_TRANSPORT = {

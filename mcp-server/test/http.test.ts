@@ -160,7 +160,7 @@ const redirect = (location: string) => `HTTP/1.1 302 Found\r\nLocation: ${locati
 const ok = (body: string, head = "HTTP/1.1 200 OK") => `${head}\r\nContent-Type: text/plain\r\nContent-Length: ${body.length}\r\nConnection: close\r\n\r\n${body}`;
 const allowLoopback = (address: string) => address !== "127.0.0.1" && isBlockedSource(address);
 
-test("HTTP initialize reports the package version and lists 32 annotated tools", { timeout: 15_000 }, async (t) => {
+test("HTTP initialize reports the package version and lists 25 annotated tools", { timeout: 15_000 }, async (t) => {
   // GIVEN the HTTP entry behind a trusted local proxy.
   const f = await fixture(t);
   // WHEN a Streamable HTTP client connects and lists tools.
@@ -168,7 +168,7 @@ test("HTTP initialize reports the package version and lists 32 annotated tools",
   const { tools } = await client.listTools();
   // THEN identity, tool count and annotations match the directory contract.
   assert.deepEqual(client.getServerVersion(), { name: "brewpage-mcp", version: PACKAGE_VERSION }, "serverInfo carries the package version");
-  assert.equal(tools.length, 32, "all 32 tools are exposed over HTTP");
+  assert.equal(tools.length, 25, "all 25 tools are exposed over HTTP");
   assert.deepEqual(tools.filter((tool) => typeof tool.annotations?.readOnlyHint !== "boolean" || typeof tool.title !== "string")
     .map(({ name }) => name), [], "every tool has a title and readOnlyHint");
   assert.equal(f.requests.length, 0, "discovery never calls the backend");
@@ -422,7 +422,7 @@ test("a write burst never holds light slots: another client's tools/list answers
   const tools = ((await res.json()) as { result: { tools: unknown[] } }).result.tools.length;
   burst.forEach(({ socket }) => socket.destroy());
   // THEN it is served from the light pool while the writes wait.
-  assert.deepEqual({ status: res.status, tools, backendOpen: f.backend.open }, { status: 200, tools: 32, backendOpen: 8 },
+  assert.deepEqual({ status: res.status, tools, backendOpen: f.backend.open }, { status: 200, tools: 25, backendOpen: 8 },
     "queued writes released their light slots");
 });
 
