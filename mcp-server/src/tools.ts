@@ -1,4 +1,4 @@
-import { McpServer, type ToolAnnotations } from "@modelcontextprotocol/server";
+import { McpServer, type StandardSchemaWithJSON, type ToolAnnotations } from "@modelcontextprotocol/server";
 import { z } from "zod";
 import { DOMAIN_PROBLEMS, DOMAIN_STATUSES } from "./guides/custom-domain.js";
 import { PAGE_DATA_GUIDE } from "./guides/page-data.js";
@@ -68,10 +68,13 @@ export interface ServerOptions {
 const READ_ONLY: ToolAnnotations = { readOnlyHint: true };
 const DESTRUCTIVE: ToolAnnotations = { readOnlyHint: false, destructiveHint: true };
 const ADDITIVE: ToolAnnotations = { readOnlyHint: false, destructiveHint: false };
+/** Replace-style writers: the same call twice leaves the same state. */
+const REPLACING: ToolAnnotations = { ...DESTRUCTIVE, idempotentHint: true };
+const SETTING: ToolAnnotations = { ...ADDITIVE, idempotentHint: true };
 
-/** Display title (top level and annotation) plus safety hints for clients and directories. */
+/** Display title (sent once, top level) plus safety hints for clients and directories. */
 function toolMeta(title: string, hints: ToolAnnotations) {
-  return { title, annotations: { title, ...hints } };
+  return { title, annotations: hints };
 }
 
 const NAMESPACE_FORMAT = "A custom name: 1-32 of a-z, 0-9, hyphen.";
@@ -569,12 +572,14 @@ const SITE_FILES_SCHEMA = z.array(z.object({ path: z.string(), content: z.string
 const SITE_ENTRY_CONTENT_SCHEMA = z.string().optional().describe("One page; instead of `files`");
 const SITE_ENTRY_SCHEMA = z.string().optional().describe("Site entry file, default index.html");
 
+/** Hosting fields only when the requested mode was not applied; reasons and notices always. */
 function hostingResponseLines(data: Record<string, unknown>): string[] {
   const fields = ["routingCohort", "deliveryMode", "requestedDeliveryMode", "effectiveDeliveryMode",
     "deliveryModeMatched", "modeLocked", "hostingVersion", "access"];
-  const lines = fields.filter((field) => field in data).map((field) => `${field}: ${JSON.stringify(data[field])}`);
+  const mismatch = data.deliveryModeMatched === false;
+  const lines = mismatch ? fields.filter((field) => field in data).map((field) => `${field}: ${JSON.stringify(data[field])}`) : [];
   if (data.routingCohort === "old") lines.push("Hosting: Existing link");
-  if (data.deliveryModeMatched === false) lines.push("Requested hosting differs from the effective mode; use the returned URL.");
+  if (mismatch) lines.push("Requested hosting differs from the effective mode; use the returned URL.");
   lines.push(...deliveryReasonLines(data));
   lines.push(...noticeLines(data));
   return lines;
@@ -676,6 +681,67 @@ interface ToolSpec<Shape extends ToolShape> {
   annotations: ToolAnnotations;
   description: string;
   inputSchema: Shape;
+  /** Arguments left out of the advertised schema; a call that sends one is validated and served as before. */
+  hidden?: ReadonlyArray<keyof Shape & string>;
+}
+
+type JsonSchema = Record<string, unknown>;
+/** Schema keys the list never carries; the validator keeps every rule and names it in its error. */
+const UNLISTED_SCHEMA_KEYS = new Set(["$schema", "propertyNames", "minLength", "maxLength", "pattern", "default"]);
+const isSchemaObject = (value: unknown): value is JsonSchema => typeof value === "object" && value !== null && !Array.isArray(value);
+
+/** Advertised form of an emitted schema node: unlisted keys and empty sub-schemas go, a union shows its main type. */
+function leanSchema(node: JsonSchema): JsonSchema {
+  const lean: JsonSchema = {};
+  for (const [key, value] of Object.entries(node)) {
+    if (UNLISTED_SCHEMA_KEYS.has(key)) continue;
+    if ((key === "maximum" || key === "minimum") && Math.abs(Number(value)) === Number.MAX_SAFE_INTEGER) continue;
+    if (key === "properties" && isSchemaObject(value)) {
+      lean[key] = Object.fromEntries(Object.entries(value).map(([name, schema]) => [name, leanSchema(schema as JsonSchema)]));
+    } else if ((key === "items" || key === "additionalProperties") && isSchemaObject(value)) {
+      if (Object.keys(value).length > 0) lean[key] = leanSchema(value);
+    } else if (key === "anyOf" && Array.isArray(value)) {
+      lean[key] = value.map((arm) => leanSchema(arm as JsonSchema));
+    } else {
+      lean[key] = value;
+    }
+  }
+  return Array.isArray(lean.anyOf) ? mainTypeOf(lean) : lean;
+}
+
+/** A union as its main type: the text spelling of a value is accepted, never advertised; `null` stays visible. */
+function mainTypeOf(node: JsonSchema): JsonSchema {
+  const { anyOf, ...rest } = node;
+  const arms = anyOf as JsonSchema[];
+  const typed = arms.filter((arm) => arm.type !== "null");
+  const nullable = typed.length < arms.length;
+  const structured = typed.filter((arm) => arm.type !== "string");
+  const main = structured.length > 0 ? structured : typed;
+  if (main.length === 1 && !nullable) return { ...rest, ...main[0] };
+  const bare = main.every((arm) => typeof arm.type === "string" && Object.keys(arm).length === 1);
+  return bare ? { ...rest, type: [...main.map((arm) => arm.type), ...(nullable ? ["null"] : [])] } : node;
+}
+
+/** Validator of today with a lean advertised schema: `tools/list` shows the diet, `tools/call` meets every rule. */
+function advertised<Args>(validator: z.ZodType<Args>, hidden: ReadonlyArray<string>): StandardSchemaWithJSON<Args, Args> {
+  const standard = validator["~standard"];
+  const listed = (emitted: Record<string, unknown>): Record<string, unknown> => {
+    const { properties, required, ...rest } = leanSchema(emitted);
+    const shown = Object.entries((properties ?? {}) as JsonSchema).filter(([name]) => !hidden.includes(name));
+    const needed = ((required ?? []) as string[]).filter((name) => !hidden.includes(name));
+    return { ...rest, properties: Object.fromEntries(shown), ...(needed.length > 0 ? { required: needed } : {}) };
+  };
+  return {
+    "~standard": {
+      version: 1,
+      vendor: standard.vendor,
+      validate: (value) => standard.validate(value) as ReturnType<StandardSchemaWithJSON<Args, Args>["~standard"]["validate"]>,
+      jsonSchema: {
+        input: (target) => listed(standard.jsonSchema.input(target)),
+        output: (target) => listed(standard.jsonSchema.output(target)),
+      },
+    },
+  };
 }
 
 /** Fresh server with the profile's tools; stdio builds one, stateless HTTP one per request. */
@@ -699,9 +765,9 @@ export function createServer(options: ServerOptions = {}): McpServer {
     handler: (args: z.infer<z.ZodObject<Shape>>) => ToolAnswer | Promise<ToolAnswer>
   ): void {
     if (profile.tools && !profile.tools.has(name)) return;
-    // The validator object is built here, so a later advertised schema wraps it in this one place.
-    const inputSchema: z.ZodType<z.infer<z.ZodObject<Shape>>> = z.object(spec.inputSchema);
-    server.registerTool(name, { ...spec, inputSchema }, async (args) => {
+    const { hidden = [], inputSchema: shape, ...listing } = spec;
+    const validator: z.ZodType<z.infer<z.ZodObject<Shape>>> = z.object(shape);
+    server.registerTool(name, { ...listing, inputSchema: advertised(validator, hidden) }, async (args) => {
       try {
         return await handler(args);
       } catch (error) {
@@ -867,17 +933,18 @@ export function createServer(options: ServerOptions = {}): McpServer {
           .boolean()
           .optional()
           .describe("Top toolbar with file name and Download"),
+        tags: z.array(z.string()).optional(),
         domain: z.string().optional().describe(DOMAIN_ARGUMENT),
         ownerToken: z.string().optional().describe(CREATE_OWNER_TOKEN_DESCRIPTION),
         state: stateSchema(STATE_CREATE_DESCRIPTION),
       },
     },
-    async ({ content, format, namespace, password, ttlDays, filename, showTopBar, deliveryMode, domain, ownerToken, state }) => {
+    async ({ content, format, namespace, password, ttlDays, filename, showTopBar, deliveryMode, tags, domain, ownerToken, state }) => {
       const sentState = state === undefined ? undefined : parseStateArgument(state);
       if (sentState && "refusal" in sentState) return refused("publish", sentState.refusal);
       const effectiveNamespace = resolveNamespace(namespace);
-      const path = withQuery(apiPath("html"),
-        [["ns", effectiveNamespace], ["format", format?.toLowerCase()], ["ttl", ttlDays], ["domain", domain || undefined]]);
+      const path = withQuery(apiPath("html"), [["ns", effectiveNamespace], ["format", format?.toLowerCase()], ["ttl", ttlDays],
+        ["tags", tags?.length ? tags.join(",") : undefined], ["domain", domain || undefined]]);
       const body: Record<string, unknown> = { content };
       if (filename) body.filename = filename;
       if (showTopBar !== undefined) body.showTopBar = showTopBar;
@@ -909,10 +976,13 @@ export function createServer(options: ServerOptions = {}): McpServer {
         deliveryMode: DELIVERY_MODE_SCHEMA,
         namespace: described(z.string().optional(), shared("namespace")),
         filename: z.string().optional().describe("Name instead of the URL's; its extension decides page or file"),
+        password: z.string().optional(),
+        ttlDays: ttlSchema(),
         ownerToken: z.string().optional().describe(CREATE_OWNER_TOKEN_DESCRIPTION),
       },
+      hidden: ["deliveryMode"],
     },
-    async ({ url: fileUrl, namespace, filename, deliveryMode, ownerToken }) => {
+    async ({ url: fileUrl, namespace, filename, password, ttlDays, deliveryMode, ownerToken }) => {
       if (!/^https?:\/\//i.test(fileUrl) || !URL.canParse(fileUrl)) return refused("upload file", SOURCE_NOT_A_URL);
       const effectiveNamespace = resolveNamespace(namespace);
       let blob: Blob;
@@ -929,10 +999,11 @@ export function createServer(options: ServerOptions = {}): McpServer {
         filename || fileUrl.split("/").pop() || "file"
       );
       const headers: Record<string, string> = {};
+      if (password) headers["X-Password"] = password;
       if (deliveryMode) headers["X-Delivery-Mode"] = deliveryMode;
       const owner = ownerTokenFor(ownerToken).token;
       if (owner) headers["X-Owner-Token"] = owner;
-      const res = await bpFetch(`${baseUrl}${withQuery(apiPath("files"), [["ns", effectiveNamespace]])}`, {
+      const res = await bpFetch(`${baseUrl}${withQuery(apiPath("files"), [["ns", effectiveNamespace], ["ttl", ttlDays]])}`, {
         method: "POST",
         headers,
         body: formData,
@@ -1069,7 +1140,7 @@ export function createServer(options: ServerOptions = {}): McpServer {
         content: [
           {
             type: "text" as const,
-            text: `BrewPage Platform Statistics:\n\n${JSON.stringify(data, null, 2)}`,
+            text: `BrewPage Platform Statistics:\n\n${JSON.stringify(data)}`,
           },
         ],
       };
@@ -1090,12 +1161,13 @@ export function createServer(options: ServerOptions = {}): McpServer {
         namespace: described(z.string().optional(), shared("siteNamespace")),
         password: z.string().optional(),
         ttlDays: ttlSchema(),
+        tags: z.array(z.string()).optional(),
         domain: z.string().optional().describe(DOMAIN_ARGUMENT),
         ownerToken: z.string().optional().describe(CREATE_OWNER_TOKEN_DESCRIPTION),
         state: stateSchema(STATE_CREATE_DESCRIPTION),
       },
     },
-    async ({ entryContent, files, entry, namespace, password, ttlDays, ownerToken, deliveryMode, domain, state }) => {
+    async ({ entryContent, files, entry, namespace, password, ttlDays, tags, ownerToken, deliveryMode, domain, state }) => {
       const hasEntry = typeof entryContent === "string";
       const hasFiles = Array.isArray(files) && files.length > 0;
       if (hasEntry === hasFiles) return refused("publish site", SITE_CONTENT_ERROR);
@@ -1124,7 +1196,8 @@ export function createServer(options: ServerOptions = {}): McpServer {
 
       const effectiveNamespace = resolveNamespace(namespace);
       const url = baseUrl + withQuery(apiPath("sites"),
-        [["entry", entry || undefined], ["ns", effectiveNamespace], ["ttl", ttlDays || undefined], ["domain", domain || undefined]]);
+        [["entry", entry || undefined], ["ns", effectiveNamespace], ["ttl", ttlDays || undefined],
+          ["tags", tags?.length ? tags.join(",") : undefined], ["domain", domain || undefined]]);
       const res = await bpFetch(url, { method: "POST", headers, body: formData });
       const data = await res.json().catch(() => null);
 
@@ -1143,7 +1216,7 @@ export function createServer(options: ServerOptions = {}): McpServer {
   tool(
     "republish_site",
     {
-      ...toolMeta("Republish site", DESTRUCTIVE),
+      ...toolMeta("Republish site", REPLACING),
       description: "Replace every file of an existing site (`files`, or one page as `entryContent`); files absent from the upload are removed. The link and the expiry stay." +
         shared("badge"),
       inputSchema: {
@@ -1157,6 +1230,7 @@ export function createServer(options: ServerOptions = {}): McpServer {
         tags: z.array(z.string()).optional().describe("Replace the stored tags"),
         state: stateSchema(STATE_UPDATE_DESCRIPTION),
       },
+      hidden: ["ttlDays"],
     },
     async ({ namespace, id, ownerToken, entryContent, files, entry, ttlDays, tags, state }) => {
       const hasEntry = typeof entryContent === "string";
@@ -1219,7 +1293,7 @@ export function createServer(options: ServerOptions = {}): McpServer {
   tool(
     "update_html",
     {
-      ...toolMeta("Update page", DESTRUCTIVE),
+      ...toolMeta("Update page", REPLACING),
       description: "Replace the content of an existing page. The link stays." + shared("badge"),
       inputSchema: {
         namespace: z.string(),
@@ -1274,6 +1348,7 @@ export function createServer(options: ServerOptions = {}): McpServer {
         tags: z.array(z.string()).optional(),
         ownerToken: z.string().optional().describe(CREATE_OWNER_TOKEN_DESCRIPTION),
       },
+      hidden: ["deliveryMode"],
     },
     async ({ json, namespace, password, ttlDays, tags, ownerToken, deliveryMode }) => {
       const jsonString = typeof json === "string" ? json : JSON.stringify(json);
@@ -1334,7 +1409,7 @@ export function createServer(options: ServerOptions = {}): McpServer {
   tool(
     "update_json",
     {
-      ...toolMeta("Update JSON document", DESTRUCTIVE),
+      ...toolMeta("Update JSON document", REPLACING),
       description: "Replace an existing JSON document.",
       inputSchema: {
         namespace: z.string(),
@@ -1389,6 +1464,7 @@ export function createServer(options: ServerOptions = {}): McpServer {
         tags: z.array(z.string()).optional(),
         ownerToken: z.string().optional().describe(CREATE_OWNER_TOKEN_DESCRIPTION),
       },
+      hidden: ["deliveryMode"],
     },
     async ({ key, value, namespace, password, ttlDays, tags, ownerToken, deliveryMode }) => {
       const body: Record<string, unknown> = { key, value };
@@ -1418,7 +1494,7 @@ export function createServer(options: ServerOptions = {}): McpServer {
   tool(
     "set_kv",
     {
-      ...toolMeta("Set KV value", DESTRUCTIVE),
+      ...toolMeta("Set KV value", REPLACING),
       description: "Set a key of an existing KV store (create or replace); the key `hosting` is reserved.",
       inputSchema: {
         namespace: z.string(),
@@ -1502,7 +1578,7 @@ export function createServer(options: ServerOptions = {}): McpServer {
         content: [
           {
             type: "text" as const,
-            text: `BrewPage limits (sizes in bytes, TTLs in days):\n\n${JSON.stringify(data, null, 2)}`,
+            text: `BrewPage limits (sizes in bytes, TTLs in days):\n\n${JSON.stringify(data)}`,
           },
         ],
       };
@@ -1545,7 +1621,7 @@ export function createServer(options: ServerOptions = {}): McpServer {
         content: [
           {
             type: "text" as const,
-            text: JSON.stringify(data, null, 2),
+            text: JSON.stringify(data),
           },
         ],
       };
@@ -1555,7 +1631,7 @@ export function createServer(options: ServerOptions = {}): McpServer {
   tool(
     "set_visibility",
     {
-      ...toolMeta("Set gallery visibility", ADDITIVE),
+      ...toolMeta("Set gallery visibility", SETTING),
       description: "List or unlist a public publication in the gallery and sitemap. Link unchanged.",
       inputSchema: {
         type: z.enum(PUBLICATION_TYPES).describe("Only public html, site and file can be listed"),
@@ -1612,7 +1688,7 @@ export function createServer(options: ServerOptions = {}): McpServer {
   tool(
     "set_badge",
     {
-      ...toolMeta("Hide or show badge", ADDITIVE),
+      ...toolMeta("Hide or show badge", SETTING),
       description: "Hide or show the BrewPage badge on a publication; needs the owner token in a BrewPage profile, up to 5 hidden per profile.",
       inputSchema: {
         type: z.enum(PUBLICATION_TYPES),
@@ -1643,7 +1719,7 @@ export function createServer(options: ServerOptions = {}): McpServer {
   tool(
     "set_title",
     {
-      ...toolMeta("Rename page or site", ADDITIVE),
+      ...toolMeta("Rename page or site", SETTING),
       description: "Rename an HTML page or site; needs the owner token in a BrewPage profile.",
       inputSchema: {
         type: z.enum(["html", "site"]),
@@ -1737,7 +1813,7 @@ export function createServer(options: ServerOptions = {}): McpServer {
   tool(
     "set_domain",
     {
-      ...toolMeta("Connect custom domain", ADDITIVE),
+      ...toolMeta("Connect custom domain", SETTING),
       description: "Connect a custom domain the user owns to an HTML page of format html or a site, without a password. " +
         "Needs a profile token, or an owner token added to a free BrewPage profile (up to 5 domains). " +
         "Returns the DNS records for the user to create exactly as returned.",
@@ -1912,7 +1988,7 @@ export function createServer(options: ServerOptions = {}): McpServer {
   tool(
     "set_page_data",
     {
-      ...toolMeta("Write author entries", DESTRUCTIVE),
+      ...toolMeta("Write author entries", REPLACING),
       description: "Create or replace 1-20 author entries in one list, each by `key`; visitors' entries stay untouched.",
       inputSchema: {
         ...PAGE_ADDRESS_SCHEMA,
@@ -1945,7 +2021,7 @@ export function createServer(options: ServerOptions = {}): McpServer {
   tool(
     "configure_page_data",
     {
-      ...toolMeta("Change page data settings", ADDITIVE),
+      ...toolMeta("Change page data settings", DESTRUCTIVE),
       description: "Turn Page data on (`state: {}`), off (`state: null`, entries are kept) or change its settings; only what `state` names changes. " +
         "A private list that holds visitors' entries cannot become shared.",
       inputSchema: {

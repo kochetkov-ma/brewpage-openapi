@@ -171,36 +171,49 @@ test("MCP exposes exactly 32 tools and optional create-only delivery choice", { 
   const f = await fixture(t);
   // WHEN client discovers tools.
   const { tools } = await f.client.listTools();
-  // THEN tool set and optional delivery enum match the contract.
+  // THEN tool set matches; the delivery enum is listed on pages and sites only, accepted-only arguments and `$schema` are not listed.
   assert.deepEqual(tools.map(({ name }) => name).sort(), [...EXPECTED_TOOL_NAMES].sort(), "registered tool names match the contract");
-  for (const name of ["publish_html", "publish_file", "publish_site", "publish_json", "publish_kv"]) {
-    const tool = tools.find((item) => item.name === name)!;
-    assert.deepEqual((tool.inputSchema.properties!.deliveryMode as { enum: string[] }).enum, ["path", "subdomain"], `${name} advertises both modes`);
-    assert.equal(tool.inputSchema.required?.includes("deliveryMode") ?? false, false, `${name} leaves mode optional`);
-  }
+  const listed = (name: string, argument: string) => tools.find((item) => item.name === name)!.inputSchema.properties![argument] ?? null;
+  assert.deepEqual({
+    modes: Object.fromEntries(["publish_html", "publish_site", "publish_file", "publish_json", "publish_kv"].map((name) => [name, listed(name, "deliveryMode")])),
+    required: tools.filter(({ inputSchema }) => inputSchema.required?.includes("deliveryMode") && !("deliveryMode" in inputSchema.properties!)).map(({ name }) => name),
+    republishTtl: listed("republish_site", "ttlDays"),
+    createTtl: listed("publish_kv", "ttlDays"),
+    schemaKey: tools.filter(({ inputSchema }) => "$schema" in inputSchema).map(({ name }) => name),
+  }, {
+    modes: { publish_html: { type: "string", enum: ["path", "subdomain"] }, publish_site: { type: "string", enum: ["path", "subdomain"] },
+      publish_file: null, publish_json: null, publish_kv: null },
+    required: [],
+    republishTtl: null,
+    createTtl: { description: "Days to keep it: up to 30 days without an account, up to 90 with a free profile (an ownerToken held in the profile). Omitted: the default. The result states the expiry.",
+      type: "number", exclusiveMinimum: 0 },
+    schemaKey: [],
+  }, "advertised schema is the lean one");
   assert.equal(f.requests.length, 0, "tool discovery never calls the API");
 });
 
 const READ_ONLY = { readOnlyHint: true };
 const DESTRUCTIVE = { readOnlyHint: false, destructiveHint: true };
 const ADDITIVE = { readOnlyHint: false, destructiveHint: false };
+const REPLACING = { ...DESTRUCTIVE, idempotentHint: true };
+const SETTING = { ...ADDITIVE, idempotentHint: true };
 const EXPECTED_TOOL_META: Record<string, [string, Record<string, boolean>]> = {
   get_page: ["Read page", READ_ONLY], get_json: ["Read JSON document", READ_ONLY], get_kv: ["Read KV value", READ_ONLY],
   get_stats: ["Get platform statistics", READ_ONLY], get_limits: ["Get upload limits", READ_ONLY],
   search_gallery: ["Search public gallery", READ_ONLY],
-  delete_resource: ["Delete publication", DESTRUCTIVE], update_html: ["Update page", DESTRUCTIVE],
-  update_json: ["Update JSON document", DESTRUCTIVE], set_kv: ["Set KV value", DESTRUCTIVE],
-  republish_site: ["Republish site", DESTRUCTIVE],
+  delete_resource: ["Delete publication", DESTRUCTIVE], update_html: ["Update page", REPLACING],
+  update_json: ["Update JSON document", REPLACING], set_kv: ["Set KV value", REPLACING],
+  republish_site: ["Republish site", REPLACING],
   publish_html: ["Publish HTML, Markdown, code or JSON page", ADDITIVE], publish_file: ["Publish file from URL", ADDITIVE],
   publish_site: ["Publish site", ADDITIVE], publish_json: ["Publish JSON document", ADDITIVE],
-  publish_kv: ["Publish KV entry", ADDITIVE], set_visibility: ["Set gallery visibility", ADDITIVE],
+  publish_kv: ["Publish KV entry", ADDITIVE], set_visibility: ["Set gallery visibility", SETTING],
   update_hosting: ["Change delivery mode", ADDITIVE], bind_token: ["Add token to profile", ADDITIVE],
-  mint_token: ["Mint profile token", ADDITIVE], set_title: ["Rename page or site", ADDITIVE],
-  make_private: ["Make private", DESTRUCTIVE], set_badge: ["Hide or show badge", ADDITIVE],
-  set_domain: ["Connect custom domain", ADDITIVE], list_domains: ["List custom domains", READ_ONLY],
+  mint_token: ["Mint profile token", ADDITIVE], set_title: ["Rename page or site", SETTING],
+  make_private: ["Make private", DESTRUCTIVE], set_badge: ["Hide or show badge", SETTING],
+  set_domain: ["Connect custom domain", SETTING], list_domains: ["List custom domains", READ_ONLY],
   check_domain: ["Check custom domain DNS", ADDITIVE], remove_domain: ["Remove custom domain", DESTRUCTIVE],
-  get_page_data: ["Read page data", READ_ONLY], set_page_data: ["Write author entries", DESTRUCTIVE],
-  configure_page_data: ["Change page data settings", ADDITIVE], delete_page_data: ["Delete page data entries", DESTRUCTIVE],
+  get_page_data: ["Read page data", READ_ONLY], set_page_data: ["Write author entries", REPLACING],
+  configure_page_data: ["Change page data settings", DESTRUCTIVE], delete_page_data: ["Delete page data entries", DESTRUCTIVE],
   get_guide: ["Read BrewPage guide", READ_ONLY],
 };
 
@@ -212,7 +225,7 @@ test("every tool carries a title and its exact safety hints", { timeout: 10_000 
   // THEN each tool has the directory title and hint map.
   const actual = Object.fromEntries(tools.map(({ name, title, annotations }) => [name, { title, annotations }]));
   const expected = Object.fromEntries(Object.entries(EXPECTED_TOOL_META)
-    .map(([name, [title, hints]]) => [name, { title, annotations: { title, ...hints } }]));
+    .map(([name, [title, hints]]) => [name, { title, annotations: hints }]));
   assert.deepEqual(actual, expected, "tool titles and annotations match the directory contract");
 });
 
@@ -287,8 +300,7 @@ for (const scenario of [
     const actualBody = scenario.jsonBody === undefined ? request.body.includes('name="deliveryMode"') : JSON.parse(request.body);
     assert.deepEqual(actualBody, scenario.jsonBody ?? false, "delivery metadata does not pollute authored JSON or multipart fields");
     assert.match(result.content[0].text, /^URL: https:\/\/public-z9y8x7w6v5\.brewpage\.app\/$/m, "primary link is verbatim");
-    assert.match(result.content[0].text, /hostingVersion: 1/, "current version is exposed");
-    assert.match(result.content[0].text, /routingCohort: "new-v1"/, "actual cohort is exposed");
+    assert.deepEqual(result.content[0].text.match(/^(hostingVersion|routingCohort|deliveryMode\w*): .*$/gm), null, "an applied mode prints no hosting fields");
   });
 }
 
@@ -309,9 +321,10 @@ test("omitted namespace stays generated private and omitted delivery stays absen
 });
 
 for (const scenario of [
-  { label: "explicit public", args: { namespace: "public" }, expectedNamespace: "public" },
-  { label: "explicit unlisted", args: { namespace: "fixture-private" }, expectedNamespace: "fixture-private" },
-  { label: "generated unlisted default", args: {}, expectedNamespace: undefined },
+  { label: "explicit public", args: { namespace: "public" }, expectedNamespace: "public", query: ["ns"], password: undefined },
+  { label: "explicit unlisted", args: { namespace: "fixture-private" }, expectedNamespace: "fixture-private", query: ["ns"], password: undefined },
+  { label: "generated unlisted default", args: {}, expectedNamespace: undefined, query: ["ns"], password: undefined },
+  { label: "protected and dated public", args: { namespace: "public", password: "fixture-password", ttlDays: 7 }, expectedNamespace: "public", query: ["ns", "ttl=7"], password: "fixture-password" },
 ]) {
   test(`publish_file transports ${scenario.label} namespace as ns query without changing multipart file`, { timeout: 10_000 }, async (t) => {
     // GIVEN an HTTP source file and an optional caller namespace.
@@ -324,8 +337,9 @@ for (const scenario of [
     const requestUrl = new URL(request.url, f.baseUrl);
     const actualNamespace = requestUrl.searchParams.get("ns");
     assert.match(actualNamespace ?? "", scenario.expectedNamespace === undefined ? /^priv-[a-z0-9]{6}$/ : new RegExp(`^${scenario.expectedNamespace}$`), "requested or generated namespace reaches the backend ns parameter");
-    assert.deepEqual({ method: request.method, path: requestUrl.pathname, queryKeys: [...requestUrl.searchParams.keys()], deliveryMode: request.headers["x-delivery-mode"] },
-      { method: "POST", path: "/api/files", queryKeys: ["ns"], deliveryMode: undefined }, "namespace query adds no other upload capabilities or mode");
+    const query = [...requestUrl.searchParams].map(([key, value]) => key === "ns" ? key : `${key}=${value}`);
+    assert.deepEqual({ method: request.method, path: requestUrl.pathname, query, password: request.headers["x-password"], deliveryMode: request.headers["x-delivery-mode"] },
+      { method: "POST", path: "/api/files", query: scenario.query, password: scenario.password, deliveryMode: undefined }, "only the sent settings reach the upload, and no mode");
     const form = await new Response(request.body, { headers: { "Content-Type": String(request.headers["content-type"]) } }).formData();
     assert.deepEqual([...form.keys()], ["file"], "multipart has only the supported file part");
     const file = form.get("file") as File;
@@ -383,6 +397,8 @@ for (const scenario of [
   { tool: "publish_html", args: { content: "# Fixture", namespace: "public", format: "md", ttlDays: 90 }, query: "ns=public&format=md&ttl=90" },
   { tool: "publish_html", args: { content: "<h1>Fixture</h1>", namespace: "public", format: "text/html", ttlDays: "2w" }, query: "ns=public&format=text%2Fhtml&ttl=2w" },
   { tool: "publish_kv", args: { key: "k", value: "v", namespace: "public", ttlDays: 0.5 }, query: "ns=public&ttl=0.5" },
+  { tool: "publish_html", args: { content: "# Fixture", namespace: "public", tags: ["x", "y"] }, query: "ns=public&tags=x%2Cy" },
+  { tool: "publish_site", args: { entryContent: "<h1>Fixture</h1>", namespace: "public", tags: ["x", "y"] }, query: "ns=public&tags=x%2Cy" },
 ]) {
   test(`${scenario.tool} passes tolerant input ${scenario.query} to the server and surfaces its notices verbatim`, { timeout: 10_000 }, async (t) => {
     // GIVEN a server answer carrying advisory notices next to a malformed one.
@@ -413,8 +429,11 @@ test("public password and path choice remain independent with a clean NEW link",
 });
 
 for (const winner of [
-  { cohort: "new-v1", mode: "path", matched: false, label: "requested/effective mismatch", link: "https://brewpage.app/public/aBcDeFgHiJ" },
-  { cohort: "old", mode: null, matched: null, label: "OLD nullable mode", link: "https://brewpage.app/public/aBcDeFgHiJ?p=legacy-fixture" },
+  { cohort: "new-v1", mode: "path", matched: false, label: "requested/effective mismatch", link: "https://brewpage.app/public/aBcDeFgHiJ",
+    hosting: ['routingCohort: "new-v1"', 'deliveryMode: "path"', 'requestedDeliveryMode: "subdomain"', 'effectiveDeliveryMode: "path"',
+      "deliveryModeMatched: false", "modeLocked: false", "hostingVersion: 1", 'access: "public"', "Requested hosting differs from the effective mode; use the returned URL."] },
+  { cohort: "old", mode: null, matched: null, label: "OLD nullable mode", link: "https://brewpage.app/public/aBcDeFgHiJ?p=legacy-fixture",
+    hosting: ["Hosting: Existing link"] },
 ]) {
   test(`existing publication preserves ${winner.label} and actual URL`, { timeout: 10_000 }, async (t) => {
     // GIVEN existing winner returned by the server.
@@ -425,8 +444,8 @@ for (const winner of [
     // THEN actual winner is reported without implicit mutation.
     assert.equal(f.requests.length, 1, "existing publication triggers no hosting update");
     assert.equal(result.content[0].text.split("\n")[2], `URL: ${winner.link}`, "winner URL is untouched");
-    assert.equal(result.content[0].text.includes(`deliveryMode: ${JSON.stringify(winner.mode)}`), true, "actual mode including null is retained");
-    assert.equal(result.content[0].text.includes(`deliveryModeMatched: ${JSON.stringify(winner.matched)}`), true, "mismatch including null is retained");
+    const lines = result.content[0].text.split("\n");
+    assert.deepEqual(lines.slice(lines.indexOf("ID: aBcDeFgHiJ") + 1, lines.indexOf("", 2)), winner.hosting, "hosting fields print only for a mode that was not applied");
   });
 }
 
@@ -488,7 +507,7 @@ for (const { type, version } of [
       { method: "PATCH", url: `/api/${type === "file" ? "files" : type}/public/aBcDeFgHiJ/hosting`, owner: "fixture-owner", body: { deliveryMode: "subdomain", ...version } },
     ], "hosting mutation targets the configured API origin");
     assert.equal(result.isError, undefined, "hosting change succeeds");
-    assert.match(result.content[0].text, /hostingVersion: 2/, "next version is returned");
+    assert.equal(result.content[0].text, `Updated successfully!\n\nURL: ${NEW_RESPONSE.link}\nNamespace: public\nID: aBcDeFgHiJ`, "an applied mode answers the link without hosting fields");
   });
 }
 
@@ -529,15 +548,14 @@ for (const scenario of [
   });
 }
 
-test("same-mode hosting result keeps server version unchanged", { timeout: 10_000 }, async (t) => {
+test("same-mode hosting result keeps the server link", { timeout: 10_000 }, async (t) => {
   // GIVEN no-op response with current version.
   const f = await fixture(t);
   f.respond(200, { ...NEW_RESPONSE });
   // WHEN owner selects already-effective mode.
   const result = await f.call("update_hosting", { type: "html", namespace: "public", id: "aBcDeFgHiJ", ownerToken: "fixture-owner", deliveryMode: "subdomain", expectedVersion: 1 });
-  // THEN MCP increments no version and rewrites no address.
-  assert.match(result.content[0].text, /hostingVersion: 1/, "no-op version remains unchanged");
-  assert.match(result.content[0].text, /^URL: https:\/\/public-z9y8x7w6v5\.brewpage\.app\/$/m, "no-op link remains verbatim");
+  // THEN MCP rewrites no address and prints no hosting fields.
+  assert.equal(result.content[0].text, `Updated successfully!\n\nURL: ${NEW_RESPONSE.link}\nNamespace: public\nID: aBcDeFgHiJ`, "no-op link remains verbatim");
 });
 
 test("fresh site path request is published on subdomain and reported, without client coercion", { timeout: 10_000 }, async (t) => {
@@ -592,8 +610,7 @@ test("get_page returns actual HTML and canonical NEW response headers on its leg
   // THEN actual server address replaces URL reconstruction while API routing stays unchanged.
   assert.equal(f.requests[0].url, "/api/html/public/aBcDeFgHiJ", "legacy read endpoint remains unchanged");
   assert.match(result.content[0].text, /^URL: https:\/\/public-z9y8x7w6v5\.brewpage\.app\/$/m, "canonical root link comes directly from response header");
-  assert.match(result.content[0].text, /routingCohort: "new-v1"/, "header cohort is reported");
-  assert.match(result.content[0].text, /deliveryMode: "subdomain"/, "header mode is reported");
+  assert.deepEqual(result.content[0].text.split("--- Content ---\n")[0].match(/^(routingCohort|deliveryMode): .*$/gm), null, "hosting headers are not printed");
   assert.equal(result.content[0].text.split("--- Content ---\n")[1], html, "actual HTML bytes including final newline are returned");
 });
 
@@ -607,7 +624,7 @@ test("get_page treats authored JSON metadata names as content and trusts only re
   // THEN authored keys remain bytes below the content boundary.
   assert.equal(result.content[0].text, [
     "Page: public/aBcDeFgHiJ", `URL: ${NEW_RESPONSE.link}`, "Content-Type: application/json",
-    'routingCohort: "new-v1"', 'deliveryMode: "subdomain"', "", "--- Content ---", authoredJson,
+    "", "--- Content ---", authoredJson,
   ].join("\n"), "trusted metadata and exact authored JSON remain separate");
 });
 
@@ -639,7 +656,7 @@ test("get_page keeps JSON HTTP errors and password headers without returning con
 
 for (const scenario of [
   { status: 200, body: { requestMaxBytes: 26214400, sites: { maxFiles: 200 } }, isError: undefined,
-    text: `BrewPage limits (sizes in bytes, TTLs in days):\n\n${JSON.stringify({ requestMaxBytes: 26214400, sites: { maxFiles: 200 } }, null, 2)}` },
+    text: `BrewPage limits (sizes in bytes, TTLs in days):\n\n{"requestMaxBytes":26214400,"sites":{"maxFiles":200}}` },
   { status: 429, body: { status: 429 }, isError: true, text: `Failed to fetch limits (429): ${JSON.stringify({ status: 429 })}\n${defaultNext(429)}` },
 ]) {
   test(`get_limits reads GET /api/limits and relays a ${scenario.status} answer verbatim`, { timeout: 10_000 }, async (t) => {
@@ -735,8 +752,8 @@ for (const scenario of [
 }
 
 for (const scenario of [
-  { label: "present", extra: { title: "Fixture Page" }, lines: ["ID: aBcDeFgHiJ", "Title: Fixture Page", 'routingCohort: "new-v1"'] },
-  { label: "absent", extra: {}, lines: ["ID: aBcDeFgHiJ", 'routingCohort: "new-v1"', 'deliveryMode: "subdomain"'] },
+  { label: "present", extra: { title: "Fixture Page" }, lines: ["ID: aBcDeFgHiJ", "Title: Fixture Page", ""] },
+  { label: "absent", extra: {}, lines: ["ID: aBcDeFgHiJ", "", "==================================="] },
 ]) {
   test(`publish_html prints the page title only when ${scenario.label}`, { timeout: 10_000 }, async (t) => {
     // GIVEN an html create response with or without the optional title.
