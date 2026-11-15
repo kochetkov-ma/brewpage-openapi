@@ -6,6 +6,10 @@ order: 5
 
 # Changelog
 
+## MCP 1.23.1 — totals update right after a save
+
+The Page data guide the assistant reads (`get_guide` topic `page-data`) now uses `onStats` for totals such as poll results: the page shows them at once and again right after each of its own saves, where a plain `stats()` read can lag a save by up to 30 s. Thirty-two tools, contract 2.36.0.
+
 ## MCP 1.23.0 — try a Page data page before publishing
 
 The Page data guide the assistant reads (`get_guide` topic `page-data`) now goes build, try locally, publish. A page opened from disk or from localhost runs in a local preview: entries stay in that browser, nothing is sent, and the same file works unchanged once published with `state`. The guide also covers the owner view: a part of the page only its owner sees, with every visitor's entries and a remove action. Custom domains: a domain that is not registered yet gets its next step, buy it from a registrar first or check the spelling. Thirty-two tools, contract 2.36.0.

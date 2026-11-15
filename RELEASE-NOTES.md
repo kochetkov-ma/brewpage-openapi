@@ -1,5 +1,10 @@
 # Release Notes
 
+## MCP 1.23.1 — 2026-11-15
+
+- A page that shows totals (a poll, a counter) now updates them right after the visitor's own save. The Page data guide (`get_guide` topic `page-data`) follows BrewPage's Browser SDK text and uses `onStats` for the totals: the page shows them at once and again after each of its own saves, where a plain `stats()` read can lag a save by up to 30 s.
+- The same thirty-two tools, contract 2.36.0. `User-Agent: brewpage-mcp/1.23.1`; pins bumped.
+
 ## MCP 1.23.0 — 2026-11-14
 
 - A page that saves what visitors enter can now be tried before it is published. The Page data guide (`get_guide` topic `page-data`) follows BrewPage's new Browser SDK text: build, try locally, publish. Opened from disk or from localhost the page runs in a local preview: entries stay in that browser, nothing is sent, and the same file works unchanged once published with `state`.
