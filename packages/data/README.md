@@ -8,7 +8,7 @@ The package ships types and thin wrappers only. The Page data script itself is s
 npm i brewpage-data@0.1.0
 ```
 
-Entry points: `brewpage-data` (types and loader), `brewpage-data/react`, `brewpage-data/vue`, `brewpage-data/elements`. React and Vue are optional peer dependencies: install only the one you use.
+Entry points: `brewpage-data` (types and loader), `brewpage-data/react`, `brewpage-data/vue`, `brewpage-data/svelte`, `brewpage-data/angular`, `brewpage-data/elements`. React (18+), Vue (3.2+), Svelte (4+) and Angular (17+) are optional peer dependencies: install only the one you use.
 
 Guide and full reference: [brewpage.app/page-data](https://brewpage.app/page-data).
 
@@ -96,6 +96,75 @@ const stats = useStats("poll", { countBy: "choice" });
 </template>
 ```
 
+## Svelte
+
+Readable stores; they work the same in Svelte 4 and 5.
+
+```svelte
+<script lang="ts">
+  import { pageData, role, stats } from "brewpage-data/svelte";
+
+  const totals = stats("guestbook");
+</script>
+
+{#if !$pageData.ready}
+  <p>Loading…</p>
+{:else if !$pageData.state}
+  <p>Saving is off here ({$pageData.reason}).</p>
+{:else}
+  <p>{$totals?.count ?? 0} entries</p>
+  <button on:click={() => $pageData.state?.col("guestbook").add({ text: "Hello!" })}>Sign</button>
+  {#if $role === "owner"}<p>You own this page.</p>{/if}
+{/if}
+```
+
+| Store | Value |
+|---|---|
+| `pageData` | `{ state, reason, ready }`; `ready` is false until the page's data has opened |
+| `stats(name, { countBy? })` | live totals, `null` until the first answer |
+| `role` | `"owner"` or `"visitor"` (`"visitor"` until ready) |
+
+## Angular
+
+One function, every value a signal. Call `injectPageData()` in a field initializer or a constructor.
+
+```ts
+import { Component } from "@angular/core";
+import { injectPageData } from "brewpage-data/angular";
+
+@Component({
+  selector: "app-guestbook",
+  standalone: true,
+  template: `
+    @if (!data.ready()) {
+      <p>Loading…</p>
+    } @else if (!data.state()) {
+      <p>Saving is off here ({{ data.reason() }}).</p>
+    } @else {
+      <p>{{ totals()?.count ?? 0 }} entries</p>
+      <button (click)="sign()">Sign</button>
+      @if (data.role() === "owner") {
+        <p>You own this page.</p>
+      }
+    }
+  `,
+})
+export class GuestbookComponent {
+  readonly data = injectPageData();
+  readonly totals = this.data.stats("guestbook");
+
+  sign() {
+    void this.data.state()?.col("guestbook").add({ text: "Hello!" });
+  }
+}
+```
+
+| Member | Value |
+|---|---|
+| `state`, `reason`, `ready` | signals; `ready()` is false until the page's data has opened |
+| `role` | signal of `"owner"` or `"visitor"` (`"visitor"` until ready) |
+| `stats(name, { countBy? })` | signal of live totals, `null` until the first answer; it stops with the component |
+
 ## Custom elements
 
 For plain HTML and any framework that renders custom elements (Astro, Solid, Qwik). Importing the entry registers both elements.
@@ -148,7 +217,7 @@ try {
 
 ## Showing visitor input
 
-Render what visitors saved as text, never as HTML: React and Vue templates do this by default; in plain code use `window.brewpage.text(value)` or `textContent`.
+Render what visitors saved as text, never as HTML: React, Vue, Svelte and Angular templates do this by default; in plain code use `window.brewpage.text(value)` or `textContent`.
 
 ## Example
 

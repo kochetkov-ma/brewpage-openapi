@@ -1,7 +1,7 @@
 {
   "name": "brewpage-data",
   "version": "0.1.0",
-  "description": "Typed loader and React, Vue and custom-element wrappers for BrewPage Page data: pages that save what visitors enter",
+  "description": "Typed loader and React, Vue, Svelte, Angular and custom-element wrappers for BrewPage Page data: pages that save what visitors enter",
   "type": "module",
   "sideEffects": [
     "./dist/elements.js"
@@ -20,6 +20,14 @@
     "./vue": {
       "types": "./dist/vue.d.ts",
       "default": "./dist/vue.js"
+    },
+    "./svelte": {
+      "types": "./dist/svelte.d.ts",
+      "default": "./dist/svelte.js"
+    },
+    "./angular": {
+      "types": "./dist/angular.d.ts",
+      "default": "./dist/angular.js"
     },
     "./elements": {
       "types": "./dist/elements.d.ts",
@@ -45,6 +53,8 @@
     "html",
     "react",
     "vue",
+    "svelte",
+    "angular",
     "web-components",
     "custom-elements",
     "guestbook",
@@ -65,11 +75,19 @@
     "url": "https://github.com/kochetkov-ma/brewpage-openapi/issues"
   },
   "peerDependencies": {
+    "@angular/core": ">=17.0.0",
     "react": ">=18.0.0",
+    "svelte": ">=4.0.0",
     "vue": ">=3.2.0"
   },
   "peerDependenciesMeta": {
+    "@angular/core": {
+      "optional": true
+    },
     "react": {
+      "optional": true
+    },
+    "svelte": {
       "optional": true
     },
     "vue": {
@@ -77,8 +95,11 @@
     }
   },
   "devDependencies": {
+    "@angular/core": "22.2.6",
     "@types/react": "19.3.0",
     "react": "19.3.1",
+    "rxjs": "7.8.2",
+    "svelte": "5.57.3",
     "typescript": "5.9.3",
     "vue": "3.5.45"
   }

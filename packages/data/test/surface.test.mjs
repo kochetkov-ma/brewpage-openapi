@@ -25,7 +25,7 @@ const OPTION_TYPES = { 'Collection.list': 'ListOptions', 'Collection.stats': 'St
 const ENUM_TYPES = { 'ListOptions.order': 'ListOrder' };
 const KINDS = { value: 'property', getter: 'property', accessor: 'property', method: 'method', class: 'class' };
 const TOKEN = /\b(?:bp|brewpage)\s*\.\s*(?:state|storage)\b/;
-const ENTRIES = ['index', 'react', 'vue', 'elements'];
+const ENTRIES = ['index', 'react', 'vue', 'svelte', 'angular', 'elements'];
 
 const program = ts.createProgram([TYPES_FILE], {
   target: ts.ScriptTarget.ES2022,
