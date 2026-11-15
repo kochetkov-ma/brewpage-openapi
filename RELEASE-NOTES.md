@@ -7,12 +7,22 @@
 - Nothing breaks. The eight names that left the list (`publish_site`, `republish_site`, `get_json`, `get_kv`, `set_visibility`, `set_badge`, `set_title`, `update_hosting`) are still callable with their old arguments; the answer ends with one note naming the current tool. Move saved prompts, allow-lists and per-tool approvals to the current names when convenient: an old name is removed only in a later major version, after it has gone unused for three months in a row.
 - Page data: the assistant can now show the files visitors uploaded to a page (`get_page_data` with `include: "files"`), read poll totals in one call (`countBy`), sort entries by last change, delete uploaded files (`fileIds`) and clear a whole list (`all: true`). The overview shows files next to entries and names the route that downloads a list as CSV. The guide (`get_guide` topic `page-data`) follows BrewPage's Browser SDK text and now covers file uploads.
 - Clearer answers: after publishing, the assistant hands you the page link and the management link (private: whoever has it can edit or delete the page); every failed call says what went wrong and names the next step in a `Next:` line; long content is read in parts. `publish_file` takes a password and a TTL.
-- BrewPage counts the server's API calls by its `User-Agent` (version and transport: `brewpage-mcp/2.0.0 (stdio)` for the local server, `(remote)` for the hosted one) and nothing else. Install pins are `brewpage-mcp@2.0.0`; the remote server `https://brewpage.app/mcp` needs no change on your side.
+- BrewPage counts the server's API calls by its `User-Agent` (version and transport: `brewpage-mcp/2.0.0 (stdio)` for the local server, `(remote)` for the hosted one) and nothing else. Contract 2.43.0. Install pins are `brewpage-mcp@2.0.0`; the remote server `https://brewpage.app/mcp` needs no change on your side.
 
 ## Page data packages 0.1.0 — 2026-11-15
 
 - New npm package `brewpage-data`: a typed loader for BrewPage Page data with React, Vue, Svelte, Angular and custom-element wrappers, so a page built with a framework saves and reads what visitors enter without hand-written calls.
 - One install line, one import per framework; a small guestbook example in `packages/data/examples/guestbook` shows the whole flow.
+
+## API contract 2.43.0 — 2026-11-15
+
+- Exported from brewpage-app source `7ea5a9968867c4f7dae1c61c4c3872d945d8a151` (branch `feat/page-data-complete`, ships with backend v2.43.0), clean tree. 69 paths and 94 operations (61 and 83 before).
+- Page data, 6 -> 10 operations. The author reads the files visitors uploaded: `listPageDataFiles` (`GET /api/{ns}/{id}/state/{col}/_files`), `downloadPageDataFile` and `deletePageDataFile` (`GET`, `DELETE /api/{ns}/{id}/state/{col}/_files/{fileId}`), and the totals of a list in one call: `readPageDataTotals` (`GET /api/{ns}/{id}/state/{col}/_stats`, `countBy` counts a choice field). Same access as the rest of the tag: `X-Owner-Token` or `X-Manage-Key`.
+- Page data answers count files: usage and every list add `files` and `fileBytes`; the delete by time removes entries and files, and `deleted` counts both.
+- New tag `Notifications`, 7 operations under `/api/profile/notifications`, with an owner token added to a BrewPage profile: list notifications, count unread, mark read, read and change the settings, read and set a page's new-entry switch.
+- The visitor side of Page data has its own OpenAPI document, "BrewPage Page data host API": `openapi/page-data-host.json` and `.yaml`, served at https://kochetkov-ma.github.io/brewpage-openapi/page-data-host.json, 8 paths and 12 operations under `/_bp/state/v1` on the page's own address. It is what the page's script (`bp.state()`) calls; the main contract still lists no `/_bp/` path and its `Page data` tag names the document.
+- `node scripts/sync-openapi.mjs <backend export public.json>` imports both documents of one export; `node scripts/verify-openapi.mjs` checks both.
+- `brewpage-mcp` 2.0.0 uses the new Page data routes.
 
 ## API contract 2.41.0 — 2026-11-15
 

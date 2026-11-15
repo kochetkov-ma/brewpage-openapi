@@ -15,6 +15,7 @@ export const navigation: NavSection[] = [
     items: [
       { title: 'Getting Started', slug: 'getting-started' },
       { title: 'API Reference', slug: 'api-reference' },
+      { title: 'Page data host API', slug: 'page-data-host-api' },
       { title: 'MCP Server', slug: 'mcp-server' },
       { title: 'Examples', slug: 'examples' },
     ],

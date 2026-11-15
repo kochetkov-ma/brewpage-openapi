@@ -8,7 +8,7 @@ import ScalarApiReference from '../../components/docs/ScalarApiReference.astro';
 
 # API Reference
 
-Last updated: 2026-10-29
+Last updated: 2026-11-15
 
 Explore the [BrewPage](https://brewpage.app) REST API. This backend-generated public specification includes anonymous, password-protected and owner-only operations with their access requirements. Administrative operations are excluded from public artifacts.
 
@@ -31,6 +31,7 @@ Download the public OpenAPI 3.1 snapshot. Backend generation owns schema authori
 | **YAML** | [openapi.yaml](https://github.com/kochetkov-ma/brewpage-openapi/blob/main/openapi/openapi.yaml) |
 | **JSON** | [openapi.json](https://github.com/kochetkov-ma/brewpage-openapi/blob/main/openapi/openapi.json) |
 | **Live endpoint** | [brewpage.app/v3/api-docs](https://brewpage.app/v3/api-docs) |
+| **Page data host API** (second document) | [page-data-host.json](https://kochetkov-ma.github.io/brewpage-openapi/page-data-host.json), [reference page](/brewpage-openapi/page-data-host-api/) |
 
 `POST /api/html` takes a JSON wrapper `{content, filename?, showTopBar?, format?}`; a body `format` wins over the `?format=` query parameter, and `PUT` ignores a blank body `format`. A JSON object without `content` is published as the content itself, with a `body-as-content` notice.
 
@@ -53,7 +54,8 @@ Base URL: [`https://brewpage.app`](https://brewpage.app) (alias: [`https://brewd
 | **Hosting Management** | Owner-only delivery, access and publication actions | `GET/PATCH /api/{type}/{ns}/{id}/hosting`, `POST /api/{type}/{ns}/{id}/access/revoke`, `POST /api/{type}/{ns}/{id}/{visibility,password,manage-key,extend,rotate}` |
 | **Owner Token** | New token; profile tokens with an admin token | `GET /api/owner-token`, `POST /api/owner-token/{bind,mint,revoke,revoke-others}` |
 | **Custom Domains** | An HTML page or site on a domain you own; free with a profile | `GET/PUT/DELETE /api/publications/{type}/{ns}/{id}/domain`, `POST …/domain/check`, `GET/POST /api/domains`, `GET/DELETE /api/domains/{hostname}`, `POST /api/domains/{hostname}/check`, `PUT/DELETE /api/domains/{hostname}/attachment` |
-| **Page data** | What visitors save on an HTML page or site; the author reads, writes own entries, changes settings and deletes | `GET/PATCH /api/{ns}/{id}/state`, `GET/DELETE /api/{ns}/{id}/state/{col}`, `PUT /api/{ns}/{id}/state/{col}/{key}`, `DELETE /api/{ns}/{id}/state/{col}/docs/{docId}` |
+| **Page data** | What visitors save on an HTML page or site; the author reads entries, files and totals, writes own entries, changes settings and deletes. The visitor side is a separate document: [Page data host API](/brewpage-openapi/page-data-host-api/) | `GET/PATCH /api/{ns}/{id}/state`, `GET/DELETE /api/{ns}/{id}/state/{col}`, `GET /api/{ns}/{id}/state/{col}/_stats`, `GET /api/{ns}/{id}/state/{col}/_files`, `GET/DELETE /api/{ns}/{id}/state/{col}/_files/{fileId}`, `PUT /api/{ns}/{id}/state/{col}/{key}`, `DELETE /api/{ns}/{id}/state/{col}/docs/{docId}` |
+| **Notifications** | Your profile's notifications: list, unread count, mark read, settings, a page's new-entry switch | `GET /api/profile/notifications`, `GET /api/profile/notifications/unread-count`, `POST /api/profile/notifications/read`, `GET/PUT /api/profile/notifications/settings`, `GET/PUT /api/profile/notifications/pages/{type}/{ns}/{id}` |
 | **Stats** | Platform statistics | [`GET /api/stats`](https://brewpage.app/swagger-ui/index.html#/Stats) |
 | **Limits** | Current upload limits | [`GET /api/limits`](https://brewpage.app/api/limits) |
 | **Short Links** | URL shortener | `GET /s/{code}` |

@@ -10,6 +10,10 @@ order: 5
 
 The tool list is shorter, 25 tools instead of 32, each described in a sentence, so an assistant reads far less before its first call. `publish_html` publishes a page (`content`) or a whole static site (`files`) and `update_html` replaces either; `get_page` reads a page, a JSON document or a KV value; `set_publication` changes a publication's settings in one call, including two that had no tool before: a password and a longer lifetime. Nothing breaks: the eight names that left the list (`publish_site`, `republish_site`, `get_json`, `get_kv`, `set_visibility`, `set_badge`, `set_title`, `update_hosting`) are still callable with their old arguments, and the answer names the current tool; move saved prompts and allow-lists when convenient. Page data: the assistant can show the files visitors uploaded, read poll totals in one call, delete files and clear a whole list. Every failed call names its next step.
 
+## API contract 2.43.0 — Page data files and totals, notifications, the host document
+
+Page data grows from 6 to 10 operations: the author lists, downloads and deletes the files visitors uploaded (`/api/{ns}/{id}/state/{col}/_files`) and reads a list's totals in one call (`/api/{ns}/{id}/state/{col}/_stats`); usage answers count files next to entries. New tag `Notifications`: 7 operations under `/api/profile/notifications` for a profile's notifications, their settings and a page's new-entry switch. The visitor side of Page data, what a page's own script calls, has its own document now: see [Page data host API](/brewpage-openapi/page-data-host-api/). 69 paths and 94 operations.
+
 ## API contract 2.41.0 — custom domains name their next step
 
 Every custom-domain object (the domain answers and `customDomain` on publish) adds `nextStep`, a required plain-English next step with the exact routes of this domain: follow it and relay it to the user. 409 `NOT_ELIGIBLE` with `reason` `EXPIRED` now means the publication cannot come back: attach the custom domain to another publication. Still 61 paths and 83 operations.

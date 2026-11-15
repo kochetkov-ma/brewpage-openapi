@@ -6,6 +6,7 @@ Public contract snapshots, documentation and the BrewPage MCP server. The backen
 
 - `openapi/openapi.json` — exported backend-generated public OpenAPI 3.1 contract; version and provenance identify the backend source.
 - `openapi/openapi.yaml` — deterministic derived representation; `docs/public/openapi.json` is the identical Scalar copy.
+- `openapi/page-data-host.json`, `.yaml` — second document, "BrewPage Page data host API": what a page's own script calls on the page's address under `/_bp/state/v1`; same export and version.
 - `mcp-server/` — TypeScript implementation of the BrewPage MCP server. Prepared `version: 2.0.0`. Published as `brewpage-mcp` on npm.
 - `docs/` — Astro docs site published at https://kochetkov-ma.github.io/brewpage-openapi/.
 
@@ -14,12 +15,14 @@ Public contract snapshots, documentation and the BrewPage MCP server. The backen
 - Spec (browser-rendered): https://kochetkov-ma.github.io/brewpage-openapi/api-reference/
 - Spec (raw JSON): https://kochetkov-ma.github.io/brewpage-openapi/openapi.json
 - Spec (raw YAML): https://raw.githubusercontent.com/kochetkov-ma/brewpage-openapi/main/openapi/openapi.yaml
+- Page data host API (raw JSON): https://kochetkov-ma.github.io/brewpage-openapi/page-data-host.json
 - Live `/v3/api-docs` from production backend: https://brewpage.app/v3/api-docs
 - `llms.txt`: https://brewpage.app/llms.txt
 - `llms-full.txt`: https://brewpage.app/llms-full.txt
 
 ## Recent contract changes
 
+- 2.43.0 (backend v2.43.0, source 7ea5a996): tag `Page data` 6 -> 10 operations: `listPageDataFiles` (`GET /api/{ns}/{id}/state/{col}/_files`), `downloadPageDataFile`, `deletePageDataFile` (`GET`, `DELETE …/_files/{fileId}`), `readPageDataTotals` (`GET …/{col}/_stats`, `countBy`); usage and lists add `files` and `fileBytes`; the delete by time removes entries and files. New tag `Notifications`, 7 operations under `/api/profile/notifications` (owner token of a profile). The visitor host API is a second document, `openapi/page-data-host.json`: 8 paths, 12 operations. 69 paths and 94 operations.
 - 2.41.0 (backend v2.41.0, source 30f1765f): `DomainItem` (domain answers and `customDomain`) adds required `nextStep`, plain-English next step with this domain's exact routes; follow and relay it. 409 `NOT_ELIGIBLE` `reason` `EXPIRED`: the publication cannot come back, attach another one. No path, parameter or code change: 61 paths and 83 operations.
 - 2.39.0 (backend v2.39.0, source 0a5697b2): `GalleryPromoItem` (items of `GET /api/gallery/promo`) adds `weight`, integer >= 1, the item's relative chance of being shown; clients draw the cards by it on every page load. `slots` is this period's default set and the block shape. No path, parameter or code change: 61 paths and 83 operations.
 - 2.36.0 (backend v2.36.0, source a97fe688): `ownerView` in a Page data list's settings is accepted for compatibility and stored as sent; it has no effect, the page's owner view needs no setting. No path, parameter, field or code change: 61 paths and 83 operations.

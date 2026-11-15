@@ -1,0 +1,53 @@
+---
+title: Page data host API
+description: OpenAPI document of the API a published BrewPage page's own script calls to save and read visitor entries and files
+order: 3
+---
+
+# Page data host API
+
+Page data lets a published HTML page or site save small JSON entries and files from its visitors. The page loads `https://brewpage.app/js/state.js` and calls `bp.state()`; that script is the client of this API. The API lives on the page's own address (`https://<label>.brewpage.app`, or the custom domain attached to the page) under `/_bp/state/v1` and serves only that page: same origin only, no CORS.
+
+It is a separate OpenAPI 3.1 document, "BrewPage Page data host API". The owner side (settings, reading every entry, files, totals, CSV export, deletes) is the `Page data` tag of the main contract: see the [API Reference](/brewpage-openapi/api-reference/).
+
+## Document
+
+| Format | Source |
+|--------|--------|
+| **JSON** (this site) | [page-data-host.json](https://kochetkov-ma.github.io/brewpage-openapi/page-data-host.json) |
+| **JSON** (repository) | [openapi/page-data-host.json](https://github.com/kochetkov-ma/brewpage-openapi/blob/main/openapi/page-data-host.json) |
+| **YAML** (repository) | [openapi/page-data-host.yaml](https://github.com/kochetkov-ma/brewpage-openapi/blob/main/openapi/page-data-host.yaml) |
+| **Redocly viewer** | [redocly.github.io/redoc?url=...](https://redocly.github.io/redoc/?url=https://kochetkov-ma.github.io/brewpage-openapi/page-data-host.json) |
+
+The JSON is exported from the BrewPage backend together with the main contract and carries the same version; the YAML is derived from it. Export provenance is committed alongside as `openapi/page-data-host.provenance.json`.
+
+## Requests
+
+- Server: `https://{host}`, the page's own address.
+- Every request except a file read sends the header `X-BP-State: 1`.
+- A visitor is known by the cookie `__Host-bp-v`, which `POST /_bp/state/v1` sets; the browser sends it.
+- Errors are `ErrorResponse` with a `STATE_*` code.
+- Each visitor reads and writes only their own entries unless a list is shared; the page's owner reads them all.
+
+## Operations
+
+| Method and path | What it does |
+|-----------------|--------------|
+| `GET /_bp/state/v1` | Read the page's Page data status |
+| `POST /_bp/state/v1` | Get a visitor cookie |
+| `POST /_bp/state/v1/_session` | Open the owner view on the page |
+| `GET /_bp/state/v1/{col}` | List entries of a list |
+| `GET /_bp/state/v1/{col}/_stats` | Count the entries of a list |
+| `GET /_bp/state/v1/{col}/{key}` | Read one entry |
+| `PUT /_bp/state/v1/{col}/{key}` | Save one entry |
+| `DELETE /_bp/state/v1/{col}/{key}` | Delete one entry |
+| `DELETE /_bp/state/v1/{col}/_id/{id}` | Delete any entry by its id (owner) |
+| `POST /_bp/state/v1/{col}/_files` | Upload one file |
+| `GET /_bp/state/v1/{col}/_files/{id}` | Read one file |
+| `DELETE /_bp/state/v1/{col}/_files/{id}` | Delete one file |
+
+## Links
+
+- [API Reference](/brewpage-openapi/api-reference/) — the main contract, owner routes under the `Page data` tag
+- [Page data on brewpage.app](https://brewpage.app/page-data) — what it is and how a page turns it on
+- [llms-full.txt](https://brewpage.app/llms-full.txt) — the Browser SDK calls

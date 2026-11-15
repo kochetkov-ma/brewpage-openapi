@@ -1,0 +1,1435 @@
+{
+  "components": {
+    "headers": {
+      "RetryAfter": {
+        "description": "Seconds to wait",
+        "schema": {
+          "type": "integer"
+        }
+      },
+      "VersionTag": {
+        "description": "The entry's version, quoted",
+        "schema": {
+          "type": "string"
+        }
+      }
+    },
+    "parameters": {
+      "Collection": {
+        "description": "List name, or the personal _storage list",
+        "in": "path",
+        "name": "col",
+        "required": true,
+        "schema": {
+          "pattern": "^(_storage|[a-z][a-z0-9_-]{0,31})$",
+          "type": "string"
+        }
+      },
+      "FileId": {
+        "description": "The file's id from its upload answer or url",
+        "in": "path",
+        "name": "id",
+        "required": true,
+        "schema": {
+          "$ref": "#/components/schemas/PublicId"
+        }
+      },
+      "Key": {
+        "description": "Entry name",
+        "in": "path",
+        "name": "key",
+        "required": true,
+        "schema": {
+          "pattern": "^(?!_)(?!\\.{1,2}$)[A-Za-z0-9_.-]{1,128}$",
+          "type": "string"
+        }
+      },
+      "StateHeader": {
+        "description": "Exactly once, value 1",
+        "in": "header",
+        "name": "X-BP-State",
+        "required": true,
+        "schema": {
+          "enum": [
+            "1"
+          ],
+          "type": "string"
+        }
+      },
+      "Turnstile": {
+        "description": "Turnstile token after a STATE_CHALLENGE; repeat the same request with it",
+        "in": "header",
+        "name": "X-BP-Turnstile",
+        "required": false,
+        "schema": {
+          "type": "string"
+        }
+      }
+    },
+    "responses": {
+      "CrossOrigin": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        },
+        "description": "STATE_CROSS_ORIGIN: not sent by the page itself"
+      },
+      "Invalid": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        },
+        "description": "STATE_INVALID: the message names the mistake; nothing was changed"
+      },
+      "NotFound": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        },
+        "description": "STATE_NOT_FOUND: no such entry; STATE_UNAVAILABLE"
+      },
+      "Off": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        },
+        "description": "STATE_UNAVAILABLE: Page data is paused for a while; wait Retry-After",
+        "headers": {
+          "Retry-After": {
+            "$ref": "#/components/headers/RetryAfter"
+          }
+        }
+      },
+      "RateLimited": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        },
+        "description": "STATE_RATE_LIMITED: wait Retry-After",
+        "headers": {
+          "Retry-After": {
+            "$ref": "#/components/headers/RetryAfter"
+          }
+        }
+      },
+      "Unavailable": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        },
+        "description": "STATE_UNAVAILABLE: no Page data here (one answer for every such case)"
+      },
+      "WriteForbidden": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        },
+        "description": "STATE_COOKIE_REQUIRED: get a visitor cookie first; STATE_MODE_FORBIDDEN: only the page's owner writes this list; STATE_CROSS_ORIGIN"
+      },
+      "WriteLimited": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        },
+        "description": "STATE_CHALLENGE: show the Turnstile human check with siteKey (on a custom domain frame challengeUrl), then repeat with X-BP-Turnstile; STATE_RATE_LIMITED: wait Retry-After",
+        "headers": {
+          "Retry-After": {
+            "$ref": "#/components/headers/RetryAfter"
+          }
+        }
+      }
+    },
+    "schemas": {
+      "Entry": {
+        "properties": {
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "id": {
+            "$ref": "#/components/schemas/PublicId"
+          },
+          "key": {
+            "type": "string"
+          },
+          "mine": {
+            "description": "Saved by this browser",
+            "type": "boolean"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "value": {
+            "description": "The saved JSON value, byte for byte"
+          },
+          "version": {
+            "minimum": 1,
+            "type": "integer"
+          },
+          "visitor": {
+            "description": "Only in an owner's scope=all listing; 6-hex alias of the visitor, null on the owner's entries",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "key",
+          "id",
+          "value",
+          "version",
+          "mine",
+          "createdAt",
+          "updatedAt"
+        ],
+        "type": "object"
+      },
+      "EntryPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/Entry"
+            },
+            "type": "array"
+          },
+          "next": {
+            "description": "cursor of the next page; null on the last",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "role": {
+            "description": "Only with scope=all",
+            "enum": [
+              "owner",
+              "visitor"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "items",
+          "next"
+        ],
+        "type": "object"
+      },
+      "ErrorResponse": {
+        "properties": {
+          "challengeUrl": {
+            "description": "With STATE_CHALLENGE on a custom domain only: https address of the check page to frame",
+            "type": "string"
+          },
+          "code": {
+            "description": "Machine-readable reason; absent on a 405",
+            "enum": [
+              "STATE_UNAVAILABLE",
+              "STATE_CROSS_ORIGIN",
+              "STATE_INVALID",
+              "STATE_NOT_FOUND",
+              "STATE_MODE_FORBIDDEN",
+              "STATE_CONFLICT",
+              "STATE_CHALLENGE",
+              "STATE_RATE_LIMITED",
+              "STATE_QUOTA",
+              "STATE_TOO_LARGE",
+              "STATE_VALUE_REFUSED",
+              "STATE_MODE_WIDENING",
+              "STATE_COOKIE_REQUIRED",
+              "STATE_OWNER_REQUIRED",
+              "STATE_FILES_OFF",
+              "STATE_FILE_TYPE",
+              "STATE_FILE_TOO_LARGE",
+              "STATE_FILE_REFUSED"
+            ],
+            "type": "string"
+          },
+          "error": {
+            "type": "string"
+          },
+          "maxBytes": {
+            "description": "With STATE_FILE_TOO_LARGE: the largest file this page takes, in bytes",
+            "type": "integer"
+          },
+          "message": {
+            "description": "One sentence for people; empty with STATE_CHALLENGE",
+            "type": "string"
+          },
+          "result": {
+            "description": "Outcome envelope shared with the main BrewPage API; read code instead",
+            "properties": {
+              "action": {
+                "type": "string"
+              },
+              "code": {
+                "type": "string"
+              },
+              "reason": {
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "retryAfterSeconds": {
+            "description": "Seconds to wait; same as Retry-After",
+            "type": "integer"
+          },
+          "siteKey": {
+            "description": "With STATE_CHALLENGE: Turnstile site key for the human check (action state_write)",
+            "type": "string"
+          },
+          "status": {
+            "type": "integer"
+          },
+          "timestamp": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "error",
+          "message",
+          "timestamp"
+        ],
+        "type": "object"
+      },
+      "FileReceipt": {
+        "properties": {
+          "contentType": {
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "id": {
+            "$ref": "#/components/schemas/PublicId"
+          },
+          "name": {
+            "description": "The sent X-BP-Name, null when none",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "sizeBytes": {
+            "minimum": 1,
+            "type": "integer"
+          },
+          "url": {
+            "description": "Path of the file on this host, /_bp/state/v1/{col}/_files/{id}",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "url",
+          "name",
+          "contentType",
+          "sizeBytes",
+          "createdAt"
+        ],
+        "type": "object"
+      },
+      "OwnerSession": {
+        "properties": {
+          "expiresIn": {
+            "description": "Seconds the session lasts",
+            "type": "integer"
+          },
+          "role": {
+            "enum": [
+              "owner"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "role",
+          "expiresIn"
+        ],
+        "type": "object"
+      },
+      "Ping": {
+        "properties": {
+          "demo": {
+            "description": "Present only on a BrewPage demo template",
+            "enum": [
+              true
+            ],
+            "type": "boolean"
+          },
+          "files": {
+            "additionalProperties": {
+              "type": "boolean"
+            },
+            "description": "Present only when a list takes files; one member per declared list, true when it takes uploads now",
+            "type": "object"
+          },
+          "role": {
+            "description": "owner with an open owner session, else visitor",
+            "enum": [
+              "owner",
+              "visitor"
+            ],
+            "type": "string"
+          },
+          "statsEvery": {
+            "description": "Whole seconds between totals re-reads; 0 = do not poll",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "storageMaxBytes": {
+            "description": "Largest entry value in bytes",
+            "type": "integer"
+          },
+          "v": {
+            "description": "API version",
+            "enum": [
+              1
+            ],
+            "type": "integer"
+          },
+          "visitor": {
+            "description": "This browser holds a visitor cookie",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "v",
+          "visitor",
+          "storageMaxBytes",
+          "role",
+          "statsEvery"
+        ],
+        "type": "object"
+      },
+      "PublicId": {
+        "pattern": "^[A-Za-z0-9_-]{22}$",
+        "type": "string"
+      },
+      "Totals": {
+        "properties": {
+          "count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "countBy": {
+            "properties": {
+              "counts": {
+                "additionalProperties": {
+                  "type": "integer"
+                },
+                "description": "Each declared choice in order, then other",
+                "type": "object"
+              },
+              "field": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "field",
+              "counts"
+            ],
+            "type": "object"
+          },
+          "scope": {
+            "enum": [
+              "all",
+              "own"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "count",
+          "scope"
+        ],
+        "type": "object"
+      },
+      "Written": {
+        "properties": {
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "id": {
+            "$ref": "#/components/schemas/PublicId"
+          },
+          "key": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "version": {
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "key",
+          "id",
+          "version",
+          "createdAt",
+          "updatedAt"
+        ],
+        "type": "object"
+      }
+    },
+    "securitySchemes": {
+      "OwnerSession": {
+        "description": "Owner session cookie set by POST /_bp/state/v1/_session; HttpOnly, one hour.",
+        "in": "cookie",
+        "name": "__Host-bp-owner",
+        "type": "apiKey"
+      },
+      "VisitorCookie": {
+        "description": "Visitor cookie set by POST /_bp/state/v1; HttpOnly, the browser sends it.",
+        "in": "cookie",
+        "name": "__Host-bp-v",
+        "type": "apiKey"
+      }
+    }
+  },
+  "externalDocs": {
+    "description": "BrewPage API documentation",
+    "url": "https://kochetkov-ma.github.io/brewpage-openapi/"
+  },
+  "info": {
+    "contact": {
+      "email": "info@brewpage.app",
+      "name": "BrewPage",
+      "url": "https://brewpage.app"
+    },
+    "description": "Page data lets a published HTML page (format html) or site save small JSON entries and files from its visitors. The page loads https://brewpage.app/js/state.js and calls bp.state(); that script is the client of this API. The API lives on the page's own address (https://<label>.brewpage.app, or the custom domain attached to the page) and serves only that page: same origin only, no CORS. Every request except a file read sends the header X-BP-State: 1, at most one Sec-Fetch-Site (same-origin), and every request other than GET sends one Origin equal to the page's origin; anything else is 403 STATE_CROSS_ORIGIN. A page with a password answers only after the visitor opened it with the password. JSON answers carry Cache-Control no-store and Cross-Origin-Resource-Policy same-origin. Errors are ErrorResponse with a STATE_* code; a method a path does not take is 405 with Allow, OPTIONS is 403 STATE_CROSS_ORIGIN. Lists are declared by the page's owner when publishing (`state`) or through PATCH /api/{ns}/{id}/state of the main BrewPage API (https://brewpage.app/api/openapi.json). Each visitor reads and writes only their own entries unless a list is shared; the page's owner reads them all.",
+    "license": {
+      "name": "Apache-2.0",
+      "url": "https://www.apache.org/licenses/LICENSE-2.0"
+    },
+    "summary": "What a published page's own script calls to save and read visitor entries and files.",
+    "termsOfService": "https://brewpage.app/terms",
+    "title": "BrewPage Page data host API",
+    "version": "2.43.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/_bp/state/v1": {
+      "get": {
+        "description": "Whether this browser holds a visitor cookie, the entry size cap, the caller's role and the totals refresh interval.",
+        "operationId": "ping",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/StateHeader"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Ping"
+                }
+              }
+            },
+            "description": "Page data is on for this page"
+          },
+          "403": {
+            "$ref": "#/components/responses/CrossOrigin"
+          },
+          "404": {
+            "$ref": "#/components/responses/Unavailable"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "503": {
+            "$ref": "#/components/responses/Off"
+          }
+        },
+        "security": [
+          {},
+          {
+            "VisitorCookie": []
+          },
+          {
+            "OwnerSession": []
+          }
+        ],
+        "summary": "Read the page's Page data status",
+        "tags": [
+          "Page data"
+        ]
+      },
+      "post": {
+        "description": "No body. Sets the visitor cookie __Host-bp-v (host-only, Secure, HttpOnly, SameSite=Strict, 400 days) when the browser holds none; answers the ping. Call it once before the first save.",
+        "operationId": "mintVisitorCookie",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/StateHeader"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Ping"
+                }
+              }
+            },
+            "description": "Ping answer; visitor is true",
+            "headers": {
+              "Set-Cookie": {
+                "description": "__Host-bp-v, only when the request carried no valid one",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "403": {
+            "$ref": "#/components/responses/CrossOrigin"
+          },
+          "404": {
+            "$ref": "#/components/responses/Unavailable"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "503": {
+            "$ref": "#/components/responses/Off"
+          }
+        },
+        "security": [
+          {},
+          {
+            "VisitorCookie": []
+          }
+        ],
+        "summary": "Get a visitor cookie",
+        "tags": [
+          "Page data"
+        ]
+      }
+    },
+    "/_bp/state/v1/_session": {
+      "post": {
+        "description": "No body. Exchanges a one-time owner code (valid 60 seconds) for the owner session cookie __Host-bp-owner (host-only, Secure, HttpOnly, SameSite=Strict, one hour, never extended). BrewPage hands the code to the page's script when its owner opens the page; on a custom domain every call is 403.",
+        "operationId": "openOwnerSession",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/StateHeader"
+          },
+          {
+            "description": "The one-time owner code",
+            "in": "header",
+            "name": "X-BP-Code",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OwnerSession"
+                }
+              }
+            },
+            "description": "Owner session opened",
+            "headers": {
+              "Set-Cookie": {
+                "description": "__Host-bp-owner",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "STATE_OWNER_REQUIRED: missing, used or expired code, or a custom domain; STATE_CROSS_ORIGIN"
+          },
+          "404": {
+            "$ref": "#/components/responses/Unavailable"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "503": {
+            "$ref": "#/components/responses/Off"
+          }
+        },
+        "security": [
+          {}
+        ],
+        "summary": "Open the owner view on the page",
+        "tags": [
+          "Page data"
+        ]
+      }
+    },
+    "/_bp/state/v1/{col}": {
+      "get": {
+        "description": "A private list returns the caller's own entries, a shared list everyone's, an author-only list the owner's entries. With scope=all an owner session returns every entry, each with its visitor alias.",
+        "operationId": "listEntries",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/StateHeader"
+          },
+          {
+            "$ref": "#/components/parameters/Collection"
+          },
+          {
+            "description": "Sort order; index sorts by the number field the list's index setting names. Default -createdAt",
+            "in": "query",
+            "name": "order",
+            "required": false,
+            "schema": {
+              "enum": [
+                "createdAt",
+                "-createdAt",
+                "updatedAt",
+                "-updatedAt",
+                "index",
+                "-index"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "description": "Entries per page, 1-100, default 20; a page also holds at most 1 MiB of values",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "maximum": 100,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "The next value of the previous page",
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "maxLength": 512,
+              "type": "string"
+            }
+          },
+          {
+            "description": "all = every entry of the list for an owner session; anyone else gets the plain list",
+            "in": "query",
+            "name": "scope",
+            "required": false,
+            "schema": {
+              "enum": [
+                "all"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EntryPage"
+                }
+              }
+            },
+            "description": "One page of entries"
+          },
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "403": {
+            "$ref": "#/components/responses/CrossOrigin"
+          },
+          "404": {
+            "$ref": "#/components/responses/Unavailable"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "503": {
+            "$ref": "#/components/responses/Off"
+          }
+        },
+        "security": [
+          {},
+          {
+            "VisitorCookie": []
+          },
+          {
+            "OwnerSession": []
+          }
+        ],
+        "summary": "List entries of a list",
+        "tags": [
+          "Page data"
+        ]
+      }
+    },
+    "/_bp/state/v1/{col}/_files": {
+      "post": {
+        "description": "The raw file bytes as the body (no multipart, no JSON), its type as Content-Type. Only lists whose settings take files; a shared list takes files only on a page of a BrewPage profile. Needs the visitor cookie. The ping's files member tells which lists take uploads now.",
+        "operationId": "uploadFile",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/StateHeader"
+          },
+          {
+            "$ref": "#/components/parameters/Collection"
+          },
+          {
+            "description": "Size of the file in bytes",
+            "in": "header",
+            "name": "Content-Length",
+            "required": true,
+            "schema": {
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "File name, percent-encoded UTF-8; the last path part is kept, at most 255 characters",
+            "in": "header",
+            "name": "X-BP-Name",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/Turnstile"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "*/*": {
+              "schema": {
+                "contentMediaType": "application/octet-stream",
+                "type": "string"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FileReceipt"
+                }
+              }
+            },
+            "description": "Stored"
+          },
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "STATE_FILES_OFF: this list takes no files; STATE_COOKIE_REQUIRED; STATE_CROSS_ORIGIN"
+          },
+          "404": {
+            "$ref": "#/components/responses/Unavailable"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "STATE_FILE_TOO_LARGE (maxBytes = the largest file this page takes); STATE_QUOTA: no room left on this page"
+          },
+          "415": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "STATE_FILE_TYPE: this list does not take this kind of file"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "STATE_FILE_REFUSED"
+          },
+          "429": {
+            "$ref": "#/components/responses/WriteLimited"
+          },
+          "503": {
+            "$ref": "#/components/responses/Off"
+          }
+        },
+        "security": [
+          {
+            "VisitorCookie": []
+          }
+        ],
+        "summary": "Upload one file",
+        "tags": [
+          "Page data"
+        ]
+      }
+    },
+    "/_bp/state/v1/{col}/_files/{id}": {
+      "delete": {
+        "description": "The uploader deletes own files, an owner session any file of the list. Needs the visitor cookie.",
+        "operationId": "deleteFile",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/StateHeader"
+          },
+          {
+            "$ref": "#/components/parameters/Collection"
+          },
+          {
+            "$ref": "#/components/parameters/FileId"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Deleted"
+          },
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "STATE_COOKIE_REQUIRED, STATE_CROSS_ORIGIN"
+          },
+          "404": {
+            "$ref": "#/components/responses/Unavailable"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "503": {
+            "$ref": "#/components/responses/Off"
+          }
+        },
+        "security": [
+          {
+            "VisitorCookie": []
+          },
+          {
+            "OwnerSession": [],
+            "VisitorCookie": []
+          }
+        ],
+        "summary": "Delete one file",
+        "tags": [
+          "Page data"
+        ]
+      },
+      "get": {
+        "description": "The stored bytes, usable as an img or link address on the page (no X-BP-State needed; Sec-Fetch-Site absent, same-origin or none). The uploader reads own files, everyone reads files of a shared list, an owner session reads all. Images and PDF open inline, other types download.",
+        "operationId": "readFile",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Collection"
+          },
+          {
+            "$ref": "#/components/parameters/FileId"
+          },
+          {
+            "description": "The file's ETag; a match is 304",
+            "in": "header",
+            "name": "If-None-Match",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "contentMediaType": "application/octet-stream",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "The file",
+            "headers": {
+              "Cache-Control": {
+                "description": "private, max-age=3600 on a shared list, else private, no-store",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Content-Disposition": {
+                "description": "inline for images and PDF, else attachment; carries the file name when one was sent",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "ETag": {
+                "description": "The quoted file id",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "Not modified"
+          },
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "403": {
+            "$ref": "#/components/responses/CrossOrigin"
+          },
+          "404": {
+            "$ref": "#/components/responses/Unavailable"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "503": {
+            "$ref": "#/components/responses/Off"
+          }
+        },
+        "security": [
+          {},
+          {
+            "VisitorCookie": []
+          },
+          {
+            "OwnerSession": []
+          }
+        ],
+        "summary": "Read one file",
+        "tags": [
+          "Page data"
+        ]
+      }
+    },
+    "/_bp/state/v1/{col}/_id/{id}": {
+      "delete": {
+        "description": "Owner session only; the id comes from a scope=all listing. The personal _storage list is never reachable.",
+        "operationId": "deleteEntryById",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/StateHeader"
+          },
+          {
+            "$ref": "#/components/parameters/Collection"
+          },
+          {
+            "description": "The entry's id from a listing",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/PublicId"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Deleted"
+          },
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "STATE_OWNER_REQUIRED: no owner session, or the _storage list; STATE_CROSS_ORIGIN"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "503": {
+            "$ref": "#/components/responses/Off"
+          }
+        },
+        "security": [
+          {
+            "OwnerSession": []
+          }
+        ],
+        "summary": "Delete any entry by its id (owner)",
+        "tags": [
+          "Page data"
+        ]
+      }
+    },
+    "/_bp/state/v1/{col}/_stats": {
+      "get": {
+        "description": "A declared list counts every entry (scope all), refreshed within a few seconds; any other list counts the caller's own (scope own). Re-read it every statsEvery seconds of the ping for live totals.",
+        "operationId": "readTotals",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/StateHeader"
+          },
+          {
+            "$ref": "#/components/parameters/Collection"
+          },
+          {
+            "description": "A field with declared choices; adds the count per choice",
+            "in": "query",
+            "name": "countBy",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Totals"
+                }
+              }
+            },
+            "description": "Totals"
+          },
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "403": {
+            "$ref": "#/components/responses/CrossOrigin"
+          },
+          "404": {
+            "$ref": "#/components/responses/Unavailable"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "503": {
+            "$ref": "#/components/responses/Off"
+          }
+        },
+        "security": [
+          {},
+          {
+            "VisitorCookie": []
+          }
+        ],
+        "summary": "Count the entries of a list",
+        "tags": [
+          "Page data"
+        ]
+      }
+    },
+    "/_bp/state/v1/{col}/{key}": {
+      "delete": {
+        "description": "Deletes the caller's own entry. Needs the visitor cookie.",
+        "operationId": "deleteEntry",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/StateHeader"
+          },
+          {
+            "$ref": "#/components/parameters/Collection"
+          },
+          {
+            "$ref": "#/components/parameters/Key"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Deleted"
+          },
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "403": {
+            "$ref": "#/components/responses/WriteForbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "503": {
+            "$ref": "#/components/responses/Off"
+          }
+        },
+        "security": [
+          {
+            "VisitorCookie": []
+          }
+        ],
+        "summary": "Delete one entry",
+        "tags": [
+          "Page data"
+        ]
+      },
+      "get": {
+        "description": "The caller's own entry; on an author-only list the owner's entry.",
+        "operationId": "readEntry",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/StateHeader"
+          },
+          {
+            "$ref": "#/components/parameters/Collection"
+          },
+          {
+            "$ref": "#/components/parameters/Key"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Entry"
+                }
+              }
+            },
+            "description": "The entry",
+            "headers": {
+              "ETag": {
+                "$ref": "#/components/headers/VersionTag"
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "403": {
+            "$ref": "#/components/responses/CrossOrigin"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "503": {
+            "$ref": "#/components/responses/Off"
+          }
+        },
+        "security": [
+          {},
+          {
+            "VisitorCookie": []
+          }
+        ],
+        "summary": "Read one entry",
+        "tags": [
+          "Page data"
+        ]
+      },
+      "put": {
+        "description": "Creates or replaces the caller's entry; the body is the JSON value, stored byte for byte, at most the ping's storageMaxBytes. Needs the visitor cookie; a saved entry renews it.",
+        "operationId": "writeEntry",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/StateHeader"
+          },
+          {
+            "$ref": "#/components/parameters/Collection"
+          },
+          {
+            "$ref": "#/components/parameters/Key"
+          },
+          {
+            "description": "The entry's version (its ETag) when it was read, or * for any existing entry; another version is 409",
+            "in": "header",
+            "name": "If-Match",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/Turnstile"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {}
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Written"
+                }
+              }
+            },
+            "description": "Saved",
+            "headers": {
+              "ETag": {
+                "$ref": "#/components/headers/VersionTag"
+              },
+              "Set-Cookie": {
+                "description": "The same __Host-bp-v value with a renewed expiry",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "403": {
+            "$ref": "#/components/responses/WriteForbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/Unavailable"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "STATE_CONFLICT"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "STATE_TOO_LARGE: larger than storageMaxBytes; STATE_QUOTA: no room left on this page"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "STATE_VALUE_REFUSED (shared lists)"
+          },
+          "429": {
+            "$ref": "#/components/responses/WriteLimited"
+          },
+          "503": {
+            "$ref": "#/components/responses/Off"
+          }
+        },
+        "security": [
+          {
+            "VisitorCookie": []
+          }
+        ],
+        "summary": "Save one entry",
+        "tags": [
+          "Page data"
+        ]
+      }
+    }
+  },
+  "servers": [
+    {
+      "description": "The page's own address",
+      "url": "https://{host}",
+      "variables": {
+        "host": {
+          "default": "<label>.brewpage.app",
+          "description": "Host of the page, <label>.brewpage.app or its attached custom domain"
+        }
+      }
+    }
+  ],
+  "tags": [
+    {
+      "description": "Visitor entries and files of one page, called by the page's own script.",
+      "name": "Page data"
+    }
+  ]
+}

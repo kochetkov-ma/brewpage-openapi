@@ -1,21 +1,32 @@
 #!/usr/bin/env node
+// Imports one backend export: public.json and page-data-host.json of the same directory, each with its provenance file.
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { createRequire } from 'node:module';
-import { resolve } from 'node:path';
+import { dirname, resolve } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { contractYaml } from './openapi-yaml.mjs';
 
 const source = process.argv[2];
-if (!source) throw new Error('Usage: node scripts/sync-openapi.mjs <backend-generated-public.json>');
+if (!source || process.argv.length > 3) throw new Error('Usage: node scripts/sync-openapi.mjs <backend export public.json>');
 const root = resolve(import.meta.dirname, '..');
 const require = createRequire(new URL('../docs/package.json', import.meta.url));
 const yaml = require('js-yaml');
-const json = readFileSync(resolve(source), 'utf8');
-execFileSync(process.execPath, [resolve(root, 'scripts/verify-openapi.mjs'), '--spec', resolve(source)], { stdio: 'inherit' });
-const provenance = resolve(source).replace(/\.json$/, '.provenance.json');
-if (!existsSync(provenance)) throw new Error(`Missing backend export provenance: ${provenance}`);
-writeFileSync(resolve(root, 'openapi/openapi.json'), json);
-writeFileSync(resolve(root, 'docs/public/openapi.json'), json);
-writeFileSync(resolve(root, 'openapi/openapi.yaml'), contractYaml(yaml, json));
-writeFileSync(resolve(root, 'openapi/openapi.provenance.json'), readFileSync(provenance));
-execFileSync(process.execPath, [resolve(root, 'scripts/verify-openapi.mjs')], { stdio: 'inherit' });
+const verifier = resolve(root, 'scripts/verify-openapi.mjs');
+/** Committed name -> export file and the verify flag that reads it. */
+const documents = [
+  { name: 'openapi', file: resolve(source), flag: '--spec' },
+  { name: 'page-data-host', file: resolve(dirname(resolve(source)), 'page-data-host.json'), flag: '--host-spec' },
+];
+for (const { file, flag } of documents) {
+  if (!existsSync(file)) throw new Error(`Missing backend export: ${file}`);
+  if (!existsSync(file.replace(/\.json$/, '.provenance.json'))) throw new Error(`Missing backend export provenance of ${file}`);
+  execFileSync(process.execPath, [verifier, flag, file], { stdio: 'inherit' });
+}
+for (const { name, file } of documents) {
+  const json = readFileSync(file, 'utf8');
+  writeFileSync(resolve(root, `openapi/${name}.json`), json);
+  writeFileSync(resolve(root, `docs/public/${name}.json`), json);
+  writeFileSync(resolve(root, `openapi/${name}.yaml`), contractYaml(yaml, json));
+  writeFileSync(resolve(root, `openapi/${name}.provenance.json`), readFileSync(file.replace(/\.json$/, '.provenance.json')));
+}
+execFileSync(process.execPath, [verifier], { stdio: 'inherit' });
