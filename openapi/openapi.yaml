@@ -801,6 +801,11 @@ components:
           description: Total view count
           format: int64
           type: integer
+        weight:
+          description: Relative chance of being shown; clients draw cards by it
+          format: int32
+          minimum: 1
+          type: integer
       type: object
     GalleryPromoPeriod:
       properties:
@@ -809,12 +814,12 @@ components:
           format: date-time
           type: string
         index:
-          description: Rotation period number; slots stay the same within one period
+          description: Period number; the answer is the same for every client within one period
           format: int64
           type: integer
       type: object
     GalleryPromoResponse:
-      description: BrewPage examples pinned above and below the public gallery; rotates every period
+      description: BrewPage examples shown above and below the public gallery; clients draw the cards by item weight
       properties:
         captions:
           $ref: '#/components/schemas/GalleryPromoCaptions'
@@ -830,6 +835,7 @@ components:
           type: string
         slots:
           $ref: '#/components/schemas/GalleryPromoSlots'
+          description: 'This period''s default set and the block shape: cards per block and the slot that holds a video'
       type: object
     GalleryPromoSlots:
       properties:
@@ -3654,7 +3660,7 @@ info:
     url: https://www.apache.org/licenses/LICENSE-2.0
   termsOfService: https://brewpage.app/terms
   title: BrewPage API
-  version: 2.36.0
+  version: 2.39.0
 openapi: 3.1.0
 paths:
   /api/domains:
@@ -4556,9 +4562,9 @@ paths:
   /api/gallery/promo:
     get:
       description: >-
-        BrewPage's own example publications pinned above and below the public gallery: captions, the current rotation
-        period, the slugs of the top and bottom blocks, and every live item. Slots change once per period and stay the
-        same within it. Empty slots and items when no example is configured.
+        BrewPage's own example publications shown above and below the public gallery: captions, the current period, a
+        default set of slugs for the top and bottom blocks (also the block shape), and every live item with its weight.
+        Clients draw the cards by weight on every page load. Empty slots and items when no example is configured.
       operationId: getPromo
       responses:
         '200':
@@ -4566,7 +4572,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/GalleryPromoResponse'
-          description: Pinned blocks of the current period
+          description: Example blocks of the current period
       security:
         - {}
       summary: Pinned examples

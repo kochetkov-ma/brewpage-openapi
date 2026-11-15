@@ -1,5 +1,11 @@
 # Release Notes
 
+## API contract 2.39.0 — 2026-11-15
+
+- Exported from brewpage-app source `0a5697b237804361d62e73655e913b83ae7c0ff4` (brewpage-app release v2.39.0), clean tree. 61 paths and 83 operations, unchanged. brewpage-app v2.37.x and v2.38.x carried no contract change.
+- The examples above and below the public gallery are drawn on every page load: each item of `GET /api/gallery/promo` (`GalleryPromoItem`) adds `weight`, an integer of at least 1, its relative chance of being shown. `slots` is this period's default set and gives the block shape: cards per block and the slot that holds a video.
+- `brewpage-mcp` 1.23.1 works with this contract as it is.
+
 ## MCP 1.23.1 — 2026-11-15
 
 - A page that shows totals (a poll, a counter) now updates them right after the visitor's own save. The Page data guide (`get_guide` topic `page-data`) follows BrewPage's Browser SDK text and uses `onStats` for the totals: the page shows them at once and again after each of its own saves, where a plain `stats()` read can lag a save by up to 30 s.

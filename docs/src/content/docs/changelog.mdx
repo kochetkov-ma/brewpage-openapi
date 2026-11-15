@@ -6,6 +6,10 @@ order: 5
 
 # Changelog
 
+## API contract 2.39.0 — gallery examples carry a weight
+
+Each item of `GET /api/gallery/promo` adds `weight`, an integer of at least 1: its relative chance of being shown. Clients draw the cards above and below the public gallery by it on every page load; `slots` is this period's default set and gives the block shape. Still 61 paths and 83 operations.
+
 ## MCP 1.23.1 — totals update right after a save
 
 The Page data guide the assistant reads (`get_guide` topic `page-data`) now uses `onStats` for totals such as poll results: the page shows them at once and again right after each of its own saves, where a plain `stats()` read can lag a save by up to 30 s. Thirty-two tools, contract 2.36.0.
