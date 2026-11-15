@@ -14,7 +14,7 @@ export const PAGE_DATA_GUIDE = [
   "    const v = s.col(\"votes\");",
   "    await v.set(\"me\", {choice: \"a\"}); // key A-Za-z0-9_.-, no leading _, <=128; \"me\" = one per visitor",
   "    await v.get(\"me\"); // value or null; remove(key) -> true if it existed",
-  "    v.onStats({countBy: \"choice\"}, show); // show({count, by}) now, on own saves",
+  "    v.onStats({countBy: \"choice\"}, show); // show({count, by}) now, then live",
   "  }",
   "  start();",
   "  bp.storage.ready.then(() => bp.storage.setItem(\"k\", \"v\")); // localStorage-like, synced; works where s is null",
