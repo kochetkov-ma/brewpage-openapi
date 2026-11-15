@@ -1,0 +1,166 @@
+name: Packages
+
+on:
+  push:
+    tags: ['data-v*']
+  pull_request:
+    paths:
+      - 'packages/data/**'
+      - 'scripts/verify-data-package.mjs'
+      - '.github/workflows/packages.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: packages-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '22.23.3'
+
+      - name: Validate package identity
+        env:
+          RELEASE_REF: ${{ github.ref_type == 'tag' && github.ref_name || '' }}
+        run: node scripts/verify-data-package.mjs packages/data "" "$RELEASE_REF"
+
+      - name: Install, build and test brewpage-data
+        working-directory: packages/data
+        run: |
+          set -euo pipefail
+          npm ci
+          npm run build
+          npm test
+
+      - name: Build the guestbook example
+        working-directory: packages/data/examples/guestbook
+        run: |
+          set -euo pipefail
+          npm ci
+          npm run build
+
+  publish:
+    needs: verify
+    if: github.event_name == 'push' && github.ref_type == 'tag'
+    permissions:
+      contents: write
+      id-token: write
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '22.23.3'
+
+      - name: Install pinned npm with trusted publishing support
+        run: |
+          set -euo pipefail
+          npm install --global npm@11.14.1
+          [[ "$(npm --version)" == 11.14.1 ]]
+
+      - name: Build and pack
+        id: pack
+        working-directory: packages/data
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          npm ci
+          npm run build
+          npm pack --pack-destination "$RUNNER_TEMP" > "$RUNNER_TEMP/pack.txt"
+          TARBALL="$RUNNER_TEMP/$(tail -n 1 "$RUNNER_TEMP/pack.txt")"
+          node ../../scripts/verify-data-package.mjs . "$TARBALL" "$RELEASE_TAG"
+          {
+            echo "tarball=$TARBALL"
+            echo "name=$(node -p "require('./package.json').name")"
+            echo "version=$(node -p "require('./package.json').version")"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Release notes from RELEASE-NOTES.md
+        env:
+          VERSION: ${{ steps.pack.outputs.version }}
+        run: |
+          set -euo pipefail
+          awk -v head="## Page data packages ${VERSION} " 'index($0, head) == 1 {on = 1; next} on && /^## / {exit} on {print}' RELEASE-NOTES.md > "$RUNNER_TEMP/notes.md"
+          if ! grep -q '[^[:space:]]' "$RUNNER_TEMP/notes.md"; then
+            echo "::error file=RELEASE-NOTES.md::no '## Page data packages ${VERSION}' section; write the people-facing notes before tagging"
+            exit 1
+          fi
+
+      - name: Check if version already published
+        id: check
+        env:
+          PKG_NAME: ${{ steps.pack.outputs.name }}
+          PKG_VERSION: ${{ steps.pack.outputs.version }}
+        run: |
+          set -euo pipefail
+          if npm view "${PKG_NAME}@${PKG_VERSION}" version --json > "$RUNNER_TEMP/npm-version.json" 2> "$RUNNER_TEMP/npm-version.err"; then
+            node -e 'const fs=require("fs"); if(JSON.parse(fs.readFileSync(process.argv[1],"utf8"))!==process.argv[2]) process.exit(1)' "$RUNNER_TEMP/npm-version.json" "$PKG_VERSION"
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "Version ${PKG_VERSION} already published, skipping"
+          elif node -e 'const fs=require("fs"); try {if(JSON.parse(fs.readFileSync(process.argv[1],"utf8")).error.code!=="E404") process.exit(1)} catch {process.exit(1)}' "$RUNNER_TEMP/npm-version.json"; then
+            if npm view "$PKG_NAME" name > /dev/null 2>&1; then
+              echo "exists=false" >> "$GITHUB_OUTPUT"
+              echo "Version ${PKG_VERSION} not found, will publish"
+            else
+              echo "::error::${PKG_NAME} is not on npm yet: the first publish needs the owner (npm sign-in), then a trusted publisher for this workflow (packages.yml, environment empty); rerun after that"
+              exit 1
+            fi
+          else
+            echo '::error::npm version lookup failed; publication stopped'
+            exit 1
+          fi
+
+      - name: Publish to npm
+        if: steps.check.outputs.exists != 'true'
+        env:
+          TARBALL: ${{ steps.pack.outputs.tarball }}
+        run: |
+          set -euo pipefail
+          if ! npm publish "$TARBALL" --access public --provenance; then
+            echo '::error::npm publish failed; if it says 404, ENEEDAUTH or an OIDC error, the trusted publisher of this package is missing or does not name packages.yml'
+            exit 1
+          fi
+
+      - name: Version gate
+        env:
+          PKG_NAME: ${{ steps.pack.outputs.name }}
+          PKG_VERSION: ${{ steps.pack.outputs.version }}
+        run: |
+          set -euo pipefail
+          DEADLINE=$((SECONDS + 600))
+          while true; do
+            SEEN=$(npm view "${PKG_NAME}@${PKG_VERSION}" version 2> /dev/null || true)
+            if [[ "$SEEN" == "$PKG_VERSION" ]]; then
+              echo "npm serves ${PKG_NAME}@${PKG_VERSION}"
+              break
+            fi
+            if (( SECONDS >= DEADLINE )); then
+              echo "::error::npm did not serve ${PKG_NAME}@${PKG_VERSION} within 10 minutes"
+              exit 1
+            fi
+            echo "not served yet; retrying in 15 s"
+            sleep 15
+          done
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@8a0cd651e5b2365bd640854a3fa5dfc70e4875f3 # v3.0.4
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: Page data packages ${{ steps.pack.outputs.version }}
+          body_path: ${{ runner.temp }}/notes.md

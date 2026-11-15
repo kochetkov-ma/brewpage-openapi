@@ -9,6 +9,11 @@
 - Clearer answers: after publishing, the assistant hands you the page link and the management link (private: whoever has it can edit or delete the page); every failed call says what went wrong and names the next step in a `Next:` line; long content is read in parts. `publish_file` takes a password and a TTL.
 - BrewPage counts the server's API calls by its `User-Agent` (version and transport: `brewpage-mcp/2.0.0 (stdio)` for the local server, `(remote)` for the hosted one) and nothing else. Install pins are `brewpage-mcp@2.0.0`; the remote server `https://brewpage.app/mcp` needs no change on your side.
 
+## Page data packages 0.1.0 — 2026-11-15
+
+- New npm package `brewpage-data`: a typed loader for BrewPage Page data with React, Vue, Svelte, Angular and custom-element wrappers, so a page built with a framework saves and reads what visitors enter without hand-written calls.
+- One install line, one import per framework; a small guestbook example in `packages/data/examples/guestbook` shows the whole flow.
+
 ## API contract 2.41.0 — 2026-11-15
 
 - Exported from brewpage-app source `30f1765fa9919c65bd1058f698795f4dbfd03119` (brewpage-app release v2.41.0), clean tree. 61 paths and 83 operations, unchanged. brewpage-app v2.40.x carried no contract change.
