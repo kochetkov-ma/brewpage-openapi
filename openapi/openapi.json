@@ -181,7 +181,7 @@
         "type": "object"
       },
       "DomainItem": {
-        "description": "A custom domain of a profile and what to do next: create the `records[]` in DNS, call the check route once, then read the domain until `status` is `active`.",
+        "description": "A custom domain of a profile and what to do next (`nextStep`): create the `records[]` in DNS, call the check route once, then read the domain until `status` is `active`.",
         "properties": {
           "apex": {
             "description": "true when the hostname is the registered domain itself (example.com): routing uses an A or ALIAS record instead of CNAME",
@@ -230,6 +230,10 @@
             "format": "date-time",
             "type": "string"
           },
+          "nextStep": {
+            "description": "What to do next, in plain English (one to three sentences) with the exact routes of this domain, e.g. create the records[] at the DNS provider, then POST the check route once and GET this domain until `status` is `active`. Follow it and relay it to the user; always present",
+            "type": "string"
+          },
           "problem": {
             "description": "What blocks progress now, absent when nothing does: DOMAIN_NOT_REGISTERED (the domain does not exist yet; register it with a domain registrar, then create the records), TXT_MISSING, TXT_WRONG, ROUTING_MISSING, ROUTING_WRONG, FOREIGN_AAAA, CAA_BLOCKS (fix the matching row of records[]), DOMAIN_TAKEN (this hostname is not available: use another hostname or write to info@brewpage.app), QUEUE_FULL (DNS is right, verification waits its turn; retried automatically), CERT_PENDING (certificate on its way), CERT_FAILED (certificate could not be issued; check DNS, then check again), DNS_LOST (records stayed broken past graceEndsAt, so the domain was disconnected; restore them and check again), CHECK_PAUSED (checks paused after long failure; the check route resumes them), RESOLVER_UNAVAILABLE (DNS did not answer; retried), PUBLICATION_GONE (attach another publication), NOT_ELIGIBLE_<reason> (the publication cannot take a custom domain; reasons as ErrorResponse.reason)",
             "type": "string"
@@ -273,6 +277,7 @@
           "createdAt",
           "displayHostname",
           "hostname",
+          "nextStep",
           "records",
           "serving",
           "status",
@@ -388,7 +393,7 @@
             "type": "string"
           },
           "reason": {
-            "description": "With NOT_ELIGIBLE: why the publication cannot take a custom domain: OWNERSHIP (add its owner token to the profile), OLD (publish it again), RETIRED (its address was retired; set the domain on a live publication), TYPE (only HTML pages and sites), FORMAT (only format html), PASSWORD (remove the password), EXPIRED (extend it or attach another publication) or MODE (it is not on its own subdomain; set the domain on it again)",
+            "description": "With NOT_ELIGIBLE: why the publication cannot take a custom domain: OWNERSHIP (add its owner token to the profile), OLD (publish it again), RETIRED (its address was retired; set the domain on a live publication), TYPE (only HTML pages and sites), FORMAT (only format html), PASSWORD (remove the password), EXPIRED (it cannot come back: attach another publication) orMODE (it is not on its own subdomain; set the domain on it again)",
             "type": "string"
           },
           "republishUrl": {
@@ -1650,7 +1655,7 @@
             "type": "string"
           },
           "customDomain": {
-            "description": "With `domain`: the custom domain set on the new publication; create its `records[]` in DNS. Absent otherwise.",
+            "description": "With `domain`: the custom domain set on the new publication; create its `records[]` in DNS and follow its `nextStep`. Absent otherwise.",
             "oneOf": [
               {
                 "$ref": "#/components/schemas/DomainItem"
@@ -3616,7 +3621,7 @@
             "type": "string"
           },
           "customDomain": {
-            "description": "With `domain`: the custom domain set on the new publication; create its `records[]` in DNS. Absent otherwise.",
+            "description": "With `domain`: the custom domain set on the new publication; create its `records[]` in DNS and follow its `nextStep`. Absent otherwise.",
             "oneOf": [
               {
                 "$ref": "#/components/schemas/DomainItem"
@@ -4671,7 +4676,7 @@
     },
     "termsOfService": "https://brewpage.app/terms",
     "title": "BrewPage API",
-    "version": "2.39.0"
+    "version": "2.41.0"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -8842,7 +8847,7 @@
         ]
       },
       "put": {
-        "description": "Connects a hostname you own (www.example.com or example.com) to this HTML page or site: adds it to your profile, or moves it here when your profile already holds it. Works for HTML pages of format html and for sites, without a password; a page on a BrewPage path address moves to its own subdomain (`deliveryModeChanged`), and its BrewPage link keeps working. A hostname that was on this publication before stays in your profile, unattached (`detached`). A new hostname whose domain is not registered is refused (400 DOMAIN_NOT_REGISTERED). For an added hostname the first automatic DNS check runs about 15 minutes later (`nextCheckAt`). Next: create exactly the DNS records in `records[]`, then call POST /api/publications/{type}/{ns}/{id}/domain/check once. BrewPage keeps checking on its own (`nextCheckAt`): read GET /api/publications/{type}/{ns}/{id}/domain until `status` is `active`; check again only after changing DNS.",
+        "description": "Connects a hostname you own (www.example.com or example.com) to this HTML page or site: adds it to your profile, or moves it here when your profile already holds it. Works for HTML pages of format html and for sites, without a password; a page on a BrewPage path address moves to its own subdomain (`deliveryModeChanged`), and its BrewPage link keeps working. A hostname that was on this publication before stays in your profile, unattached (`detached`). A new hostname whose domain is not registered is refused (400 DOMAIN_NOT_REGISTERED). For an added hostname the first automatic DNS check runs about 15 minutes later (`nextCheckAt`). Next: create exactly the DNS records in `records[]`, then call POST /api/publications/{type}/{ns}/{id}/domain/check once. BrewPage keeps checking on its own (`nextCheckAt`): read GET /api/publications/{type}/{ns}/{id}/domain until `status` is `active`; check again only after changing DNS. Every custom-domain object (the domain answers and `customDomain`) names its next step in `nextStep`.",
         "operationId": "setPublicationDomain",
         "parameters": [
           {

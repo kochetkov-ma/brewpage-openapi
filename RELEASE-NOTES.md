@@ -1,5 +1,12 @@
 # Release Notes
 
+## API contract 2.41.0 — 2026-11-15
+
+- Exported from brewpage-app source `30f1765fa9919c65bd1058f698795f4dbfd03119` (brewpage-app release v2.41.0), clean tree. 61 paths and 83 operations, unchanged. brewpage-app v2.40.x carried no contract change.
+- Every custom-domain object names its next step: `DomainItem` (the domain answers and `customDomain` on publish) adds `nextStep`, a required string in plain English with the exact routes of this domain. Follow it and relay it to the user. `setPublicationDomain` and `customDomain` descriptions point to it.
+- 409 `NOT_ELIGIBLE` `reason` `EXPIRED`: an expired publication cannot come back; attach the custom domain to another publication (it no longer says "extend it").
+- `brewpage-mcp` 1.23.1 works with this contract as it is.
+
 ## API contract 2.39.0 — 2026-11-15
 
 - Exported from brewpage-app source `0a5697b237804361d62e73655e913b83ae7c0ff4` (brewpage-app release v2.39.0), clean tree. 61 paths and 83 operations, unchanged. brewpage-app v2.37.x and v2.38.x carried no contract change.

@@ -20,6 +20,7 @@ Public contract snapshots, documentation and the BrewPage MCP server. The backen
 
 ## Recent contract changes
 
+- 2.41.0 (backend v2.41.0, source 30f1765f): `DomainItem` (domain answers and `customDomain`) adds required `nextStep`, plain-English next step with this domain's exact routes; follow and relay it. 409 `NOT_ELIGIBLE` `reason` `EXPIRED`: the publication cannot come back, attach another one. No path, parameter or code change: 61 paths and 83 operations.
 - 2.39.0 (backend v2.39.0, source 0a5697b2): `GalleryPromoItem` (items of `GET /api/gallery/promo`) adds `weight`, integer >= 1, the item's relative chance of being shown; clients draw the cards by it on every page load. `slots` is this period's default set and the block shape. No path, parameter or code change: 61 paths and 83 operations.
 - 2.36.0 (backend v2.36.0, source a97fe688): `ownerView` in a Page data list's settings is accepted for compatibility and stored as sent; it has no effect, the page's owner view needs no setting. No path, parameter, field or code change: 61 paths and 83 operations.
 - 2.35.0 (backend v2.35.0, source 46ff9a9b): connecting a domain that is not registered yet answers 400 `DOMAIN_NOT_REGISTERED` on `setPublicationDomain`, `addDomain` and `attachDomain` (buy it from a registrar first); publishing with `domain` still creates the publication and adds notice `domain-not-registered`. 61 paths and 83 operations.

@@ -6,6 +6,10 @@ order: 5
 
 # Changelog
 
+## API contract 2.41.0 — custom domains name their next step
+
+Every custom-domain object (the domain answers and `customDomain` on publish) adds `nextStep`, a required plain-English next step with the exact routes of this domain: follow it and relay it to the user. 409 `NOT_ELIGIBLE` with `reason` `EXPIRED` now means the publication cannot come back: attach the custom domain to another publication. Still 61 paths and 83 operations.
+
 ## API contract 2.39.0 — gallery examples carry a weight
 
 Each item of `GET /api/gallery/promo` adds `weight`, an integer of at least 1: its relative chance of being shown. Clients draw the cards above and below the public gallery by it on every page load; `slots` is this period's default set and gives the block shape. Still 61 paths and 83 operations.

@@ -134,8 +134,8 @@ components:
       type: object
     DomainItem:
       description: >-
-        A custom domain of a profile and what to do next: create the `records[]` in DNS, call the check route once, then
-        read the domain until `status` is `active`.
+        A custom domain of a profile and what to do next (`nextStep`): create the `records[]` in DNS, call the check
+        route once, then read the domain until `status` is `active`.
       properties:
         apex:
           description: >-
@@ -174,6 +174,12 @@ components:
         nextCheckAt:
           description: Next automatic DNS check; absent while checks are paused
           format: date-time
+          type: string
+        nextStep:
+          description: >-
+            What to do next, in plain English (one to three sentences) with the exact routes of this domain, e.g. create
+            the records[] at the DNS provider, then POST the check route once and GET this domain until `status` is
+            `active`. Follow it and relay it to the user; always present
           type: string
         problem:
           description: >-
@@ -225,6 +231,7 @@ components:
         - createdAt
         - displayHostname
         - hostname
+        - nextStep
         - records
         - serving
         - status
@@ -330,8 +337,9 @@ components:
           description: >-
             With NOT_ELIGIBLE: why the publication cannot take a custom domain: OWNERSHIP (add its owner token to the
             profile), OLD (publish it again), RETIRED (its address was retired; set the domain on a live publication),
-            TYPE (only HTML pages and sites), FORMAT (only format html), PASSWORD (remove the password), EXPIRED (extend
-            it or attach another publication) or MODE (it is not on its own subdomain; set the domain on it again)
+            TYPE (only HTML pages and sites), FORMAT (only format html), PASSWORD (remove the password), EXPIRED (it
+            cannot come back: attach another publication) orMODE (it is not on its own subdomain; set the domain on it
+            again)
           type: string
         republishUrl:
           description: 'With OLD_PUBLICATION_READ_ONLY on an HTML page: browser composer to publish it anew.'
@@ -1324,8 +1332,8 @@ components:
           type: string
         customDomain:
           description: >-
-            With `domain`: the custom domain set on the new publication; create its `records[]` in DNS. Absent
-            otherwise.
+            With `domain`: the custom domain set on the new publication; create its `records[]` in DNS and follow its
+            `nextStep`. Absent otherwise.
           oneOf:
             - $ref: '#/components/schemas/DomainItem'
         deliveryMode:
@@ -2859,8 +2867,8 @@ components:
           type: string
         customDomain:
           description: >-
-            With `domain`: the custom domain set on the new publication; create its `records[]` in DNS. Absent
-            otherwise.
+            With `domain`: the custom domain set on the new publication; create its `records[]` in DNS and follow its
+            `nextStep`. Absent otherwise.
           oneOf:
             - $ref: '#/components/schemas/DomainItem'
         deliveryMode:
@@ -3660,7 +3668,7 @@ info:
     url: https://www.apache.org/licenses/LICENSE-2.0
   termsOfService: https://brewpage.app/terms
   title: BrewPage API
-  version: 2.39.0
+  version: 2.41.0
 openapi: 3.1.0
 paths:
   /api/domains:
@@ -6482,7 +6490,8 @@ paths:
         hostname the first automatic DNS check runs about 15 minutes later (`nextCheckAt`). Next: create exactly the DNS
         records in `records[]`, then call POST /api/publications/{type}/{ns}/{id}/domain/check once. BrewPage keeps
         checking on its own (`nextCheckAt`): read GET /api/publications/{type}/{ns}/{id}/domain until `status` is
-        `active`; check again only after changing DNS.
+        `active`; check again only after changing DNS. Every custom-domain object (the domain answers and
+        `customDomain`) names its next step in `nextStep`.
       operationId: setPublicationDomain
       parameters:
         - description: html (pages of format html) or site; only these take a custom domain
