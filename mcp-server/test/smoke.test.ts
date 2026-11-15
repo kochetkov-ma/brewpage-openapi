@@ -1308,9 +1308,9 @@ for (const scenario of [
 const PRIVATE_RESPONSE = { ...NEW_RESPONSE, namespace: "priv-synthetic", access: "unlisted" };
 const LISTED_PRIVATE = "Private: not listed. Anyone with the link can open it. To be found, send namespace=public: gallery + Google, Bing & AI search.";
 for (const scenario of [
-  { tool: "publish_html", args: { content: "x" }, kind: "domain", notice: LISTED_PRIVATE },
-  { tool: "publish_file", args: {}, kind: "domain", notice: LISTED_PRIVATE },
-  { tool: "publish_html", args: { files: [{ path: "index.html", content: "<h1>x</h1>" }] }, kind: "domain", notice: LISTED_PRIVATE },
+  { tool: "publish_html", args: { content: "x" }, kind: "listed", notice: LISTED_PRIVATE },
+  { tool: "publish_file", args: {}, kind: "listed", notice: LISTED_PRIVATE },
+  { tool: "publish_html", args: { files: [{ path: "index.html", content: "<h1>x</h1>" }] }, kind: "listed", notice: LISTED_PRIVATE },
   { tool: "publish_json", args: { json: { a: 1 } }, kind: "data", notice: "Private: not listed. Anyone with the link can open it." },
   { tool: "publish_kv", args: { key: "k", value: "v" }, kind: "data", notice: "Private: not listed. Anyone with the link can open it." },
 ]) {
@@ -1323,7 +1323,7 @@ for (const scenario of [
     const text = (tools.find(({ name }) => name === scenario.tool)!.inputSchema.properties!.namespace as { description: string }).description;
     const result = await f.call(scenario.tool, { ...scenario.args, ...(scenario.tool === "publish_file" ? { url: `${f.baseUrl}/source-file` } : {}) });
     // THEN the description states the type's public reach without hedges and the notice fits the type.
-    const kind = text.includes("served on the brewpage.app domain itself") ? "domain"
+    const kind = text.includes("listed in the gallery and sitemap, indexed by Google, Bing and AI search; unsuitable for secrets") ? "listed"
       : text.includes("JSON and KV are never listed in the gallery or indexed") ? "data" : "none";
     assert.deepEqual({
       kind, privateDefault: /Omit \(default\): private[.,]/.test(text), hedged: /eligib|may permit|secure|qualif/i.test(text),

@@ -8,8 +8,8 @@ import { realpathSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 import { createMcpHandler, InMemoryTransport, isLegacyRequest, LATEST_PROTOCOL_VERSION, type JSONRPCMessage } from "@modelcontextprotocol/server";
 import { NodeStreamableHTTPServerTransport, toWebRequest } from "@modelcontextprotocol/node";
-import { currentCall } from "./compat.js";
-import { createServer, OWNER_TOKEN_ENV, REMOTE, USER_AGENT, userAgentFor } from "./tools.js";
+import { currentCall, RETIRED_TOOLS } from "./compat.js";
+import { createServer, OWNER_TOKEN_ENV, REMOTE, USER_AGENT, userAgentFor, type FailureReason } from "./tools.js";
 import { classifyClient, UsageMetrics, type ClientClass } from "./metrics.js";
 
 const MIB = 1024 * 1024;
@@ -62,7 +62,31 @@ const SERVER_ERROR = -32000;
 
 type LogFields = Record<string, string | number | null>;
 /** Per-request usage facts for metrics; `address` is never logged, only hashed into the daily set. */
-interface Usage { client?: ClientClass; address?: string }
+interface Usage {
+  client?: ClientClass;
+  address?: string;
+  /** Closed class the failure builder reported for this call. */
+  reason?: FailureReason;
+  /** Name asked by a call to no tool; reaches only the bounded labeler. */
+  asked?: unknown;
+  /** Declared client software of a connect, lower-cased; reaches only the bounded labeler. */
+  software?: unknown;
+}
+
+const CLIENT_INFO_META = "io.modelcontextprotocol/clientInfo";
+
+/** Declared client software name of a connect (2025 `clientInfo`, 2026 `_meta`), cut and lower-cased; else undefined. */
+function declaredSoftware(params: unknown): string | undefined {
+  const { clientInfo, _meta } = (params ?? {}) as { clientInfo?: { name?: unknown } | null; _meta?: Record<string, { name?: unknown } | null> | null };
+  const name = clientInfo?.name ?? _meta?.[CLIENT_INFO_META]?.name;
+  return typeof name === "string" ? name.slice(0, MAX_LOGGED_METHOD).toLowerCase() : undefined;
+}
+
+/** Closed reason of a failed tools/call: the builder's report, else `input` for a failure the SDK raised, `other` for a crash. */
+function failureReasonOf(reported: FailureReason | undefined, outcome: unknown): FailureReason | undefined {
+  if (reported !== undefined) return reported;
+  return outcome === "tool_error" || outcome === "rpc_error" ? "input" : outcome === "exception" ? "other" : undefined;
+}
 
 /** One JSON line per event on stdout; callers never pass arguments, tokens or IPs. */
 function log(fields: LogFields): void {
@@ -458,7 +482,7 @@ async function main(): Promise<void> {
   const staticEgress = blockList(config.sharedEgress);
   let listedEgress = blockList([]);
   const metricsPeers = config.metricsPeers.length > 0 ? blockList(config.metricsPeers) : undefined;
-  const metrics = new UsageMetrics([...toolNames]);
+  const metrics = new UsageMetrics([...toolNames, ...RETIRED_TOOLS.keys()]);
 
   /** Never throws: a failed fetch or parse keeps the last good set and logs a warning. */
   async function loadEgressList(url: string): Promise<void> {
@@ -548,7 +572,7 @@ async function main(): Promise<void> {
       }
       if (Array.isArray(message)) return rpcError(res, 400, INVALID_REQUEST, "Batch requests are not supported.");
       if (message === null || typeof message !== "object") return rpcError(res, 400, INVALID_REQUEST, "Invalid Request.");
-      // An old tool name runs as its current tool from here on: pool, log line and SDK see the current name.
+      // An old tool name runs as its current tool from here on: pool and SDK see the current name, log line and metrics the old one.
       const askedName = (message as { params?: { name?: unknown } | null }).params?.name;
       message = currentCall(message);
       const rpc = message as { method?: unknown; params?: { name?: unknown } | null };
@@ -556,7 +580,11 @@ async function main(): Promise<void> {
       // 2026-07-28 mirrors the tool name in a header the SDK checks against the body: it follows the rewrite.
       if (typeof toolName === "string" && toolName !== askedName && req.headers["mcp-name"] === askedName) req.headers["mcp-name"] = toolName;
       entry.method = typeof rpc.method === "string" ? rpc.method.slice(0, MAX_LOGGED_METHOD) : null;
-      entry.tool = rpc.method === "tools/call" ? (typeof toolName === "string" && toolNames.has(toolName) ? toolName : "unknown") : null;
+      const counted = typeof askedName === "string" && RETIRED_TOOLS.has(askedName) ? askedName
+        : typeof toolName === "string" && toolNames.has(toolName) ? toolName : "unknown";
+      entry.tool = rpc.method === "tools/call" ? counted : null;
+      if (entry.tool === "unknown") usage.asked = toolName;
+      if (rpc.method === "initialize" || rpc.method === "server/discover") usage.software = declaredSoftware(rpc.params);
       usage.client = classifyClient(egress, (req.headers["user-agent"] ?? "").slice(0, MAX_LOGGED_METHOD));
       usage.address = client;
       // Stateless: no server-push streams, as the 2025 GET stream (405); a refused auto-open never fails a connect.
@@ -579,6 +607,9 @@ async function main(): Promise<void> {
         baseUrl: config.backendUrl,
         publicOrigin: config.publicOrigin,
         profile: REMOTE,
+        onFailure: (reason) => {
+          usage.reason ??= reason;
+        },
         headers: forwarded,
         fetchSource: (url) => shared || takeDownload(client)
           ? fetchSourceSafely(url, isBlockedSource, abort.signal)
@@ -673,10 +704,16 @@ async function main(): Promise<void> {
       if (early) entry.outcome = "client_closed";
       else entry.outcome ??= res.statusCode < 400 ? "ok" : `http_${res.statusCode}`;
       entry.ms = Math.round(performance.now() - started);
+      const reason = typeof entry.tool === "string" ? failureReasonOf(usage.reason, entry.outcome) : undefined;
+      if (reason !== undefined) entry.reason = reason;
       log(entry);
       if (usage.client === undefined || typeof entry.method !== "string") return;
       metrics.request(entry.method, usage.client);
-      if (typeof entry.tool === "string") metrics.toolCall(entry.tool, usage.client, String(entry.outcome), usage.address!);
+      metrics.connect(entry.method, usage.software);
+      if (typeof entry.tool !== "string") return;
+      metrics.toolCall(entry.tool, usage.client, String(entry.outcome), usage.address!);
+      if (entry.tool === "unknown") metrics.unknownTool(usage.asked);
+      if (reason !== undefined) metrics.failure(entry.tool, reason);
     });
   });
   // Whole request incl. queue wait: 30 s queue + 2 s grace + 32 MiB at the body floor (~131 s) + margin.

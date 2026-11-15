@@ -86,7 +86,7 @@ const NAMESPACE_REMINDER = "`public` = listed and indexed; omitted = private";
 const SHARED_TEXTS = {
   /** `namespace` of publish_html and publish_file. */
   namespace: { instructions: NAMESPACE_REMINDER,
-    inline: `${NAMESPACE_PUBLIC_REACH}, served on the brewpage.app domain itself; unsuitable for secrets or personal data. ${NAMESPACE_PRIVATE_DEFAULT}${NAMESPACE_FORMAT}` },
+    inline: `${NAMESPACE_PUBLIC_REACH}; unsuitable for secrets or personal data. ${NAMESPACE_PRIVATE_DEFAULT}${NAMESPACE_FORMAT}` },
   /** `namespace` of publish_json and publish_kv: data is never listed. */
   dataNamespace: { instructions: "`public` or omitted = private; never listed",
     inline: "Omit (default): private. `public`: the shared public namespace. JSON and KV are never listed in the gallery or indexed; " +

@@ -279,11 +279,18 @@ const USAGE_SERIES = [
   'brewpage_mcp_requests_total{method="tools/list",client="other"} 1',
   'brewpage_mcp_requests_total{method="tools/call",client="claude"} 1',
   'brewpage_mcp_requests_total{method="tools/call",client="chatgpt"} 1',
-  'brewpage_mcp_requests_total{method="tools/call",client="other"} 2',
+  'brewpage_mcp_requests_total{method="tools/call",client="other"} 4',
+  'brewpage_mcp_requests_total{method="initialize",client="other"} 1',
   'brewpage_mcp_tool_calls_total{tool="get_limits",client="claude",outcome="ok"} 1',
   'brewpage_mcp_tool_calls_total{tool="get_limits",client="chatgpt",outcome="ok"} 1',
   'brewpage_mcp_tool_calls_total{tool="get_limits",client="other",outcome="ok"} 1',
+  'brewpage_mcp_tool_calls_total{tool="get_json",client="other",outcome="ok"} 1',
+  'brewpage_mcp_tool_calls_total{tool="publish_file",client="other",outcome="tool_error"} 1',
   'brewpage_mcp_tool_calls_total{tool="unknown",client="other",outcome="error"} 1',
+  'brewpage_mcp_tool_failures_total{tool="publish_file",reason="source"} 1',
+  'brewpage_mcp_tool_failures_total{tool="unknown",reason="input"} 1',
+  'brewpage_mcp_unknown_tool_total{asked="nope"} 1',
+  'brewpage_mcp_connects_total{method="initialize",family="smoke-client"} 1',
   'brewpage_mcp_clients_today{client="claude"} 1',
   'brewpage_mcp_clients_today{client="chatgpt"} 1',
   'brewpage_mcp_clients_today{client="other"} 1',
@@ -293,23 +300,30 @@ for (const scenario of [
   { label: "the Prometheus peer", metrics: "127.0.0.1/32", status: 200, series: USAGE_SERIES },
   { label: "a peer outside BREWPAGE_METRICS_CIDRS", metrics: "10.0.0.0/8", status: 404, series: [] },
 ]) {
-  test(`GET /metrics for ${scenario.label}: calls per tool and client class, distinct clients, no addresses`, { timeout: 15_000 }, async (t) => {
+  test(`GET /metrics for ${scenario.label}: calls per tool and client class, old and unknown names, failures, distinct clients, no addresses`, { timeout: 15_000 }, async (t) => {
     // GIVEN Anthropic static egress and the metrics peer list.
     const f = await fixture(t, "127.0.0.1/32", { shared: "160.79.104.0/21", metrics: scenario.metrics });
-    // WHEN Claude, ChatGPT and one other address (twice, once with an unknown tool) call tools, plus one tools/list.
+    // WHEN Claude, ChatGPT and one other address call tools (an old name, a refused source, an unknown name), plus a connect and a tools/list.
     const limits = toolCall("get_limits", {});
     await f.post({ "X-Forwarded-For": "160.79.104.10", "User-Agent": "Claude-User" }, "POST", limits);
     await f.post({ "X-Forwarded-For": "203.0.113.20", "User-Agent": "openai-mcp/1.0.0" }, "POST", limits);
     await f.post(XFF, "POST", limits);
+    await f.post(XFF, "POST", toolCall("get_json", { namespace: "public", id: "aBcDeFgHiJ" }));
+    await f.post(XFF, "POST", toolCall("publish_file", { url: "http://10.0.0.1/file" }));
     await f.post(XFF, "POST", toolCall("nope", {}));
+    await f.post(XFF, "POST", JSON.stringify({ jsonrpc: "2.0", id: 1, method: "initialize",
+      params: { protocolVersion: "2025-06-18", capabilities: {}, clientInfo: { name: "Smoke-Client", version: "0" } } }));
     await f.post(XFF, "POST", TOOLS_LIST);
-    await f.until(() => f.logs.length === 5);
+    await f.until(() => f.logs.length === 8);
     const res = await fetch(`http://127.0.0.1:${f.port}/metrics`);
     const text = await res.text();
-    // THEN the reader gets exactly the non-zero series, and no client address appears anywhere.
+    // THEN the reader gets exactly the non-zero series, the log lines name the old tool and the reason, and no client address appears anywhere.
     const series = text.split("\n").filter((line) => line.startsWith("brewpage_mcp_") && !line.endsWith(" 0"));
-    assert.deepEqual({ status: res.status, series: series.sort(), addresses: /203\.0\.113|160\.79\./.test(text) },
-      { status: scenario.status, series: [...scenario.series].sort(), addresses: false }, `${scenario.label} reads the usage metrics`);
+    assert.deepEqual({ status: res.status, series: series.sort(), addresses: /203\.0\.113|160\.79\./.test(text),
+      logged: f.logs.slice(3, 6).map(({ tool, outcome, reason }) => ({ tool, outcome, reason })) },
+    { status: scenario.status, series: [...scenario.series].sort(), addresses: false,
+      logged: [{ tool: "get_json", outcome: "ok", reason: undefined }, { tool: "publish_file", outcome: "tool_error", reason: "source" },
+        { tool: "unknown", outcome: "rpc_error", reason: "input" }] }, `${scenario.label} reads the usage metrics`);
   });
 }
 
