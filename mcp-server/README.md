@@ -724,7 +724,7 @@ Every publish response includes an **owner token** -- the only credential that a
 
 ## Changelog
 
-## 2.0.0 -- 2026-11-15
+## 2.0.0 -- 2026-11-16
 
 - 25 tools instead of 32, with short texts: an assistant reads far less before its first call. One publish tool for a page and a site (`publish_html` with `content` or `files`, `update_html` likewise), one read tool (`get_page` with `type` `html`, `json` or `kv`), one settings tool (`set_publication`: `listed`, `badgeHidden`, `title`, `deliveryMode`, plus the new `password` and `extend`). `publish_file` takes `password` and `ttlDays`; the create tools take `tags`.
 - Migration: nothing to change at once. The eight old names (`publish_site`, `republish_site`, `get_json`, `get_kv`, `set_visibility`, `set_badge`, `set_title`, `update_hosting`) left the list and are still callable with their old arguments; the answer ends with a note naming the current tool. Move saved prompts and allow-lists to the current names when convenient; an old name is removed only in a later major version.
