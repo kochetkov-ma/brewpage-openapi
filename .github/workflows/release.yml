@@ -47,15 +47,39 @@ jobs:
           node scripts/verify-package-identity.mjs
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
+      # Labels: OCI + Artifact Hub (readme-url, created, description are required for a listed tag).
       - name: Build image
         env:
           VERSION: ${{ steps.identity.outputs.version }}
         run: |
           set -euo pipefail
+          DESCRIPTION=$(node -p "require('./mcp-server/package.json').description")
+          CREATED=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          REPO_URL="https://github.com/${GITHUB_REPOSITORY}"
           docker build mcp-server --tag "${IMAGE}:${VERSION}" \
-            --label "org.opencontainers.image.source=https://github.com/${GITHUB_REPOSITORY}" \
+            --label "org.opencontainers.image.source=${REPO_URL}" \
             --label "org.opencontainers.image.version=${VERSION}" \
-            --label "org.opencontainers.image.revision=${GITHUB_SHA}"
+            --label "org.opencontainers.image.revision=${GITHUB_SHA}" \
+            --label "org.opencontainers.image.created=${CREATED}" \
+            --label "org.opencontainers.image.description=${DESCRIPTION}" \
+            --label "org.opencontainers.image.title=BrewPage MCP" \
+            --label "org.opencontainers.image.url=https://brewpage.app" \
+            --label "org.opencontainers.image.documentation=${REPO_URL}/tree/${GITHUB_SHA}/mcp-server#readme" \
+            --label "org.opencontainers.image.vendor=BrewPage" \
+            --label "org.opencontainers.image.licenses=MIT" \
+            --label "io.artifacthub.package.readme-url=https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/${GITHUB_SHA}/mcp-server/README.md" \
+            --label "io.artifacthub.package.license=MIT" \
+            --label "io.artifacthub.package.logo-url=https://brewpage.app/icon-512.png" \
+            --label "io.artifacthub.package.category=ai-machine-learning" \
+            --label "io.artifacthub.package.keywords=mcp,model context protocol,brewpage,html hosting,publish,ai agents" \
+            --label 'io.artifacthub.package.maintainers=[{"name":"BrewPage","email":"info@brewpage.app"}]'
+          docker image inspect "${IMAGE}:${VERSION}" --format '{{json .Config.Labels}}' > "$RUNNER_TEMP/labels.json"
+          for KEY in io.artifacthub.package.readme-url org.opencontainers.image.created org.opencontainers.image.description; do
+            jq -e --arg k "$KEY" '.[$k] | type == "string" and length > 0' "$RUNNER_TEMP/labels.json" >/dev/null || {
+              echo "::error::image label ${KEY} missing"
+              exit 1
+            }
+          done
 
       - name: Smoke-test image over HTTP
         env:
