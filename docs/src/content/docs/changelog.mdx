@@ -6,6 +6,10 @@ order: 5
 
 # Changelog
 
+## MCP 2.1.0 — start from a ready template
+
+Asked for a form, poll, quiz, RSVP, guestbook or game, the assistant now looks for one of BrewPage's ready templates first: `get_guide` topic `templates` explains how to find one (`GET https://brewpage.app/api/templates?q=<a few words>`) and publish your own copy at its `publishUrl` (`POST /api/html?template=<slug>`) with its `state`. The same 25 tools.
+
 ## API contract 2.47.0 — find a template, count its copies
 
 New tag `Templates`: `GET /api/templates?q=<a few words>` finds the right official template for a request, at most 3 best matches, or every template when nothing matches. Each item gives its HTML source, a live example, what it saves, the `state` its copy needs, `publishUrl` and `copies`, the number of pages made from it, plus one recipe for publishing a copy. `POST /api/html` takes `template=<slug>` so a copy counts. `GET /api/gallery/promo` template items add `copies`, and `GET /api/stats` adds `pageDataPages`, the pages published with Page data so far. 70 paths and 95 operations.

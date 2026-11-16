@@ -1,5 +1,10 @@
 # Release Notes
 
+## MCP 2.1.0 — 2026-11-16
+
+- Asked for a form, poll, quiz, RSVP, guestbook or game, the assistant now starts from one of BrewPage's ready, tested templates. The guide has a new topic, `get_guide` topic `templates`: find the right template with `GET https://brewpage.app/api/templates?q=<a few words>`, change its source as you ask, and publish your own copy at the template's `publishUrl` (`POST /api/html?template=<slug>`) with the template's `state`.
+- The text follows the Templates section of BrewPage's `llms-full.txt`, and the server's connect instructions point to it. The same 25 tools, contract 2.47.0. Install pins are `brewpage-mcp@2.1.0`; the remote server `https://brewpage.app/mcp` needs no change on your side.
+
 ## API contract 2.47.0 — 2026-11-16
 
 - Exported from brewpage-app source `78148eb3c105135c8a5f043fda368a6c81933a16` (brewpage-app release v2.47.0; v2.47.1 changed no backend code), clean tree. 70 paths and 95 operations (69 and 94 before).

@@ -153,7 +153,7 @@ curl https://brewpage.app/api/stats
 
 The backend-generated public JSON contract owns schema authority. YAML is derived deterministically; Scalar serves an identical JSON copy. See [`openapi/openapi.provenance.json`](openapi/openapi.provenance.json) for export provenance. Correct backend generation before importing a new snapshot; do not author schemas in YAML.
 
-Both imports run in one step and neither output is hand-edited: `node scripts/sync-openapi.mjs <backend export public.json>` writes the contract and the Page data host document exported beside it ([`openapi/page-data-host.json`](openapi/page-data-host.json), what a page's own script calls under `/_bp/state/v1`), each with its YAML, docs site copy and provenance, and `node scripts/verify-openapi.mjs` checks both; `node scripts/sync-guide.mjs <brewpage-app>/frontend/src` writes the MCP Page data guide ([`mcp-server/src/guides/page-data.ts`](mcp-server/src/guides/page-data.ts)) from the `Page data` section of `llms-full.txt` and fails when the cheat-sheet block or the call-shapes line is missing; the same run writes the custom-domain status and problem tables ([`mcp-server/src/guides/custom-domain.ts`](mcp-server/src/guides/custom-domain.ts)) from the `Custom Domains` section of `llms-full.txt`.
+Both imports run in one step and neither output is hand-edited: `node scripts/sync-openapi.mjs <backend export public.json>` writes the contract and the Page data host document exported beside it ([`openapi/page-data-host.json`](openapi/page-data-host.json), what a page's own script calls under `/_bp/state/v1`), each with its YAML, docs site copy and provenance, and `node scripts/verify-openapi.mjs` checks both; `node scripts/sync-guide.mjs <brewpage-app>/frontend/src` writes the MCP Page data guide ([`mcp-server/src/guides/page-data.ts`](mcp-server/src/guides/page-data.ts)) from the `Page data` section of `llms-full.txt` and fails when the cheat-sheet block or the call-shapes line is missing; the same run writes the custom-domain status and problem tables ([`mcp-server/src/guides/custom-domain.ts`](mcp-server/src/guides/custom-domain.ts)) from the `Custom Domains` section of `llms-full.txt`, and the templates guide ([`mcp-server/src/guides/templates.ts`](mcp-server/src/guides/templates.ts)) from its `Templates` section without the catalogue table.
 
 ### Endpoints
 
@@ -243,7 +243,7 @@ Local fallback (stdio, needs Node.js; the same tools): add to `~/Library/Applica
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@2.0.0"]
+      "args": ["-y", "brewpage-mcp@2.1.0"]
     }
   }
 }
@@ -258,7 +258,7 @@ The remote command above is the default. Local fallback (stdio, needs Node.js): 
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@2.0.0"]
+      "args": ["-y", "brewpage-mcp@2.1.0"]
     }
   }
 }
