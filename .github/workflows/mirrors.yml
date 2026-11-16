@@ -1,0 +1,68 @@
+name: Mirrors
+
+# Standalone: no other workflow depends on it; a failed mirror only warns and the next push retries.
+on:
+  push:
+    branches: [main]
+    tags: ['**']
+  workflow_dispatch:
+    inputs:
+      probe_failure:
+        description: Point the GitVerse leg at an unreachable host to prove a failed mirror keeps the run green
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  push:
+    name: push (${{ matrix.name }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    continue-on-error: true
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: gitflic
+            url: git@gitflic.ru:brewcode/brewpage-openapi.git
+          - name: sourcecraft
+            url: git@ssh.sourcecraft.dev:kochetkov-ma/brewpage-openapi.git
+          - name: gitverse
+            url: git@gitverse.ru:brewpage/brewpage-openapi.git
+    concurrency:
+      group: mirrors-${{ matrix.name }}
+      cancel-in-progress: true
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+          persist-credentials: false
+
+      - name: Push main and tags
+        id: push
+        continue-on-error: true
+        env:
+          MIRROR_SSH_KEY: ${{ secrets.MIRROR_SSH_KEY }}
+          MIRROR_URL: ${{ (inputs.probe_failure && matrix.name == 'gitverse') && 'git@mirror-probe.invalid:none/none.git' || matrix.url }}
+          # Pinned host keys; all three hosts offer only RSA host keys.
+          KNOWN_HOSTS: |
+            gitflic.ru ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQCYadzx/Pyje3UxJamIEpYlHP5PGfhg9Sb1zfR1QOnBPlzvi7tttV2uGNqnjrMLka72SBKTSUo8bGNQMnLX+3lFsKXvBMsl8OXXg02209U/tU/0EbwgjrwY5Sqitq+2xRX7jpJ53Dw9Iap6qBS+ZqPVnVwth/+KUSiGHY3jlaZxEidEV5zO2Ix4SYHnRYHyncJA1DCVPQ9Q4V6EAZqgSKPQ/uhEU76KwTkqg0pfJO33h08iKKvzxkddqXN7ek2YQ1ljC04BDTg3ouNr2tbMhdnCS0RSSpIdR81JdDndbQIhfOEsck8njTDKLhHSoiKG19ijZUn3BxMKDoU8bi/8P1Yy8Po43uBLancmCSdUz8BL/ee+f+Q3KRv2+jySCA1FEfetBgJRv+wqwE8634GDuysXIQMlIcZsg3BQkE60JAkV7ejKV1JuxeBRhKbSl1CXMDtn1z0FG7I9q4odknTb4PacejjpyEiajDuMBm3L0uH8IRW/QGcZdY3aISROlCvPjdtzKd2tlPuBZBjxUng0j2TqVz/unUXpbIcmu9WYG/7atFQzWloQDUh1LmTbXSuPKtaVArNiFdcBLUi4pbGyK7DLQwGweKJqUtVRKl8e/ai9vluwd86ACWbB9l1eahVEt3uTozThQlc64CAwPdK8vlz1an2i5ekskTFvG9mh2d2yQw==
+            ssh.sourcecraft.dev ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDNygSR70ylT9SEDKs/N1cKOGvpsSS0jxwxywjKO9Ujck2EUdGb29s2N06NDAqXGqFO+8r5vInV3HdYWMk97huuUjL7KEY+KOGwQF6Lt3KW4DnZcTSOl5K98Zw0ZsNq86GJsQmaiixr7A5VD8aycP0QoiIcyIGRuQcYfm33NM59ElekKdUfifXNb/e4v/MBoewNMLvAw0LSj4WbkTj8Ar/2E406Xm2coNHwOsb0TaIKCEs+euu8IVbeqImHoHL+8ItMvTfAt7k2srLIxiq9KBuq8CPHRQF9crRrh24I2sAzIx0IV76ovYyov/gE8r2IYCnTFD2M/nTvSFLnOxiyWvOH
+            gitverse.ru ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQCr4Mgh2eX+tkxoVcO4BQDDkC8HqJsUiKivWc0R6umR7eQM6kBsq/LgGgO7Xqts1oHl0/QhF307t7Icwf6S3pGRw5SkQC+VdIEzre/rDlDeVbU+Mzwc5GPCJB96OlOZMUVJ/xhHkw3vUowMMiShOZxpdBjKGpb/oD2hz5UY2aheDivjq1lCennAv0iN6CJfJFRHHWb6vgRMznxC8qoce3fVzcYzFd2gXA2iupdqI+6dUZsIuhDS76W3Yc/UrHOQey3NJZonsqXepfIh7GXjt4X0DQcw8fA2SMFoxmDyHMFVeTHLj1P/S1V+8NtOlqwT+ntCN4rNYtqXXbXNUw6OhThvuusmw21kgaCm9CjSSG54wf3lp+7bEn3Tkfu8Byb8hYRtqY4U+IRrSaDfdyUO8GKCNRFEnoC3c3AeTjPQF+jyx5bYbPZLPnVrPYWBNMwgA79OS/3BTOM4EuAOzLLTITew5nxjPnuwzMChr+j6+8aGaQAjNGWv7KbZxbCFxYkrwKo7Bb9wQsvGEUpzi5AGG00SrUkq1JjCf3Ep7YNqRA7HK6i8QukBOkwJ/LgI1csIG94AcWAhICoeal7XBRjZl/EiDrgbDJp/5TKtrvKzuMeRUiH6ATz6QDi2AcCFjcAv7I0HWlphwJvlN/Um0vg71h6zK/k053VhJucMxXODC6SCrw==
+        run: |
+          set -euo pipefail
+          umask 077
+          key="$RUNNER_TEMP/mirror_key"
+          hosts="$RUNNER_TEMP/mirror_known_hosts"
+          printf '%s\n' "$MIRROR_SSH_KEY" > "$key"
+          printf '%s' "$KNOWN_HOSTS" > "$hosts"
+          export GIT_SSH_COMMAND="ssh -i $key -o IdentitiesOnly=yes -o BatchMode=yes -o ConnectTimeout=20 -o StrictHostKeyChecking=yes -o UserKnownHostsFile=$hosts"
+          git push "$MIRROR_URL" refs/remotes/origin/main:refs/heads/main
+          git push "$MIRROR_URL" --tags
+
+      - name: Warn on a failed mirror
+        if: steps.push.outcome == 'failure'
+        run: echo "::warning title=Mirror ${{ matrix.name }}::push failed; the next push or a manual run retries it"
