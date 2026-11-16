@@ -172,6 +172,7 @@ Both imports run in one step and neither output is hand-edited: `node scripts/sy
 | **Namespace** | Collision-free namespace suggestions |
 | **Custom Domains** | Show an HTML page or site on a domain you own: set, check DNS, list, remove |
 | **Page data** | What visitors save on a page (form answers, guestbook, votes): read, write author entries, change settings, delete |
+| **Templates** | Find an official template for a request: its source, what it saves and how to publish a copy |
 
 ## MCP Server
 

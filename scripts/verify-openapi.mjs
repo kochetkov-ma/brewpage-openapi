@@ -182,6 +182,10 @@ function publicContract(spec) {
     assert.deepEqual(operation.security, [{ OwnerToken: [] }], `${operation.operationId} requires the owner token`);
   }
   assert.ok(spec.tags.some((tag) => tag.name === 'Notifications'), 'Notifications is a described top-level tag');
+  assert.deepEqual([taggedIds(spec, 'Templates'), spec.paths['/api/templates']?.get?.security], [['templates'], [{}]],
+    'Templates publishes the anonymous template catalogue');
+  assert.deepEqual(Object.keys(spec.paths).filter((path) => path.startsWith('/api/stats/')), [],
+    'Hidden home totals poll stays out of the contract paths');
   assert.deepEqual(Object.keys(spec.paths).filter((path) => path.includes('account')), [],
     'Account session routes stay out of the contract paths');
   for (const name of ['HtmlUploadRequest', 'HtmlUpdateRequest']) {

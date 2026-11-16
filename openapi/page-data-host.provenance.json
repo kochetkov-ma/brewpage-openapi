@@ -1,10 +1,10 @@
 {
-  "backendBuildVersion": "2.43.0",
-  "backendCommit": "f207ce0e490fe35ea3b131541ed70c2fa91c5106",
+  "backendBuildVersion": "2.47.0",
+  "backendCommit": "78148eb3c105135c8a5f043fda368a6c81933a16",
   "backendDirty": false,
-  "backendSourceSha256": "fd8d864eafd69da46dad58f0822650232fb01e229b595be1b4951077f55ea277",
+  "backendSourceSha256": "f6ca6352ed8492c21fb5c90ec7206bfba9034ece2944dc4f759df10eb0869e1a",
   "exporter": ".codex/scripts/export-openapi.py",
-  "jsonSha256": "34fde7bec00c6a1f548b1bba7435b90e75f116b5deb30a24f3b1e2587edfa186",
+  "jsonSha256": "b28be8099ac7b351f5752a85d14a4e68c7aa7670e57c702cfc438522791fd382",
   "locale": "en",
   "serverOrigin": "https://{host}"
 }

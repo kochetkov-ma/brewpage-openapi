@@ -750,6 +750,12 @@ components:
           items:
             type: string
           type: array
+        copies:
+          description: 'kind=template: pages published as copies of this template; absent for video'
+          format: int64
+          type:
+            - integer
+            - 'null'
         durationSeconds:
           description: 'kind=video: length in seconds; absent otherwise'
           format: int32
@@ -3804,6 +3810,12 @@ components:
           type:
             - integer
             - 'null'
+        pageDataPages:
+          description: Pages and sites published with Page data (saving what visitors enter) so far, BrewPage's own pages excluded
+          format: int64
+          type:
+            - integer
+            - 'null'
         totalAccounts:
           description: Current account count, deleted ones excluded
           format: int64
@@ -3885,6 +3897,117 @@ components:
         humans:
           format: int32
           type: integer
+      type: object
+    TemplateCatalogItem:
+      properties:
+        copies:
+          description: Pages published as copies of this template
+          format: int64
+          type: integer
+        customize:
+          description: What else changes when the page's options change; absent when nothing does
+          type:
+            - string
+            - 'null'
+        data:
+          description: What the page saves, in which list, and who sees what
+          type: string
+        demoUrl:
+          description: Live published example of the template
+          type: string
+        name:
+          description: Template name
+          type: string
+        pageUrl:
+          description: The template's page on BrewPage
+          type: string
+        publishUrl:
+          description: Create endpoint for a copy of this template (POST, see `publish`)
+          type: string
+        purpose:
+          description: What the page does, one sentence
+          type: string
+        slug:
+          description: Template slug
+          type: string
+        sourceUrl:
+          description: 'The template''s HTML source as plain text: start the copy from it'
+          type: string
+        state:
+          description: >-
+            The `state` to send with the copy (the JSON of the source's `bp-template-state` block); absent when the page
+            saves nothing
+          type:
+            - object
+            - 'null'
+        useWhen:
+          description: English keywords for requests this template fits
+          items:
+            type: string
+          type: array
+      type: object
+    TemplateCatalogResponse:
+      description: >-
+        Official BrewPage templates for a request, each with its source and the `state` its copy needs, plus one publish
+        recipe
+      properties:
+        items:
+          description: Templates; empty only while no template is published
+          items:
+            $ref: '#/components/schemas/TemplateCatalogItem'
+          type: array
+        matched:
+          description: >-
+            true: `items` are the best matches for `q`, at most 3, best first; false: no `q` or no match, `items` lists
+            every template
+          type: boolean
+        publish:
+          $ref: '#/components/schemas/TemplatePublishRecipe'
+          description: How to publish a copy of any item
+        query:
+          description: The searched `q`; absent without a non-blank `q`
+          type:
+            - string
+            - 'null'
+      type: object
+    TemplatePublishBody:
+      properties:
+        content:
+          description: 'Placeholder: the item''s source, changed as the user asks'
+          type: string
+        format:
+          description: Always `html`
+          type: string
+        state:
+          description: 'Placeholder: the item''s `state` object'
+          type: string
+      type: object
+    TemplatePublishRecipe:
+      properties:
+        body:
+          $ref: '#/components/schemas/TemplatePublishBody'
+          description: Request body members; the placeholders name what goes in each
+        contentType:
+          description: Request body type
+          enum:
+            - application/json
+          type: string
+        giveUser:
+          description: Answer fields to give the user
+          items:
+            type: string
+          type: array
+        method:
+          description: HTTP method
+          enum:
+            - POST
+          type: string
+        note:
+          description: Steps and rules for the copy
+          type: string
+        url:
+          description: 'Placeholder: the item''s `publishUrl`'
+          type: string
       type: object
     TitleRequest:
       properties:
@@ -4053,7 +4176,7 @@ info:
     url: https://www.apache.org/licenses/LICENSE-2.0
   termsOfService: https://brewpage.app/terms
   title: BrewPage API
-  version: 2.43.0
+  version: 2.47.0
 openapi: 3.1.0
 paths:
   /api/domains:
@@ -5087,6 +5210,11 @@ paths:
             /api/publications/{type}/{ns}/{id}/domain.
           in: query
           name: domain
+          schema:
+            type: string
+        - description: Slug of the official template this page was made from (the `slug` of a `GET /api/templates` item).
+          in: query
+          name: template
           schema:
             type: string
         - description: Reuse existing owner token to group entities under one owner. If omitted, a new token is generated
@@ -8246,6 +8374,38 @@ paths:
       summary: Get platform stats
       tags:
         - Stats
+  /api/templates:
+    get:
+      description: >-
+        Lists the official templates that are published now. With `q`, returns the best matches (at most 3, `matched:
+        true`); without `q` or when nothing matches, returns every template with `matched: false`. Each item gives
+        `sourceUrl` (the HTML source as plain text), `demoUrl`, `pageUrl`, `data` (what it saves and who sees it),
+        `useWhen`, `copies` (pages published from it) and the `state` its copy needs. To publish a copy, follow
+        `publish`: change the source as the user asks, POST it to the item's `publishUrl` with the item's `state`, then
+        give the user `link` and `manageUrl` (private).
+      operationId: templates
+      parameters:
+        - description: >-
+            Free text, percent-encoded: a few English words for the page the user wants, e.g. `wedding rsvp`. At most
+            200 characters; the first 12 words count. An invalid percent escape answers 400.
+          example: wedding rsvp
+          in: query
+          name: q
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TemplateCatalogResponse'
+          description: Templates and the publish recipe
+      security:
+        - {}
+      summary: Find a template
+      tags:
+        - Templates
   /api/{ns}/{id}/owner-check:
     get:
       description: >-
@@ -10369,6 +10529,8 @@ tags:
     name: HTML
   - description: 'User-facing upload limits: one source for the UI, agents and docs'
     name: Limits
+  - description: 'Official BrewPage templates: ready pages to copy and publish instead of writing one from scratch'
+    name: Templates
   - description: Multi-file HTML site hosting via ZIP or folder upload
     name: Sites
   - description: Owner list and stats

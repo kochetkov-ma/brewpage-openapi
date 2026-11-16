@@ -6,6 +6,10 @@ order: 5
 
 # Changelog
 
+## API contract 2.47.0 — find a template, count its copies
+
+New tag `Templates`: `GET /api/templates?q=<a few words>` finds the right official template for a request, at most 3 best matches, or every template when nothing matches. Each item gives its HTML source, a live example, what it saves, the `state` its copy needs, `publishUrl` and `copies`, the number of pages made from it, plus one recipe for publishing a copy. `POST /api/html` takes `template=<slug>` so a copy counts. `GET /api/gallery/promo` template items add `copies`, and `GET /api/stats` adds `pageDataPages`, the pages published with Page data so far. 70 paths and 95 operations.
+
 ## MCP 2.0.0 — 25 tools, one per job
 
 The tool list is shorter, 25 tools instead of 32, each described in a sentence, so an assistant reads far less before its first call. `publish_html` publishes a page (`content`) or a whole static site (`files`) and `update_html` replaces either; `get_page` reads a page, a JSON document or a KV value; `set_publication` changes a publication's settings in one call, including two that had no tool before: a password and a longer lifetime. Nothing breaks: the eight names that left the list (`publish_site`, `republish_site`, `get_json`, `get_kv`, `set_visibility`, `set_badge`, `set_title`, `update_hosting`) are still callable with their old arguments, and the answer names the current tool; move saved prompts and allow-lists when convenient. Page data: the assistant can show the files visitors uploaded, read poll totals in one call, delete files and clear a whole list. Every failed call names its next step.
