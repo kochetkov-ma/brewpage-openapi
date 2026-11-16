@@ -8,6 +8,7 @@ import { Client } from "@modelcontextprotocol/client";
 import { StdioClientTransport } from "@modelcontextprotocol/client/stdio";
 import { DOMAIN_PROBLEMS, DOMAIN_STATUSES } from "../src/guides/custom-domain.js";
 import { PAGE_DATA_CALLS, PAGE_DATA_GUIDE } from "../src/guides/page-data.js";
+import { TEMPLATES_GUIDE } from "../src/guides/templates.js";
 
 const EXPECTED_TOOL_NAMES = [
   "publish_html", "publish_file", "delete_resource", "get_page", "get_stats",
@@ -2180,6 +2181,24 @@ test("get_guide returns the generated Page data guide plus the author-side tail 
     linksSentence: text.split(GUIDE_LINKS_SENTENCE).length - 1, requests: f.requests.length },
   { isError: undefined, text: PAGE_DATA_GUIDE + GUIDE_TAIL, withinLimit: true, tailWithinLimit: true, linksSentence: 1, requests: 0 },
   "guide text, size limits and the management-link sentence");
+});
+
+const TEMPLATES_TAIL = "With this server: an item's `publishUrl` is `https://brewpage.app/api/html?template=<slug>`; a copy published there " +
+  "counts in the item's `copies`. Without POST requests, publish_html (content, format html, the item's state, no namespace) publishes the same page, " +
+  "not counted as a copy; update_html changes it later, get_guide topic custom-domain connects the user's domain.";
+
+test("get_guide templates returns the generated templates section plus the tool-words tail without calling the API", { timeout: 10_000 }, async (t) => {
+  // GIVEN the templates text generated from the app's llms-full.txt.
+  const f = await fixture(t);
+  // WHEN the templates topic is read.
+  const result = await f.call("get_guide", { topic: "templates" });
+  // THEN the text is the generated file byte for byte plus the tail, within its limit, with the catalogue route and the copy route once each.
+  const text = result.content[0].text;
+  assert.deepEqual({ isError: result.isError, text, withinLimit: [...text].length <= 2600,
+    catalogue: text.split("GET https://brewpage.app/api/templates?q=").length - 1, copyRoute: text.split("/api/html?template=<slug>").length - 1,
+    requests: f.requests.length },
+  { isError: undefined, text: TEMPLATES_GUIDE + TEMPLATES_TAIL, withinLimit: true, catalogue: 1, copyRoute: 1, requests: 0 },
+  "templates guide text, size limit and the two routes");
 });
 
 const CUSTOM_DOMAIN_GUIDE = [

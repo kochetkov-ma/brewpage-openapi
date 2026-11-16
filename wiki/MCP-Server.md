@@ -57,7 +57,7 @@ Local fallback (stdio, needs Node.js; the same tools): edit `~/Library/Applicati
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@2.0.0"]
+      "args": ["-y", "brewpage-mcp@2.1.0"]
     }
   }
 }
@@ -67,14 +67,14 @@ Windows: `%APPDATA%\Claude\claude_desktop_config.json`
 
 ### Claude Code
 
-The remote command above is the default. Local fallback: run `claude mcp add --transport stdio --scope project brewpage -- npx -y brewpage-mcp@2.0.0`, or add this to project-root `.mcp.json`:
+The remote command above is the default. Local fallback: run `claude mcp add --transport stdio --scope project brewpage -- npx -y brewpage-mcp@2.1.0`, or add this to project-root `.mcp.json`:
 
 ```json
 {
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@2.0.0"]
+      "args": ["-y", "brewpage-mcp@2.1.0"]
     }
   }
 }
@@ -83,7 +83,7 @@ The remote command above is the default. Local fallback: run `claude mcp add --t
 ### Direct run
 
 ```bash
-npx -y brewpage-mcp@2.0.0
+npx -y brewpage-mcp@2.1.0
 ```
 
 ---
@@ -112,7 +112,7 @@ npx -y brewpage-mcp@2.0.0
 | `publish_kv` | Create a KV store |
 | `set_kv` | Upsert a key with owner authority |
 | `search_gallery` | Search the public gallery; `mine: true` lists your own publications |
-| `get_guide` | Read a short guide: Page data before writing a page that saves what visitors enter, or the custom-domain steps |
+| `get_guide` | Read a short guide: Page data before writing a page that saves what visitors enter, ready templates and how to publish a copy, or the custom-domain steps |
 | `get_page_data` | Read what visitors saved on your page: settings and usage, one list's entries, its uploaded files (`include: "files"`) or totals per answer (`countBy`) |
 | `set_page_data` | Write author entries (for example today's menu) without republishing |
 | `configure_page_data` | Turn Page data on or off, change who can read a list and its limits; only what you name changes |

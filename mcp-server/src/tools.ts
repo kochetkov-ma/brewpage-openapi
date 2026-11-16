@@ -3,9 +3,10 @@ import { z } from "zod";
 import { RETIRED_ARGUMENT, RETIRED_TOOLS, retiredNote } from "./compat.js";
 import { DOMAIN_PROBLEMS, DOMAIN_STATUSES } from "./guides/custom-domain.js";
 import { PAGE_DATA_GUIDE } from "./guides/page-data.js";
+import { TEMPLATES_GUIDE } from "./guides/templates.js";
 
 export const DEFAULT_BASE_URL = "https://brewpage.app";
-export const USER_AGENT = "brewpage-mcp/2.0.0";
+export const USER_AGENT = "brewpage-mcp/2.1.0";
 export const OWNER_TOKEN_ENV = "BREWPAGE_OWNER_TOKEN";
 
 /** What a transport serves: texts and the listed tool set only, never a limit or a guard. */
@@ -36,7 +37,8 @@ export function serverInstructions(profile: Profile = LOCAL): string {
       "ttlDays: up to 30 days without an account, up to 90 with a free profile (an ownerToken held in the profile); omitted = the default. password: readers must enter it. " +
       "deliveryMode: path = a brewpage.app link, subdomain = the publication's own subdomain; omitted = chosen by type. Owner tokens and management links never go into published content; other secrets fit a private namespace plus a password.",
     "A page that must save what its visitors enter (form answers, guestbook, votes, scores, game progress) needs Page data: read get_guide topic page-data BEFORE writing the page, then publish with the state argument. " +
-      "get_page_data reads it, set_page_data writes author entries, configure_page_data changes settings, delete_page_data moderates; each takes namespace, id and ownerToken, or the management link as manageUrl.",
+      "get_page_data reads it, set_page_data writes author entries, configure_page_data changes settings, delete_page_data moderates; each takes namespace, id and ownerToken, or the management link as manageUrl. " +
+      "For a form, poll, quiz, RSVP, guestbook or game first look for a ready template: get_guide topic templates.",
     "HTML pages and sites show a small BrewPage badge; page code must not hide or alter it. A profile can turn it off on up to 5 pages (set_publication).",
     "A custom domain, only when the user asks for their own domain: set_domain, the user creates the returned DNS records, check_domain once, then list_domains until it is active. Steps and fixes: get_guide topic custom-domain.",
   ].join("\n");
@@ -181,6 +183,9 @@ const ENTRIES_TEXT_BOUND = 40_000;
 const ENTRY_CUT_CHARS = ENTRIES_TEXT_BOUND - 64;
 const PAGE_DATA_GUIDE_TAIL = "Author side: entries are read in the Data tab or with get_page_data; set_page_data writes author entries, " +
   "configure_page_data changes settings, delete_page_data moderates. Each takes namespace + id + ownerToken, or the management link as manageUrl.";
+const TEMPLATES_GUIDE_TAIL = "With this server: an item's `publishUrl` is `https://brewpage.app/api/html?template=<slug>`; a copy published there " +
+  "counts in the item's `copies`. Without POST requests, publish_html (content, format html, the item's state, no namespace) publishes the same page, " +
+  "not counted as a copy; update_html changes it later, get_guide topic custom-domain connects the user's domain.";
 
 /** Management link -> page address and key; the link and the key never reach a result, an error or a log. */
 function parseManageUrl(link: string): { namespace: string; id: string; key: string } | { refusal: Refusal } {
@@ -816,7 +821,7 @@ export function createServer(options: ServerOptions = {}): McpServer {
   const apiFetch = options.fetch ?? fetch;
   const server = new McpServer({
     name: "brewpage-mcp",
-    version: "2.0.0",
+    version: "2.1.0",
   }, { instructions: serverInstructions(profile) });
   const registered = new Set<string>();
 
@@ -2072,12 +2077,14 @@ export function createServer(options: ServerOptions = {}): McpServer {
     {
       ...toolMeta("Read BrewPage guide", READ_ONLY),
       description: "Reference texts: `page-data` (meant to be read before writing a page that saves visitor input), " +
+        "`templates` (ready pages for forms, polls, RSVPs, quizzes, games: find one, publish a copy), " +
         "`custom-domain` (steps, DNS records, statuses, fixes).",
       inputSchema: {
-        topic: z.enum(["page-data", "custom-domain"]),
+        topic: z.enum(["page-data", "templates", "custom-domain"]),
       },
     },
-    async ({ topic }) => textResult(topic === "custom-domain" ? CUSTOM_DOMAIN_GUIDE : PAGE_DATA_GUIDE + PAGE_DATA_GUIDE_TAIL)
+    async ({ topic }) => textResult(topic === "custom-domain" ? CUSTOM_DOMAIN_GUIDE
+      : topic === "templates" ? TEMPLATES_GUIDE + TEMPLATES_GUIDE_TAIL : PAGE_DATA_GUIDE + PAGE_DATA_GUIDE_TAIL)
   );
 
   // Start check of the old-name table: every row runs as a tool this server registered.

@@ -38,7 +38,7 @@ Claude Code: `claude mcp add --transport http brewpage --scope user https://brew
 For clients that only start local servers; the same tools as the server URL.
 
 ```bash
-npx -y brewpage-mcp@2.0.0
+npx -y brewpage-mcp@2.1.0
 ```
 
 Requires Node.js 20 or newer. This starts the stdio server for an MCP client.
@@ -63,7 +63,7 @@ Local fallback (stdio, needs Node.js; the same tools): add to `~/Library/Applica
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@2.0.0"]
+      "args": ["-y", "brewpage-mcp@2.1.0"]
     }
   }
 }
@@ -86,7 +86,7 @@ Custom servers follow your ChatGPT plan and workspace settings.
 The remote command above is the default. Local fallback: register a project-scoped stdio server:
 
 ```bash
-claude mcp add --transport stdio --scope project brewpage -- npx -y brewpage-mcp@2.0.0
+claude mcp add --transport stdio --scope project brewpage -- npx -y brewpage-mcp@2.1.0
 ```
 
 This writes `.mcp.json` in the project root. Use `--scope user` for user-scoped registration. See the [official Claude Code MCP guide](https://code.claude.com/docs/en/mcp).
@@ -110,7 +110,7 @@ Local fallback (stdio, needs Node.js; the same tools): open **Settings > MCP** a
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@2.0.0"]
+      "args": ["-y", "brewpage-mcp@2.1.0"]
     }
   }
 }
@@ -124,7 +124,7 @@ Open the Cline MCP settings panel and add:
 {
   "brewpage": {
     "command": "npx",
-    "args": ["-y", "brewpage-mcp@2.0.0"]
+    "args": ["-y", "brewpage-mcp@2.1.0"]
   }
 }
 ```
@@ -156,7 +156,7 @@ Open the Cline MCP settings panel and add:
 | `set_page_data` | Write author entries (for example today's menu) without republishing the page |
 | `configure_page_data` | Turn Page data on or off, change who can read a list and its limits; only what you name changes |
 | `delete_page_data` | Delete entries by id, files by id, everything in a time range, or the whole list |
-| `get_guide` | Read a short guide: Page data before writing a page that saves data, or the custom-domain steps |
+| `get_guide` | Read a short guide: Page data before writing a page that saves data, ready templates and how to publish a copy, or the custom-domain steps |
 | `search_gallery` | Browse public content or list owned resources |
 | `get_stats` | Read platform-wide statistics |
 | `get_limits` | Read the current upload limits (`GET /api/limits`) |
@@ -536,9 +536,9 @@ The four page-data tools below take `namespace` + `id` + `ownerToken`, or `manag
 
 ### `get_guide`
 
-Read a short reference text. Topic `page-data`: how a page saves what visitors enter, with the script calls, the `state` settings, the owner view and how to try the page locally before publishing. Meant to be read before writing such a page. Topic `custom-domain`: the steps that put a page or site on a domain you own, with the statuses and the fix for each problem. No API call.
+Read a short reference text. Topic `page-data`: how a page saves what visitors enter, with the script calls, the `state` settings, the owner view and how to try the page locally before publishing. Meant to be read before writing such a page. Topic `templates`: how to find a ready official template for a request (`GET https://brewpage.app/api/templates?q=<a few words>`) and publish a copy for the user at the item's `publishUrl` (`POST /api/html?template=<slug>`) with the item's `state`. Topic `custom-domain`: the steps that put a page or site on a domain you own, with the statuses and the fix for each problem. No API call.
 
-Parameters: `topic` (`page-data` | `custom-domain`).
+Parameters: `topic` (`page-data` | `templates` | `custom-domain`).
 
 ---
 
@@ -723,6 +723,10 @@ Every publish response includes an **owner token** -- the only credential that a
 - [Brewcode Plugin](https://github.com/kochetkov-ma/claude-brewcode) -- Claude Code plugin suite
 
 ## Changelog
+
+## 2.1.0 -- 2026-11-16
+
+- `get_guide` adds the topic `templates`: for a form, poll, quiz, RSVP, guestbook or game the assistant first looks for a ready official template (`GET https://brewpage.app/api/templates?q=<a few words>`), then publishes a copy at the item's `publishUrl` (`POST /api/html?template=<slug>`, counted in `copies`) with the item's `state`. The text is generated from the Templates section of BrewPage's `llms-full.txt`; the server instructions point to it. 25 tools. Contract 2.47.0. `User-Agent: brewpage-mcp/2.1.0`.
 
 ## 2.0.0 -- 2026-11-16
 
