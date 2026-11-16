@@ -23,7 +23,7 @@
 > a proprietary HTML/KV/JSON/file hosting platform.
 > The backend, frontend, and infrastructure remain closed-source.
 
-**Docs:** https://kochetkov-ma.github.io/brewpage-openapi/ | **API Reference:** https://kochetkov-ma.github.io/brewpage-openapi/api-reference/
+**Docs:** https://kochetkov-ma.github.io/brewpage-openapi/ | **API Reference:** https://kochetkov-ma.github.io/brewpage-openapi/api-reference/ | **По-русски:** [readme.ru.md](readme.ru.md)
 
 ## What is BrewPage
 
