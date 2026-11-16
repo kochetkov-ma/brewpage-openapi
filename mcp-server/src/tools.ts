@@ -682,7 +682,19 @@ function deliveryReasonLines(data: Record<string, unknown>): string[] {
   return lines;
 }
 
-function formatUpdateResponse(data: Record<string, unknown>): string {
+/** `Result:` line from the server outcome object (code, action, optional reason); nothing when absent. */
+function outcomeLines(data: Record<string, unknown>): string[] {
+  const { result } = data;
+  if (typeof result === "string" && result) return [`Result: ${result}`];
+  if (!result || typeof result !== "object") return [];
+  const { code, action, reason } = result as Record<string, unknown>;
+  if (typeof code !== "string" || !code) return [];
+  const done = typeof action === "string" && action ? ` (${action})` : "";
+  return [`Result: ${code}${done}${typeof reason === "string" && reason ? ` - ${reason}` : ""}`];
+}
+
+/** `called`: the address the call named, printed when the answer carries no namespace or id (hosting answers). */
+function formatUpdateResponse(data: Record<string, unknown>, called: { namespace?: string; id?: string } = {}): string {
   const lines = [
     ...credentialAlertLines(data),
     `Updated successfully!`,
@@ -691,8 +703,8 @@ function formatUpdateResponse(data: Record<string, unknown>): string {
   ];
   if (data.shortUrl) lines.push(`Short URL: ${data.shortUrl}`);
   lines.push(
-    `Namespace: ${data.namespace || "N/A"}`,
-    `ID: ${data.id || "N/A"}`
+    `Namespace: ${data.namespace || called.namespace || "N/A"}`,
+    `ID: ${data.id || called.id || "N/A"}`
   );
   if (data.expiresAt) lines.push(`Expires: ${data.expiresAt}`);
   if (data.updatedAt) lines.push(`Updated: ${data.updatedAt}`);
@@ -1281,8 +1293,7 @@ export function createServer(options: ServerOptions = {}): McpServer {
           ...siteDetailLines(answer),
         ];
         if (answer.expiresAt) lines.push(`Expires: ${answer.expiresAt}`);
-        if (answer.result) lines.push(`Result: ${answer.result}`);
-        lines.push(...pageDataUpdateLines(answer, sentState), ...hostingResponseLines(answer));
+        lines.push(...outcomeLines(answer),...pageDataUpdateLines(answer, sentState), ...hostingResponseLines(answer));
         if (answer.visibilityNotice) lines.push(``, String(answer.visibilityNotice));
         return textResult(lines.join("\n"));
       }
@@ -1598,7 +1609,7 @@ export function createServer(options: ServerOptions = {}): McpServer {
       }
       if (deliveryMode !== undefined) {
         steps.push({ setting: "deliveryMode", operation: "update hosting", method: "PATCH", action: "hosting", body: { deliveryMode, expectedVersion },
-          lines: (result) => [formatUpdateResponse(result)] });
+          lines: (result) => [formatUpdateResponse(result, { namespace, id })] });
       }
       if (steps.length === 0) return refused("change settings", NO_SETTING);
       const auth = ownerTokenFor(ownerToken);

@@ -584,7 +584,36 @@ test("same-mode hosting result keeps the server link", { timeout: 10_000 }, asyn
   assert.equal(result.content[0].text, noted("update_hosting", `Updated successfully!\n\nURL: ${NEW_RESPONSE.link}\nNamespace: public\nID: aBcDeFgHiJ`), "no-op link remains verbatim");
 });
 
-test("fresh site path request is published on subdomain and reported, without client coercion", { timeout: 10_000 }, async (t) => {
+const HOSTING_ANSWER = (({ id: _id, namespace: _namespace, ownerToken: _token, ...hosting }) => hosting)(NEW_RESPONSE);
+const SITE_UPDATE_ANSWER = { ...NEW_RESPONSE, entryFile: "index.html", fileCount: 2, totalSizeBytes: 56, expiresAt: "2027-02-13T00:00:00Z" };
+const SITE_UPDATE_LINES = ["Site republished successfully (full replace)!", "", `URL: ${NEW_RESPONSE.link}`, "Namespace: public", "ID: aBcDeFgHiJ",
+  "Entry file: index.html", "Files: 2", "Size: 56 bytes", "Expires: 2027-02-13T00:00:00Z"];
+const ADDRESS = { namespace: "public", id: "aBcDeFgHiJ", ownerToken: "fixture-owner" };
+for (const scenario of [
+  { tool: "set_publication", label: "a hosting answer without namespace and id", args: { ...ADDRESS, type: "html", deliveryMode: "subdomain" }, answer: HOSTING_ANSWER,
+    lines: ["Updated successfully!", "", `URL: ${NEW_RESPONSE.link}`, "Namespace: public", "ID: aBcDeFgHiJ"] },
+  { tool: "update_hosting", label: "a hosting answer without namespace and id", args: { ...ADDRESS, type: "html", deliveryMode: "subdomain" }, answer: HOSTING_ANSWER,
+    lines: ["Updated successfully!", "", `URL: ${NEW_RESPONSE.link}`, "Namespace: public", "ID: aBcDeFgHiJ"] },
+  { tool: "update_html", label: "a site outcome object", args: { ...ADDRESS, files: [{ path: "index.html", content: "x" }] },
+    answer: { ...SITE_UPDATE_ANSWER, result: { code: "success", action: "updated" } }, lines: [...SITE_UPDATE_LINES, "Result: success (updated)"] },
+  { tool: "republish_site", label: "a site outcome object with a reason", args: { ...ADDRESS, entryContent: "x" },
+    answer: { ...SITE_UPDATE_ANSWER, result: { code: "success", action: "updated", reason: "Fixture reason." } },
+    lines: [...SITE_UPDATE_LINES, "Result: success (updated) - Fixture reason."] },
+  { tool: "update_html", label: "a site answer without an outcome", args: { ...ADDRESS, files: [{ path: "index.html", content: "x" }] },
+    answer: SITE_UPDATE_ANSWER, lines: SITE_UPDATE_LINES },
+]) {
+  test(`${scenario.tool} answers ${scenario.label} in plain lines`, { timeout: 10_000 }, async (t) => {
+    // GIVEN the server answer of an owner update.
+    const f = await fixture(t);
+    f.respond(200, scenario.answer);
+    // WHEN the owner updates the publication.
+    const result = await f.call(scenario.tool, scenario.args);
+    // THEN the address the call named and the outcome fields are printed, never a placeholder or an object dump.
+    assert.equal(result.content[0].text, noted(scenario.tool, scenario.lines.join("\n")), "update answer lines are exact");
+  });
+}
+
+test("fresh site path request is published on subdomain and reported, without client coercion",{ timeout: 10_000 }, async (t) => {
   // GIVEN server forced-mode policy answering with the effective subdomain publication.
   const f = await fixture(t);
   f.respond(201, { ...NEW_RESPONSE, requestedDeliveryMode: "path", deliveryModeMatched: false, deliveryModeReason: "policy:subdomain-required", deliveryNotice: "Fixture notice: published on its own subdomain." });
