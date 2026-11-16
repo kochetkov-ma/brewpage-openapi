@@ -631,7 +631,7 @@
             ]
           },
           "deliveryModeReason": {
-            "description": "Why the request was served differently than asked: 'policy:subdomain-required', 'policy:mode-locked', 'policy:classic-link', 'policy:version-stale', 'policy:republish-keeps-mode', 'policy:custom-domain-attached' or 'policy:state-declared'. Mismatches are reported, not rejected. Absent when nothing applies.",
+            "description": "Why this mode is in effect:'policy:subdomain-required', 'policy:mode-locked', 'policy:classic-link', 'policy:version-stale', 'policy:republish-keeps-mode', 'policy:custom-domain-attached' or 'policy:state-declared'. Absent when nothing applies.",
             "type": "string"
           },
           "deliveryNotice": {
@@ -1188,7 +1188,7 @@
             ]
           },
           "deliveryModeReason": {
-            "description": "Why the request was served differently than asked: 'policy:subdomain-required', 'policy:mode-locked', 'policy:classic-link', 'policy:version-stale', 'policy:republish-keeps-mode', 'policy:custom-domain-attached' or 'policy:state-declared'. Mismatches are reported, not rejected. Absent when nothing applies.",
+            "description": "Why this mode is in effect:'policy:subdomain-required', 'policy:mode-locked', 'policy:classic-link', 'policy:version-stale', 'policy:republish-keeps-mode', 'policy:custom-domain-attached' or 'policy:state-declared'. Absent when nothing applies.",
             "type": "string"
           },
           "deliveryNotice": {
@@ -1302,7 +1302,7 @@
             ]
           },
           "deliveryModeReason": {
-            "description": "Why the request was served differently than asked: 'policy:subdomain-required', 'policy:mode-locked', 'policy:classic-link', 'policy:version-stale', 'policy:republish-keeps-mode', 'policy:custom-domain-attached' or 'policy:state-declared'. Mismatches are reported, not rejected. Absent when nothing applies.",
+            "description": "Why this mode is in effect:'policy:subdomain-required', 'policy:mode-locked', 'policy:classic-link', 'policy:version-stale', 'policy:republish-keeps-mode', 'policy:custom-domain-attached' or 'policy:state-declared'. Absent when nothing applies.",
             "type": [
               "string",
               "null"
@@ -1675,7 +1675,7 @@
             ]
           },
           "deliveryModeReason": {
-            "description": "Why the delivery mode was chosen or flagged. 'policy:subdomain-required' -- a requested path mode was replaced by subdomain because HTML pages in a private namespace always get their own subdomain; mismatches are reported, not rejected. 'policy:state-declared' -- the request turned on page data ('state'), so the HTML page got its own subdomain whatever mode was asked. 'auto:<codes>' -- the page was published in subdomain mode automatically because it uses browser features a BrewPage link does not provide. 'advisory:<codes>' -- the mode was kept, but those features may not work fully on a BrewPage link. Codes are comma-separated in a fixed order: storage, cookies, history, downloads, top-navigation, media-capture, pointer-lock, embeds, fullscreen. Absent when nothing applies.",
+            "description": "Why the delivery mode was chosen or flagged. 'policy:subdomain-required' -- HTML pages in a private namespace always get their own subdomain. 'policy:state-declared' -- the request turned on page data ('state'), so the HTML page got its own subdomain whatever mode was asked. 'auto:<codes>' -- the page was published in subdomain mode automatically because it uses browser features a BrewPage link does not provide. 'advisory:<codes>' -- the mode was kept, but those features may not work fully on a BrewPage link. Codes are comma-separated in a fixed order: storage, cookies, history, downloads, top-navigation, media-capture, pointer-lock, embeds, fullscreen. Absent when nothing applies.",
             "type": "string"
           },
           "deliveryNotice": {
@@ -1845,7 +1845,7 @@
             ]
           },
           "deliveryModeReason": {
-            "description": "Why the request was served differently than asked: 'policy:subdomain-required', 'policy:mode-locked', 'policy:classic-link', 'policy:version-stale', 'policy:republish-keeps-mode', 'policy:custom-domain-attached' or 'policy:state-declared'. Mismatches are reported, not rejected. Absent when nothing applies.",
+            "description": "Why this mode is in effect:'policy:subdomain-required', 'policy:mode-locked', 'policy:classic-link', 'policy:version-stale', 'policy:republish-keeps-mode', 'policy:custom-domain-attached' or 'policy:state-declared'. Absent when nothing applies.",
             "type": "string"
           },
           "deliveryNotice": {
@@ -2041,7 +2041,7 @@
             ]
           },
           "deliveryModeReason": {
-            "description": "Why the request was served differently than asked: 'policy:subdomain-required', 'policy:mode-locked', 'policy:classic-link', 'policy:version-stale', 'policy:republish-keeps-mode', 'policy:custom-domain-attached' or 'policy:state-declared'. Mismatches are reported, not rejected. Absent when nothing applies.",
+            "description": "Why this mode is in effect:'policy:subdomain-required', 'policy:mode-locked', 'policy:classic-link', 'policy:version-stale', 'policy:republish-keeps-mode', 'policy:custom-domain-attached' or 'policy:state-declared'. Absent when nothing applies.",
             "type": "string"
           },
           "deliveryNotice": {
@@ -2178,7 +2178,7 @@
             ]
           },
           "deliveryModeReason": {
-            "description": "Why the request was served differently than asked: 'policy:subdomain-required', 'policy:mode-locked', 'policy:classic-link', 'policy:version-stale', 'policy:republish-keeps-mode', 'policy:custom-domain-attached' or 'policy:state-declared'. Mismatches are reported, not rejected. Absent when nothing applies.",
+            "description": "Why this mode is in effect:'policy:subdomain-required', 'policy:mode-locked', 'policy:classic-link', 'policy:version-stale', 'policy:republish-keeps-mode', 'policy:custom-domain-attached' or 'policy:state-declared'. Absent when nothing applies.",
             "type": "string"
           },
           "deliveryNotice": {
@@ -2449,7 +2449,7 @@
             ]
           },
           "deliveryModeReason": {
-            "description": "Why the request was served differently than asked: 'policy:subdomain-required', 'policy:mode-locked', 'policy:classic-link', 'policy:version-stale', 'policy:republish-keeps-mode', 'policy:custom-domain-attached' or 'policy:state-declared'. Mismatches are reported, not rejected. Absent when nothing applies.",
+            "description": "Why this mode is in effect:'policy:subdomain-required', 'policy:mode-locked', 'policy:classic-link', 'policy:version-stale', 'policy:republish-keeps-mode', 'policy:custom-domain-attached' or 'policy:state-declared'. Absent when nothing applies.",
             "type": "string"
           },
           "deliveryNotice": {
@@ -3314,7 +3314,7 @@
             "type": "integer"
           },
           "usedPercent": {
-            "description": "Highest share of the entry, entry size and file size quotas in use, percent from 0 to 100",
+            "description": "Highest share of the entry, entry size, file and file size quotas in use, percent from 0 to 100",
             "format": "int32",
             "type": "integer"
           }
@@ -3861,7 +3861,7 @@
             ]
           },
           "deliveryModeReason": {
-            "description": "Why the request was served differently than asked: 'policy:subdomain-required', 'policy:mode-locked', 'policy:classic-link', 'policy:version-stale', 'policy:republish-keeps-mode', 'policy:custom-domain-attached' or 'policy:state-declared'. Mismatches are reported, not rejected. Absent when nothing applies.",
+            "description": "Why this mode is in effect:'policy:subdomain-required', 'policy:mode-locked', 'policy:classic-link', 'policy:version-stale', 'policy:republish-keeps-mode', 'policy:custom-domain-attached' or 'policy:state-declared'. Absent when nothing applies.",
             "type": "string"
           },
           "deliveryNotice": {
@@ -4019,7 +4019,7 @@
             ]
           },
           "deliveryModeReason": {
-            "description": "Why the request was served differently than asked: 'policy:subdomain-required', 'policy:mode-locked', 'policy:classic-link', 'policy:version-stale', 'policy:republish-keeps-mode', 'policy:custom-domain-attached' or 'policy:state-declared'. Mismatches are reported, not rejected. Absent when nothing applies.",
+            "description": "Why this mode is in effect:'policy:subdomain-required', 'policy:mode-locked', 'policy:classic-link', 'policy:version-stale', 'policy:republish-keeps-mode', 'policy:custom-domain-attached' or 'policy:state-declared'. Absent when nothing applies.",
             "type": "string"
           },
           "deliveryNotice": {
@@ -4252,7 +4252,7 @@
       "StateConfigResponse": {
         "properties": {
           "alert": {
-            "description": "True at 80% or more of the entry, entry size or file size quota",
+            "description": "True at 80% or more of the entry, entry size, file or file size quota",
             "type": "boolean"
           },
           "caps": {
@@ -4524,7 +4524,7 @@
             "type": "string"
           },
           "ownerView": {
-            "description": "Accepted for compatibility and stored as sent; it has no effect",
+            "description": "The flag as stored",
             "type": "boolean"
           },
           "write": {
@@ -4596,7 +4596,7 @@
             ]
           },
           "ownerView": {
-            "description": "Accepted for compatibility and stored as sent; it has no effect",
+            "description": "Optional flag, stored as sent",
             "type": [
               "boolean",
               "null"
@@ -6658,7 +6658,7 @@
             "name": "X-Owner-Token"
           },
           {
-            "description": "NEW delivery preference: path or subdomain. Sites and non-public HTML pages get subdomain; a mismatch is reported in deliveryModeReason, not rejected. Omission allows smart selection.",
+            "description": "Delivery mode: path or subdomain. Sites and non-public HTML pages are always subdomain. The answer states the mode in effect (effectiveDeliveryMode, deliveryNotice). Omit it for the default.",
             "in": "header",
             "name": "X-Delivery-Mode",
             "required": false,
@@ -13386,7 +13386,7 @@
             "ManageKey": []
           }
         ],
-        "summary": "Change delivery mode for a new publication. Sites and non-public HTML pages stay on subdomain; mismatches are reported, not rejected",
+        "summary": "Change delivery mode for a new publication. Sites and non-public HTML pages are always on subdomain; the answer states the mode in effect",
         "tags": [
           "Hosting Management"
         ]

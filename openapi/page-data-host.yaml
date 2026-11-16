@@ -283,7 +283,7 @@ components:
           description: Present only when a list takes files; one member per declared list, true when it takes uploads now
           type: object
         role:
-          description: owner with an open owner session, else visitor
+          description: owner with an open owner session or on a demo template's own address, else visitor
           enum:
             - owner
             - visitor
