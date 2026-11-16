@@ -53,7 +53,7 @@ curl -X POST 'https://brewpage.app/api/sites?ns=public' \
 
 ## Для LLM и агентов
 
-Агентам часто нужно поделиться результатом — отчётом, сгенерированным HTML, промежуточным JSON — по постоянной ссылке. BrewPage делает это одним `POST` без OAuth, бакетов и инфраструктуры. Краткая инструкция для моделей: https://brewpage.app/llms.txt, полная: https://brewpage.app/llms-full.txt.
+Агентам часто нужно поделиться результатом — отчётом, сгенерированным HTML, промежуточным JSON — по одной ссылке, которая не меняется при обновлении. BrewPage делает это одним `POST` без OAuth, бакетов и инфраструктуры. Краткая инструкция для моделей: https://brewpage.app/llms.txt, полная: https://brewpage.app/llms-full.txt.
 
 ## MCP-сервер
 
