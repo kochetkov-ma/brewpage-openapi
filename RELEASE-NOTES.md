@@ -1,5 +1,14 @@
 # Release Notes
 
+## API contract 2.47.0 — 2026-11-16
+
+- Exported from brewpage-app source `78148eb3c105135c8a5f043fda368a6c81933a16` (brewpage-app release v2.47.0; v2.47.1 changed no backend code), clean tree. 70 paths and 95 operations (69 and 94 before).
+- New tag `Templates`: `GET /api/templates` (operation `templates`, no credentials) finds the right official template for a request. `q` takes a few English words (`wedding rsvp`) and returns the best matches, at most 3 (`matched: true`); without `q`, or when nothing matches, every template comes back (`matched: false`). Each item gives the HTML source (`sourceUrl`), a live example (`demoUrl`), the template's page (`pageUrl`), what it saves (`data`), the `state` its copy needs, `publishUrl` and `copies`, the number of pages made from it; `publish` is one recipe for publishing a copy.
+- `POST /api/html` takes `template=<slug>`: the page is a copy of that official template and counts as one more copy. Each item's `publishUrl` already carries it.
+- `copies` on `GET /api/gallery/promo` template items (`GalleryPromoItem`): pages made from that template; absent for videos.
+- `pageDataPages` on `GET /api/stats` (`StatsResponse`): pages and sites published with Page data so far.
+- `brewpage-mcp` 2.0.0 works with this contract as it is.
+
 ## MCP 2.0.0 — 2026-11-16
 
 - A shorter tool list: 25 tools instead of 32, each described in a sentence. An assistant reads far less before its first call.

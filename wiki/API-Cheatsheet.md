@@ -94,6 +94,7 @@ GET /api/gallery                   → Browse the public gallery
 GET /api/gallery?search=query      → Search
 GET /api/stats                      → Platform statistics
 GET /api/limits                     → Current upload limits (bytes)
+GET /api/templates?q=wedding%20rsvp → Find an official template; POST a copy to its publishUrl
 ```
 
 ---
