@@ -150,7 +150,7 @@ curl --fail-with-body -X PATCH 'https://brewpage.app/api/html/public/aBcDeFgHiJ/
   -d '{"deliveryMode":"subdomain","expectedVersion":1}'
 ```
 
-Replace the illustrative ID/token and version with your own current values. Mismatches are reported, not rejected: a stale version still applies, while OLD links, sites, and non-public `html`-format HTML pages stay unchanged; the 200 response then carries `deliveryModeMatched: false`, `deliveryModeReason` and `deliveryNotice`. Use the returned primary `link`. The reserved host survives both directions; ordinary content updates do not switch modes.
+Replace the illustrative ID/token and version with your own current values. The answer states the mode in effect (`effectiveDeliveryMode`, `deliveryNotice`). Use the returned primary `link`. The reserved host survives both directions; ordinary content updates do not switch modes.
 
 ## JavaScript / Fetch
 

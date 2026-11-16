@@ -116,7 +116,7 @@ curl -X POST 'https://brewpage.app/api/files?ns=public' \
 
 > **Save your `ownerToken`!** You need it to update or delete content later. It cannot be recovered.
 
-NEW publications default to Promotion (`path`) in any namespace and may choose Dedicated subdomain with `X-Delivery-Mode: subdomain`, except NEW sites and non-public HTML pages of format `html`, which always use Dedicated subdomain (an explicit `path` is reported, not rejected); each site bundle has one publication-specific host with native paths and 404 responses for missing files. Use returned links including root slashes. NEW protected links stay clean: browser readers unlock through the trusted gateway; API reads use `X-Password`. OLD publications retain their existing links and behavior, including when creation reuses an existing winner. See the [MCP hosting guide](/brewpage-openapi/mcp-server/#visibility-and-delivery) for owner hosting changes.
+NEW publications default to Promotion (`path`) in any namespace and may choose Dedicated subdomain with `X-Delivery-Mode: subdomain`, except NEW sites and non-public HTML pages of format `html`, which always use Dedicated subdomain (send no `X-Delivery-Mode` there; the answer states the mode in effect); each site bundle has one publication-specific host with native paths and 404 responses for missing files. Use returned links including root slashes. NEW protected links stay clean: browser readers unlock through the trusted gateway; API reads use `X-Password`. OLD publications retain their existing links and behavior, including when creation reuses an existing winner. See the [MCP hosting guide](/brewpage-openapi/mcp-server/#visibility-and-delivery) for owner hosting changes.
 
 ---
 
