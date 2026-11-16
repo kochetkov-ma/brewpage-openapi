@@ -5,7 +5,7 @@ Typed loader and framework wrappers for [BrewPage](https://brewpage.app) Page da
 The package ships types and thin wrappers only. The Page data script itself is served by BrewPage; the package loads it and never bundles a copy.
 
 ```bash
-npm i brewpage-data@0.1.0
+npm i brewpage-data@0.1.1
 ```
 
 Entry points: `brewpage-data` (types and loader), `brewpage-data/react`, `brewpage-data/vue`, `brewpage-data/svelte`, `brewpage-data/angular`, `brewpage-data/elements`. React (18+), Vue (3.2+), Svelte (4+) and Angular (17+) are optional peer dependencies: install only the one you use.
