@@ -1,5 +1,11 @@
 # Release Notes
 
+## MCP 2.1.1 — 2026-11-17
+
+- After publishing a page that saves what visitors enter, the assistant tells you where the answers appear: the Data tab of the page's management link.
+- When a page cannot save yet, the assistant now knows the fix: it turns Page data on for a page that has the saving script, or adds the saving script to a page that has Page data on but never loads it.
+- The listing texts on npm and the MCP registry now say that pages can save visitor answers (forms, polls). The same 25 tools; install pins are `brewpage-mcp@2.1.1`, and the remote server `https://brewpage.app/mcp` needs no change on your side.
+
 ## MCP 2.1.0 — 2026-11-16
 
 - Asked for a form, poll, quiz, RSVP, guestbook or game, the assistant now starts from one of BrewPage's ready, tested templates. The guide has a new topic, `get_guide` topic `templates`: find the right template with `GET https://brewpage.app/api/templates?q=<a few words>`, change its source as you ask, and publish your own copy at the template's `publishUrl` (`POST /api/html?template=<slug>`) with the template's `state`.

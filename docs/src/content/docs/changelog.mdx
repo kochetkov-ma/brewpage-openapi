@@ -6,6 +6,10 @@ order: 5
 
 # Changelog
 
+## MCP 2.1.1 — where the answers appear
+
+After publishing a page that saves what visitors enter, the assistant says the answers appear in the Data tab of the page's management link. When a page cannot save yet, the answer names the fix: turn Page data on (`configure_page_data`), or add the saving script `https://brewpage.app/js/state.js` to the page. The same 25 tools.
+
 ## MCP 2.1.0 — start from a ready template
 
 Asked for a form, poll, quiz, RSVP, guestbook or game, the assistant now looks for one of BrewPage's ready templates first: `get_guide` topic `templates` explains how to find one (`GET https://brewpage.app/api/templates?q=<a few words>`) and publish your own copy at its `publishUrl` (`POST /api/html?template=<slug>`) with its `state`. The same 25 tools.

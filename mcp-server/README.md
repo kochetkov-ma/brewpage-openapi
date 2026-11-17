@@ -4,11 +4,11 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Brewpage MCP server](https://mcprush.com/badge/brewpage-mcp/card.svg)](https://mcprush.com/to/brewpage-mcp?ref=badge)
 
-MCP server for [BrewPage](https://brewpage.app) -- publish and manage HTML, KV, JSON, and file content directly from AI assistants.
+MCP server for [BrewPage](https://brewpage.app) -- publish and manage HTML, KV, JSON, and file content directly from AI assistants, including pages that save visitor answers (forms, polls) with Page data.
 
 ## What is BrewPage
 
-[BrewPage](https://brewpage.app) is a free instant hosting platform designed for AI agents and developers. One `POST` request publishes HTML, Markdown, a multi-file site, a JSON document, or a binary file and returns its primary HTTPS link -- no account needed, no API keys, no infrastructure setup. Every resource carries an **owner token** returned at creation time: use it to update content in place, delete the resource, or authenticate list operations across sessions. `brewpage-mcp` exposes this API as 25 typed MCP tools so any compatible agent -- Claude, Codex, Gemini, Cursor, Cline -- can publish, update, fetch, and manage BrewPage HTML, JSON, KV, and file content without leaving the conversation.
+[BrewPage](https://brewpage.app) is a free instant hosting platform designed for AI agents and developers. One `POST` request publishes HTML, Markdown, a multi-file site, a JSON document, or a binary file and returns its primary HTTPS link -- no account needed, no API keys, no infrastructure setup. Every resource carries an **owner token** returned at creation time: use it to update content in place, delete the resource, or authenticate list operations across sessions. `brewpage-mcp` exposes this API as 25 typed MCP tools so any compatible agent -- Claude, Codex, Gemini, Cursor, Cline -- can publish, update, fetch, and manage BrewPage HTML, JSON, KV, and file content without leaving the conversation. A page can also save what its visitors enter (forms, polls, guestbooks) with Page data; the author reads the entries in the Data tab of the page's management link or with `get_page_data`.
 
 Optional: sign in free (Google or any email) at https://account.brewpage.app to never lose your pages or tokens and to mint tokens that never expire. Not needed to publish.
 
@@ -38,7 +38,7 @@ Claude Code: `claude mcp add --transport http brewpage --scope user https://brew
 For clients that only start local servers; the same tools as the server URL.
 
 ```bash
-npx -y brewpage-mcp@2.1.0
+npx -y brewpage-mcp@2.1.1
 ```
 
 Requires Node.js 20 or newer. This starts the stdio server for an MCP client.
@@ -63,7 +63,7 @@ Local fallback (stdio, needs Node.js; the same tools): add to `~/Library/Applica
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@2.1.0"]
+      "args": ["-y", "brewpage-mcp@2.1.1"]
     }
   }
 }
@@ -86,7 +86,7 @@ Custom servers follow your ChatGPT plan and workspace settings.
 The remote command above is the default. Local fallback: register a project-scoped stdio server:
 
 ```bash
-claude mcp add --transport stdio --scope project brewpage -- npx -y brewpage-mcp@2.1.0
+claude mcp add --transport stdio --scope project brewpage -- npx -y brewpage-mcp@2.1.1
 ```
 
 This writes `.mcp.json` in the project root. Use `--scope user` for user-scoped registration. See the [official Claude Code MCP guide](https://code.claude.com/docs/en/mcp).
@@ -110,7 +110,7 @@ Local fallback (stdio, needs Node.js; the same tools): open **Settings > MCP** a
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@2.1.0"]
+      "args": ["-y", "brewpage-mcp@2.1.1"]
     }
   }
 }
@@ -124,7 +124,7 @@ Open the Cline MCP settings panel and add:
 {
   "brewpage": {
     "command": "npx",
-    "args": ["-y", "brewpage-mcp@2.1.0"]
+    "args": ["-y", "brewpage-mcp@2.1.1"]
   }
 }
 ```
@@ -723,6 +723,11 @@ Every publish response includes an **owner token** -- the only credential that a
 - [Brewcode Plugin](https://github.com/kochetkov-ma/claude-brewcode) -- Claude Code plugin suite
 
 ## Changelog
+
+## 2.1.1 -- 2026-11-17
+
+- Page data answers name their next step. Notice `state-not-declared` (the page loads the saving script, but Page data is off) is followed by `Next: configure_page_data with state {} ...`; notice `state-no-sdk` (Page data is on, but the page never loads the saving script) by `Next: add <script src="https://brewpage.app/js/state.js"></script> ...`. A create with Page data on and a management link adds one line: the user reads the entries in that link's Data tab, `get_page_data` reads them too.
+- Registry, npm and README descriptions say that pages can save visitor answers. Same 25 tools, no argument change. `User-Agent: brewpage-mcp/2.1.1`.
 
 ## 2.1.0 -- 2026-11-16
 

@@ -6,7 +6,7 @@ import { PAGE_DATA_GUIDE } from "./guides/page-data.js";
 import { TEMPLATES_GUIDE } from "./guides/templates.js";
 
 export const DEFAULT_BASE_URL = "https://brewpage.app";
-export const USER_AGENT = "brewpage-mcp/2.1.0";
+export const USER_AGENT = "brewpage-mcp/2.1.1";
 export const OWNER_TOKEN_ENV = "BREWPAGE_OWNER_TOKEN";
 
 /** What a transport serves: texts and the listed tool set only, never a limit or a guard. */
@@ -133,6 +133,13 @@ const STATE_NOT_TAKEN_CODES = new Set(["state-unavailable", "state-needs-html"])
 const NEEDS_SUBDOMAIN_CODE = "state-needs-subdomain";
 const NEEDS_SUBDOMAIN_NEXT = "Next: set_publication type=html deliveryMode=subdomain";
 const NEEDS_SUBDOMAIN_KEY_TAIL = " (needs the owner token; without it the user opens the management link and gives the page its own address there)";
+/** `Next:` line per page-data notice code that has a fix the agent can make itself. */
+const PAGE_DATA_NOTICE_NEXT = new Map([
+  [NEEDS_SUBDOMAIN_CODE, NEEDS_SUBDOMAIN_NEXT],
+  ["state-not-declared", "Next: configure_page_data with state {} turns Page data on, or send `state` with the next update_html"],
+  ["state-no-sdk", "Next: add <script src=\"https://brewpage.app/js/state.js\"></script> before the page's own code, then update_html with that content"],
+]);
+const PAGE_DATA_TAB_LINE = "Page data entries: the user reads them in the Data tab of the management link (MANAGE LINK below); get_page_data reads them too.";
 
 const MANAGE_URL_ARGUMENT = "Management link; replaces namespace, id and ownerToken";
 const MANAGE_URL_PATH = /^\/manage\/(html|sites|files|json|kv)\/([^/]+)\/([A-Za-z0-9]{10})\/?$/;
@@ -224,7 +231,8 @@ function pageDataPublishLines(data: Record<string, unknown>, state?: Record<stri
   if (!state || notices(data).some((n) => STATE_NOT_TAKEN_CODES.has(n.code))) return [];
   const lists = isPlainObject(state.collections)
     ? Object.entries(state.collections).map(([name, rule]) => `${name} (${listRuleText(rule)})`) : [];
-  return [`Page data: on${lists.length ? ` - lists: ${lists.join(", ")}` : ""}`, PAGE_DATA_SCRIPT_LINE];
+  const tab = typeof data.manageUrl === "string" && data.manageUrl.length > 0 ? [PAGE_DATA_TAB_LINE] : [];
+  return [`Page data: on${lists.length ? ` - lists: ${lists.join(", ")}` : ""}`, PAGE_DATA_SCRIPT_LINE, ...tab];
 }
 
 /** Update result line for a `state` the server took: on with its lists, or off; none when no `state` was sent. */
@@ -647,12 +655,13 @@ function notices(data: Record<string, unknown>): Array<{ code: string; message: 
 }
 
 /** Each tolerated-input adjustment, verbatim; the credential alert prints separately, first.
- * A page-data notice asking for the page's own address is followed by its next step. */
+ * A page-data notice with an agent-side fix is followed by its next step. */
 function noticeLines(data: Record<string, unknown>, viaManageUrl = false): string[] {
-  return notices(data).filter((n) => n.code !== CREDENTIAL_CODE).flatMap((n) => [
-    `${WARNING_CODES.has(n.code) ? "WARNING" : "Notice"} (${n.code}): ${n.message}`,
-    ...(n.code === NEEDS_SUBDOMAIN_CODE ? [NEEDS_SUBDOMAIN_NEXT + (viaManageUrl ? NEEDS_SUBDOMAIN_KEY_TAIL : "")] : []),
-  ]);
+  return notices(data).filter((n) => n.code !== CREDENTIAL_CODE).flatMap((n) => {
+    const next = PAGE_DATA_NOTICE_NEXT.get(n.code);
+    const tail = n.code === NEEDS_SUBDOMAIN_CODE && viaManageUrl ? NEEDS_SUBDOMAIN_KEY_TAIL : "";
+    return [`${WARNING_CODES.has(n.code) ? "WARNING" : "Notice"} (${n.code}): ${n.message}`, ...(next ? [next + tail] : [])];
+  });
 }
 
 function hasCredentialNotice(data: Record<string, unknown>): boolean {
@@ -821,7 +830,7 @@ export function createServer(options: ServerOptions = {}): McpServer {
   const apiFetch = options.fetch ?? fetch;
   const server = new McpServer({
     name: "brewpage-mcp",
-    version: "2.1.0",
+    version: "2.1.1",
   }, { instructions: serverInstructions(profile) });
   const registered = new Set<string>();
 

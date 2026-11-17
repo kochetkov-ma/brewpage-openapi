@@ -29,6 +29,7 @@
 
 [BrewPage](https://brewpage.app) is a free instant hosting service for HTML pages, Markdown documents,
 multi-file sites, AI artifacts, JSON documents, key-value stores, and binary files.
+Pages can also save what visitors enter (forms, polls, guestbooks) with Page data; the author reads the entries in the Data tab of the page's management link.
 No signup or API key required for creation. Use the exact returned primary HTTPS `link`; publications may use a BrewPage path or their own content host.
 
 Key characteristics:
@@ -243,7 +244,7 @@ Local fallback (stdio, needs Node.js; the same tools): add to `~/Library/Applica
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@2.1.0"]
+      "args": ["-y", "brewpage-mcp@2.1.1"]
     }
   }
 }
@@ -258,7 +259,7 @@ The remote command above is the default. Local fallback (stdio, needs Node.js): 
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@2.1.0"]
+      "args": ["-y", "brewpage-mcp@2.1.1"]
     }
   }
 }

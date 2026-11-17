@@ -1,8 +1,8 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.kochetkov-ma/brewpage-mcp",
-  "description": "Publish HTML, Markdown, sites, KV, JSON and files on BrewPage; keep the returned owner token.",
-  "version": "2.1.0",
+  "description": "Publish HTML, Markdown, sites, KV, JSON, files and forms/polls that save answers; keep owner token.",
+  "version": "2.1.1",
   "websiteUrl": "https://brewpage.app",
   "homepage": "https://brewpage.app",
   "repository": {
@@ -13,7 +13,7 @@
     {
       "registryType": "npm",
       "identifier": "brewpage-mcp",
-      "version": "2.1.0",
+      "version": "2.1.1",
       "transport": {
         "type": "stdio"
       }

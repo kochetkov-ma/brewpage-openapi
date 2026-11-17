@@ -2028,6 +2028,29 @@ for (const scenario of [
   });
 }
 
+const DATA_TAB_LINE = "Page data entries: the user reads them in the Data tab of the management link (MANAGE LINK below); get_page_data reads them too.";
+const PAGE_MANAGE_URL = "https://brewpage.app/manage/html/public/aBcDeFgHiJ#k=bpm_fixture";
+for (const scenario of [
+  { tool: "publish_html", label: "a page with state and a management link", args: { ...NEW_HTML, state: POLL_STATE }, manageUrl: PAGE_MANAGE_URL,
+    lines: ["Page data: on - lists: poll (private)", PAGE_DATA_SCRIPT_LINE, DATA_TAB_LINE] },
+  { tool: "publish_html", label: "site files with state and a management link", args: { ...NEW_FILES, state: {} }, manageUrl: PAGE_MANAGE_URL.replace("/html/", "/sites/"),
+    lines: ["Page data: on", PAGE_DATA_SCRIPT_LINE, DATA_TAB_LINE] },
+  { tool: "publish_html", label: "a page with state and no management link", args: { ...NEW_HTML, state: POLL_STATE }, manageUrl: null,
+    lines: ["Page data: on - lists: poll (private)", PAGE_DATA_SCRIPT_LINE] },
+  { tool: "publish_html", label: "a page without state", args: NEW_HTML, manageUrl: PAGE_MANAGE_URL, lines: [] },
+]) {
+  test(`${scenario.tool} with ${scenario.label} names the Data tab only when Page data is on and the link exists`, { timeout: 10_000 }, async (t) => {
+    // GIVEN a create answer with or without a management link.
+    const f = await fixture(t);
+    f.respond(201, { ...NEW_RESPONSE, manageUrl: scenario.manageUrl });
+    // WHEN the page or site is published.
+    const result = await f.call(scenario.tool, scenario.args);
+    // THEN the Page data lines end with where the user reads the entries.
+    assert.deepEqual({ isError: result.isError, lines: result.content[0].text.split("\n").filter((line) => /^Page (data|script)/.test(line)) },
+      { isError: undefined, lines: scenario.lines }, `${scenario.tool} ${scenario.label}: Page data lines`);
+  });
+}
+
 const STATE_TOOL_CALLS = [
   { tool: "publish_html", operation: "publish", args: NEW_HTML }, { tool: "update_html", operation: "update HTML", args: HTML_UPDATE },
   { tool: "publish_site", operation: "publish site", args: NEW_SITE }, { tool: "republish_site", operation: "republish site", args: SITE_UPDATE },
@@ -2138,6 +2161,12 @@ const MODE_KEPT = { code: "state-mode-kept", message: "List drafts stays private
 const NEEDS_OWN_ADDRESS_LINE = `Notice (${NEEDS_OWN_ADDRESS.code}): ${NEEDS_OWN_ADDRESS.message}`;
 const NEXT_OWN_ADDRESS = "Next: set_publication type=html deliveryMode=subdomain";
 const NEXT_OWN_ADDRESS_BY_LINK = `${NEXT_OWN_ADDRESS} (needs the owner token; without it the user opens the management link and gives the page its own address there)`;
+const NOT_DECLARED = { code: "state-not-declared", message: "This page wants to save data, but it doesn't say what to save yet: " +
+  "send `state` in the JSON publish body, or PATCH /api/{ns}/{id}/state with {}." };
+const NO_SDK = { code: "state-no-sdk", message: "Page data is on, but this page never loads the saving script: " +
+  "add <script src=\"https://brewpage.app/js/state.js\"></script> before your own code." };
+const NEXT_NOT_DECLARED = "Next: configure_page_data with state {} turns Page data on, or send `state` with the next update_html";
+const NEXT_NO_SDK = "Next: add <script src=\"https://brewpage.app/js/state.js\"></script> before the page's own code, then update_html with that content";
 const withNotice = (notice: { code: string; message: string }) => answer(200, { ...NEW_RESPONSE, ...OVERVIEW, notices: [notice] });
 
 for (const scenario of [
@@ -2150,6 +2179,12 @@ for (const scenario of [
   { tool: "get_page_data", label: "state-needs-subdomain on the overview", args: PAGE, notice: NEEDS_OWN_ADDRESS, lines: [NEEDS_OWN_ADDRESS_LINE, NEXT_OWN_ADDRESS] },
   { tool: "get_page_data", label: "state-needs-subdomain on the overview by management link", args: { manageUrl: MANAGE_LINK }, notice: NEEDS_OWN_ADDRESS,
     lines: [NEEDS_OWN_ADDRESS_LINE, NEXT_OWN_ADDRESS_BY_LINK] },
+  { tool: "publish_html", label: "state-not-declared on publish", args: NEW_HTML, notice: NOT_DECLARED,
+    lines: [`Notice (${NOT_DECLARED.code}): ${NOT_DECLARED.message}`, NEXT_NOT_DECLARED] },
+  { tool: "update_html", label: "state-not-declared on update", args: HTML_UPDATE, notice: NOT_DECLARED,
+    lines: [`Notice (${NOT_DECLARED.code}): ${NOT_DECLARED.message}`, NEXT_NOT_DECLARED] },
+  { tool: "publish_html", label: "state-no-sdk on publish", args: { ...NEW_HTML, state: {} }, notice: NO_SDK, lines: [`Notice (${NO_SDK.code}): ${NO_SDK.message}`, NEXT_NO_SDK] },
+  { tool: "update_html", label: "state-no-sdk on update", args: { ...HTML_UPDATE, state: {} }, notice: NO_SDK, lines: [`Notice (${NO_SDK.code}): ${NO_SDK.message}`, NEXT_NO_SDK] },
   { tool: "update_html", label: "state-mode-kept on update", args: { ...HTML_UPDATE, state: POLL_STATE }, notice: MODE_KEPT, lines: [`Notice (${MODE_KEPT.code}): ${MODE_KEPT.message}`] },
   { tool: "republish_site", label: "state-mode-kept on republish", args: { ...SITE_UPDATE, state: POLL_STATE }, notice: MODE_KEPT,
     lines: [`Notice (${MODE_KEPT.code}): ${MODE_KEPT.message}`] },
@@ -2160,7 +2195,7 @@ for (const scenario of [
     f.routeWith(withNotice(scenario.notice));
     // WHEN the tool succeeds.
     const result = await f.call(scenario.tool, scenario.args);
-    // THEN the notice is printed as sent; the own-address one is followed by the exact next step for the credential used.
+    // THEN the notice is printed as sent; one with an agent-side fix is followed by the exact next step for the credential used.
     assert.deepEqual({ isError: result.isError, lines: result.content[0].text.split("\n").filter((line) => /^(Notice \(|Next:)/.test(line)) },
       { isError: undefined, lines: scenario.lines }, `${scenario.tool} ${scenario.label}: notice lines`);
   });
