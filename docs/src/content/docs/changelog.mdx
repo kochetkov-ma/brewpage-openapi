@@ -6,6 +6,10 @@ order: 5
 
 # Changelog
 
+## API contract 2.56.0 — one sitemap index, three sitemaps
+
+`GET /api/sitemap.xml` and `GET /api/sitemap-index.xml` now answer the same sitemap index. It lists `GET /api/sitemap-pages.xml` (BrewPage's own pages: home, guides, comparisons, templates, the llms files), the new `GET /api/sitemap-publications.xml` (public publications at their primary link, `lastmod` = last content change when known) and the image sitemap. No credentials needed. 72 paths and 97 operations.
+
 ## MCP 2.1.2 — directory checks
 
 The remote server passes MCP directory connection checks that read its first answer as a stream: one sentence of the connect instructions was reworded, with the same meaning. The same 25 tools.
