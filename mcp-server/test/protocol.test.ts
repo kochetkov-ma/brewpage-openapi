@@ -141,7 +141,7 @@ const serverInstructions = (envDefault: string) => [
   "Shared arguments. namespace: public = listed in the gallery and sitemap and indexed by Google, Bing and AI search, for anything meant to be found; omitted = private (a generated priv-* namespace, unlisted, opened only by its link); JSON and KV are never listed. " +
     "ttlDays: up to 30 days without an account, up to 90 with a free profile (an ownerToken held in the profile); omitted = the default. password: readers must enter it. " +
     "deliveryMode: path = a brewpage.app link, subdomain = the publication's own subdomain; omitted = chosen by type. Owner tokens and management links never go into published content; other secrets fit a private namespace plus a password.",
-  "A page that must save what its visitors enter (form answers, guestbook, votes, scores, game progress) needs Page data: read get_guide topic page-data BEFORE writing the page, then publish with the state argument. " +
+  "A page that must save what its visitors enter (form answers, guestbook, votes, scores, game progress) needs Page data, so read get_guide topic page-data BEFORE writing the page, then publish with the state argument. " +
     "get_page_data reads it, set_page_data writes author entries, configure_page_data changes settings, delete_page_data moderates; each takes namespace, id and ownerToken, or the management link as manageUrl. " +
     "For a form, poll, quiz, RSVP, guestbook or game first look for a ready template: get_guide topic templates.",
   "HTML pages and sites show a small BrewPage badge; page code must not hide or alter it. A profile can turn it off on up to 5 pages (set_publication).",
@@ -165,10 +165,12 @@ for (const [transport, connect] of [["stdio", stdio], ["HTTP", http]] as const) 
       const send = await connect(t, api.url);
       // WHEN the client opens the connection.
       const { result } = await send({ jsonrpc: "2.0", id: 1, method: row.method, params: row.params }, row.version);
-      // THEN the handshake carries the five instruction paragraphs, the first within 512 chars, and calls no API.
+      // THEN five instruction paragraphs, first within 512 chars, no API call, no "data:" (directory probes read it as SSE).
       assert.deepEqual({ instructions: result?.instructions, paragraphs: SERVER_INSTRUCTIONS.split("\n").length,
-        firstParagraph: SERVER_INSTRUCTIONS.split("\n")[0].length, upstream: api.requests.length },
-      { instructions: SERVER_INSTRUCTIONS, paragraphs: 5, firstParagraph: INSTRUCTIONS_BY_TRANSPORT[transport].firstParagraph, upstream: 0 },
+        firstParagraph: SERVER_INSTRUCTIONS.split("\n")[0].length, upstream: api.requests.length,
+        sseMarkers: JSON.stringify(result).split("data:").length - 1 },
+      { instructions: SERVER_INSTRUCTIONS, paragraphs: 5, firstParagraph: INSTRUCTIONS_BY_TRANSPORT[transport].firstParagraph, upstream: 0,
+        sseMarkers: 0 },
       `${transport} ${row.label}: server instructions`);
     });
   }

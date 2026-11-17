@@ -1,5 +1,10 @@
 # Release Notes
 
+## MCP 2.1.2 — 2026-11-17
+
+- The remote server `https://brewpage.app/mcp` now passes MCP directory connection checks that read its first answer as a stream: one sentence of the connect instructions was reworded, with the same meaning.
+- The same 25 tools, no argument change. Install pins are `brewpage-mcp@2.1.2`; the remote server needs no change on your side.
+
 ## MCP 2.1.1 — 2026-11-17
 
 - After publishing a page that saves what visitors enter, the assistant tells you where the answers appear: the Data tab of the page's management link.

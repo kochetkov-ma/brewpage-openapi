@@ -38,7 +38,7 @@ Claude Code: `claude mcp add --transport http brewpage --scope user https://brew
 For clients that only start local servers; the same tools as the server URL.
 
 ```bash
-npx -y brewpage-mcp@2.1.1
+npx -y brewpage-mcp@2.1.2
 ```
 
 Requires Node.js 20 or newer. This starts the stdio server for an MCP client.
@@ -63,7 +63,7 @@ Local fallback (stdio, needs Node.js; the same tools): add to `~/Library/Applica
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@2.1.1"]
+      "args": ["-y", "brewpage-mcp@2.1.2"]
     }
   }
 }
@@ -86,7 +86,7 @@ Custom servers follow your ChatGPT plan and workspace settings.
 The remote command above is the default. Local fallback: register a project-scoped stdio server:
 
 ```bash
-claude mcp add --transport stdio --scope project brewpage -- npx -y brewpage-mcp@2.1.1
+claude mcp add --transport stdio --scope project brewpage -- npx -y brewpage-mcp@2.1.2
 ```
 
 This writes `.mcp.json` in the project root. Use `--scope user` for user-scoped registration. See the [official Claude Code MCP guide](https://code.claude.com/docs/en/mcp).
@@ -110,7 +110,7 @@ Local fallback (stdio, needs Node.js; the same tools): open **Settings > MCP** a
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@2.1.1"]
+      "args": ["-y", "brewpage-mcp@2.1.2"]
     }
   }
 }
@@ -124,7 +124,7 @@ Open the Cline MCP settings panel and add:
 {
   "brewpage": {
     "command": "npx",
-    "args": ["-y", "brewpage-mcp@2.1.1"]
+    "args": ["-y", "brewpage-mcp@2.1.2"]
   }
 }
 ```
@@ -723,6 +723,10 @@ Every publish response includes an **owner token** -- the only credential that a
 - [Brewcode Plugin](https://github.com/kochetkov-ma/claude-brewcode) -- Claude Code plugin suite
 
 ## Changelog
+
+## 2.1.2 -- 2026-11-17
+
+- The handshake instructions carry no `data:` substring: probes that split any body containing it into SSE `data:` lines failed to parse the plain JSON answer. Same 25 tools, no argument change. `User-Agent: brewpage-mcp/2.1.2`.
 
 ## 2.1.1 -- 2026-11-17
 
