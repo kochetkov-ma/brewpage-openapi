@@ -10,7 +10,7 @@ Use BrewPage directly from Claude Desktop, Claude Code, or any MCP client.
 ┌─────────────────────────────────────────────────────┐
 │  YOU       "Publish this to BrewPage"               │
 │    ↓                                                │
-│  CLAUDE    Calls publish_html via MCP               │
+│  CLAUDE    Calls publish via MCP                    │
 │    ↓                                                │
 │  BREWPAGE  Creates page, returns URL                │
 │    ↓                                                │
@@ -24,7 +24,7 @@ Use BrewPage directly from Claude Desktop, Claude Code, or any MCP client.
 
 ### Remote (no install)
 
-One remote MCP server for every client: `https://brewpage.app/mcp` (Streamable HTTP, no authentication, same 25 tools). Add it by URL in Claude (a custom connector), ChatGPT (a custom MCP server) or any Streamable HTTP client.
+One remote MCP server for every client: `https://brewpage.app/mcp` (Streamable HTTP, anonymous access or optional account connection). Add it by URL in Claude (a custom connector), ChatGPT (a custom MCP server) or any Streamable HTTP client.
 
 Claude Code: `claude mcp add --transport http brewpage --scope user https://brewpage.app/mcp` (leave out `--scope user` to add it to the current project only), or in `.mcp.json`:
 
@@ -46,7 +46,7 @@ Claude calls a remote MCP server a custom connector. Add it once in Claude on th
 1. Open **Customize** > **Connectors**.
 2. Click **+ Add**, then **Add custom connector**.
 3. Name it **BrewPage**, paste `https://brewpage.app/mcp` and click **Continue**.
-4. Click **Continue** again, choose **No sign in** under Authentication and click **Add**.
+4. Choose anonymous access for immediate publishing or connect BrewPage for account access.
 
 The free plan includes one custom connector.
 
@@ -57,7 +57,7 @@ Local fallback (stdio, needs Node.js; the same tools): edit `~/Library/Applicati
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@2.1.2"]
+      "args": ["-y", "brewpage-mcp@3.0.0"]
     }
   }
 }
@@ -67,14 +67,14 @@ Windows: `%APPDATA%\Claude\claude_desktop_config.json`
 
 ### Claude Code
 
-The remote command above is the default. Local fallback: run `claude mcp add --transport stdio --scope project brewpage -- npx -y brewpage-mcp@2.1.2`, or add this to project-root `.mcp.json`:
+The remote command above is the default. Local fallback: run `claude mcp add --transport stdio --scope project brewpage -- npx -y brewpage-mcp@3.0.0`, or add this to project-root `.mcp.json`:
 
 ```json
 {
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@2.1.2"]
+      "args": ["-y", "brewpage-mcp@3.0.0"]
     }
   }
 }
@@ -83,12 +83,12 @@ The remote command above is the default. Local fallback: run `claude mcp add --t
 ### Direct run
 
 ```bash
-npx -y brewpage-mcp@2.1.2
+npx -y brewpage-mcp@3.0.0
 ```
 
 ---
 
-## Tools
+## Legacy tool reference
 
 | Tool | What it does |
 |------|-------------|
@@ -118,7 +118,7 @@ npx -y brewpage-mcp@2.1.2
 | `configure_page_data` | Turn Page data on or off, change who can read a list and its limits; only what you name changes |
 | `delete_page_data` | Delete entries (`docIds`) or files (`fileIds`) by id, by time range, or the whole list (`all: true`) |
 
-25 tools. The 1.x names `publish_site`, `republish_site`, `get_json`, `get_kv`, `set_visibility`, `set_badge`, `set_title` and `update_hosting` left the list in 2.0.0 and are still callable; each answer ends with a note naming the current tool. A failed call carries a `Next:` line with the step to take.
+Version 3.0.0 lists 13 compact tools. Its saved calls include the 25 tool names from 2.1.2 and eight earlier aliases, including `publish_site` and `update_hosting`. [Compact tool reference](https://github.com/kochetkov-ma/brewpage-openapi/tree/main/mcp-server)
 
 Omitted `namespace` is private (a generated namespace): unlisted and not indexed; anyone with the link can still open it. `public` lists HTML, sites and files in the gallery and sitemap, so Google, Bing and AI search can index them. Password-protected publications are never listed. Keep the exact server-returned `link`, cohort and effective mode.
 

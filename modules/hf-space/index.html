@@ -27,7 +27,7 @@
 <div>
   <h2>What is BrewPage</h2>
   <p>
-    <a href="https://brewpage.app">BrewPage</a> is a free instant hosting platform for HTML pages, multi-file static sites, KV entries, JSON documents, and binary files. One <code>POST</code> returns a stable HTTPS short URL with no accounts and no API keys. Every resource carries an <strong>owner token</strong> for in-place updates, deletes, and cross-session listing.
+    <a href="https://brewpage.app">BrewPage</a> hosts HTML pages, multi-file static sites, KV entries, JSON documents, and binary files. Publish immediately or connect an account for account-owned publications. Share the returned HTTPS reader link and keep any newly issued anonymous owner token private.
   </p>
   <p>
     BrewPage ships an LLM-friendly surface: <a href="https://brewpage.app/llms.txt">/llms.txt</a>, <a href="https://brewpage.app/llms-full.txt">/llms-full.txt</a>, an <a href="https://brewpage.app/api/openapi.yaml">OpenAPI spec</a>, and the <a href="https://www.npmjs.com/package/brewpage-mcp">brewpage-mcp</a> server so Claude, Codex, Gemini, Cursor, and Cline can publish and manage content directly.
@@ -35,26 +35,27 @@
 </div>
 
 <div>
-  <h2>MCP tools (six of 25)</h2>
+  <h2>MCP tools (six of 13)</h2>
   <table>
     <thead>
       <tr><th>Tool</th><th>Purpose</th></tr>
     </thead>
     <tbody>
-      <tr><td><code>publish_html</code></td><td>Publish a page (HTML, Markdown, code or JSON) or a multi-file static site; returns the share link, the owner token and the management link.</td></tr>
-      <tr><td><code>update_html</code></td><td>Replace the content of a page or every file of a site; the link stays.</td></tr>
-      <tr><td><code>publish_file</code></td><td>Upload a file by fetching it from a URL.</td></tr>
-      <tr><td><code>delete_resource</code></td><td>Delete an HTML page, site, KV store, JSON document, or file using the owner token.</td></tr>
-      <tr><td><code>get_page</code></td><td>Read a published page, a JSON document or a KV value by namespace + ID.</td></tr>
-      <tr><td><code>get_stats</code></td><td>Platform-wide counts of publications created, deleted and viewed, today and all time.</td></tr>
+      <tr><td><code>publish</code></td><td>Publish inline content, a complete site bundle, a public file URL, JSON or KV.</td></tr>
+      <tr><td><code>update_publication</code></td><td>Replace existing content. For a site, send all retained files and the intended entry.</td></tr>
+      <tr><td><code>read_publication</code></td><td>Read published content or an authorized owner view.</td></tr>
+      <tr><td><code>delete_publication</code></td><td>Delete an owned publication or one KV key.</td></tr>
+      <tr><td><code>read_page_data</code></td><td>Read visitor data settings, entries, totals or uploads as an owner.</td></tr>
+      <tr><td><code>get_guide</code></td><td>Read a workflow for publishing, Page data, templates or accounts.</td></tr>
     </tbody>
   </table>
+  <p>Version 3.0.0 advertises the compact catalog. Cached calls from earlier versions remain supported.</p>
 </div>
 
 <div>
   <h2>Install</h2>
   <p>
-    Remote (no install): add <code>https://brewpage.app/mcp</code> as a remote MCP server (Streamable HTTP, no authentication, same 25 tools): a custom connector in Claude.ai and Claude Desktop, a custom MCP server in ChatGPT, or any Streamable HTTP client. Setup for every AI tool: <a href="https://brewpage.app/integrations">brewpage.app/integrations</a>.
+    Remote (no install): add <code>https://brewpage.app/mcp</code> as a remote MCP server (Streamable HTTP, anonymous access or optional account connection): a custom connector in Claude.ai and Claude Desktop, a custom MCP server in ChatGPT, or any Streamable HTTP client. Setup for every AI tool: <a href="https://brewpage.app/integrations">brewpage.app/integrations</a>.
   </p>
   <p>
     Local package, for clients that only start local servers (needs Node.js). Add this snippet to the client's MCP configuration (Claude Desktop, Codex CLI, Cursor, Cline):
@@ -63,7 +64,7 @@
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@2.1.2"]
+      "args": ["-y", "brewpage-mcp@3.0.0"]
     }
   }
 }</code></pre>

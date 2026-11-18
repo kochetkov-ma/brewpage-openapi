@@ -1,44 +1,97 @@
-name: Deploy Docs
+name: Docs
 
 on:
   push:
     branches: [main]
+    paths: ['docs/**', 'openapi/**', '.github/workflows/docs.yml', '.github/workflows/release.yml', 'scripts/verify-pages-workflow.mjs']
+  pull_request:
+    paths: ['docs/**', 'openapi/**', '.github/workflows/docs.yml', '.github/workflows/release.yml', 'scripts/verify-pages-workflow.mjs']
   workflow_dispatch:
+  workflow_run:
+    workflows: [Release]
+    types: [completed]
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 concurrency:
-  group: pages
+  group: docs-build-${{ github.event.workflow_run.id || github.ref }}
   cancel-in-progress: false
 
 jobs:
-  changes:
+  qualification:
+    if: |
+      github.event_name == 'workflow_run' &&
+      github.event.workflow_run.event == 'workflow_dispatch' &&
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.head_repository.full_name == github.repository
+    permissions:
+      actions: read
+      contents: read
     runs-on: ubuntu-24.04
+    timeout-minutes: 5
     outputs:
-      docs: ${{ steps.filter.outputs.docs }}
+      revision: ${{ steps.release.outputs.revision }}
+      tag: ${{ steps.release.outputs.tag }}
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
-      - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
-        id: filter
-        with:
-          filters: |
-            docs:
-              - 'docs/**'
-              - 'openapi/**'
-              - '.github/workflows/docs.yml'
+      - name: Verify the completed publisher attempt
+        id: release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+          RUN_ATTEMPT: ${{ github.event.workflow_run.run_attempt }}
+          WORKFLOW_ID: ${{ github.event.workflow_run.workflow_id }}
+          REF_NAME: ${{ github.event.workflow_run.head_branch }}
+          REVISION: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          set -euo pipefail
+          [[ "$RUN_ID" =~ ^[1-9][0-9]*$ && "$RUN_ATTEMPT" =~ ^[1-9][0-9]*$ ]] || exit 1
+          [[ "$REF_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ && "$REVISION" =~ ^[0-9a-f]{40}$ ]] || exit 1
+          SOURCE=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/release.yml")
+          jq -e --arg id "$WORKFLOW_ID" '(.id | tostring) == $id and .path == ".github/workflows/release.yml"' <<< "$SOURCE" >/dev/null
+          TAG_REF=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$REF_NAME")
+          TAG_OBJECT=$(jq -ce --arg ref "refs/tags/$REF_NAME" 'select(.ref == $ref) | .object' <<< "$TAG_REF")
+          for _ in 1 2 3 4 5 6 7 8; do
+            TYPE=$(jq -er '.type' <<< "$TAG_OBJECT")
+            SHA=$(jq -er '.sha' <<< "$TAG_OBJECT")
+            [[ "$SHA" =~ ^[0-9a-f]{40}$ ]] || exit 1
+            if [[ "$TYPE" == commit ]]; then
+              break
+            fi
+            [[ "$TYPE" == tag ]] || exit 1
+            TAG=$(gh api "repos/$GITHUB_REPOSITORY/git/tags/$SHA")
+            TAG_OBJECT=$(jq -ce --arg sha "$SHA" 'select(.sha == $sha) | .object' <<< "$TAG")
+          done
+          [[ "$TYPE" == commit && "$SHA" == "$REVISION" ]] || exit 1
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$RUN_ID/attempts/$RUN_ATTEMPT/jobs?per_page=100" |
+            jq -e --argjson id "$RUN_ID" --argjson attempt "$RUN_ATTEMPT" --arg sha "$REVISION" '
+              .jobs as $jobs
+              | .total_count == ($jobs | length)
+                and all(["qualification", "release", "registry", "advertise"][]; . as $name
+                  | [$jobs[] | select(.name == $name) | {run_id, run_attempt, head_sha, conclusion}]
+                    == [{run_id: $id, run_attempt: $attempt, head_sha: $sha, conclusion: "success"}])
+            ' >/dev/null
+          echo "revision=$REVISION" >> "$GITHUB_OUTPUT"
+          echo "tag=$REF_NAME" >> "$GITHUB_OUTPUT"
 
   build:
-    needs: changes
-    if: needs.changes.outputs.docs == 'true' || github.event_name == 'workflow_dispatch'
+    needs: qualification
+    if: "!cancelled() && (github.event_name != 'workflow_run' || needs.qualification.result == 'success')"
     runs-on: ubuntu-24.04
+    timeout-minutes: 15
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/checkout@v7.0.1
+        with:
+          ref: ${{ needs.qualification.outputs.revision || github.sha }}
+          persist-credentials: false
 
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+      - name: Verify qualified source checkout
+        if: github.event_name == 'workflow_run'
+        env:
+          REVISION: ${{ needs.qualification.outputs.revision }}
+        run: test "$(git rev-parse HEAD)" = "$REVISION"
+
+      - uses: actions/setup-node@v7.1.0
         with:
           node-version: '22.23.3'
           cache: npm
@@ -48,6 +101,9 @@ jobs:
         working-directory: docs
         run: npm ci
 
+      - name: Verify Pages release qualification
+        run: node scripts/verify-pages-workflow.mjs
+
       - name: Copy OpenAPI documents to public
         run: cp openapi/openapi.json openapi/page-data-host.json docs/public/
 
@@ -56,18 +112,42 @@ jobs:
         run: npm run build
 
       - name: Upload artifact
-        uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        if: github.event_name == 'workflow_run' && needs.qualification.result == 'success'
+        uses: actions/upload-pages-artifact@v5.0.0
         with:
           path: docs/dist
 
   deploy:
-    needs: [changes, build]
-    if: needs.changes.outputs.docs == 'true' || github.event_name == 'workflow_dispatch'
+    needs: [qualification, build]
+    if: github.event_name == 'workflow_run' && needs.qualification.result == 'success' && needs.build.result == 'success'
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    concurrency:
+      group: pages
+      queue: max
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-24.04
+    timeout-minutes: 10
     steps:
+      - name: Refuse a superseded Pages artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ needs.qualification.outputs.tag }}
+        run: |
+          set -euo pipefail
+          LATEST=$(gh api --paginate "repos/$GITHUB_REPOSITORY/releases?per_page=100" |
+            jq -r '.[] | select(.draft == false and .prerelease == false and .published_at != null)
+              | .tag_name | select(test("^v[0-9]+\\.[0-9]+\\.[0-9]+$"))' |
+            sort -V | tail -n 1)
+          if [[ -z "$LATEST" || "$RELEASE_TAG" != "$LATEST" ]]; then
+            echo '::error::Pages requires the highest published stable MCP release'
+            exit 1
+          fi
+
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
+        uses: actions/deploy-pages@v5.0.1

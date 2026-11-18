@@ -177,7 +177,7 @@ Both imports run in one step and neither output is hand-edited: `node scripts/sy
 
 ## MCP Server
 
-The `brewpage-mcp` package provides a Model Context Protocol server with **25 tools** for AI-assisted content publishing and management. Selected tools appear below; see [`mcp-server/README.md`](mcp-server/README.md) for the complete list and documentation. Tool names of 1.x that left the list in 2.0.0 (`publish_site`, `set_visibility` and six more) are still callable; the MCP README maps each to its current tool.
+The `brewpage-mcp` package provides **13 tools** for AI-assisted publishing and management. Start with `publish` for HTML, sites, files, JSON or KV. Cached 1.x and 2.x calls remain callable. The package guide covers compact commands, local OAuth and saved tool calls. [MCP guide](mcp-server/README.md)
 
 Package releases use `.github/workflows/release.yml` with package-scoped npm Trusted Publisher/OIDC for `kochetkov-ma/brewpage-openapi`, workflow `release.yml`, without an environment. CI needs no `NPM_TOKEN`, manual npm login or static-token rotation. Local `npm whoami` does not validate GitHub Actions OIDC authentication. Publication to the official MCP registry (`io.github.kochetkov-ma/brewpage-mcp`) is automatic via GitHub OIDC in the same workflow; no local `mcp-publisher` token is needed.
 
@@ -188,6 +188,8 @@ gh workflow run release.yml --repo kochetkov-ma/brewpage-openapi --ref main
 ```
 
 Rerunning historical tag workflows that used token authentication is unsupported; use current `main` instead. The retry checks the matching version tag and unchanged MCP source, and skips publication when that version already exists.
+
+### Legacy calls
 
 | Tool | Description |
 |------|-------------|
@@ -211,7 +213,7 @@ Rerunning historical tag workflows that used token authentication is unsupported
 
 ### Remote (no install)
 
-One remote MCP server for every client: `https://brewpage.app/mcp` (Streamable HTTP, no authentication, same 25 tools). Add it by URL in Claude (a custom connector), ChatGPT (a custom MCP server) or any Streamable HTTP client.
+One remote MCP server for every client: `https://brewpage.app/mcp` (Streamable HTTP, anonymous access or optional account connection). Add it by URL in Claude (a custom connector), ChatGPT (a custom MCP server) or any Streamable HTTP client.
 
 Claude Code: `claude mcp add --transport http brewpage --scope user https://brewpage.app/mcp` (leave out `--scope user` to add it to the current project only), or in `.mcp.json`:
 
@@ -233,7 +235,7 @@ Claude calls a remote MCP server a custom connector. Add it once in Claude on th
 1. Open **Customize** > **Connectors**.
 2. Click **+ Add**, then **Add custom connector**.
 3. Name it **BrewPage**, paste `https://brewpage.app/mcp` and click **Continue**.
-4. Click **Continue** again, choose **No sign in** under Authentication and click **Add**.
+4. Choose anonymous access for immediate publishing or connect BrewPage for account access.
 
 The free plan includes one custom connector.
 
@@ -244,7 +246,7 @@ Local fallback (stdio, needs Node.js; the same tools): add to `~/Library/Applica
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@2.1.2"]
+      "args": ["-y", "brewpage-mcp@3.0.0"]
     }
   }
 }
@@ -259,7 +261,7 @@ The remote command above is the default. Local fallback (stdio, needs Node.js): 
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@2.1.2"]
+      "args": ["-y", "brewpage-mcp@3.0.0"]
     }
   }
 }
@@ -318,7 +320,7 @@ BrewPage is described using [schema.org/SoftwareApplication](https://schema.org/
 |-----------|-------------|
 | OpenAPI 3.1 spec | Complete API contract for all public endpoints (YAML + JSON) |
 | Interactive docs | Astro + Scalar documentation site (GitHub Pages) |
-| MCP server | `brewpage-mcp` -- Claude Desktop/Code integration (25 tools) |
+| MCP server | `brewpage-mcp` -- Claude Desktop/Code integration (13 tools) |
 | Wiki | Code snippets, cheatsheet, tips & tricks |
 | Release notes | Changelog for API and public tooling |
 

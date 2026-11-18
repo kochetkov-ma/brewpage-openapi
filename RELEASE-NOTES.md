@@ -1,5 +1,12 @@
 # Release Notes
 
+## MCP 3.0.0 — Agent publishing
+
+- The usual tool list has 13 operations for publishing and managing HTML, sites, files, JSON and key-value stores. Existing clients can keep calling the previous tools, including earlier aliases.
+- Use a BrewPage account connection to publish under the account and manage its publications. Anonymous publishing and existing owner credentials are still supported. On macOS, `npx -y brewpage-mcp@3.0.0 login` connects a local client through browser consent.
+- Compact MCP publishing preserves supplied HTML source by default. When replacing a site with the compact tool, send the complete bundle and its entry file.
+- Existing HTML-only integrations can keep their original `publish_html` discovery and permissions. Local installations use `brewpage-mcp@3.0.0`; the remote endpoint is `https://brewpage.app/mcp`.
+
 ## MCP 2.1.2 — 2026-11-17
 
 - The remote server `https://brewpage.app/mcp` now passes MCP directory connection checks that read its first answer as a stream: one sentence of the connect instructions was reworded, with the same meaning.

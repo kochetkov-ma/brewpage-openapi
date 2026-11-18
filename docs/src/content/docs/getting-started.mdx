@@ -8,7 +8,7 @@ import Timeline from '../../components/mdx/Timeline.astro';
 
 # Getting Started
 
-Last updated: 2026-10-27
+Last updated: 2026-11-18
 
 BrewPage is a free hosting platform for HTML pages, key-value data, JSON documents, files, and multi-file sites. No signup required — publish content instantly.
 
@@ -39,11 +39,11 @@ Current upload limits are published as JSON at [`GET /api/limits`](https://brewp
 
 ---
 
-### 2. Claude Skill (`/brewpage`)
+### 2. Claude Skill (`/brewdoc:publish` or `/brewpage-publish`)
 
 <Timeline steps={[
   { title: "Install the publishing skill", description: "Follow the linked skill installation guide for your client" },
-  { title: "Use the slash command", description: '/brewpage "Hello world" — or say: publish this to brewpage' },
+  { title: "Use the slash command", description: '/brewdoc:publish "Hello world" with Brewdoc, or /brewpage-publish "Hello world" standalone; plain-language requests also work' },
   { title: "Pick namespace and password", description: "The skill defaults to a private, unlisted namespace; select public to list it in the gallery and sitemap" },
   { title: "Get link + saved token", description: "Use the exact returned link; the skill stores owner authority in its local publication history" },
 ]} />
@@ -55,14 +55,14 @@ Current upload limits are published as JSON at [`GET /api/limits`](https://brewp
 ### 3. MCP Server (AI Agent)
 
 <Timeline steps={[
-  { title: "Configure brewpage-mcp@2.1.2", description: "Follow the MCP guide for your client; the pinned stdio command is npx -y brewpage-mcp@2.1.2" },
-  { title: 'Ask your assistant: "Publish this to BrewPage"', description: "25 tools support HTML, Markdown, JSON, KV, files, sites, publication settings (listing, title, password, badge), making a page private, custom domains, page data (what visitors save on a page), owner tokens and upload limits; namespace defaults to unlisted" },
-  { title: "Get link + owner token", description: "Claude returns the URL and reminds you to save the token" },
+  { title: "Configure brewpage-mcp@3.0.0", description: "Follow the MCP guide for your client; the pinned stdio command is npx -y brewpage-mcp@3.0.0" },
+  { title: 'Ask your assistant: "Publish this to BrewPage"', description: "13 tools cover publishing, updates, visitor data, domains and account actions. New links default to unlisted." },
+  { title: "Get the reader link", description: "Use the exact returned link. Save any newly issued owner token privately, or manage an account publication through the account." },
 ]} />
 
 [MCP Server guide](/brewpage-openapi/mcp-server/) · [npm package](https://www.npmjs.com/package/brewpage-mcp)
 
-**Remote (no install):** One remote MCP server for every client: `https://brewpage.app/mcp` (Streamable HTTP, no authentication, same 25 tools). Add it by URL in Claude (a custom connector: **Customize** > **Connectors** > **+ Add** > **Add custom connector**), ChatGPT (a custom MCP server) or any Streamable HTTP client.
+**Remote (no install)** — Add `https://brewpage.app/mcp` to a Streamable HTTP client. Publish immediately in anonymous mode or connect BrewPage for account-owned work.
 
 ---
 

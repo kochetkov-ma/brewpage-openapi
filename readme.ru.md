@@ -57,9 +57,9 @@ curl -X POST 'https://brewpage.app/api/sites?ns=public' \
 
 ## MCP-сервер
 
-`brewpage-mcp` оборачивает API в 25 инструментов для любого MCP-клиента (Claude, Codex, Gemini, Cursor и другие). Полный список: [`mcp-server/README.md`](mcp-server/README.md).
+`brewpage-mcp` предоставляет 13 инструментов для MCP-клиентов, включая Claude, Codex, Gemini и Cursor. Старые вызовы сохраняются. [Полный список](mcp-server/README.md)
 
-Удалённый сервер без установки и авторизации: `https://brewpage.app/mcp` (Streamable HTTP). Claude Code:
+Удалённый сервер работает через Streamable HTTP. Можно публиковать сразу или подключить аккаунт BrewPage. Команда для Claude Code:
 
 ```bash
 claude mcp add --transport http brewpage --scope user https://brewpage.app/mcp
@@ -72,7 +72,7 @@ claude mcp add --transport http brewpage --scope user https://brewpage.app/mcp
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@2.1.2"]
+      "args": ["-y", "brewpage-mcp@3.0.0"]
     }
   }
 }

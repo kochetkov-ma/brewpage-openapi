@@ -12,26 +12,26 @@ license: apache-2.0
 
 ## What is BrewPage
 
-[BrewPage](https://brewpage.app) is a free instant hosting platform for HTML pages, multi-file static sites, KV entries, JSON documents, and binary files. One `POST` returns a stable HTTPS short URL with no accounts or API keys; every resource carries an **owner token** for in-place updates, deletes, and cross-session listing. BrewPage is built as an LLM-friendly surface: it ships [`/llms.txt`](https://brewpage.app/llms.txt), [`/llms-full.txt`](https://brewpage.app/llms-full.txt), an [OpenAPI spec](https://brewpage.app/api/openapi.yaml), and the [`brewpage-mcp`](https://www.npmjs.com/package/brewpage-mcp) Model Context Protocol server so AI agents (Claude, Codex, Gemini, Cursor, Cline) can publish and manage content without leaving the conversation.
+[BrewPage](https://brewpage.app) hosts HTML pages, multi-file static sites, KV entries, JSON documents, and binary files. Publish immediately or connect an account for account-owned publications. Share the returned HTTPS reader link. Save a newly issued anonymous owner token privately and reuse existing proof on later edits. See [`/llms.txt`](https://brewpage.app/llms.txt), [`/llms-full.txt`](https://brewpage.app/llms-full.txt), and the [OpenAPI spec](https://brewpage.app/api/openapi.yaml) for the REST API.
 
 ## Tools
 
-The `brewpage-mcp` server exposes 25 typed MCP tools; six are shown below, see the [package README](https://www.npmjs.com/package/brewpage-mcp) for the complete list. All write operations return an owner token; keep it to modify or delete the resource later.
+The `brewpage-mcp` 3.0.0 server advertises 13 tools. Cached names from earlier versions remain callable. See the [package README](https://www.npmjs.com/package/brewpage-mcp) for the complete catalog.
 
 | Tool | Purpose | Key parameters |
 |------|---------|----------------|
-| `publish_html` | Publish a page (HTML, Markdown, code or JSON) or a multi-file static site; returns the share link, the owner token and the management link. | `content` *or* `files` (`[{path, content}]`), `entry` (site entry file, default `index.html`), `format` (optional; detected when omitted), `namespace`, `password`, `ttlDays` (days: up to 30 days without an account, up to 90 with a free profile; a default applies when omitted), `filename`, `showTopBar`, `ownerToken` |
-| `update_html` | Replace the content of a page or every file of a site; the link stays. | `namespace`, `id`, `content` *or* `files`, `ownerToken` |
-| `publish_file` | Upload a file by fetching it from a URL (images, PDFs, video, audio, code, archives). | `url`, `namespace`, `filename`, `password`, `ttlDays` |
-| `delete_resource` | Delete an HTML page, site, KV store, JSON document, or file using the owner token. | `type` (`html` \| `site` \| `kv` \| `json` \| `file`), `namespace`, `id`, `ownerToken` |
-| `get_page` | Read a published page, a JSON document or a KV value by namespace + ID. | `type` (`html` default \| `json` \| `kv`), `namespace`, `id`, `key` (KV), `password` (optional) |
-| `get_stats` | Platform-wide counts of publications created, deleted and viewed, today and all time. | `tz` (optional IANA timezone, default UTC) |
+| `publish` | Publish inline content, a complete site bundle, a public file URL, JSON or KV. | `kind` and its content fields |
+| `update_publication` | Replace existing content. Supply all retained site files and the intended entry. | `kind`, `namespace`, `id`, replacement content and owner proof |
+| `read_publication` | Read published content or an authorized owner view. | `kind`, `namespace`, `id`, optional `view` |
+| `delete_publication` | Delete an owned publication or one KV key. | `kind`, `namespace`, `id`, optional `key` and owner proof |
+| `read_page_data` | Read visitor data settings, entries, totals or uploads as an owner. | Publication target, optional `collection` and owner proof |
+| `get_guide` | Read a workflow for publishing, Page data, templates or accounts. | `topic` |
 
 ## Install
 
 ### Remote (no install)
 
-One remote MCP server for every client: `https://brewpage.app/mcp` (Streamable HTTP, no authentication, same 25 tools). Add it by URL in Claude (a custom connector), ChatGPT (a custom MCP server) or any Streamable HTTP client.
+One remote MCP server for every client: `https://brewpage.app/mcp` (Streamable HTTP, anonymous access or optional account connection). Add it by URL in Claude (a custom connector), ChatGPT (a custom MCP server) or any Streamable HTTP client.
 
 Claude Code: `claude mcp add --transport http brewpage --scope user https://brewpage.app/mcp` (leave out `--scope user` to add it to the current project only).
 
@@ -42,7 +42,7 @@ Claude calls a remote MCP server a custom connector. Add it once in Claude on th
 1. Open **Customize** > **Connectors**.
 2. Click **+ Add**, then **Add custom connector**.
 3. Name it **BrewPage**, paste `https://brewpage.app/mcp` and click **Continue**.
-4. Click **Continue** again, choose **No sign in** under Authentication and click **Add**.
+4. Choose anonymous access for immediate publishing or connect BrewPage for account access.
 
 The free plan includes one custom connector.
 
@@ -57,7 +57,7 @@ Claude Desktop local fallback: add to `~/Library/Application Support/Claude/clau
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@2.1.2"]
+      "args": ["-y", "brewpage-mcp@3.0.0"]
     }
   }
 }
@@ -70,7 +70,7 @@ Add to `~/.codex/config.toml`:
 ```toml
 [mcp_servers.brewpage]
 command = "npx"
-args = ["-y", "brewpage-mcp@2.1.2"]
+args = ["-y", "brewpage-mcp@3.0.0"]
 ```
 
 #### Cursor
@@ -82,7 +82,7 @@ Open **Settings > MCP** and add:
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@2.1.2"]
+      "args": ["-y", "brewpage-mcp@3.0.0"]
     }
   }
 }
@@ -96,7 +96,7 @@ Open the Cline MCP settings panel and add:
 {
   "brewpage": {
     "command": "npx",
-    "args": ["-y", "brewpage-mcp@2.1.2"]
+    "args": ["-y", "brewpage-mcp@3.0.0"]
   }
 }
 ```
