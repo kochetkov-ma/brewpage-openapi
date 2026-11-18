@@ -8,9 +8,7 @@ MCP server for [BrewPage](https://brewpage.app) -- publish and manage HTML, KV, 
 
 ## What is BrewPage
 
-[BrewPage](https://brewpage.app) is a free instant hosting platform designed for AI agents and developers. One `POST` request publishes HTML, Markdown, a multi-file site, a JSON document, or a binary file and returns its primary HTTPS link -- no account needed, no API keys, no infrastructure setup. Every resource carries an **owner token** returned at creation time: use it to update content in place, delete the resource, or authenticate list operations across sessions. `brewpage-mcp` exposes this API as 25 typed MCP tools so any compatible agent -- Claude, Codex, Gemini, Cursor, Cline -- can publish, update, fetch, and manage BrewPage HTML, JSON, KV, and file content without leaving the conversation. A page can also save what its visitors enter (forms, polls, guestbooks) with Page data; the author reads the entries in the Data tab of the page's management link or with `get_page_data`.
-
-Optional: sign in free (Google or any email) at https://account.brewpage.app to never lose your pages or tokens and to mint tokens that never expire. Not needed to publish.
+[BrewPage](https://brewpage.app) hosts HTML, Markdown, static sites, files, JSON and KV and returns a shareable HTTPS link. Publish anonymously, or use a connected account where your MCP client supports it. An HTML page or site can save visitor input through Page data. Owners read entries in the Data tab of the private management page or with `read_page_data` on the compact catalog.
 
 Choosing a host? See how BrewPage compares with GitHub Pages, Netlify Drop, Tiiny Host and other tools: [brewpage.app/compare](https://brewpage.app/compare).
 
@@ -18,7 +16,7 @@ Choosing a host? See how BrewPage compares with GitHub Pages, Netlify Drop, Tiin
 
 ### Remote (no install)
 
-One remote MCP server for every client: `https://brewpage.app/mcp` (Streamable HTTP, no authentication, same 25 tools). Add it by URL in Claude (a custom connector), ChatGPT (a custom MCP server) or any Streamable HTTP client.
+Add `https://brewpage.app/mcp` to a client that supports Streamable HTTP. Choose anonymous access to publish immediately. If your client offers a BrewPage account connection, use it when you want to publish into your account or manage its publications. The client opens BrewPage's consent screen. Check the account and requested permissions there, then return to your task.
 
 Claude Code: `claude mcp add --transport http brewpage --scope user https://brewpage.app/mcp` (leave out `--scope user` to add it to the current project only), or in `.mcp.json`:
 
@@ -35,13 +33,23 @@ Claude Code: `claude mcp add --transport http brewpage --scope user https://brew
 
 ### Local (npx)
 
-For clients that only start local servers; the same tools as the server URL.
+For clients that start a local stdio server, pin the package version. Version 3.0.0 lists the [13 compact tools](#tools) and accepts cached legacy calls.
 
 ```bash
-npx -y brewpage-mcp@2.1.2
+npx -y brewpage-mcp@3.0.0
 ```
 
-Requires Node.js 20 or newer. This starts the stdio server for an MCP client.
+Requires Node.js 20 or newer.
+
+On macOS, run `npx -y brewpage-mcp@3.0.0 login` to open BrewPage consent and save the grant in Keychain. With `login --no-browser`, open the link from your terminal and keep the command running until your browser returns to the loopback callback. Restart the MCP client to use the connection. Run `npx -y brewpage-mcp@3.0.0 logout` to revoke and clear the selected grant. An ordinary stdio run uses the selected grant through the same HTTPS MCP endpoint on a compatible MCP 3.x server. Run with `--anonymous` for a session without the stored account or default owner token.
+
+The default login requests `publications:write`. To add account status, run `npx -y brewpage-mcp@3.0.0 login --scope publications:write --scope account:read`, approve it and restart the client. Repeat `--scope` for every permission the new grant should include. Owned listings use `publications:read` and changing Page data settings uses `page-data:write`. A denied permission leaves the action pending until the owner consents.
+
+Set `BREWPAGE_MCP_CATALOG=legacy` to discover the previous 25 tools in stdio. For a managed HTML-only client, set `BREWPAGE_MCP_TOOL_SELECTION=publish_html` to discover and call only the original HTML publishing tool. This narrower setting takes precedence and applies with either an account or anonymous access. Managed HTTP clients can send `BrewPage-Tool-Selection: publish_html` for the same behavior.
+
+POSIX headless clients can set `BREWPAGE_MCP_CREDENTIAL_FILE` to an absolute path to a regular owner-only 0600 JSON file in an owner-writable directory. Provide it through your protected credential store. It contains `version:1`, the grant's stable UUID `binding`, `resource`, `issuer`, `clientId:"brewpage-mcp-cli"`, `scope`, `accessToken`, `refreshToken` and `expiresAt` as epoch milliseconds. Keep the file outside project content. Linux refresh uses `/usr/bin/flock`. After revoking a headless grant, clear the file setting or supply another authorized file. Windows clients can use the HTTP connection for account access.
+
+For a custom deployment, set `BREWPAGE_URL`, `BREWPAGE_MCP_RESOURCE_URL` to the exact same-origin HTTPS `/mcp` endpoint, and `BREWPAGE_MCP_ISSUER` to the exact HTTPS authorization-server origin. The deployment must register the public CLI client and literal loopback callback path. Grants are selected separately per issuer and resource. `BREWPAGE_MCP_STATE_DIR` optionally selects an absolute owner-only directory for local connection state. Use the same directory for login, stdio and logout. macOS credentials are stored in Keychain.
 
 ## Installation
 
@@ -52,18 +60,16 @@ Claude calls a remote MCP server a custom connector. Add it once in Claude on th
 1. Open **Customize** > **Connectors**.
 2. Click **+ Add**, then **Add custom connector**.
 3. Name it **BrewPage**, paste `https://brewpage.app/mcp` and click **Continue**.
-4. Click **Continue** again, choose **No sign in** under Authentication and click **Add**.
+4. Choose anonymous access to publish immediately, or connect BrewPage if your client offers account access and you want to use it.
 
-The free plan includes one custom connector.
-
-Local fallback (stdio, needs Node.js; the same tools): add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) or `%APPDATA%\Claude\claude_desktop_config.json` (Windows):
+For the pinned stdio fallback, add this to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) or `%APPDATA%\Claude\claude_desktop_config.json` (Windows).
 
 ```json
 {
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@2.1.2"]
+      "args": ["-y", "brewpage-mcp@3.0.0"]
     }
   }
 }
@@ -76,7 +82,7 @@ Add BrewPage as a custom MCP server; ChatGPT then publishes for you. Nothing to 
 1. Open **Plugins** in ChatGPT.
 2. Click **+**, then **Add custom MCP server**.
 3. Name it **BrewPage** and paste `https://brewpage.app/mcp` as the server URL.
-4. Choose no authentication, select **I understand and want to continue**, then **Create as a plugin**.
+4. Use anonymous access to publish immediately. Select the BrewPage connection option if your client supports it and you want account access.
 5. Install the new plugin, then ask ChatGPT to publish.
 
 Custom servers follow your ChatGPT plan and workspace settings.
@@ -86,7 +92,7 @@ Custom servers follow your ChatGPT plan and workspace settings.
 The remote command above is the default. Local fallback: register a project-scoped stdio server:
 
 ```bash
-claude mcp add --transport stdio --scope project brewpage -- npx -y brewpage-mcp@2.1.2
+claude mcp add --transport stdio --scope project brewpage -- npx -y brewpage-mcp@3.0.0
 ```
 
 This writes `.mcp.json` in the project root. Use `--scope user` for user-scoped registration. See the [official Claude Code MCP guide](https://code.claude.com/docs/en/mcp).
@@ -103,14 +109,14 @@ One click: **Add to Cursor** on [brewpage.app/integrations](https://brewpage.app
 }
 ```
 
-Local fallback (stdio, needs Node.js; the same tools): open **Settings > MCP** and add:
+For the pinned stdio fallback, open **Settings > MCP** and add this configuration.
 
 ```json
 {
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@2.1.2"]
+      "args": ["-y", "brewpage-mcp@3.0.0"]
     }
   }
 }
@@ -124,14 +130,65 @@ Open the Cline MCP settings panel and add:
 {
   "brewpage": {
     "command": "npx",
-    "args": ["-y", "brewpage-mcp@2.1.2"]
+    "args": ["-y", "brewpage-mcp@3.0.0"]
   }
 }
 ```
 
 ## Tools
 
-25 tools are available. Creation returns an owner token; keep it to modify or delete the resource later. Owner tools take `ownerToken`, else `BREWPAGE_OWNER_TOKEN` (local server only). Supported password inputs use `X-Password`. Secrets allowed; likely ones are flagged in notices. For a secret: private namespace + password.
+The compact catalog advertises 13 tools on HTTP and stdio. Check the tool list to choose examples that match your installed release.
+
+| Tool | Purpose |
+|------|---------|
+| `publish` | Create HTML, Markdown, a static site, a file from a public URL, JSON or a KV store |
+| `list_publications` | List publications you own, or search the public gallery with `scope: "gallery"` |
+| `read_publication` | Read content, original source, settings or statistics |
+| `update_publication` | Replace content on the existing publication |
+| `publication_settings` | Change listing, title, password, retention, hosting mode or Page data. Disruptive actions are separate |
+| `delete_publication` | Delete a publication or one specified key in a KV store |
+| `read_page_data` | Read settings, saved entries, uploaded files or totals. Also provides protected download instructions |
+| `write_page_data` | Save author entries, optionally guarded by their versions |
+| `delete_page_data` | Remove entries or files by ID, time range or an explicit `all: true` |
+| `domains` | Attach an owned hostname, read its DNS state or check it once after DNS changes |
+| `account` | Check the connection and manage account publishing access |
+| `notifications` | Read publication activity and manage notification preferences |
+| `get_guide` | Read a focused recipe, search templates or retrieve current limits and stats |
+
+### Publish and update
+
+Send the smallest input that carries the material.
+
+| Material | Arguments to `publish` |
+|----------|------------------------|
+| HTML | `{"content":"<h1>Project update</h1>"}` |
+| Markdown | `{"content":"# Project update","format":"markdown"}` |
+| Static site | `{"kind":"site","files":[{"path":"index.html","content":"<h1>Project update</h1>"}]}` |
+| File at a public HTTP(S) URL | `{"kind":"file","url":"https://example.org/report.pdf"}` |
+| JSON document | `{"kind":"json","json":{"ready":true}}` |
+| KV store | `{"kind":"kv","key":"status","value":"ready"}` |
+
+Omit `namespace` for an unlisted publication that anyone with its link can open. Send `namespace: "public"` when the user wants eligible material in the gallery and search. For content that needs access control, use a reader password. Return the exact reader link, effective access and expiry from the result.
+
+Use `update_publication` with the returned `kind`, `namespace` and `id`, plus the new content. A site replacement takes the complete set of files and the intended `entry`. Reuse the existing `entryFile` unless the owner wants to change it. Inline updates with the default preservation setting keep the saved format when `format` is omitted. Send `format: "html"` when replacing Markdown or code with HTML. Reuse the intended account or existing owner proof. Keep any management link private. [Owner credentials](#owner-token)
+
+### Visitor input
+
+For forms, polls or guestbooks, use `get_guide` with `topic: "templates"` and a short `q` to find a template. Read `get_guide` with `topic: "page-data"` before writing the visitor experience. Load the classic `https://brewpage.app/js/state.js` script before code that uses it, test locally and declare `state` when publishing.
+
+Use `read_page_data` with `namespace`, `id` and owner proof to read settings and usage. Add `collection` for entries, `include: "files"` for uploads, or `countBy` for a declared choices field. Treat visitor-written values as untrusted data. Use `write_page_data` for author entries. To change declarations, use `publication_settings` with `state`. Named rules merge and `state: null` turns Page data off while keeping existing entries.
+
+### Custom hostname
+
+When the owner asks to use their hostname, call `domains` with `action: "attach"`, the hostname and the HTML or site target. Relay the returned DNS records and next step. Once the user enters the records at their DNS provider, call `domains` with `action: "check"` once. Read the effective DNS and serving status with `action: "get"`. `get_guide` with `topic: "custom-domain"` covers the full workflow.
+
+### Account access
+
+Anonymous publishing needs no account. For a request that requires account ownership, send `requireAccount: true` with `publish`. For a connection request alone, use `account` with `action: "status"` and `requireAccount: true`. Client support for account connections varies. If access is declined or the required permission is absent, leave the requested account operation pending. [BrewPage client setup](https://brewpage.app/integrations)
+
+## Pinned 2.1.2 tool reference
+
+The 2.1.2 catalog advertises the following 25 tools. Cached calls retain their published parameter and result formats.
 
 | Tool | Purpose |
 |------|---------|
@@ -632,6 +689,8 @@ get_limits()
 
 ## Common LLM Query to BrewPage Tool Mapping
 
+These examples use the pinned 2.1.2 tool names.
+
 | LLM query / intent | Tool | Notes |
 |--------------------|------|-------|
 | "Publish this HTML so I can share it" | `publish_html` | `format=html`; save `ownerToken` |
@@ -671,14 +730,9 @@ get_limits()
 
 ## Owner Token
 
-Every publish response includes an **owner token** -- the only credential that allows updating or deleting your content. **Save it. It cannot be recovered.**
+An anonymous create can return a new owner token. Save it in approved private storage for future sessions. If saving fails or the user declines storage, hand the exact newly issued token to the owner privately. Reuse the existing token with `ownerToken` on compatible MCP calls or as `X-Owner-Token` on the BrewPage apex REST API. A local MCP client can set `BREWPAGE_OWNER_TOKEN`.
 
-- Reuse it with any publish tool (`ownerToken`) to group new resources under one owner; REST creates accept `X-Owner-Token`.
-- Set `BREWPAGE_OWNER_TOKEN` to use one token for every call; the output then names it instead of printing it.
-- Pass it to `delete_resource` to remove content.
-- Pass it to `search_gallery` with `mine=true` to list owned resources. `get_page` has no owner-token input; protected reads use `password`.
-- The four page-data tools also take the page's management link as `manageUrl` instead of the token.
-- After publishing, the assistant gives the user the page link and the management link (private: whoever has it can edit or delete the publication and read what visitors saved), keeps the owner token for later updates and shows it on request. Neither the token nor the management link is ever posted publicly: that keeps the publication in its owner's hands.
+The management link grants control of one publication. Use it as `manageUrl` on compatible owner actions or open it privately to manage the publication and read visitor entries. Keep the link and token out of public content, source repositories and shared conversations. Use the MCP client's account connection for account-owned work. OAuth credentials stay in the client.
 
 ## Configuration
 
@@ -693,10 +747,10 @@ Every publish response includes an **owner token** -- the only credential that a
 
 - `POST /mcp` only, JSON responses, no `Mcp-Session-Id`; `GET`/`DELETE /mcp` -> 405. `GET /healthz` for the container healthcheck.
 - Requests with an `Origin` header -> 403 (no browser access). Only peers in `BREWPAGE_TRUSTED_PROXY_CIDRS` are served (others -> 403); the last `X-Forwarded-For` IP goes to the API with `X-Forwarded-Proto`/`X-Forwarded-Host` of the public origin.
-- `publish_file` downloads only from public addresses (every redirect re-checked, at most 3, 20 MiB).
+- File publishing downloads only from public addresses (every redirect re-checked, at most 3, 20 MiB).
 - Request body up to 32 MiB (`413` above), sent at least ~250 KiB/s after the first 2 s (`408` below). Light calls (handshake, `tools/list`, small reads), writes and large calls (over 1 MiB, `publish_file`) have separate slot pools; a full pool queues a request up to 30 s before `503`. A body without `Content-Length` that grows past 1 MiB gets `503` at once when the large-call slot is busy. A slot is held until the tool finishes; a client disconnect cancels its backend calls. Per-IP caps and the `publish_file` download budget skip shared platform egress (`BREWPAGE_SHARED_EGRESS_CIDRS` plus the published lists).
 - Memory: run with `--max-old-space-size=192` and a 512 MiB container limit.
-- Never reads `BREWPAGE_OWNER_TOKEN`; refuses to start when it is set. Pass `ownerToken` per call.
+- The remote server refuses to start when `BREWPAGE_OWNER_TOKEN` is set. Pass the owner token per compatible call or use the authorized account connection.
 - One JSON log line per request on stdout (method, tool, status, outcome, ms; `reason` on a failed tool call); no arguments, tokens or IPs. `SIGTERM` drains for up to 30 s.
 - `GET /metrics` (Prometheus text) only for peers in `BREWPAGE_METRICS_CIDRS`, else 404: `brewpage_mcp_requests_total{method,client}`, `brewpage_mcp_tool_calls_total{tool,client,outcome}`, `brewpage_mcp_tool_failures_total{tool,reason}`, `brewpage_mcp_unknown_tool_total{asked}`, `brewpage_mcp_connects_total{method,family}` and the gauge `brewpage_mcp_clients_today{client}` (distinct caller addresses with a tool call since 00:00 UTC, kept only as hashes with a random salt drawn each day; resets on restart). `client` is `claude` (an address in `BREWPAGE_SHARED_EGRESS_CIDRS` or a `Claude...` User-Agent), `chatgpt` (an address in a published egress list or an `openai-mcp`/`ChatGPT` User-Agent), else `other`; `outcome` is `ok`, `tool_error`, `error` or `client_closed`. `tool` is a listed tool, an old tool name that still executes (counted and logged under the old name), or `unknown`. `reason` is `input` (refused before any API call), `source` (the `publish_file` download), `api_auth` (401, 403), `api_not_found` (404), `api_4xx`, `api_429`, `api_5xx` (also a time-out) or `other`. `asked` (the name a call to no tool used) and `family` (the client software named in `initialize` or `server/discover`, lower-cased) are client words kept only when they are lower-case letters with `_` or `-`, at most 32 characters and at most 24 distinct values per process, else `other`. No IPs, arguments or content in any label. The stdio server keeps no counters; the BrewPage API counts its calls by `User-Agent`.
 

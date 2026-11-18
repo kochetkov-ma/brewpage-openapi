@@ -6,9 +6,13 @@ import { lookup as dnsLookup, type LookupAddress, type LookupOptions } from "nod
 import { BlockList, isIP } from "node:net";
 import { realpathSync } from "node:fs";
 import { pathToFileURL } from "node:url";
-import { createMcpHandler, InMemoryTransport, isLegacyRequest, LATEST_PROTOCOL_VERSION, type JSONRPCMessage } from "@modelcontextprotocol/server";
-import { NodeStreamableHTTPServerTransport, toWebRequest } from "@modelcontextprotocol/node";
-import { currentCall, RETIRED_TOOLS } from "./compat.js";
+import { createMcpHandler, isLegacyRequest, WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/server";
+import { toWebRequest } from "@modelcontextprotocol/node";
+import { currentCall, HTML_ONLY_FAILURE, permitsHtmlOnly, RETIRED_TOOLS, TOOL_SELECTION_HEADER } from "./compat.js";
+import { pageDataCommitted } from "./compact/page-data.js";
+import { bridgeChallenge, canUseBearerWithoutExplicitProof, challengeHeader, connectionRequired, createBridge,
+  insufficientScope, invalidToken, toolAuthority, type AuthChallenge, type Bridge } from "./compact/auth.js";
+import { COMPACT_TOOL_NAMES, LEGACY_TOOL_NAMES } from "./compact/context.js";
 import { createServer, OWNER_TOKEN_ENV, REMOTE, USER_AGENT, userAgentFor, type FailureReason } from "./tools.js";
 import { classifyClient, UsageMetrics, type ClientClass } from "./metrics.js";
 
@@ -33,7 +37,8 @@ const MAX_HEAVY_PER_CLIENT = 1;
 const QUEUE_WAIT_MS = 30_000;
 const MAX_QUEUED = 64;
 /** Read-only tools with small answers; content reads (get_page/json/kv, get_page_data) stay in the standard pool. */
-const LIGHT_TOOLS = new Set(["get_limits", "get_stats", "search_gallery", "list_domains", "get_guide"]);
+const LIGHT_TOOLS = new Set(["get_limits", "get_stats", "search_gallery", "list_domains", "get_guide", "list_publications"]);
+const CREATE_TOOLS = new Set(["publish", "publish_html", "publish_json", "publish_kv", "publish_file"]);
 const BACKEND_TIMEOUT_MS = 60_000;
 /** Published egress lists (backend `openai-chatgpt-connectors` rules): daily refresh, last good set kept on failure. */
 const SHARED_LIST_REFRESH_MS = 24 * 60 * 60_000;
@@ -168,9 +173,12 @@ function loadConfig() {
   const publicOrigin = new URL(process.env.BREWPAGE_PUBLIC_ORIGIN || "https://brewpage.app");
   const port = Number(process.env.BREWPAGE_MCP_PORT || "8787");
   if (!Number.isInteger(port) || port < 0 || port > 65535) fail("BREWPAGE_MCP_PORT must be a TCP port.");
+  const catalog = process.env.BREWPAGE_MCP_CATALOG ?? "compact";
+  if (catalog !== "compact" && catalog !== "legacy") fail("BREWPAGE_MCP_CATALOG must be compact or legacy.");
   return {
     backendUrl,
     publicOrigin: publicOrigin.origin,
+    accountOrigin: process.env.BREWPAGE_ACCOUNT_ORIGIN,
     forwardedProto: publicOrigin.protocol.replace(/:$/, ""),
     forwardedHost: publicOrigin.host,
     trustedProxies: blockList(parseCidrs("BREWPAGE_TRUSTED_PROXY_CIDRS", true)),
@@ -181,6 +189,8 @@ function loadConfig() {
     metricsPeers: parseCidrs("BREWPAGE_METRICS_CIDRS", false),
     host: process.env.BREWPAGE_MCP_HOST || "0.0.0.0",
     port,
+    catalog: catalog as "compact" | "legacy",
+    bridgeSecret: process.env.BREWPAGE_MCP_BRIDGE_SERVICE_SECRET,
   };
 }
 
@@ -375,28 +385,15 @@ function readBody(req: IncomingMessage, limit: number, onLarge: () => boolean): 
   });
 }
 
-/** Tool names from an in-memory 2025 handshake (raw JSON-RPC, no client package); logs name only these. */
-async function registeredToolNames(): Promise<Set<string>> {
-  const [clientSide, serverSide] = InMemoryTransport.createLinkedPair();
-  const server = createServer({ baseUrl: "http://127.0.0.1:9" });
-  const answers = new Map<number, (message: JSONRPCMessage) => void>();
-  clientSide.onmessage = (message) => {
-    if ("id" in message && typeof message.id === "number") answers.get(message.id)?.(message);
-  };
-  const call = (id: number, method: string, params: Record<string, unknown>) => new Promise<JSONRPCMessage>((resolve) => {
-    answers.set(id, resolve);
-    void clientSide.send({ jsonrpc: "2.0", id, method, params });
-  });
-  await server.connect(serverSide);
-  await clientSide.start();
-  await call(1, "initialize", { protocolVersion: LATEST_PROTOCOL_VERSION, capabilities: {}, clientInfo: { name: "startup", version: VERSION } });
-  await clientSide.send({ jsonrpc: "2.0", method: "notifications/initialized" });
-  const listed = await call(2, "tools/list", {});
-  await clientSide.close();
-  await server.close();
-  const tools = ("result" in listed ? (listed.result as { tools?: Array<{ name: string }> }).tools : undefined) ?? [];
-  if (tools.length === 0) throw new Error("tools/list returned no tools");
-  return new Set(tools.map(({ name }) => name));
+function rpcArguments(raw: unknown): Record<string, unknown> {
+  return typeof raw === "object" && raw !== null && !Array.isArray(raw) ? raw as Record<string, unknown> : {};
+}
+
+function rpcCallRefusal(res: ServerResponse, id: unknown, status: number, text: string, headers: Record<string, string> = {}): void {
+  res.writeHead(status, { "Content-Type": "application/json", ...headers });
+  res.end(JSON.stringify({ jsonrpc: "2.0", id: typeof id === "string" || typeof id === "number" ? id : null,
+    result: { content: [{ type: "text", text }], isError: true,
+      ...(headers["WWW-Authenticate"] ? { _meta: { "mcp/www_authenticate": [headers["WWW-Authenticate"]] } } : {}) } }));
 }
 
 /** Tool-level outcome of one JSON-RPC answer; undefined = success. */
@@ -473,7 +470,7 @@ class Pool {
 
 async function main(): Promise<void> {
   const config = loadConfig();
-  const toolNames = await registeredToolNames();
+  const toolNames = new Set<string>([...LEGACY_TOOL_NAMES, ...COMPACT_TOOL_NAMES]);
   const light = new Pool(MAX_LIGHT_IN_FLIGHT, MAX_LIGHT_PER_CLIENT);
   const standard = new Pool(MAX_IN_FLIGHT, MAX_PER_CLIENT);
   const heavy = new Pool(MAX_HEAVY_IN_FLIGHT, MAX_HEAVY_PER_CLIENT);
@@ -575,8 +572,9 @@ async function main(): Promise<void> {
       // An old tool name runs as its current tool from here on: pool and SDK see the current name, log line and metrics the old one.
       const askedName = (message as { params?: { name?: unknown } | null }).params?.name;
       message = currentCall(message);
-      const rpc = message as { method?: unknown; params?: { name?: unknown } | null };
+      const rpc = message as { id?: unknown; method?: unknown; params?: { name?: unknown; arguments?: unknown } | null };
       const toolName = rpc.method === "tools/call" ? rpc.params?.name : undefined;
+      const toolArgs = rpcArguments(rpc.params?.arguments);
       // 2026-07-28 mirrors the tool name in a header the SDK checks against the body: it follows the rewrite.
       if (typeof toolName === "string" && toolName !== askedName && req.headers["mcp-name"] === askedName) req.headers["mcp-name"] = toolName;
       entry.method = typeof rpc.method === "string" ? rpc.method.slice(0, MAX_LOGGED_METHOD) : null;
@@ -587,69 +585,124 @@ async function main(): Promise<void> {
       if (rpc.method === "initialize" || rpc.method === "server/discover") usage.software = declaredSoftware(rpc.params);
       usage.client = classifyClient(egress, (req.headers["user-agent"] ?? "").slice(0, MAX_LOGGED_METHOD));
       usage.address = client;
-      // Stateless: no server-push streams, as the 2025 GET stream (405); a refused auto-open never fails a connect.
+      const isLight = rpc.method !== "tools/call" || (typeof toolName === "string" && LIGHT_TOOLS.has(toolName));
+      const file = toolName === "publish_file" || ((toolName === "publish" || toolName === "update_publication") && toolArgs.kind === "file");
+      if (file && slot !== heavy && !(await acquire(heavy))) return busy();
+      if (slot === light && !isLight && !(await acquire(standard))) return busy();
+      if (abort.signal.aborted) return;
+      const forwarded = { "X-Forwarded-For": client, "X-Forwarded-Proto": config.forwardedProto, "X-Forwarded-Host": config.forwardedHost };
+      const callBackend: typeof fetch = (input, init) =>
+        backendFetch(input, { ...init, signal: AbortSignal.any([abort.signal, AbortSignal.timeout(BACKEND_TIMEOUT_MS), ...(init?.signal ? [init.signal] : [])]) });
+      const callBridge: typeof fetch = (input, init) => {
+        const headers = new Headers(init?.headers);
+        for (const [name, value] of Object.entries(forwarded)) headers.set(name, value);
+        headers.set("User-Agent", REMOTE_USER_AGENT);
+        return callBackend(input, { ...init, headers });
+      };
+      const refuseCall = (status: number, text: string, challenge?: AuthChallenge) => {
+        entry.outcome = "tool_error";
+        usage.reason = "api_auth";
+        rpcCallRefusal(res, rpc.id, status, text, challenge ? { "WWW-Authenticate": challengeHeader(challenge, config.publicOrigin) } : {});
+      };
+      const authorization = req.headersDistinct.authorization;
+      const bearer = authorization?.length === 1 ? /^Bearer ([A-Za-z0-9._~+/\-]+={0,2})$/i.exec(authorization[0])?.[1] : undefined;
+      const bridge = createBridge(config.backendUrl, config.bridgeSecret, bearer, callBridge);
+      const selected = toolAuthority(typeof toolName === "string" ? toolName : undefined, toolArgs);
+      const challenge = (error: AuthChallenge) => refuseCall(error.status, error.description, error);
+      if (authorization && !bearer) return challenge(invalidToken);
+      let account = false;
+      if (bearer) {
+        const session = await bridge.session();
+        if (!session.ok) {
+          const denied = bridgeChallenge(session);
+          return denied ? challenge(denied) : refuseCall(503, "BrewPage account verification is temporarily unavailable.");
+        }
+        const personalizedGuide = toolName === "get_guide" && toolArgs.topic === "limits";
+        account = (!selected.explicitProof || toolName === "account") && (selected.scopes.length > 0 || personalizedGuide);
+        if (account && selected.scopes.some((scope) => !session.scopes.includes(scope))) return challenge(insufficientScope(selected.scopes));
+        if (!selected.explicitProof && !account && !canUseBearerWithoutExplicitProof(typeof toolName === "string" ? toolName : undefined, toolArgs)) {
+          return refuseCall(200, "Use the compact BrewPage operation for this account action, or provide the existing owner proof.");
+        }
+      }
+      if (selected.accountOnly && selected.explicitProof) return refuseCall(200, "Choose the BrewPage account or the explicit owner proof for this action.");
+      if (selected.accountOnly && !account) return challenge(connectionRequired(selected.scopes));
+      if (bearer && typeof toolName === "string" && CREATE_TOOLS.has(toolName) && Object.hasOwn(toolArgs, "manageUrl")) {
+        return refuseCall(200, "A management link cannot authorize a new publication.");
+      }
+      if (bearer && selected.explicitProof && ["ownerToken", "manageUrl"].some((key) => Object.hasOwn(toolArgs, key)
+        && (typeof toolArgs[key] !== "string" || toolArgs[key].trim() === ""))) {
+        return refuseCall(200, "Provide a nonempty owner token or management link.");
+      }
+      const selections = req.headersDistinct[TOOL_SELECTION_HEADER.toLowerCase()];
+      const selection = selections?.[0];
+      if (selections && (selections.length !== 1 || (selection !== "publish_html" && selection !== "legacy"))) {
+        return rpcError(res, 400, INVALID_REQUEST, "Unsupported BrewPage tool selection.");
+      }
+      if (selection === "publish_html" && rpc.method === "tools/call" && !permitsHtmlOnly(askedName, toolArgs)) {
+        return refuseCall(200, HTML_ONLY_FAILURE);
+      }
+      // Stateless: no server-push streams; a refused auto-open never fails a connect.
       if (rpc.method === "subscriptions/listen") {
-        const id = (message as { id?: unknown }).id;
+        const id = rpc.id;
         res.writeHead(200, { "Content-Type": "application/json" });
         res.end(JSON.stringify({ jsonrpc: "2.0", id: typeof id === "string" || typeof id === "number" ? id : null,
           error: { code: METHOD_NOT_FOUND, message: "subscriptions/listen is not supported by this stateless endpoint." } }));
         entry.outcome = "rpc_error";
         return;
       }
-      const isLight = rpc.method !== "tools/call" || (typeof toolName === "string" && LIGHT_TOOLS.has(toolName));
-      if (toolName === "publish_file" && slot !== heavy && !(await acquire(heavy))) return busy();
-      if (slot === light && !isLight && !(await acquire(standard))) return busy();
-      if (abort.signal.aborted) return;
-      const forwarded = { "X-Forwarded-For": client, "X-Forwarded-Proto": config.forwardedProto, "X-Forwarded-Host": config.forwardedHost };
-      const callBackend: typeof fetch = (input, init) =>
-        backendFetch(input, { ...init, signal: AbortSignal.any([abort.signal, AbortSignal.timeout(BACKEND_TIMEOUT_MS)]) });
+      let signedFailure: AuthChallenge | undefined;
+      const bridgeCall: Bridge = async (operation, args, bridgeOptions, signal) => {
+        const answer = await bridge.call(operation, args, bridgeOptions, signal);
+        const progress = operation === "publication_settings" ? (answer.data as { applied?: unknown } | null)?.applied : undefined;
+        const committed = (Array.isArray(progress) && progress.length > 0)
+          || (operation === "write_page_data" && pageDataCommitted("saved", answer.data))
+          || (operation === "delete_page_data" && pageDataCommitted("deleted", answer.data));
+        if (account && !committed) signedFailure ??= bridgeChallenge(answer);
+        return answer;
+      };
+      const download = (url: string, signal?: AbortSignal) => shared || takeDownload(client)
+        ? fetchSourceSafely(url, isBlockedSource, signal ? AbortSignal.any([signal, abort.signal]) : abort.signal)
+        : Promise.reject(new Error("Download limit reached for this address; try again in a few minutes."));
       const server = createServer({
         baseUrl: config.backendUrl,
         publicOrigin: config.publicOrigin,
+        accountOrigin: config.accountOrigin,
         profile: REMOTE,
+        catalog: selection === "publish_html" ? "html-only" : selection === "legacy" ? "legacy" : config.catalog,
+        authority: account ? "account" : "unsigned",
+        bridge: bridgeCall,
         onFailure: (reason) => {
           usage.reason ??= reason;
         },
         headers: forwarded,
-        fetchSource: (url) => shared || takeDownload(client)
-          ? fetchSourceSafely(url, isBlockedSource, abort.signal)
-          : Promise.reject(new Error("Download limit reached for this address; try again in a few minutes.")),
+        fetchSource: download,
+        compactFetchSource: download,
         fetch: callBackend,
       });
       const request = await toWebRequest(req, message, { signal: abort.signal });
-      if (!(await isLegacyRequest(request, message))) {
-        // 2026-07-28 envelope: one exchange through the SDK entry; any SSE body is read to its end.
-        const modern = createMcpHandler(() => server, { legacy: "reject" });
-        try {
-          const response = await modern.fetch(request, { parsedBody: message });
-          const text = await response.text();
-          if ((response.headers.get("content-type") ?? "").startsWith("application/json")) {
-            try {
-              entry.outcome = rpcOutcome(JSON.parse(text)) ?? null;
-            } catch {
-              entry.outcome = null;
-            }
-          }
-          res.writeHead(response.status, Object.fromEntries(response.headers.entries()));
-          res.end(text);
-        } finally {
-          await modern.close();
-          await server.close();
-        }
-        return;
-      }
-      const transport = new NodeStreamableHTTPServerTransport({ sessionIdGenerator: undefined, enableJsonResponse: true });
-      const send = transport.send.bind(transport);
-      transport.send = (outgoing: JSONRPCMessage, options) => {
-        entry.outcome = rpcOutcome(outgoing) ?? entry.outcome;
-        return send(outgoing, options);
-      };
+      const modern = (await isLegacyRequest(request, message)) ? undefined : createMcpHandler(() => server, { legacy: "reject" });
+      const legacy = modern ? undefined : new WebStandardStreamableHTTPServerTransport({ sessionIdGenerator: undefined, enableJsonResponse: true });
       try {
-        await server.connect(transport);
-        // JSON mode resolves only after the response is sent, i.e. after the handler settled.
-        await transport.handleRequest(req, res, message);
+        if (legacy) await server.connect(legacy);
+        const response = await (modern
+          ? modern.fetch(request, { parsedBody: message })
+          : legacy!.handleRequest(request, { parsedBody: message }));
+        const text = await response.text();
+        if (signedFailure) return challenge(signedFailure);
+        if (response.headers.get("content-type")?.startsWith("application/json")) {
+          try {
+            entry.outcome = rpcOutcome(JSON.parse(text)) ?? null;
+          } catch {
+            entry.outcome = null;
+          }
+        }
+        const headers = Object.fromEntries(response.headers.entries());
+        if (legacy && response.status === 202 && !headers["content-type"]) headers["content-type"] = "text/plain; charset=UTF-8";
+        res.writeHead(response.status, headers);
+        res.end(text);
       } finally {
-        await transport.close();
+        await modern?.close();
+        await legacy?.close();
         await server.close();
       }
     } finally {

@@ -13,6 +13,7 @@ import { fileURLToPath } from "node:url";
 import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { Client, StreamableHTTPClientTransport } from "@modelcontextprotocol/client";
 import { fetchSourceSafely, isBlockedSource } from "../dist/http.js";
+import { COMPACT_TOOL_NAMES, LEGACY_TOOL_NAMES } from "../dist/compact/context.js";
 
 const PACKAGE_VERSION = (JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8")) as { version: string }).version;
 const HTTP_ENTRY = fileURLToPath(new URL("../dist/http.js", import.meta.url));
@@ -39,7 +40,10 @@ const PUBLISH = toolCall("publish_html", { content: "<p>x</p>" });
 /** Stub backend plus the built HTTP entry on ephemeral ports; `trusted` sets the proxy CIDRs.
  * Backend counts open calls; `hold` = answers wait for `backend.release()`; `shared`/`list` = shared-egress CIDRs and list body. */
 async function fixture(t: TestContext, trusted = "127.0.0.1/32",
-  { hold = false, shared = "", list = "", gzip = false, redirect = false, metrics = "", body = LIMITS as unknown } = {}) {
+  { hold = false, shared = "", list = "", gzip = false, redirect = false, metrics = "", body = LIMITS as unknown,
+    catalog = "legacy", bridgeSecret, respond }: { hold?: boolean; shared?: string; list?: string; gzip?: boolean; redirect?: boolean;
+      metrics?: string; body?: unknown; catalog?: string; bridgeSecret?: string;
+      respond?: (request: RequestSnapshot) => { status: number; body: unknown } } = {}) {
   const requests: RequestSnapshot[] = [];
   const pending: Array<() => void> = [];
   let holding = hold;
@@ -51,7 +55,8 @@ async function fixture(t: TestContext, trusted = "127.0.0.1/32",
     },
   };
   const api = createServer((req, res) => {
-    requests.push({ method: req.method!, url: req.url!, headers: req.headers });
+    const snapshot = { method: req.method!, url: req.url!, headers: req.headers };
+    requests.push(snapshot);
     backend.maxOpen = Math.max(backend.maxOpen, ++backend.open);
     res.once("close", () => {
       backend.open--;
@@ -59,8 +64,9 @@ async function fixture(t: TestContext, trusted = "127.0.0.1/32",
     });
     backend.events.emit("change");
     const answer = () => {
-      res.writeHead(200, { "Content-Type": "application/json" });
-      res.end(JSON.stringify(body));
+      const reply = respond?.(snapshot) ?? { status: 200, body };
+      res.writeHead(reply.status, { "Content-Type": "application/json" });
+      res.end(JSON.stringify(reply.body));
     };
     req.resume().once("end", () => holding ? pending.push(answer) : answer());
   });
@@ -71,7 +77,8 @@ async function fixture(t: TestContext, trusted = "127.0.0.1/32",
   const child = spawn(process.execPath, [HTTP_ENTRY], {
     env: { PATH: process.env.PATH, BREWPAGE_BACKEND_URL: backendUrl, BREWPAGE_TRUSTED_PROXY_CIDRS: trusted,
       BREWPAGE_MCP_HOST: "127.0.0.1", BREWPAGE_MCP_PORT: "0", BREWPAGE_SHARED_EGRESS_CIDRS: shared,
-      BREWPAGE_SHARED_EGRESS_LIST_URLS: listUrl?.url ?? "", NODE_EXTRA_CA_CERTS: listUrl?.ca ?? "", BREWPAGE_METRICS_CIDRS: metrics },
+      BREWPAGE_SHARED_EGRESS_LIST_URLS: listUrl?.url ?? "", NODE_EXTRA_CA_CERTS: listUrl?.ca ?? "", BREWPAGE_METRICS_CIDRS: metrics,
+      BREWPAGE_MCP_CATALOG: catalog || undefined, BREWPAGE_MCP_BRIDGE_SERVICE_SECRET: bridgeSecret },
     stdio: ["ignore", "pipe", "inherit"],
   });
   const lines = createInterface({ input: child.stdout! });
@@ -125,6 +132,252 @@ async function fixture(t: TestContext, trusted = "127.0.0.1/32",
     },
   };
 }
+
+test("managed HTML selector exposes the old descriptor and refuses site and compact calls", { timeout: 15_000 }, async (t) => {
+  // GIVEN one default compact endpoint and an explicit existing HTML-only selector.
+  const f = await fixture(t, undefined, { catalog: "", bridgeSecret: "mock-internal-service",
+    respond: ({ url }) => ({ status: 200, body: url === "/internal/mcp/v1/session" ? { scopes: ["publications:write"] } : LIMITS }) });
+  const headers = { "X-Forwarded-For": "198.51.100.7", "BrewPage-Tool-Selection": "publish_html" };
+  const signed = { ...headers, Authorization: "Bearer verified-fixture" };
+  // WHEN the managed clients discover with and without a grant, and test the HTML-only call boundary.
+  const list = await f.post(headers, "POST", TOOLS_LIST);
+  const legacy = await f.post({ ...headers, "BrewPage-Tool-Selection": "legacy" }, "POST", TOOLS_LIST);
+  const ordinary = await f.post({ "X-Forwarded-For": "198.51.100.7" }, "POST", TOOLS_LIST);
+  const signedLegacy = await f.post({ ...signed, "BrewPage-Tool-Selection": "legacy" }, "POST", TOOLS_LIST);
+  const signedNarrow = await f.post(signed, "POST", TOOLS_LIST);
+  const compact = await f.post(headers, "POST", toolCall("publish", { content: "<p>compact</p>" }));
+  const site = await f.post(headers, "POST", toolCall("publish_html", { files: [{ path: "index.html", content: "<p>site</p>" }] }));
+  const html = await f.post(headers, "POST", toolCall("publish_html", { content: "<p>page</p>", namespace: "public" }));
+  // THEN both discovery views stay exact and only original HTML dispatch writes.
+  const names = async (response: Response) => (await response.json()).result.tools.map(({ name }: { name: string }) => name);
+  assert.deepEqual({
+    discovery: await Promise.all([list, legacy, ordinary, signedLegacy, signedNarrow].map(names)),
+    compact: (await compact.json()).result.isError, site: (await site.json()).result.isError, html: html.status, upstream: f.requests.map(({ url }) => url),
+  }, { discovery: [["publish_html"], LEGACY_TOOL_NAMES, COMPACT_TOOL_NAMES, LEGACY_TOOL_NAMES, ["publish_html"]], compact: true, site: true, html: 200,
+    upstream: ["/internal/mcp/v1/session", "/internal/mcp/v1/session", "/api/html?ns=public"] },
+  "narrow discovery and dispatch preserve the managed permission");
+});
+
+test("compact colliding Page data delete verifies the management origin and keeps the legacy reply", { timeout: 15_000 }, async (t) => {
+  // GIVEN compact and recovery clients submit the same original deletion shape with either management origin.
+  const f = await fixture(t, undefined, { catalog: "", body: { deleted: 1 } });
+  const key = `bpm_${"a".repeat(32)}`;
+  const path = "/manage/html/public/FixLink001";
+  const firstParty = `https://brewpage.app${path}#k=${key}`;
+  const foreign = `https://elsewhere.fixture.invalid${path}#k=${key}`;
+  const modes = [
+    { selected: {}, link: firstParty }, { selected: {}, link: foreign },
+    { selected: { "BrewPage-Tool-Selection": "legacy" }, link: firstParty },
+    { selected: { "BrewPage-Tool-Selection": "legacy" }, link: foreign },
+  ];
+  // WHEN each client uses the fixed backend and supplies no compact kind field.
+  const receipts = [];
+  for (const [index, { selected, link }] of modes.entries()) {
+    const answer = await f.post({ "X-Forwarded-For": `198.51.100.${30 + index}`, ...selected }, "POST",
+      toolCall("delete_page_data", { collection: "guestbook", manageUrl: link, all: true }));
+    const { result } = await answer.json();
+    receipts.push({ error: result.isError, deleted: result.content[0].text === "Deleted 1 entry or file from guestbook." });
+  }
+  // THEN compact refuses foreign proof and the frozen recovery routes have their original results.
+  assert.deepEqual({ receipts, effects: f.requests.map(({ url, method, headers }) => [url, method, headers["x-manage-key"]]) }, {
+    receipts: [{ error: undefined, deleted: true }, { error: true, deleted: false },
+      { error: undefined, deleted: true }, { error: undefined, deleted: true }],
+    effects: new Array(3).fill(["/api/public/FixLink001/state/guestbook?before=9999-12-31T23%3A59%3A59Z", "DELETE", key]),
+  }, "only the compact foreign origin is refused and all accepted results keep the original envelope");
+});
+
+test("a revoked signed batch keeps completed settings without a replay challenge", { timeout: 15_000 }, async (t) => {
+  // GIVEN a bridge that acknowledges a completed listing step before revocation, plus a revoked-before-effects grant.
+  const target = { kind: "html", namespace: "public", id: "FixLink001" };
+  const completed: string[] = [];
+  const f = await fixture(t, undefined, { catalog: "", bridgeSecret: "mock-internal-service", respond: ({ url, headers }) => {
+    const session = url === "/internal/mcp/v1/session";
+    const paused = !session && headers.authorization === "Bearer partially-applied";
+    const applied = paused ? [{ field: "listed", result: { listed: false, link: "https://fixture.invalid/" } }] : [];
+    completed.push(...applied.map(({ field }) => field));
+    return session ? { status: 200, body: { scopes: ["publications:write"] } }
+      : { status: 401, body: { ...target, applied, failed: { field: paused ? "title" : "listed", status: 401, code: "invalid_token",
+      message: "The grant is no longer active." }, skipped: paused ? ["password"] : ["title", "password"] } };
+  } });
+  // WHEN the settings packet is attempted once for each verified session.
+  const packet = toolCall("publication_settings", { ...target, listed: false, title: "Fixture", password: "fixture-password" });
+  const partial = await f.post({ "X-Forwarded-For": "198.51.100.61", Authorization: "Bearer partially-applied" }, "POST", packet);
+  const before = await f.post({ "X-Forwarded-For": "198.51.100.62", Authorization: "Bearer revoked-before-effects" }, "POST", packet);
+  const partialResult = (await partial.json()).result;
+  // THEN the acknowledgement surfaces actual progress and only the zero-effect refusal challenges.
+  assert.deepEqual({ status: partial.status, header: partial.headers.get("WWW-Authenticate"), error: partialResult.isError,
+    authMeta: partialResult._meta?.["mcp/www_authenticate"], text: partialResult.content[0].text, before: before.status,
+    beforeChallenge: /error="invalid_token"/.test(before.headers.get("WWW-Authenticate") ?? ""), completed, upstream: f.requests.map(({ url }) => url) }, {
+    status: 200, header: null, error: true, authMeta: undefined,
+    text: 'HTTP 401\napplied: [{"field":"listed","result":{"listed":false,"link":"https://fixture.invalid/"}}]\nfailed: {"field":"title","status":401,"code":"invalid_token","message":"The grant is no longer active."}\nskipped: ["password"]\nReconnect BrewPage, read the current settings and request only the remaining changes.',
+    before: 401, beforeChallenge: true, completed: ["listed"], upstream: [
+      "/internal/mcp/v1/session", "/internal/mcp/v1/operations/publication_settings",
+      "/internal/mcp/v1/session", "/internal/mcp/v1/operations/publication_settings",
+    ],
+  }, "the partial outcome cannot trigger automatic replay, and nothing after the failed step is sent");
+});
+
+test("late Page data revocation preserves only confirmed write or delete progress", { timeout: 15_000 }, async (t) => {
+  // GIVEN typed late 401 receipts, with and without a committed item.
+  const target = { kind: "html", namespace: "public", id: "FixLink001", collection: "fixture" };
+  const failures = { code: "invalid_token", message: "Grant revoked." };
+  const f = await fixture(t, undefined, { catalog: "", bridgeSecret: "mock-internal-service", respond: ({ url, headers }) => {
+    const writer = url.endsWith("/write_page_data");
+    const committed = headers.authorization === "Bearer after-effect";
+    const progress = writer ? { saved: committed ? [{ key: "first", version: 1 }] : [] } : { deleted: committed ? 1 : 0, alreadyAbsent: committed ? 0 : 1 };
+    return url.endsWith("/session") ? { status: 200, body: { scopes: ["page-data:write"] } }
+      : { status: 401, body: { ...progress, failed: { ...failures, [writer ? "key" : "id"]: "second" }, skipped: ["third"] } };
+  } });
+  const rows = [
+    { name: "write_page_data", args: { ...target, docs: ["first", "second", "third"].map((key) => ({ key, value: key })) },
+      progress: 'saved: [{"key":"first","version":1}]' },
+    { name: "delete_page_data", args: { ...target, docIds: ["first", "second", "third"] }, progress: "deleted: 1" },
+  ];
+  // WHEN the bridge reports each late failure and a corresponding zero-effect denial.
+  for (const [index, row] of rows.entries()) {
+    const send = (token: string) => f.post({ "X-Forwarded-For": `198.51.100.${81 + index}`, Authorization: `Bearer ${token}` },
+      "POST", toolCall(row.name, row.args));
+    const late = await send("after-effect");
+    const early = await send("before-effect");
+    const { result } = await late.json();
+    // THEN late failures keep partial progress; only the zero-effect denial challenges.
+    assert.deepEqual({ late: late.status, laterChallenge: late.headers.get("WWW-Authenticate"), error: result.isError,
+      lines: result.content[0].text.split("\n").filter((line: string) => line === row.progress || line.startsWith("skipped:") || line.startsWith("Reconnect ")),
+      early: early.status, earlyChallenge: /error="invalid_token"/.test(early.headers.get("WWW-Authenticate") ?? "") }, {
+      late: 200, laterChallenge: null, error: true, lines: [row.progress, 'skipped: ["third"]',
+        "Reconnect BrewPage and read list fixture on html public/FixLink001. Request only the unfinished changes."],
+      early: 401, earlyChallenge: true,
+    }, `${row.name} must preserve committed items without prompting a whole-operation replay`);
+  }
+  assert.deepEqual(f.requests.map(({ url }) => url), rows.flatMap(({ name }) => [
+    "/internal/mcp/v1/session", `/internal/mcp/v1/operations/${name}`, "/internal/mcp/v1/session", `/internal/mcp/v1/operations/${name}`,
+  ]), "the relay attempts each operation once");
+});
+
+test("signed write families reconcile lost receipts while read failures remain ordinary errors", { timeout: 15_000 }, async (t) => {
+  // GIVEN a verified bridge whose next response is missing its JSON body.
+  const f = await fixture(t, undefined, { catalog: "", bridgeSecret: "mock-internal-service",
+    respond: ({ url }) => ({ status: 200, body: url === "/internal/mcp/v1/session" ?
+      { scopes: ["publications:write", "page-data:write", "domains:write", "domains:read", "account:write", "account:read"] } : undefined }) });
+  const hostname = "calendar.fixture.invalid";
+  const target = { kind: "html", namespace: "public", id: "FixLink001" };
+  const cases = [
+    { name: "publication_settings", args: { ...target, listed: false }, expected: /did not confirm the settings change.*current publication settings/ },
+    { name: "domains", args: { ...target, action: "attach", hostname }, expected: /did not confirm the domain change.*domains\(action=get\)/ },
+    { name: "account", args: { action: "rename_token", tokenId: "087f90d4-ba9f-4c6e-b6b0-4780d08e44ca", label: "Fixture" }, expected: /did not confirm the account action.*token list/ },
+    { name: "notifications", args: { action: "set_settings", settings: { enabled: false } }, expected: /did not confirm the notification change.*notifications\(action=get_settings\)/ },
+    { name: "publish_html", operation: "publish", args: { content: "<p>Fixture</p>", showTopBar: true }, expected: /did not confirm the publication.*publication list/ },
+    { name: "configure_page_data", operation: "merge_page_data", args: { namespace: target.namespace, id: target.id, state: {} },
+      expected: /did not confirm the Page data change.*current settings/ },
+    { name: "domains", args: { action: "get", hostname }, expected: /^get custom domain: HTTP 502 · bridge_outcome_unknown/ },
+    { name: "account", args: { action: "status" }, expected: /^status · HTTP 502 · bridge_outcome_unknown/ },
+    { name: "notifications", args: { action: "get_settings" }, expected: /^get_settings · HTTP 502 · bridge_outcome_unknown/ },
+  ];
+  // WHEN each signed operation receives no usable private acknowledgment.
+  for (const [index, { name, args, expected }] of cases.entries()) {
+    const reply = await f.post({ "X-Forwarded-For": `198.51.100.${71 + index}`, Authorization: "Bearer fixture-grant" }, "POST", toolCall(name, args));
+    const { result } = await reply.json();
+    // THEN writes suggest the exact readback and reads retain their normal error path.
+    assert.equal(result.isError, true, `${name} cannot report success without an acknowledgement`);
+    assert.match(result.content[0].text, expected, `${name} must describe the next step for its actual operation`);
+  }
+  assert.deepEqual(f.requests.map(({ url }) => url), cases.flatMap(({ name, operation }) => ["/internal/mcp/v1/session", `/internal/mcp/v1/operations/${operation ?? name}`]),
+    "each operation reaches the bridge once without an anonymous or legacy retry");
+});
+
+test("account challenges validate bearer and all requested scopes before any write", { timeout: 15_000 }, async (t) => {
+  // GIVEN the candidate MCP and a private verifier with revoked, partial and domain-read grants.
+  const grants: Record<string, string[]> = { partial: ["publications:write"], domains: ["domains:read"] };
+  const f = await fixture(t, undefined, { catalog: "", bridgeSecret: "mock-internal-service",
+    respond: ({ url, headers }) => {
+      const selected = grants[String(headers.authorization).replace("Bearer ", "")];
+      return url === "/internal/mcp/v1/session" && !selected
+        ? { status: 401, body: { code: "invalid_token" } } : { status: 200, body: { scopes: selected } };
+    } });
+  const headersFor = (index: number, token?: string) => ({ "X-Forwarded-For": `198.51.100.${index}`, ...(token ? { Authorization: `Bearer ${token}` } : {}) });
+  // WHEN old and compact cached operations receive revoked, missing and insufficient grants.
+  const outcomes = await Promise.all([
+    f.post(headersFor(1, "revoked"), "POST", toolCall("publish_html", { content: "<p>old</p>" })),
+    f.post(headersFor(2), "POST", toolCall("publish", { content: "<p>account</p>", requireAccount: true })),
+    f.post(headersFor(3, "partial"), "POST", toolCall("publish", { content: "<p>poll</p>", state: {}, domain: "poll.example.invalid" })),
+    f.post(headersFor(4, "partial"), "POST", toolCall("read_publication", { kind: "html", namespace: "priv-fixture", id: "TestPage01" })),
+    f.post(headersFor(5, "domains"), "POST", toolCall("domains", { action: "check", hostname: "poll.example.invalid" })),
+  ]);
+  const metadata = await Promise.all(outcomes.map(async (answer) => ({
+    status: answer.status,
+    scope: /scope="([^"]*)"/.exec(answer.headers.get("WWW-Authenticate") ?? "")?.[1] ?? null,
+    sameChallenge: (await answer.json()).result?._meta?.["mcp/www_authenticate"]?.[0] === answer.headers.get("WWW-Authenticate"),
+  })));
+  // THEN refused writes hit no execution path, and DNS check uses its read scope.
+  assert.deepEqual({ metadata, upstream: f.requests.map(({ url }) => url).sort() }, {
+    metadata: [{ status: 401, scope: null, sameChallenge: true }, { status: 401, scope: "publications:write", sameChallenge: true },
+      { status: 403, scope: "publications:write page-data:write domains:write", sameChallenge: true },
+      { status: 403, scope: "publications:read", sameChallenge: true }, { status: 200, scope: null, sameChallenge: false }],
+    upstream: ["/internal/mcp/v1/operations/domains", ...Array.from({ length: 4 }, () => "/internal/mcp/v1/session")],
+  }, "private preflight enforces scope and forwards no denied operation");
+});
+
+test("account, notification and guide calls choose the configured authority and mask token metadata", { timeout: 15_000 }, async (t) => {
+  // GIVEN a compact endpoint with an account grant, an owner-token fixture and the public template API.
+  const f = await fixture(t, undefined, { catalog: "", bridgeSecret: "mock-internal-service",
+    respond: ({ url, headers: sent }) => ({ status: 200, body: url === "/internal/mcp/v1/session"
+      ? { scopes: sent.authorization === "Bearer zero-scope" ? [] : ["account:read"] }
+      : url === "/internal/mcp/v1/operations/account" ? { tokens: [{ id: "fixture-token-id", scope: "publish", token: "must-stay-private" }] }
+      : url === "/internal/mcp/v1/operations/limits" ? { reach: "profile", ownerMaxTtlDays: 90, badgeFree: true }
+      : url.startsWith("/api/templates") ? { items: [{ slug: "fixture-poll" }] } : { items: [], unread: 1, nextCursor: "fixture-cursor" } }) });
+  const headers = { "X-Forwarded-For": "198.51.100.7" };
+  const call = async (name: string, args: Record<string, unknown>, authorization?: string) => (await (await f.post(
+    { ...headers, ...(authorization ? { Authorization: authorization } : {}) }, "POST", toolCall(name, args))).json()).result;
+  // WHEN the client lists masked tokens, reads notices using explicit owner proof and finds a public template.
+  const tokens = await call("account", { action: "tokens" }, "Bearer fixture-account");
+  const notes = await call("notifications", { ownerToken: "fixture-owner", section: "notices", unread: true, limit: 3 });
+  const guide = await call("get_guide", { topic: "templates", q: "fixture poll" });
+  const limits = await call("get_guide", { topic: "limits" }, "Bearer zero-scope");
+  // THEN the selected proof stays confined to its route and the result drops the raw token.
+  assert.deepEqual({
+    tokens: JSON.parse(tokens.content[0].text), notes: JSON.parse(notes.content[0].text),
+    guide: guide.content[0].text.split("\n").at(-1),
+    limits: JSON.parse(limits.content[0].text.split("\n").at(-1)),
+    upstream: f.requests.map(({ url, headers: sent }) => [url, Boolean(sent.authorization), Boolean(sent["x-owner-token"]), Boolean(sent["x-bp-mcp-service"])]),
+  }, { tokens: { tokens: [{ id: "fixture-token-id", scope: "publish" }] },
+    notes: { items: [], unread: 1, nextCursor: "fixture-cursor" }, guide: '{"items":[{"slug":"fixture-poll"}]}',
+    limits: { reach: "profile", ownerMaxTtlDays: 90, badgeFree: true },
+    upstream: [
+      ["/internal/mcp/v1/session", true, false, true], ["/internal/mcp/v1/operations/account", true, false, true],
+      ["/api/profile/notifications?section=notices&unread=true&limit=3", false, true, false], ["/api/templates?q=fixture+poll", false, false, false],
+      ["/internal/mcp/v1/session", true, false, true], ["/internal/mcp/v1/operations/limits", true, false, true],
+    ],
+  }, "each result uses its expected route and least proof");
+});
+
+test("cached publishing uses its chosen proof and a revoked bridge write is never replayed", { timeout: 15_000 }, async (t) => {
+  // GIVEN the recovery catalog with a verifier and a publish bridge that can revoke a grant after preflight.
+  const created = { kind: "html", namespace: "public", id: "TestPage01", link: "https://fixture.example.invalid/", access: "public", listed: true };
+  const f = await fixture(t, undefined, { bridgeSecret: "mock-internal-service",
+    respond: ({ url, headers }) => url.endsWith("/session") ? { status: 200, body: { scopes: ["publications:write"] } }
+      : headers.authorization === "Bearer in-flight-revocation" ? { status: 401, body: { code: "invalid_token" } }
+      : { status: 201, body: created } });
+  const publish = { content: "<p>Fixture</p>", namespace: "public" };
+  const call = async (ip: string, bearer: string, args: Record<string, unknown>) => f.post(
+    { "X-Forwarded-For": ip, Authorization: `Bearer ${bearer}` }, "POST", toolCall("publish_html", args));
+  // WHEN the cached client publishes with account proof, explicit owner proof and a grant revoked at dispatch.
+  const signed = await call("198.51.100.1", "verified-fixture", publish);
+  const explicit = await call("198.51.100.2", "verified-fixture", { ...publish, ownerToken: "fixture-owner" });
+  const revoked = await call("198.51.100.3", "in-flight-revocation", publish);
+  const signedText = (await signed.json()).result.content[0].text;
+  // THEN the right owner applies, the signed receipt has no transferable proof and revocation stops the attempt.
+  assert.deepEqual({
+    statuses: [signed.status, explicit.status, revoked.status], revokedError: /error="([^"]+)"/.exec(revoked.headers.get("WWW-Authenticate") ?? "")?.[1],
+    signedLink: signedText.includes(created.link), signedEcho: signedText.includes("verified-fixture"),
+    upstream: f.requests.map(({ url, headers }) => [url, Boolean(headers.authorization), Boolean(headers["x-owner-token"])]),
+  }, { statuses: [200, 200, 401], revokedError: "invalid_token", signedLink: true, signedEcho: false,
+    upstream: [
+      ["/internal/mcp/v1/session", true, false], ["/internal/mcp/v1/operations/publish", true, false],
+      ["/internal/mcp/v1/session", true, false], ["/api/html?ns=public", false, true],
+      ["/internal/mcp/v1/session", true, false], ["/internal/mcp/v1/operations/publish", true, false],
+    ],
+  }, "one selected authority per attempt");
+});
 
 /** HTTPS list server with a throwaway self-signed cert for 127.0.0.1 (trusted via NODE_EXTRA_CA_CERTS). */
 async function listServer(t: TestContext, body: string, { gzip = false, redirect = false }) {

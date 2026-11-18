@@ -44,3 +44,10 @@ export const PAGE_DATA_GUIDE = [
 ].join("\n") + "\n";
 /** Page script call shapes: the "bp.state() -> s|null" line of llms-full.txt. */
 export const PAGE_DATA_CALLS = "bp.state() -> s|null (guard it); c=s.col(\"name\"); c.set(key,value) c.get(key) c.remove(key) c.add(value) c.list({order,limit}) c.stats({countBy})";
+/** Compact owner recipe from "### Manage Page data with MCP". */
+export const PAGE_DATA_MCP_GUIDE = [
+  "Send `state` with `publish` or `update_publication`. For settings alone use `publication_settings`",
+  "to merge `state`. Read entries, totals or files with `read_page_data`; write author entries",
+  "with `write_page_data`. Use `delete_page_data` with one explicit selector. The private management",
+  "view's Data tab shows entries and uploads.",
+].join("\n") + "\n";

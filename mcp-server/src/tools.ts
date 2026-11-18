@@ -1,13 +1,25 @@
-import { McpServer, type StandardSchemaWithJSON, type ToolAnnotations } from "@modelcontextprotocol/server";
+import { McpServer, type StandardSchemaWithJSON, type Tool, type ToolAnnotations } from "@modelcontextprotocol/server";
+import { AsyncLocalStorage } from "node:async_hooks";
+import { readFileSync } from "node:fs";
 import { z } from "zod";
 import { RETIRED_ARGUMENT, RETIRED_TOOLS, retiredNote } from "./compat.js";
+import { connectionRequired, toolAuthority, type Bridge } from "./compact/auth.js";
+import { bridgeOutcomeUnknown, COMPACT_TOOL_NAMES, isClientAbort, isTimeout, type CompactContext, type CompactToolName, type Scope, type Target, type ToolAnswer, type ToolShape, type ToolSpec } from "./compact/context.js";
+import { registerAccountGuides } from "./compact/account-guides.js";
+import { legacyAccountScopes, signedLegacyCall, type CompactDispatch } from "./compact/legacy-account.js";
+import { registerPageData } from "./compact/page-data.js";
+import { registerPublications } from "./compact/publications.js";
+import { registerSettingsDomains, settingsConfirmed, SETTINGS_OUTCOME_UNKNOWN } from "./compact/settings-domains.js";
 import { DOMAIN_PROBLEMS, DOMAIN_STATUSES } from "./guides/custom-domain.js";
 import { PAGE_DATA_GUIDE } from "./guides/page-data.js";
 import { TEMPLATES_GUIDE } from "./guides/templates.js";
 
 export const DEFAULT_BASE_URL = "https://brewpage.app";
-export const USER_AGENT = "brewpage-mcp/2.1.2";
+export const DEFAULT_ACCOUNT_ORIGIN = "https://account.brewpage.app";
+const VERSION = (JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8")) as { version: string }).version;
+export const USER_AGENT = `brewpage-mcp/${VERSION}`;
 export const OWNER_TOKEN_ENV = "BREWPAGE_OWNER_TOKEN";
+export type Catalog = "compact" | "legacy" | "html-only";
 
 /** What a transport serves: texts and the listed tool set only, never a limit or a guard. */
 export interface Profile {
@@ -44,6 +56,15 @@ export function serverInstructions(profile: Profile = LOCAL): string {
   ].join("\n");
 }
 
+const COMPACT_INSTRUCTIONS = [
+  "Publish supplied content with publish. It defaults to HTML. Use kind=file with a public URL or kind=site with explicit path/content files.",
+  "New publications default to link-only. Choose namespace=public for eligible gallery and search listing. Give the reader link to the user and keep any owner token or management link private. Reuse the same owner proof to update.",
+  "For a page that saves visitor input, read get_guide topic page-data and send state with the page. For an owned custom hostname, send domain or use domains.",
+  "Anonymous publishing works immediately. For account ownership, use the BrewPage HTTP connection and set requireAccount=true.",
+].join("\n");
+const NEW_GUIDE_TOPICS = new Set(["publishing", "limits", "stats", "account"]);
+const MANAGED_HTML_TOOL = "publish_html";
+
 /** Closed class of a failed tool call; the only thing a failure reports outside its answer. */
 export type FailureReason = "input" | "source" | "api_auth" | "api_not_found" | "api_4xx" | "api_429" | "api_5xx" | "other";
 
@@ -66,6 +87,11 @@ export interface ServerOptions {
   publicOrigin?: string;
   /** Transport for BrewPage API calls; default global fetch. */
   fetch?: typeof fetch;
+  catalog?: Catalog;
+  compactFetchSource?: (url: string, signal?: AbortSignal) => Promise<Blob>;
+  authority?: CompactContext["authority"];
+  bridge?: Bridge;
+  accountOrigin?: string;
 }
 
 const READ_ONLY: ToolAnnotations = { readOnlyHint: true };
@@ -204,6 +230,33 @@ function parseManageUrl(link: string): { namespace: string; id: string; key: str
   if (!path || !key) return { refusal: NOT_A_MANAGE_LINK };
   if (path[1] !== "html" && path[1] !== "sites") return { refusal: MANAGE_LINK_OTHER_KIND };
   try { return { namespace: decodeURIComponent(path[2]), id: path[3], key }; } catch { return { refusal: NOT_A_MANAGE_LINK }; }
+}
+
+function compactManageTarget(link: string, origin: string): (Target & { key: string }) | { refusal: Refusal } {
+  let url: URL;
+  try { url = new URL(link.trim()); } catch { return { refusal: NOT_A_MANAGE_LINK }; }
+  const path = MANAGE_URL_PATH.exec(url.pathname);
+  const key = url.hash.startsWith("#k=") ? url.hash.slice(3) : "";
+  if (!path || !MANAGE_KEY_SHAPE.test(key) || url.origin !== new URL(origin).origin || url.username || url.password || url.search) {
+    return { refusal: NOT_A_MANAGE_LINK };
+  }
+  const kinds: Record<string, Target["kind"]> = { html: "html", sites: "site", files: "file", json: "json", kv: "kv" };
+  try {
+    const namespace = decodeURIComponent(path[2]);
+    if (/^[a-z0-9-]{1,32}$/.test(namespace)) return { kind: kinds[path[1]], namespace, id: path[3], key };
+  } catch {
+    return { refusal: NOT_A_MANAGE_LINK };
+  }
+  return { refusal: NOT_A_MANAGE_LINK };
+}
+
+function accountActionUrl(input: string, accountOrigin: string): string | undefined {
+  let next: URL;
+  try { next = new URL(input); } catch { return undefined; }
+  const requests = next.searchParams.getAll("request");
+  if (next.origin !== accountOrigin || next.pathname !== "/mcp-action" || next.username || next.password || next.hash ||
+    next.searchParams.size !== 1 || requests.length !== 1 || !/^[A-Za-z0-9_-]{16,128}$/.test(requests[0])) return undefined;
+  return next.href;
 }
 
 /** `state` argument -> the JSON value to send (object or null); JSON text is parsed, anything else is refused before HTTP. */
@@ -545,16 +598,6 @@ function defaultNext(source: FailureSource): string {
   return "the answer above names what to change; change it and repeat. The same call again fails the same way.";
 }
 
-/** A call the client cancelled: rethrown, never answered. */
-function isClientAbort(error: unknown): boolean {
-  return (error as { name?: unknown } | null)?.name === "AbortError" && !isTimeout(error);
-}
-
-function isTimeout(error: unknown): boolean {
-  const { name, cause } = (error ?? {}) as { name?: unknown; cause?: { name?: unknown } | null };
-  return name === "TimeoutError" || (name === "AbortError" && cause?.name === "TimeoutError");
-}
-
 /** Error text of a failed API answer read as text: its JSON when it is JSON, else the text. */
 function parsedAnswer(text: unknown): unknown {
   try { return JSON.parse(text as string); } catch { return text; }
@@ -742,46 +785,68 @@ function readPart(text: string, offset = 0): { header: string[]; part: string } 
 const OFFSET_SCHEMA = z.number().int().min(0).optional().describe("Character offset of the next part");
 
 /** Stdio source download: plain fetch with the client User-Agent; a non-2xx answer becomes the tool error. */
-async function plainFetchSource(url: string, userAgent: string): Promise<Blob> {
-  const res = await fetch(url, { headers: { "User-Agent": userAgent } });
+async function plainFetchSource(url: string, userAgent: string, signal?: AbortSignal): Promise<Blob> {
+  const res = await fetch(url, { headers: { "User-Agent": userAgent }, signal });
   if (!res.ok) throw new Error(`Failed to fetch file from URL: ${res.status} ${res.statusText}`);
   return res.blob();
-}
-
-type ToolShape = Record<string, z.ZodType>;
-type ToolAnswer = ReturnType<typeof textResult>;
-/** One tool definition as every tool hands it to the registration wrapper. */
-interface ToolSpec<Shape extends ToolShape> {
-  title: string;
-  annotations: ToolAnnotations;
-  description: string;
-  inputSchema: Shape;
-  /** Arguments left out of the advertised schema; a call that sends one is validated and served as before. */
-  hidden?: ReadonlyArray<keyof Shape & string>;
 }
 
 type JsonSchema = Record<string, unknown>;
 /** Schema keys the list never carries; the validator keeps every rule and names it in its error. */
 const UNLISTED_SCHEMA_KEYS = new Set(["$schema", "propertyNames", "minLength", "maxLength", "pattern", "default"]);
 const isSchemaObject = (value: unknown): value is JsonSchema => typeof value === "object" && value !== null && !Array.isArray(value);
+const COMPACT_FIELD_HINTS: Record<string, string> = {
+  manageUrl: "Private link as target and proof.",
+  content: "HTML, Markdown or code.",
+  filename: "Original filename.",
+  files: "Full site bundle.",
+  url: "Public HTTP(S) file URL.",
+  json: "Any JSON value.",
+  key: "KV key. Excludes hosting.",
+  ttlDays: "Storage duration in days.",
+  requireAccount: "Require account ownership.",
+};
+
+function compactJsonDefinition(name: string, definition: JsonSchema): JsonSchema {
+  const primitives = ["string", "number", "boolean", "null"];
+  const ref = { $ref: `#/$defs/${name}` };
+  const json = { anyOf: [...primitives.map((type) => ({ type })), { type: "array", items: ref },
+    { type: "object", propertyNames: { type: "string" }, additionalProperties: ref }] };
+  return JSON.stringify(definition) === JSON.stringify(json) ? { type: [...primitives, "array", "object"] } : definition;
+}
+
+function compactFieldHint(name: string, schema: JsonSchema): JsonSchema {
+  const description = schema.description;
+  if (typeof description !== "string") return schema;
+  if (name === "ownerToken") return { ...schema, description: /profile|admin/i.test(description) ? "Private profile proof." : "Private owner proof." };
+  if (name === "key" && !description.startsWith("KV key")) return schema;
+  const hint = COMPACT_FIELD_HINTS[name];
+  return hint && hint.length < description.length ? { ...schema, description: hint } : schema;
+}
 
 /** Advertised form of an emitted schema node: unlisted keys and empty sub-schemas go, a union shows its main type. */
-function leanSchema(node: JsonSchema): JsonSchema {
+function leanSchema(node: JsonSchema, legacy: boolean): JsonSchema {
   const lean: JsonSchema = {};
   for (const [key, value] of Object.entries(node)) {
     if (UNLISTED_SCHEMA_KEYS.has(key)) continue;
     if ((key === "maximum" || key === "minimum") && Math.abs(Number(value)) === Number.MAX_SAFE_INTEGER) continue;
     if (key === "properties" && isSchemaObject(value)) {
-      lean[key] = Object.fromEntries(Object.entries(value).map(([name, schema]) => [name, leanSchema(schema as JsonSchema)]));
+      lean[key] = Object.fromEntries(Object.entries(value).map(([name, schema]) => {
+        const field = leanSchema(schema as JsonSchema, legacy);
+        return [name, legacy ? field : compactFieldHint(name, field)];
+      }));
+    } else if (key === "$defs" && !legacy && isSchemaObject(value)) {
+      lean[key] = Object.fromEntries(Object.entries(value).map(([name, definition]) =>
+        [name, isSchemaObject(definition) ? compactJsonDefinition(name, definition) : definition]));
     } else if ((key === "items" || key === "additionalProperties") && isSchemaObject(value)) {
-      if (Object.keys(value).length > 0) lean[key] = leanSchema(value);
+      if (Object.keys(value).length > 0) lean[key] = leanSchema(value, legacy);
     } else if (key === "anyOf" && Array.isArray(value)) {
-      lean[key] = value.map((arm) => leanSchema(arm as JsonSchema));
+      lean[key] = value.map((arm) => leanSchema(arm as JsonSchema, legacy));
     } else {
       lean[key] = value;
     }
   }
-  return Array.isArray(lean.anyOf) ? mainTypeOf(lean) : lean;
+  return legacy && Array.isArray(lean.anyOf) ? mainTypeOf(lean) : lean;
 }
 
 /** A union as its main type: the text spelling of a value is accepted, never advertised; `null` stays visible. */
@@ -798,10 +863,10 @@ function mainTypeOf(node: JsonSchema): JsonSchema {
 }
 
 /** Validator of today with a lean advertised schema: `tools/list` shows the diet, `tools/call` meets every rule. */
-function advertised<Args>(validator: z.ZodType<Args>, hidden: ReadonlyArray<string>): StandardSchemaWithJSON<Args, Args> {
+function advertised<Args>(validator: z.ZodType<Args>, hidden: ReadonlyArray<string>, legacy: boolean): StandardSchemaWithJSON<Args, Args> {
   const standard = validator["~standard"];
   const listed = (emitted: Record<string, unknown>): Record<string, unknown> => {
-    const { properties, required, ...rest } = leanSchema(emitted);
+    const { properties, required, ...rest } = leanSchema(emitted, legacy);
     const shown = Object.entries((properties ?? {}) as JsonSchema).filter(([name]) => !hidden.includes(name));
     const needed = ((required ?? []) as string[]).filter((name) => !hidden.includes(name));
     return { ...rest, properties: Object.fromEntries(shown), ...(needed.length > 0 ? { required: needed } : {}) };
@@ -826,13 +891,89 @@ export function createServer(options: ServerOptions = {}): McpServer {
   const userAgent = options.userAgent ?? userAgentFor(profile);
   const defaultOwnerToken = options.ownerToken;
   const fetchSource = options.fetchSource ?? ((url: string) => plainFetchSource(url, userAgent));
+  const compactSource = options.compactFetchSource ?? options.fetchSource ?? ((url: string, signal?: AbortSignal) => plainFetchSource(url, userAgent, signal));
   const publicOrigin = options.publicOrigin ?? baseUrl;
+  const accountOrigin = new URL(options.accountOrigin ?? DEFAULT_ACCOUNT_ORIGIN).origin;
   const apiFetch = options.fetch ?? fetch;
+  const catalog = profile.tools ? "legacy" : options.catalog ?? "compact";
+  const authority = options.authority ?? "unsigned";
+  const requestAbort = new AsyncLocalStorage<AbortSignal>();
   const server = new McpServer({
     name: "brewpage-mcp",
-    version: "2.1.2",
-  }, { instructions: serverInstructions(profile) });
+    version: VERSION,
+  }, { instructions: catalog === "compact" ? COMPACT_INSTRUCTIONS : serverInstructions(profile) });
   const registered = new Set<string>();
+  const legacyCatalog = new Map<string, Tool>();
+  const compactCatalog = new Map<CompactToolName, Tool>();
+  type Registerable = { schema: StandardSchemaWithJSON; run: (args: Record<string, unknown>, compatibility?: boolean) => Promise<ToolAnswer> };
+  const legacy = new Map<string, Registerable>();
+  const compact = new Map<CompactToolName, Registerable>();
+  const collisions = new Set(["delete_page_data", "get_guide"]);
+
+  function descriptor(name: string, spec: Omit<ToolSpec<ToolShape>, "inputSchema" | "hidden" | "oauthScopes">,
+    schema: StandardSchemaWithJSON, meta?: Record<string, unknown>): Tool {
+    return { name, title: spec.title, description: spec.description,
+      inputSchema: schema["~standard"].jsonSchema.input({ target: "draft-2020-12" }) as Tool["inputSchema"], annotations: spec.annotations,
+      ...(meta ? { _meta: meta } : {}) };
+  }
+
+  const dispatchCompact: CompactDispatch = async (name, input) => {
+    const operation = compact.get(name);
+    if (!operation) throw new Error(`Unknown compact operation ${name}`);
+    const result = await operation.schema["~standard"].validate(input);
+    if (result.issues) return refused(name, { why: "The translated input is unavailable for this account operation.", next: "Check the saved tool arguments and publication address." });
+    return operation.run(result.value as Record<string, unknown>, true);
+  };
+
+  function registerCompact<Shape extends ToolShape>(name: CompactToolName, spec: ToolSpec<Shape>,
+    handler: (args: z.infer<z.ZodObject<Shape>>, cachedCall: boolean) => ToolAnswer | Promise<ToolAnswer>): void {
+    if (compactCatalog.has(name)) throw new Error(`Duplicate compact tool ${name}`);
+    const { inputSchema, hidden = [], oauthScopes, ...listing } = spec;
+    const schema = advertised(z.strictObject(inputSchema), hidden, false);
+    const scopes = oauthScopes ?? toolAuthority(name, {}).scopes;
+    const meta = { securitySchemes: [{ type: "noauth" }, { type: "oauth2", scopes }] };
+    compactCatalog.set(name, descriptor(name, listing, schema, meta));
+    const run = async (args: Record<string, unknown>, cachedCall = false): Promise<ToolAnswer> => {
+      const selection = toolAuthority(name, args);
+      if (selection.accountOnly && authority !== "account") {
+        if (args.ownerToken !== undefined || args.manageUrl !== undefined) {
+          return refused(name, { why: "an explicit owner proof was sent with requireAccount.", next: "Choose one identity for this action." });
+        }
+        return missingAccount(selection.scopes);
+      }
+      return answered(name, () => handler(args as z.infer<z.ZodObject<Shape>>, cachedCall));
+    };
+    compact.set(name, { schema, run });
+    const old = legacy.get(name);
+    const current = (args: unknown) => isPlainObject(args) && (name === "delete_page_data"
+      ? authority === "account" || Object.hasOwn(args, "kind")
+      : catalog === "compact" || NEW_GUIDE_TOPICS.has(String(args.topic)) || (args.topic === "templates" && typeof args.q === "string"));
+    const combined: StandardSchemaWithJSON = old ? { "~standard": { ...schema["~standard"],
+      validate: (args) => (current(args) ? schema : old.schema)["~standard"].validate(args),
+    } } : schema;
+    server.registerTool(name, { ...listing, inputSchema: combined, _meta: meta }, async (sent, { mcpReq }) => {
+      const args = sent as Record<string, unknown>;
+      if (old && !current(args)) {
+        if (catalog === "compact" && name === "delete_page_data" && typeof args.manageUrl === "string") {
+          const link = URL.canParse(args.manageUrl) ? new URL(args.manageUrl) : undefined;
+          if (!link || link.origin !== new URL(publicOrigin).origin || link.username || link.password) {
+            return refused("delete page data", NOT_A_MANAGE_LINK);
+          }
+        }
+        return catalog === "compact" ? requestAbort.run(mcpReq.signal, () => old.run(args)) : old.run(args);
+      }
+      return requestAbort.run(mcpReq.signal, () => run(args));
+    });
+  }
+
+  function missingAccount(scopes: readonly Scope[]): ToolAnswer {
+    options.onFailure?.("api_auth");
+    if (profile.transport === "stdio") {
+      const flags = scopes.length === 1 && scopes[0] === "publications:write" ? "" : scopes.map((scope) => ` --scope ${scope}`).join("");
+      return textResult(`On macOS, run brewpage-mcp login${flags} and restart your MCP client. You can also connect BrewPage at https://brewpage.app/mcp and approve the required permissions.`, true);
+    }
+    return textResult(connectionRequired(scopes).description, true);
+  }
 
   /** The one registration point of every tool: a tool the profile does not list is not registered. */
   function tool<Shape extends ToolShape>(
@@ -842,17 +983,26 @@ export function createServer(options: ServerOptions = {}): McpServer {
   ): void {
     if (profile.tools && !profile.tools.has(name)) return;
     registered.add(name);
-    const { hidden = [], inputSchema: shape, ...listing } = spec;
+    const { hidden = [], inputSchema: shape, oauthScopes: _oauthScopes, ...listing } = spec;
     // The old-name mark is validated with the rest, never listed and never handed to the tool.
     const validator = z.object({ ...shape, [RETIRED_ARGUMENT]: z.string().optional() });
-    server.registerTool(name, { ...listing, inputSchema: advertised(validator, [...hidden, RETIRED_ARGUMENT]) }, async (sent) => {
-      const { [RETIRED_ARGUMENT]: retired, ...args } = sent as Record<string, unknown>;
-      const answer = await answered(name, () => handler(args as z.infer<z.ZodObject<Shape>>));
+    const schema = advertised(validator, [...hidden, RETIRED_ARGUMENT], true);
+    const run = async (sent: Record<string, unknown>, signed = false) => {
+      const { [RETIRED_ARGUMENT]: retired, ...args } = sent;
+      const scoped = signed && name !== "set_publication" && legacyAccountScopes(name, args).length > 0;
+      const answer = await answered(name, () => scoped
+        ? signedLegacyCall(context, dispatchCompact, name, args)
+        : handler(args as z.infer<z.ZodObject<Shape>>));
       const note = retiredNote(retired, name);
       if (!note) return answer;
       const last = answer.content.at(-1)!;
       return { ...answer, content: [...answer.content.slice(0, -1), { ...last, text: `${last.text}\n${note}` }] };
-    });
+    };
+    legacy.set(name, { schema, run });
+    legacyCatalog.set(name, descriptor(name, listing, schema));
+    if (profile.tools || !collisions.has(name)) {
+      server.registerTool(name, { ...listing, inputSchema: schema }, (sent) => run(sent as Record<string, unknown>, authority === "account"));
+    }
   }
 
   /** A tool's answer; anything it throws, a client's cancel apart, becomes a failure answer. */
@@ -902,12 +1052,20 @@ export function createServer(options: ServerOptions = {}): McpServer {
     return { token: defaultOwnerToken, fromEnv: defaultOwnerToken !== undefined };
   }
 
+  function activeRequest(): AbortSignal | undefined {
+    const signal = requestAbort.getStore();
+    if (signal?.aborted) throw new DOMException("Request cancelled", "AbortError");
+    return signal;
+  }
+
   /** Every BrewPage call identifies the client; source-file downloads go through fetchSource. */
   function bpFetch(url: string, init: RequestInit = {}): Promise<Response> {
+    const requested = activeRequest();
+    const signal = requested && init.signal ? AbortSignal.any([requested, init.signal]) : requested ?? init.signal;
     const headers = new Headers(options.headers);
     new Headers(init.headers).forEach((value, name) => headers.set(name, value));
     headers.set("User-Agent", userAgent);
-    return apiFetch(url, { ...init, headers });
+    return apiFetch(url, { ...init, headers, signal });
   }
 
   /** Owner token banner; the configured default is named, never repeated; none when result.extras.isOwner is false.
@@ -934,7 +1092,8 @@ export function createServer(options: ServerOptions = {}): McpServer {
     path: string,
     body?: unknown,
     headers?: Record<string, string>,
-    responseType: "json" | "text" = "json"
+    responseType: "json" | "text" = "json",
+    compact = false,
   ): Promise<{ ok: boolean; status: number; data: unknown; headers: Headers }> {
     const url = `${baseUrl}${path}`;
     const res = await bpFetch(url, {
@@ -943,7 +1102,8 @@ export function createServer(options: ServerOptions = {}): McpServer {
         "Content-Type": "application/json",
         ...headers,
       },
-      body: body ? JSON.stringify(body) : undefined,
+      body: (compact ? body !== undefined : !!body) ? JSON.stringify(body) : undefined,
+      ...(compact ? { redirect: "error" } : {}),
     });
     const data = responseType === "text" ? await res.text() : await res.json().catch(() => null);
     return { ok: res.ok, status: res.status, data, headers: res.headers };
@@ -1627,11 +1787,31 @@ export function createServer(options: ServerOptions = {}): McpServer {
       }
       if (steps.length === 0) return refused("change settings", NO_SETTING);
       const auth = ownerTokenFor(ownerToken);
-      if (!auth.token) return refused(steps[0].operation, NO_OWNER_TOKEN);
+      if (!auth.token && authority !== "account") return refused(steps[0].operation, NO_OWNER_TOKEN);
       const misplaced = steps.find((step) => SETTING_TYPES[step.setting] && !SETTING_TYPES[step.setting].includes(type));
       if (misplaced) {
         return refused(misplaced.operation, { why: `\`${misplaced.setting}\` does not exist on type ${type}.`,
           next: `send it only for type ${SETTING_TYPES[misplaced.setting].join(", ")}.` });
+      }
+
+      if (!auth.token) {
+        const receipt = await context.bridge("publication_settings", { kind: type, namespace, id, listed, password, deliveryMode,
+          badgeHidden: badgeHidden ?? (current === "badge" ? null : undefined), title: title ?? (current === "title" ? null : undefined),
+          extend: extend === true ? true : undefined, expectedVersion: deliveryMode === undefined ? undefined : expectedVersion });
+        if (bridgeOutcomeUnknown(receipt) || receipt.ok && !settingsConfirmed(receipt.data, steps.map(({ setting }) => setting))) {
+          return textResult(SETTINGS_OUTCOME_UNKNOWN, true);
+        }
+        const data = receipt.data as { applied?: Array<{ field: string; result: Record<string, unknown> }>;
+          failed?: { field: string; status: number; code: string; message: string }; skipped?: string[] } | null;
+        const done = (data?.applied ?? []).flatMap(({ field, result }) => steps.find((step) => step.setting === field)?.lines(result) ?? []);
+        if (receipt.ok) return textResult(done.join("\n"));
+        const failed = data?.failed;
+        const operation = steps.find((step) => step.setting === failed?.field)?.operation ?? "change settings";
+        const batch = steps.length === 1 ? [] : [`Changed before it: ${done.length ? done.join("\n") : "none"}`,
+          ...(data?.skipped?.length ? [`Not attempted: ${data.skipped.join(", ")}`] : [])];
+        const next = failed?.code === "invalid_token" && done.length ? "Reconnect BrewPage, read the current settings and request only the remaining changes." : undefined;
+        return failure(operation, receipt.status, failed ? { code: failed.code, message: failed.message } : receipt.data,
+          next, receipt.headers, batch);
       }
 
       // One API call per setting, in the listed order; the first failure stops the rest.
@@ -1704,36 +1884,44 @@ export function createServer(options: ServerOptions = {}): McpServer {
     }
   );
 
-  tool(
-    "mint_token",
-    {
-      ...toolMeta("Mint profile token", ADDITIVE),
-      description: "Mint a profile token, shown once; needs an admin token of the profile.",
-      inputSchema: {
-        label: z.string().optional(),
-        scope: z.enum(["publish", "admin"]).optional().describe("Default publish"),
-        expiresIn: z.enum(["30d", "90d", "1y", "never"]).optional().describe("Default: admin 90d, publish never"),
-        ownerToken: z.string().optional().describe(ADMIN_TOKEN_DESCRIPTION),
-      },
-    },
-    async ({ label, scope, expiresIn, ownerToken }) => {
-      const auth = ownerTokenFor(ownerToken);
-      if (!auth.token) return refused("mint token", NO_OWNER_TOKEN);
-      const { ok, status, data, headers: answerHeaders } = await apiRequest("POST", "/api/owner-token/mint", { label, scope, expiresIn },
-        { "X-Owner-Token": auth.token });
-      if (!ok) return failure("mint token", status, data, status === 401 || status === 403 ? ADMIN_TOKEN_NEXT : undefined, answerHeaders);
-      const result = data as Record<string, unknown>;
-      return textResult([
-        `MINTED · ${result.scope} · expires ${result.expiresAt ?? "never"}`,
-        ``,
-        `===================================`,
-        `NEW TOKEN (shown once): ${result.token}`,
-        `===================================`,
-        ``,
-        `Save it now; it cannot be shown again. Never publish it.`,
-      ].join("\n"));
-    }
-  );
+  const mintInput = {
+    label: z.string().optional(),
+    scope: z.enum(["publish", "admin"]).optional().describe("Default publish"),
+    expiresIn: z.enum(["30d", "90d", "1y", "never"]).optional().describe("Default: admin 90d, publish never"),
+    ownerToken: z.string().optional().describe(ADMIN_TOKEN_DESCRIPTION),
+  };
+  type MintInput = z.infer<z.ZodObject<typeof mintInput>>;
+  async function mintProfileToken({ label, scope, expiresIn, ownerToken }: MintInput, compact = false): Promise<ToolAnswer> {
+    const auth = ownerTokenFor(ownerToken);
+    if (!auth.token) return refused("mint token", NO_OWNER_TOKEN);
+    const uncertain = () => textResult("BrewPage did not confirm the token mint. Check the token list in your BrewPage account before requesting another token.", true);
+    const answer = await apiRequest("POST", "/api/owner-token/mint", { label, scope, expiresIn },
+      { "X-Owner-Token": auth.token }, "json", compact).catch((error: unknown) => {
+        if (!compact || isClientAbort(error)) throw error;
+        return undefined;
+      });
+    if (!answer || compact && answer.status >= 500) return uncertain();
+    const { ok, status, data, headers: answerHeaders } = answer;
+    if (!ok) return failure("mint token", status, data, status === 401 || status === 403 ? ADMIN_TOKEN_NEXT : undefined, answerHeaders);
+    if (compact && (status !== 201 || !isPlainObject(data) || typeof data.id !== "string" || !data.id ||
+      typeof data.token !== "string" || !data.token || (data.scope !== "publish" && data.scope !== "admin"))) return uncertain();
+    const result = data as Record<string, unknown>;
+    return textResult([
+      `MINTED · ${result.scope} · expires ${result.expiresAt ?? "never"}`,
+      ``,
+      `===================================`,
+      `NEW TOKEN (shown once): ${result.token}`,
+      `===================================`,
+      ``,
+      `Save it now; it cannot be shown again. Never publish it.`,
+    ].join("\n"));
+  }
+
+  tool("mint_token", {
+    ...toolMeta("Mint profile token", ADDITIVE),
+    description: "Mint a profile token, shown once; needs an admin token of the profile.",
+    inputSchema: mintInput,
+  }, mintProfileToken);
 
   /** Publication route or hostname route of a custom domain; null when the arguments name neither or both. */
   function domainPath(type?: string, namespace?: string, id?: string, hostname?: string, suffix: string[] = []): string | null {
@@ -2101,5 +2289,63 @@ export function createServer(options: ServerOptions = {}): McpServer {
     if (!profile.tools && !registered.has(current)) throw new Error(`Old tool name ${old} maps to ${current}, which is not registered.`);
     if (registered.has(old)) throw new Error(`Old tool name ${old} is a registered tool.`);
   }
+  if (profile.tools) return server;
+
+  function requireApiPath(path: string): void {
+    if (!path.startsWith("/api/") || !new URL(path, baseUrl).pathname.startsWith("/api/")) {
+      throw new Error("Invalid BrewPage API route.");
+    }
+  }
+
+  const context: CompactContext = {
+    register: registerCompact,
+    async legacy(name, args) {
+      const operation = legacy.get(name);
+      if (!operation) throw new Error(`Unknown legacy operation ${name}`);
+      const parsed = await operation.schema["~standard"].validate(args);
+      if (parsed.issues) return textResult(`Invalid arguments for ${name}.`, true);
+      if (name === "mint_token") return mintProfileToken(parsed.value as MintInput, true);
+      return operation.run(parsed.value as Record<string, unknown>);
+    },
+    publicOrigin, accountOrigin, accountActionUrl: (input) => accountActionUrl(input, accountOrigin),
+    resolveNamespace, siteForm, readPart, apiPath, withQuery,
+    api(method, path, body, headers, responseType) {
+      requireApiPath(path);
+      return apiRequest(method, path, body, headers, responseType, true);
+    },
+    raw(path, init) {
+      requireApiPath(path);
+      return bpFetch(`${baseUrl}${path}`, { ...init, redirect: init.redirect === "manual" ? "manual" : "error" });
+    },
+    text: textResult,
+    refuse: refused,
+    ownerToken: ownerTokenFor,
+    manageTarget: (link) => compactManageTarget(link, publicOrigin),
+    async fetchSource(url) {
+      const file = await compactSource(url, activeRequest());
+      activeRequest();
+      return file;
+    },
+    authority,
+    async bridge(operation, args, bridgeOptions) {
+      const signal = activeRequest();
+      return options.bridge ? options.bridge(operation, args, bridgeOptions, signal) : {
+        ok: false, status: 503, headers: new Headers(),
+        data: { code: "bridge_unavailable", message: "Open the BrewPage HTTP connection to use this operation." },
+      };
+    },
+  };
+  registerPublications(context);
+  registerSettingsDomains(context);
+  registerPageData(context);
+  registerAccountGuides(context);
+  const currentTools = COMPACT_TOOL_NAMES.map((name) => {
+    const tool = compactCatalog.get(name);
+    if (!tool) throw new Error(`Compact tool ${name} is missing`);
+    return tool;
+  });
+  const displayed = catalog === "compact" ? currentTools : [...legacyCatalog.values()]
+    .filter(({ name }) => catalog === "legacy" || name === MANAGED_HTML_TOOL);
+  server.server.setRequestHandler("tools/list", () => ({ tools: displayed }));
   return server;
 }

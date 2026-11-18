@@ -157,7 +157,7 @@ async function fixture(t: TestContext, env: Record<string, string> = {}) {
   const transport = new StdioClientTransport({
     command: process.execPath,
     args: [fileURLToPath(new URL("../dist/index.js", import.meta.url))],
-    env: { BREWPAGE_URL: baseUrl, ...env }, stderr: "pipe",
+    env: { BREWPAGE_URL: baseUrl, BREWPAGE_MCP_CATALOG: "legacy", ...env }, stderr: "pipe",
   });
   const client = new Client({ name: "contract-smoke-test", version: "0.0.0" });
   const stderr: Buffer[] = [];

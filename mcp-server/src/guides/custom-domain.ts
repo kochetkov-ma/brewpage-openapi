@@ -24,3 +24,10 @@ export const DOMAIN_PROBLEMS: Record<string, string> = {
   "RESOLVER_UNAVAILABLE": "DNS did not answer: retried automatically",
   "PUBLICATION_GONE": "the publication is gone: connect the custom domain to another one",
 };
+/** Compact owner recipe from "### Connect a domain with MCP". */
+export const DOMAIN_MCP_GUIDE = [
+  "For an owned hostname use `domains` with `action:\"attach\"`, hostname and the HTML or site target,",
+  "or send `domain` on `publish`. Relay exact DNS records, keep mail records and use DNS only at",
+  "Cloudflare. After DNS changes call `domains` with `action:\"check\"` once; read with `action:\"get\"`",
+  "and follow `nextStep`.",
+].join("\n") + "\n";

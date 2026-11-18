@@ -1,5 +1,8 @@
 /** Reserved argument a rewritten old-name call carries: the old name, read and stripped at registration. */
 export const RETIRED_ARGUMENT = "_retired";
+export const TOOL_SELECTION_HEADER = "BrewPage-Tool-Selection";
+export const HTML_ONLY_FAILURE = "This BrewPage connection permits HTML publishing only.";
+export type ToolSelection = "legacy" | "publish_html";
 
 type Arguments = Record<string, unknown>;
 
@@ -47,6 +50,11 @@ export const RETIRED_TOOLS: ReadonlyMap<string, RetiredTool> = new Map<string, R
 ]);
 
 const isObject = (value: unknown): value is Record<string, unknown> => typeof value === "object" && value !== null && !Array.isArray(value);
+
+export function permitsHtmlOnly(name: unknown, args: unknown): boolean {
+  return name === "publish_html" && (!isObject(args) ||
+    (!Object.hasOwn(args, "files") && (!Object.hasOwn(args, "kind") || args.kind === "html")));
+}
 
 /** A parsed `tools/call` of an old name as the call of its current tool, marked with the old name; any other message as it is. */
 export function currentCall<Message>(message: Message): Message {
