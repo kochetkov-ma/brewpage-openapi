@@ -12,6 +12,7 @@ import { registerPublications } from "./compact/publications.js";
 import { registerSettingsDomains, settingsConfirmed, SETTINGS_OUTCOME_UNKNOWN } from "./compact/settings-domains.js";
 import { DOMAIN_PROBLEMS, DOMAIN_STATUSES } from "./guides/custom-domain.js";
 import { PAGE_DATA_GUIDE } from "./guides/page-data.js";
+import { withGuideReference } from "./guides/reference.js";
 import { TEMPLATES_GUIDE } from "./guides/templates.js";
 
 export const DEFAULT_BASE_URL = "https://brewpage.app";
@@ -59,7 +60,7 @@ export function serverInstructions(profile: Profile = LOCAL): string {
 const COMPACT_INSTRUCTIONS = [
   "Explicitly public/listed publication: namespace:\"public\"; ordinary link-only: omit namespace. JSON/KV and ineligible formats stay unlisted; report actual access.",
   "publish defaults to HTML. Return the exact link; reuse owner proof.",
-  "Before an anonymous create, verify a private tool-result boundary and a recovery path. Use verified private storage or a verified owner-only conversation. Otherwise arrange private recovery before writing.",
+  "Supplied material/authority and verified private owner-only host/recovery context are enough for ordinary publish: no ownership/publishing guide. Resolve missing material/authority/private tool boundary/recovery before writing; read guides for actual gaps.",
   "Save newly issued ownerToken and manageUrl in verified private storage. If storage is unavailable and the conversation is verified owner-only, give the owner both exact issued values, label each private and tell them to save them now. Keep credentials out of shared output.",
   "Visitor input: read get_guide topic=page-data first. New HTML titles go in <title>. Bind handlers synchronously; await bp.state() and config inside them so the first click saves. Use the guide SDK and requested collection/key/value; publish HTML and state in one call. Own hostname: domain or domains.",
   "For account ownership, use the BrewPage HTTP connection and set requireAccount=true.",
@@ -2284,8 +2285,8 @@ export function createServer(options: ServerOptions = {}): McpServer {
         topic: z.enum(["page-data", "templates", "custom-domain"]),
       },
     },
-    async ({ topic }) => textResult(topic === "custom-domain" ? CUSTOM_DOMAIN_GUIDE
-      : topic === "templates" ? TEMPLATES_GUIDE + TEMPLATES_GUIDE_TAIL : PAGE_DATA_GUIDE + PAGE_DATA_GUIDE_TAIL)
+    async ({ topic }) => textResult(withGuideReference(topic === "custom-domain" ? CUSTOM_DOMAIN_GUIDE
+      : topic === "templates" ? TEMPLATES_GUIDE + TEMPLATES_GUIDE_TAIL : PAGE_DATA_GUIDE + PAGE_DATA_GUIDE_TAIL))
   );
 
   // Start check of the old-name table: every row runs as a tool this server registered.

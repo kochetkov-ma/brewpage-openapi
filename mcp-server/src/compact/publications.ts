@@ -316,7 +316,7 @@ function isTextType(contentType: string | null) {
 export function registerPublications(ctx: CompactContext): void {
   ctx.register("publish", {
     title: "Publish on BrewPage", annotations: { readOnlyHint: false, destructiveHint: false },
-    description: "Explicitly public/listed publication: namespace:\"public\"; ordinary link-only: omit namespace. Site: {\"kind\":\"site\",\"namespace\":\"public\",\"files\":[{\"path\":\"index.html\",\"content\":\"<h1>Hi</h1>\"}]}. A public input URL does not request listing. New HTML titles go in <title>, not publish.title; preserve supplied HTML. For visitor input read get_guide topic page-data first; publish HTML and state together. Use domain for an owned hostname.",
+    description: "Explicitly public/listed publication: namespace:\"public\"; ordinary link-only: omit namespace. HTML: content; kind=site: files; kind=file: url; kind=json: json; kind=kv: key,value. Site: {\"kind\":\"site\",\"namespace\":\"public\",\"files\":[{\"path\":\"index.html\",\"content\":\"<h1>Hi</h1>\"}]}. A public input URL does not request listing. New HTML titles go in <title>, not publish.title; preserve supplied HTML. For visitor input read get_guide topic page-data first; publish HTML and state together. Use domain for an owned hostname.",
     inputSchema: {
       kind: kind.describe("Default html"), ...materialFields,
       namespace: z.string().refine((value) => value === "" || NAMESPACES.test(value), "Use an empty string or a valid namespace")

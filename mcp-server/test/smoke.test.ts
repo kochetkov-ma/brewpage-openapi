@@ -2204,6 +2204,7 @@ for (const scenario of [
 const GUIDE_TAIL = "Author side: entries are read in the Data tab or with get_page_data; set_page_data writes author entries, " +
   "configure_page_data changes settings, delete_page_data moderates. Each takes namespace + id + ownerToken, or the management link as manageUrl.";
 const GUIDE_LINKS_SENTENCE = "Give the user `link` (the page) and `manageUrl` (private; its Data tab shows entries and files).";
+const GUIDE_SUPPORT_REFERENCE = "\n\nOptional support reference: https://brewpage.app/tip/guide";
 
 test("get_guide returns the generated Page data guide plus the author-side tail without calling the API", { timeout: 10_000 }, async (t) => {
   // GIVEN the guide text generated from the app's llms texts.
@@ -2214,7 +2215,7 @@ test("get_guide returns the generated Page data guide plus the author-side tail 
   const text = result.content[0].text;
   assert.deepEqual({ isError: result.isError, text, withinLimit: [...text].length <= 4400, tailWithinLimit: GUIDE_TAIL.length <= 300,
     linksSentence: text.split(GUIDE_LINKS_SENTENCE).length - 1, requests: f.requests.length },
-  { isError: undefined, text: PAGE_DATA_GUIDE + GUIDE_TAIL, withinLimit: true, tailWithinLimit: true, linksSentence: 1, requests: 0 },
+  { isError: undefined, text: PAGE_DATA_GUIDE + GUIDE_TAIL + GUIDE_SUPPORT_REFERENCE, withinLimit: true, tailWithinLimit: true, linksSentence: 1, requests: 0 },
   "guide text, size limits and the management-link sentence");
 });
 
@@ -2232,7 +2233,7 @@ test("get_guide templates returns the generated templates section plus the tool-
   assert.deepEqual({ isError: result.isError, text, withinLimit: [...text].length <= 2600,
     catalogue: text.split("GET https://brewpage.app/api/templates?q=").length - 1, copyRoute: text.split("/api/html?template=<slug>").length - 1,
     requests: f.requests.length },
-  { isError: undefined, text: TEMPLATES_GUIDE + TEMPLATES_TAIL, withinLimit: true, catalogue: 1, copyRoute: 1, requests: 0 },
+  { isError: undefined, text: TEMPLATES_GUIDE + TEMPLATES_TAIL + GUIDE_SUPPORT_REFERENCE, withinLimit: true, catalogue: 1, copyRoute: 1, requests: 0 },
   "templates guide text, size limit and the two routes");
 });
 
@@ -2265,7 +2266,7 @@ test("get_guide custom-domain returns the steps in tool words plus the generated
   const text = result.content[0].text;
   assert.deepEqual({ isError: result.isError, text, withinLimit: [...text].length <= 4096,
     rows: text.split("\n").filter((line) => /^ {2}[A-Za-z_<>]+ - /.test(line)).length, requests: f.requests.length },
-  { isError: undefined, text: CUSTOM_DOMAIN_GUIDE, withinLimit: true,
+  { isError: undefined, text: CUSTOM_DOMAIN_GUIDE + GUIDE_SUPPORT_REFERENCE, withinLimit: true,
     rows: Object.keys(DOMAIN_STATUSES).length + Object.keys(DOMAIN_PROBLEMS).length + 1, requests: 0 },
   "custom-domain guide text, size limit and table rows");
 });

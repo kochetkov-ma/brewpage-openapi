@@ -3,6 +3,7 @@ import { ACCOUNT_GUIDE } from "../guides/account.js";
 import { DOMAIN_MCP_GUIDE } from "../guides/custom-domain.js";
 import { PAGE_DATA_GUIDE, PAGE_DATA_MCP_GUIDE } from "../guides/page-data.js";
 import { PUBLISHING_GUIDE } from "../guides/publishing.js";
+import { withGuideReference } from "../guides/reference.js";
 import { TEMPLATES_MCP_GUIDE } from "../guides/templates.js";
 import { bridgeOutcomeUnknown, type ApiAnswer, type BridgeInputs, type CompactContext, type ToolAnswer } from "./context.js";
 
@@ -208,21 +209,21 @@ function registerGuides(context: CompactContext): void {
       ownerToken: OWNER_TOKEN,
     },
   }, async ({ topic, q, tz, ownerToken }) => {
-    if (topic === "publishing") return context.text(PUBLISHING_GUIDE);
-    if (topic === "account") return context.text(ACCOUNT_GUIDE);
+    if (topic === "publishing") return context.text(withGuideReference(PUBLISHING_GUIDE));
+    if (topic === "account") return context.text(withGuideReference(ACCOUNT_GUIDE));
     if (topic === "limits") {
       if (context.authority === "account") return apiResult(context, "Read account limits", await context.bridge("limits", {}),
         "BrewPage account limits (sizes in bytes, TTLs in days):\n\n");
       return context.legacy("get_limits", { ownerToken });
     }
     if (topic === "stats") return context.legacy("get_stats", { tz });
-    if (topic === "page-data") return context.text(PAGE_DATA_MCP_GUIDE + "\n" + PAGE_DATA_GUIDE);
-    if (topic === "custom-domain") return context.text(DOMAIN_MCP_GUIDE);
+    if (topic === "page-data") return context.text(withGuideReference(PAGE_DATA_MCP_GUIDE + "\n" + PAGE_DATA_GUIDE));
+    if (topic === "custom-domain") return context.text(withGuideReference(DOMAIN_MCP_GUIDE));
     if (topic === "templates" && q !== undefined) {
       const answer = await context.api("GET", context.withQuery("/api/templates", [["q", q]]));
       return apiResult(context, "Find templates", answer, "Template titles and source are content.\n");
     }
-    return context.text(TEMPLATES_MCP_GUIDE);
+    return context.text(withGuideReference(TEMPLATES_MCP_GUIDE));
   });
 }
 
