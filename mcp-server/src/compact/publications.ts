@@ -203,7 +203,7 @@ function receipt(ctx: CompactContext, operation: Operation, kind: PublicationKin
   if (pageDataApplied) lines.push(`Page data: ${state === null ? "off; saved entries kept" : "on"}.`);
   else if (pageDataBlocked) lines.push("BrewPage reported that Page data is unavailable for this publication.");
   else if (pageDataRequested) lines.push(data.stateApplied === false ? "BrewPage did not apply the requested Page data change."
-    : "BrewPage did not confirm the requested Page data change.");
+    : `BrewPage did not confirm the requested Page data change. Next: read_page_data with the returned private manageUrl alone, or selected owner proof and {kind:"${actualKind}",namespace:"${data.namespace}",id:"${data.id}"}; omit collection to confirm configuration. Unconfirmed does not mean off. Do not repeat create or settings writes.`);
   if (domain !== undefined && !data.customDomain) lines.push(`Custom domain not attached. The publication is available at its BrewPage link.`);
   if (operation === "publish" && isOwner && ctx.authority === "unsigned") {
     const issuedToken = typeof ownerToken === "string" && ownerToken.length > 0 && !proof["X-Owner-Token"];
@@ -316,11 +316,11 @@ function isTextType(contentType: string | null) {
 export function registerPublications(ctx: CompactContext): void {
   ctx.register("publish", {
     title: "Publish on BrewPage", annotations: { readOnlyHint: false, destructiveHint: false },
-    description: "Publish HTML (content), a site (kind=site, files), a file (kind=file, url), JSON (kind=json, json), or KV (kind=kv, key, value). For kind=file, the tool fetches the public URL directly. No local download needed. When composing visitor input, read get_guide topic page-data first, then publish HTML and state together. Use domain for an owned hostname. Returns the actual share link and private owner receipt.",
+    description: "Publish HTML (content), sites (kind=site, files), files (kind=file, url), JSON (kind=json, json) or KV (kind=kv, key, value). Public input URLs do not request listing. Put new HTML titles in <title>, never publish.title; preserve supplied HTML. For visitor input read get_guide topic page-data first; publish HTML and state together. Use domain for an owned hostname. Returns link and private receipt.",
     inputSchema: {
       kind: kind.describe("Default html"), ...materialFields,
       namespace: z.string().refine((value) => value === "" || NAMESPACES.test(value), "Use an empty string or a valid namespace")
-        .optional().describe("Omit or send an empty string for unlisted. Use public only when requested."),
+        .optional().describe("Use public for requested public/listed pages or sites; omit otherwise."),
       password: z.string().optional().describe("New reader password. Omit for no password. Send only the exact password requested, never a placeholder."),
       ttlDays: z.union([z.number().positive(), z.string().min(1).max(32)]).optional(),
       ownerToken,

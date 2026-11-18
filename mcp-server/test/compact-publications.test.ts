@@ -341,8 +341,11 @@ test("Publication receipts preserve actual identity and distinguish Page data ap
       "The receipt should preserve the existing write identity and confirmed effects without further requests");
     assert.match(result.content[0].text, row.outcome, "The receipt should describe the confirmed or pending effect");
     assert.deepEqual({ stateOn: result.content[0].text.includes("Page data: on."),
-      management: result.content[0].text.includes("Account management (sign in as owner):"), rawProof: result.content[0].text.includes(manageKey) },
-    { stateOn: row.pageDataEnabled === true, management: row.accountManagementUrl === management, rawProof: false },
+      management: result.content[0].text.includes("Account management (sign in as owner):"), rawProof: result.content[0].text.includes(manageKey),
+      verification: result.content[0].text.split("\n").find((line: string) => line.startsWith("BrewPage did not confirm")) },
+    { stateOn: row.pageDataEnabled === true, management: row.accountManagementUrl === management, rawProof: false,
+      verification: row.name === "unsigned successful stub"
+        ? `BrewPage did not confirm the requested Page data change. Next: read_page_data with the returned private manageUrl alone, or selected owner proof and {kind:"site",namespace:"private",id:"${id}"}; omit collection to confirm configuration. Unconfirmed does not mean off. Do not repeat create or settings writes.` : undefined },
     "The owner receipt should reflect verified availability and show only a validated account handoff");
   })));
 });
