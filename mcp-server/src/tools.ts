@@ -802,19 +802,19 @@ const COMPACT_FIELD_HINTS: Record<string, string> = {
   content: "HTML, Markdown or code.",
   filename: "Original filename.",
   files: "Full site bundle.",
-  url: "Public HTTP(S) file URL.",
   json: "Pass objects/arrays directly: {\"x\":1}. Strings are stored as strings.",
   key: "KV key. Excludes hosting.",
   ttlDays: "Storage duration in days.",
   requireAccount: "Require account ownership.",
 };
 
-function compactJsonDefinition(name: string, definition: JsonSchema): JsonSchema {
+function compactJsonDefinition(name: string, definition: JsonSchema, documentRef: unknown): JsonSchema {
   const primitives = ["string", "number", "boolean", "null"];
   const ref = { $ref: `#/$defs/${name}` };
   const json = { anyOf: [...primitives.map((type) => ({ type })), { type: "array", items: ref },
     { type: "object", propertyNames: { type: "string" }, additionalProperties: ref }] };
-  return JSON.stringify(definition) === JSON.stringify(json) ? { type: [...primitives, "array", "object"] } : definition;
+  if (JSON.stringify(definition) !== JSON.stringify(json)) return definition;
+  return { type: documentRef === ref.$ref ? ["object", "array", ...primitives] : [...primitives, "array", "object"] };
 }
 
 function compactFieldHint(name: string, schema: JsonSchema): JsonSchema {
@@ -838,8 +838,10 @@ function leanSchema(node: JsonSchema, legacy: boolean): JsonSchema {
         return [name, legacy ? field : compactFieldHint(name, field)];
       }));
     } else if (key === "$defs" && !legacy && isSchemaObject(value)) {
+      const document = isSchemaObject(node.properties) ? node.properties.json : undefined;
+      const documentRef = isSchemaObject(document) ? document.$ref : undefined;
       lean[key] = Object.fromEntries(Object.entries(value).map(([name, definition]) =>
-        [name, isSchemaObject(definition) ? compactJsonDefinition(name, definition) : definition]));
+        [name, isSchemaObject(definition) ? compactJsonDefinition(name, definition, documentRef) : definition]));
     } else if ((key === "items" || key === "additionalProperties") && isSchemaObject(value)) {
       if (Object.keys(value).length > 0) lean[key] = leanSchema(value, legacy);
     } else if (key === "anyOf" && Array.isArray(value)) {

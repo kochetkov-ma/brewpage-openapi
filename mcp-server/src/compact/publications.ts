@@ -28,7 +28,7 @@ const materialFields = {
   files: z.array(z.object({ path: z.string().min(1), content: z.string() })).min(1).max(200).optional()
     .describe("Complete site bundle of {path, content} pairs for kind=site"),
   entry: z.string().min(1).optional().describe("Site entry path, default index.html"),
-  url: z.string().optional().describe("Public HTTP(S) source URL for kind=file"),
+  url: z.string().optional().describe("Public HTTP(S) URL fetched directly by the tool. No local download needed."),
   json: z.json().optional().describe("JSON value for kind=json, including strings, numbers, booleans and null"),
   key,
   value: z.string().refine((value) => value.trim().length > 0 && !value.includes("\0"), "Use a nonblank KV value without NUL")
@@ -316,12 +316,12 @@ function isTextType(contentType: string | null) {
 export function registerPublications(ctx: CompactContext): void {
   ctx.register("publish", {
     title: "Publish on BrewPage", annotations: { readOnlyHint: false, destructiveHint: false },
-    description: "Publish HTML (content), a site (kind=site, files), a public URL file (kind=file, url), JSON (kind=json, json), or KV (kind=kv, key, value). When composing visitor input, read get_guide topic page-data first, then publish HTML and state together. Use domain for an owned hostname. Returns the actual share link and private owner receipt.",
+    description: "Publish HTML (content), a site (kind=site, files), a file (kind=file, url), JSON (kind=json, json), or KV (kind=kv, key, value). For kind=file, the tool fetches the public URL directly. No local download needed. When composing visitor input, read get_guide topic page-data first, then publish HTML and state together. Use domain for an owned hostname. Returns the actual share link and private owner receipt.",
     inputSchema: {
       kind: kind.describe("Default html"), ...materialFields,
       namespace: z.string().refine((value) => value === "" || NAMESPACES.test(value), "Use an empty string or a valid namespace")
         .optional().describe("Omit or send an empty string for unlisted. Use public only when requested."),
-      password: z.string().optional().describe("Require a reader password"),
+      password: z.string().optional().describe("New reader password. Omit for no password. Send only the exact password requested, never a placeholder."),
       ttlDays: z.union([z.number().positive(), z.string().min(1).max(32)]).optional(),
       ownerToken,
       requireAccount: z.boolean().optional().describe("True requires an authorized BrewPage account before publishing"),
