@@ -61,7 +61,7 @@ const COMPACT_INSTRUCTIONS = [
   "New publications default to link-only. Choose namespace=public for eligible gallery and search listing. Give the exact reader link and reuse existing owner proof for updates.",
   "Before an anonymous create, verify a private tool-result boundary and a recovery path. Use verified private storage or a verified owner-only conversation. Otherwise arrange private recovery before writing.",
   "Save newly issued ownerToken and manageUrl in verified private storage. If storage is unavailable and the conversation is verified owner-only, give the owner both exact issued values, label each private and tell them to save them now. Keep credentials out of shared output.",
-  "For a page that saves visitor input, read get_guide topic page-data and send state with the page. For an owned custom hostname, send domain or use domains.",
+  "When composing a page that saves visitor input, call get_guide with topic=page-data before composing or writing. Use the guide's Browser SDK and the exact requested collection, key and value. Once ready, publish the HTML and state together in one call. For an owned custom hostname, send domain or use domains.",
   "For account ownership, use the BrewPage HTTP connection and set requireAccount=true.",
 ].join("\n");
 const NEW_GUIDE_TOPICS = new Set(["publishing", "limits", "stats", "account"]);
@@ -803,7 +803,7 @@ const COMPACT_FIELD_HINTS: Record<string, string> = {
   filename: "Original filename.",
   files: "Full site bundle.",
   url: "Public HTTP(S) file URL.",
-  json: "Any JSON value.",
+  json: "Pass objects/arrays directly: {\"x\":1}. Strings are stored as strings.",
   key: "KV key. Excludes hosting.",
   ttlDays: "Storage duration in days.",
   requireAccount: "Require account ownership.",

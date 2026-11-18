@@ -316,7 +316,7 @@ function isTextType(contentType: string | null) {
 export function registerPublications(ctx: CompactContext): void {
   ctx.register("publish", {
     title: "Publish on BrewPage", annotations: { readOnlyHint: false, destructiveHint: false },
-    description: "Publish supplied HTML with content in one call. For a public file URL use kind=file and url. For a site use kind=site and files. JSON uses json and KV uses key and value. Add state to save visitor input, or domain for an owned hostname. Returns the actual share link and private owner receipt.",
+    description: "Publish HTML (content), a site (kind=site, files), a public URL file (kind=file, url), JSON (kind=json, json), or KV (kind=kv, key, value). When composing visitor input, read get_guide topic page-data first, then publish HTML and state together. Use domain for an owned hostname. Returns the actual share link and private owner receipt.",
     inputSchema: {
       kind: kind.describe("Default html"), ...materialFields,
       namespace: z.string().refine((value) => value === "" || NAMESPACES.test(value), "Use an empty string or a valid namespace")
