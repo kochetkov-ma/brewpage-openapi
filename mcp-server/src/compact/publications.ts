@@ -316,11 +316,11 @@ function isTextType(contentType: string | null) {
 export function registerPublications(ctx: CompactContext): void {
   ctx.register("publish", {
     title: "Publish on BrewPage", annotations: { readOnlyHint: false, destructiveHint: false },
-    description: "Publish HTML (content), sites (kind=site, files), files (kind=file, url), JSON (kind=json, json) or KV (kind=kv, key, value). Public input URLs do not request listing. Put new HTML titles in <title>, never publish.title; preserve supplied HTML. For visitor input read get_guide topic page-data first; publish HTML and state together. Use domain for an owned hostname. Returns link and private receipt.",
+    description: "Explicitly public/listed publication: namespace:\"public\"; ordinary link-only: omit namespace. Site: {\"kind\":\"site\",\"namespace\":\"public\",\"files\":[{\"path\":\"index.html\",\"content\":\"<h1>Hi</h1>\"}]}. A public input URL does not request listing. New HTML titles go in <title>, not publish.title; preserve supplied HTML. For visitor input read get_guide topic page-data first; publish HTML and state together. Use domain for an owned hostname.",
     inputSchema: {
       kind: kind.describe("Default html"), ...materialFields,
       namespace: z.string().refine((value) => value === "" || NAMESPACES.test(value), "Use an empty string or a valid namespace")
-        .optional().describe("Use public for requested public/listed pages or sites; omit otherwise."),
+        .optional().describe("Use public for requested public/listed publications; omit otherwise."),
       password: z.string().optional().describe("New reader password. Omit for no password. Send only the exact password requested, never a placeholder."),
       ttlDays: z.union([z.number().positive(), z.string().min(1).max(32)]).optional(),
       ownerToken,

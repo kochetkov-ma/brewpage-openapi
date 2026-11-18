@@ -57,11 +57,11 @@ export function serverInstructions(profile: Profile = LOCAL): string {
 }
 
 const COMPACT_INSTRUCTIONS = [
-  "Publish supplied content with publish. It defaults to HTML. Use kind=file with a public URL or kind=site with explicit path/content files.",
-  "New publications default to link-only. Choose namespace=public for eligible gallery and search listing. Give the exact reader link and reuse existing owner proof for updates.",
+  "Explicitly public/listed publication: namespace:\"public\"; ordinary link-only: omit namespace. JSON/KV and ineligible formats stay unlisted; report actual access.",
+  "publish defaults to HTML. Return the exact link; reuse owner proof.",
   "Before an anonymous create, verify a private tool-result boundary and a recovery path. Use verified private storage or a verified owner-only conversation. Otherwise arrange private recovery before writing.",
   "Save newly issued ownerToken and manageUrl in verified private storage. If storage is unavailable and the conversation is verified owner-only, give the owner both exact issued values, label each private and tell them to save them now. Keep credentials out of shared output.",
-  "When composing a page that saves visitor input, call get_guide with topic=page-data before composing or writing. Use the guide's Browser SDK and the exact requested collection, key and value. Once ready, publish the HTML and state together in one call. For an owned custom hostname, send domain or use domains.",
+  "Visitor input: read get_guide topic=page-data first. New HTML titles go in <title>. Bind handlers synchronously; await bp.state() and config inside them so the first click saves. Use the guide SDK and requested collection/key/value; publish HTML and state in one call. Own hostname: domain or domains.",
   "For account ownership, use the BrewPage HTTP connection and set requireAccount=true.",
 ].join("\n");
 const NEW_GUIDE_TOPICS = new Set(["publishing", "limits", "stats", "account"]);
