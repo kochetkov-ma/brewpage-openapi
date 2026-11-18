@@ -58,9 +58,11 @@ export function serverInstructions(profile: Profile = LOCAL): string {
 
 const COMPACT_INSTRUCTIONS = [
   "Publish supplied content with publish. It defaults to HTML. Use kind=file with a public URL or kind=site with explicit path/content files.",
-  "New publications default to link-only. Choose namespace=public for eligible gallery and search listing. Give the reader link to the user and keep any owner token or management link private. Reuse the same owner proof to update.",
+  "New publications default to link-only. Choose namespace=public for eligible gallery and search listing. Give the exact reader link and reuse existing owner proof for updates.",
+  "Before an anonymous create, verify a private tool-result boundary and a recovery path. Use verified private storage or a verified owner-only conversation. Otherwise arrange private recovery before writing.",
+  "Save newly issued ownerToken and manageUrl in verified private storage. If storage is unavailable and the conversation is verified owner-only, give the owner both exact issued values, label each private and tell them to save them now. Keep credentials out of shared output.",
   "For a page that saves visitor input, read get_guide topic page-data and send state with the page. For an owned custom hostname, send domain or use domains.",
-  "Anonymous publishing works immediately. For account ownership, use the BrewPage HTTP connection and set requireAccount=true.",
+  "For account ownership, use the BrewPage HTTP connection and set requireAccount=true.",
 ].join("\n");
 const NEW_GUIDE_TOPICS = new Set(["publishing", "limits", "stats", "account"]);
 const MANAGED_HTML_TOOL = "publish_html";

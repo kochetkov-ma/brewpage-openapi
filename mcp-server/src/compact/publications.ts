@@ -206,13 +206,18 @@ function receipt(ctx: CompactContext, operation: Operation, kind: PublicationKin
     : "BrewPage did not confirm the requested Page data change.");
   if (domain !== undefined && !data.customDomain) lines.push(`Custom domain not attached. The publication is available at its BrewPage link.`);
   if (operation === "publish" && isOwner && ctx.authority === "unsigned") {
-    if (typeof ownerToken === "string" && ownerToken.length > 0 && !proof["X-Owner-Token"]) {
-      lines.push(`OWNER TOKEN (private): ${ownerToken}`, "Save it privately and reuse it as ownerToken for later publishes and edits.");
+    const issuedToken = typeof ownerToken === "string" && ownerToken.length > 0 && !proof["X-Owner-Token"];
+    const issuedLink = typeof manageUrl === "string" && manageUrl.length > 0;
+    if (issuedToken) {
+      lines.push(`OWNER TOKEN (private): ${ownerToken}`);
     } else if (proof["X-Owner-Token"] && (typeof ownerToken !== "string" || ownerToken === proof["X-Owner-Token"])) {
       lines.push("Existing owner token reused.");
     }
-    if (typeof manageUrl === "string" && manageUrl) {
-      lines.push(`MANAGE LINK (private): ${manageUrl}`, "Give this link privately to the requesting owner. Its holder can manage this publication.");
+    if (issuedLink) {
+      lines.push(`MANAGE LINK (private): ${manageUrl}`);
+    }
+    if (issuedToken || issuedLink) {
+      lines.push("Save the issued private values in verified private storage. If storage is unavailable and the conversation is verified owner-only, give the owner the exact issued values above, label each private and tell them to save them now.");
     }
   }
   if (accountManagementUrl) lines.push(`Account management (sign in as owner): ${accountManagementUrl}`);

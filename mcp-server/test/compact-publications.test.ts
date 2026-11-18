@@ -69,7 +69,14 @@ test("Compact publication writes keep their REST shapes and actual private recei
     const expectedOwner = row.method === "DELETE" ? /Deleted kv public\/DEMO123456 key "draft"/ :
       row.proof[0] ? /Existing owner token reused/ : new RegExp(`OWNER TOKEN \\(private\\): ${owner}`);
     assert.match(result.content[0].text, expectedOwner, "The receipt should explain the confirmed result and private token handoff");
-    assert.equal(result.content[0].text.includes(owner), row.method !== "DELETE" && row.proof[0] === null, "Only the newly issued token should be printed");
+    const published = row.method !== "DELETE";
+    const privateLines = result.content[0].text.split("\n").filter((line) => /^(?:OWNER TOKEN|MANAGE LINK) \(private\):/.test(line));
+    assert.deepEqual(privateLines, [
+      ...(published && row.proof[0] === null ? [`OWNER TOKEN (private): ${owner}`] : []),
+      ...(published ? [`MANAGE LINK (private): ${manageUrl}`] : []),
+    ], "Only the issued values appear in the private handoff with their exact labels");
+    assert.deepEqual([result.structuredContent?.ownerToken, result.structuredContent?.manageUrl], [undefined, undefined],
+      "transferable values remain outside the structured result");
   });
 
   await t.test("site replacement via management link", async () => {
