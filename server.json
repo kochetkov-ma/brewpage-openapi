@@ -1,9 +1,19 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.kochetkov-ma/brewpage-mcp",
+  "title": "BrewPage",
   "description": "Publish HTML, Markdown, sites, KV, JSON, files and forms/polls that save answers; keep owner token.",
   "version": "3.0.0",
   "websiteUrl": "https://brewpage.app",
+  "icons": [
+    {
+      "src": "https://brewpage.app/icon-512.png",
+      "mimeType": "image/png",
+      "sizes": [
+        "512x512"
+      ]
+    }
+  ],
   "homepage": "https://brewpage.app",
   "repository": {
     "url": "https://github.com/kochetkov-ma/brewpage-openapi",
