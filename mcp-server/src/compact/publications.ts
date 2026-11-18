@@ -314,7 +314,8 @@ export function registerPublications(ctx: CompactContext): void {
     description: "Publish supplied HTML with content in one call. For a public file URL use kind=file and url. For a site use kind=site and files. JSON uses json and KV uses key and value. Add state to save visitor input, or domain for an owned hostname. Returns the actual share link and private owner receipt.",
     inputSchema: {
       kind: kind.describe("Default html"), ...materialFields,
-      namespace: z.string().regex(NAMESPACES).optional().describe("Omit for private. Use public explicitly for material intended to be found"),
+      namespace: z.string().refine((value) => value === "" || NAMESPACES.test(value), "Use an empty string or a valid namespace")
+        .optional().describe("Omit or send an empty string for unlisted. Use public only when requested."),
       password: z.string().optional().describe("Require a reader password"),
       ttlDays: z.union([z.number().positive(), z.string().min(1).max(32)]).optional(),
       ownerToken,
@@ -328,7 +329,8 @@ export function registerPublications(ctx: CompactContext): void {
     const selectedKind = args.kind ?? "html";
     const material = materialFor(selectedKind, args, "publish");
     if ("why" in material) return ctx.refuse("publish", material);
-    const { namespace, ttlDays, password, deliveryMode, tags, state, domain, ownerToken } = args;
+    const { ttlDays, password, deliveryMode, tags, state, domain, ownerToken } = args;
+    const namespace = args.namespace === "" ? undefined : args.namespace;
     if (domain !== undefined && (selectedKind !== "html" && selectedKind !== "site" ||
       selectedKind === "html" && args.format !== undefined && args.format.toLowerCase() !== "html" || Boolean(password))) {
       return ctx.refuse("publish", { why: "`domain` requires an HTML-format page or site without a password.", next: `Use ${EXAMPLES.html} with the hostname as \`domain\`.` });

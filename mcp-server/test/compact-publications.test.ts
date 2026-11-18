@@ -135,6 +135,75 @@ test("Compact publication writes keep their REST shapes and actual private recei
   });
 });
 
+test("Only compact creation treats an empty namespace like the private default", async () => {
+  // GIVEN the exact requested HTML and a receipt that reflects the namespace sent on the wire.
+  const content = "<h1>Meetup notes</h1>";
+  const effects: unknown[] = [];
+  const fetch: typeof globalThis.fetch = async (url, init) => {
+    const target = new URL(String(url));
+    const namespace = target.searchParams.get("ns") ?? "";
+    const visibility = /^priv-[a-z0-9]{6}$/.test(namespace) ? "private" : namespace;
+    effects.push({ method: init?.method, route: target.pathname, visibility, body: parseBody(init?.body), verbatim: target.searchParams.get("verbatim") });
+    return Response.json({ namespace, id, kind: "html", link: `${origin}/${namespace}/${id}`, listed: namespace === "public" }, { status: 201 });
+  };
+  const cases = [
+    { tool: "publish", args: { content }, namespace: /^priv-[a-z0-9]{6}$/ },
+    { tool: "publish", args: { content, namespace: "" }, namespace: /^priv-[a-z0-9]{6}$/ },
+    { tool: "publish", args: { content, namespace: "public" }, namespace: /^public$/ },
+    { tool: "publish", args: { content, namespace: " " }, namespace: undefined },
+    { tool: "publish", args: { content, namespace: "public/path" }, namespace: undefined },
+    { tool: "update_publication", args: { kind: "html", content, namespace: "", id, ownerToken: owner }, namespace: undefined },
+  ];
+  // WHEN each spelling reaches the registered SDK tool.
+  for (const row of cases) {
+    const answer = await call(row.tool, row.args, { fetch });
+    assert.equal(answer.isError, row.namespace ? undefined : true, `${row.tool} namespace ${JSON.stringify(row.args.namespace)} must select the expected outcome`);
+    assert.match(String(answer.structuredContent?.namespace), row.namespace ?? /^undefined$/, "only a valid create confirms a namespace");
+  }
+  // THEN the rejected forms cause zero effects and the accepted forms keep the requested material.
+  const write = { method: "POST", route: "/api/html", body: { content }, verbatim: "true" };
+  assert.deepEqual(effects, [{ ...write, visibility: "private" }, { ...write, visibility: "private" }, { ...write, visibility: "public" }],
+    "only explicit public intent selects the public namespace");
+});
+
+test("Empty signed creates leave namespace resolution to the same owning account for every kind", async () => {
+  // GIVEN one signed authority and all supported artifact types.
+  const effects: unknown[] = [];
+  const accountNamespace = "priv-account";
+  const options: ServerOptions = {
+    authority: "account",
+    fetch: async () => { throw new Error("Unexpected anonymous dispatch."); },
+    compactFetchSource: async () => new Blob(["Fixture"]),
+    async bridge(operation, args) {
+      const payload = JSON.parse(JSON.stringify(args));
+      effects.push([operation, payload.kind, Object.hasOwn(payload, "namespace"), payload.namespace]);
+      return { ok: true, status: 201, headers: new Headers(), data: {
+        kind: payload.kind, namespace: accountNamespace, id, link: `${origin}/${accountNamespace}/${id}`,
+      } };
+    },
+  };
+  const artifacts = [
+    { kind: "html", content: "<h1>Meetup notes</h1>" },
+    { kind: "site", files: [{ path: "index.html", content: "<h1>Site</h1>" }] },
+    { kind: "file", url: "https://source.example.invalid/fixture.txt" },
+    { kind: "json", json: { note: "Fixture" } },
+    { kind: "kv", key: "note", value: "Fixture" },
+  ];
+  // WHEN empty namespaces reach signed creates and plain HTML also uses omission and explicit public.
+  for (const artifact of artifacts) {
+    const answer = await call("publish", { ...artifact, namespace: "", requireAccount: true }, options);
+    assert.equal(answer.structuredContent?.namespace, accountNamespace, `${artifact.kind} uses the account's resolved namespace`);
+  }
+  await call("publish", { ...artifacts[0], requireAccount: true }, options);
+  await call("publish", { ...artifacts[0], namespace: "public", requireAccount: true }, options);
+  // THEN blank and omitted use identical private bridge options and explicit public survives.
+  assert.deepEqual(effects, [
+    ["publish", "html", false, undefined], ["publish", "site", false, undefined], ["publish_file", "file", false, undefined],
+    ["publish", "json", false, undefined], ["publish", "kv", false, undefined],
+    ["publish", "html", false, undefined], ["publish", "html", true, "public"],
+  ], "every create stays on the signed bridge with the intended namespace handling");
+});
+
 test("Supplied HTML defaults to verbatim for compact writes while cached writes keep paste repair", async () => {
   // GIVEN one HTML source and the same target on typed account and public REST transports.
   const requests: unknown[] = [];
