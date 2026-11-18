@@ -57,6 +57,7 @@
     "@modelcontextprotocol/client": "2.4.0",
     "@modelcontextprotocol/node": "2.1.2",
     "@modelcontextprotocol/server": "2.4.0",
+    "parse5": "7.3.0",
     "zod": "4.6.7"
   },
   "devDependencies": {

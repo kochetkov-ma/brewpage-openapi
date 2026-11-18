@@ -247,6 +247,141 @@ test("Supplied HTML defaults to verbatim for compact writes while cached writes 
   ], "Every write should keep the exact source and original target with the correct flag");
 });
 
+const boundaryTitle = "Boundary 🌿";
+const boundaryLead = "\uFEFF<!--";
+const boundaryTail = `--><title>${boundaryTitle}</title>`;
+const bomBoundaryHead = boundaryLead + "x".repeat(16_384 - boundaryLead.length - boundaryTail.length) + boundaryTail;
+
+test("Compact title assertions preserve the whole create payload and backend title", async () => {
+  // GIVEN direct and signed creates with submitted source, an expected title, and authoritative receipts.
+  const explicit = "<!doctype html>\n<html><head><title>\tNorth &amp; South\r\n agenda </title></head><body><p>Hello.</p></body></html>";
+  const implied = "<title>Notes&#160;today</title><main>Keep the selected document.</main>";
+  const longTitle = "🌿".repeat(200);
+  const early = `<title>${longTitle}</title><main>${"leaf".repeat(4500)}</main>`;
+  const late = `<!--${"x".repeat(17_000)}--><title>Late title</title><p>Keep the old payload.</p>`;
+  const bomBoundary = `${bomBoundaryHead}<p>The body follows.</p>`;
+  const signedBom = `\uFEFF${implied}`;
+  const state = { collections: { poll: {} } };
+  const publicWrite = (content: string, proof: string | null, fields: Record<string, unknown> = {}, params = "verbatim=true") =>
+    ["POST", `${origin}/api/html?ns=public${params ? "&" + params : ""}`, { content, ...fields }, proof, null];
+  const stored = { namespace: "public", id, link, title: "Title returned by BrewPage", stateApplied: true };
+  const publicResult = { ...stored, kind: "html", isOwner: true, existing: false, pageDataEnabled: true };
+  const prior = { namespace: "public", id, link, isOwner: false };
+  const account = { namespace: "priv-account", id, link: `${origin}/priv-account/${id}`, title: "Account receipt title", stateApplied: true };
+  const rows = [
+    { name: "explicit head and HTML whitespace", tool: "publish",
+      args: { content: explicit, title: "\tNorth & South\n agenda ", state, namespace: "public" },
+      data: { ...receipt, ...stored }, status: 201, write: publicWrite(explicit, null, { state }), result: publicResult },
+    { name: "implied head with explicit HTML filename format and selected owner", tool: "publish",
+      args: { content: implied, title: "Notes\u00a0today", format: "HTML", filename: "source.md", namespace: "public", ownerToken: owner },
+      data: prior, status: 200, headers: { "X-Existing-Resource": "1" },
+      write: publicWrite(implied, owner, { filename: "source.md" }, "format=html&verbatim=true"),
+      result: { ...prior, kind: "html", existing: true } },
+    { name: "early 200-code-point title and a body beyond the check limit", tool: "publish", authority: "account" as const,
+      args: { content: early, title: longTitle, state, requireAccount: true }, data: account, status: 201,
+      write: ["publish", { kind: "html", content: early, verbatim: true, state }, undefined],
+      result: { ...account, kind: "html", isOwner: true, existing: false, pageDataEnabled: true } },
+    { name: "single BOM with head title ending at the original source limit", tool: "publish",
+      args: { content: bomBoundary, title: boundaryTitle, state, namespace: "public" }, data: stored, status: 201,
+      write: publicWrite(bomBoundary, null, { state }), result: publicResult },
+    { name: "account keeps the single BOM and original Page data", tool: "publish", authority: "account" as const,
+      args: { content: signedBom, title: "Notes\u00a0today", state, requireAccount: true }, data: account, status: 201,
+      write: ["publish", { kind: "html", content: signedBom, verbatim: true, state }, undefined],
+      result: { ...account, kind: "html", isOwner: true, existing: false, pageDataEnabled: true } },
+    { name: "title omitted keeps old wire even when the head title is late", tool: "publish",
+      args: { content: late, namespace: "public", state }, data: stored, status: 201,
+      write: publicWrite(late, null, { state }), result: publicResult },
+    { name: "cached publish strips an extra key as before", tool: "publish_html",
+      args: { content: explicit, title: "Legacy ignored value", namespace: "public" }, data: receipt, status: 201,
+      write: publicWrite(explicit, null, {}, ""), result: undefined },
+  ];
+  // WHEN each tool receives the selected source and authority.
+  const results = await Promise.all(rows.map(async (row) => {
+    const writes: unknown[] = [];
+    const responseHeaders = new Headers(row.headers);
+    const answer = await call(row.tool, row.args, {
+      authority: row.authority,
+      async fetch(url, init) {
+        const request = new Request(url, init);
+        writes.push([request.method, request.url, parseBody(init?.body), request.headers.get("X-Owner-Token"), request.headers.get("X-Manage-Key")]);
+        return Response.json(row.data, { status: row.status, headers: responseHeaders });
+      },
+      async bridge(operation, args, options) {
+        writes.push([operation, JSON.parse(JSON.stringify(args)), options]);
+        return { ok: true, status: row.status, headers: responseHeaders, data: row.data };
+      },
+    });
+    return { name: row.name, writes, error: answer.isError, result: answer.structuredContent,
+      echoedAssertion: row.args.title !== undefined && answer.content[0].text.includes(row.args.title) };
+  }));
+  // THEN one exact existing write receives the whole source; only the backend may supply a receipt title.
+  assert.deepEqual(results, rows.map(({ name, write, result }) => ({
+    name, writes: [write], error: undefined, result, echoedAssertion: false,
+  })), "Title checking must not alter source, Page data, authority, visibility or recorded receipt metadata");
+});
+
+test("Invalid title assertions stop before publishing or downloading and remain create-only", async () => {
+  // GIVEN mismatches, unsafe formats and head lookalikes with otherwise usable material.
+  const title = "Workshop notes";
+  const content = `<title>${title}</title><p>Read the schedule.</p>`;
+  const mismatch = "Failed to publish (refused): `title` must match a nonblank, explicitly closed document head title within the first 16,384 UTF-16 code units (HTML whitespace normalized, case-sensitive).";
+  const scope = "Failed to publish (refused): `title` checks submitted HTML source on create only.";
+  const lookalikes = [
+    ["case mismatch", content, "workshop notes"],
+    ["different title", content, "Other notes"],
+    ["blank assertion", content, " \t\n"],
+    ["heading alone", `<h1>${title}</h1>`, title],
+    ["unclosed title", `<title>${title}`, title],
+    ["late title", `<!--${"x".repeat(17_000)}-->${content}`, title],
+    ["BOM counts toward a closing tag one code unit past the limit", bomBoundaryHead.replace("<!--", "<!--x"), boundaryTitle],
+    ["only one leading BOM is ignored", `\uFEFF\uFEFF${content}`, title],
+    ["comment title", `<!--<title>${title}</title>--><p>Read the schedule.</p>`, title],
+    ["script title", `<script>const title = "<title>${title}</title>";</script>`, title],
+    ["template title", `<template><title>${title}</title></template>`, title],
+    ["SVG title", `<svg><title>${title}</title></svg>`, title],
+    ["body title", `<body><title>${title}</title></body>`, title],
+    ["nonbreaking space is not HTML whitespace", "<title>Workshop&nbsp;notes</title>", title],
+  ];
+  const rows = [
+    ...lookalikes.map(([name, source, expected]) => ({ name, tool: "publish", args: { content: source, title: expected }, reason: mismatch })),
+    { name: "file source must not download", tool: "publish",
+      args: { kind: "file", url: "https://example.org/notes.pdf", title, ownerToken: owner }, reason: scope },
+    { name: "site bundle", tool: "publish", args: { kind: "site", files: [{ path: "index.html", content }], title }, reason: scope },
+    { name: "non-HTML format", tool: "publish", args: { content, title, format: "markdown" }, reason: scope },
+    { name: "paste repair", tool: "publish", args: { content, title, verbatim: false },
+      reason: "Failed to publish (refused): `title` cannot check source while paste repair is requested." },
+    { name: "filename without explicit format", tool: "publish", args: { content, title, filename: "notes.md" },
+      reason: "Failed to publish (refused): A filename with `title` requires an explicit HTML format." },
+    { name: "signed mismatch", tool: "publish", authority: "account" as const,
+      args: { content, title: "Other notes", requireAccount: true }, reason: mismatch },
+    { name: "more than 200 Unicode code points", tool: "publish",
+      args: { content: `<title>${"🌿".repeat(201)}</title>`, title: "🌿".repeat(201) }, reason: undefined },
+    { name: "oversized assertion refuses before any write", tool: "publish",
+      args: { content, title: "x".repeat(4096) }, reason: undefined },
+    { name: "compact update keeps its existing strict input", tool: "update_publication",
+      args: { kind: "html", namespace: "public", id, content, title, ownerToken: owner }, reason: undefined },
+  ];
+  // WHEN the SDK dispatches each call with all external effects recorded.
+  const results = await Promise.all(rows.map(async (row) => {
+    const effects: unknown[] = [];
+    const answer = await call(row.tool, row.args, {
+      authority: row.authority,
+      async fetch(url, init) { effects.push(["HTTP", String(url), init?.method]); throw new Error("Unexpected HTTP operation"); },
+      async bridge(operation, args) { effects.push(["bridge", operation, args]); throw new Error("Unexpected account operation"); },
+      async compactFetchSource(url) { effects.push(["download", url]); throw new Error("Unexpected source fetch"); },
+    });
+    const [reason, next] = answer.content[0].text.split("\n");
+    return { name: row.name, error: answer.isError, effects,
+      reason: row.reason === undefined ? undefined : reason,
+      repair: row.reason === mismatch ? next : undefined };
+  }));
+  // THEN refusals issue no token, download, create, update or rename; mismatches identify the next decision.
+  const next = "Next: Supply matching HTML or correct the expected title. If preserving supplied source conflicts with the requested title, ask which document/title is intended.";
+  assert.deepEqual(results, rows.map(({ name, reason }) => ({
+    name, error: true, effects: [], reason, repair: reason === mismatch ? next : undefined,
+  })), "Every invalid assertion must refuse locally without side effects or advice to drop the check");
+});
+
 test("Signed site replacement resolves a retained entry while cached calls preserve fallback", async () => {
   // GIVEN a backend returning a site stub without applying the requested Page data.
   const requests: unknown[] = [];

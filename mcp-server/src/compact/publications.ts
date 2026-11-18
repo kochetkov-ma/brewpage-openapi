@@ -2,6 +2,7 @@ import { z } from "zod";
 import { PUBLICATION_SEGMENTS as SEGMENTS, validatedAccountManagementUrl } from "./account-url.js";
 import { bridgeOutcomeUnknown } from "./auth.js";
 import { isClientAbort, type ApiAnswer, type BridgeInputs, type CompactContext, type PublicationKind, type Refusal, type Target } from "./context.js";
+import { matchesHtmlHeadTitle } from "./html-title.js";
 
 const NAMESPACES = /^[a-z0-9-]{1,32}$/;
 const PUBLICATION_ID = /^[A-Za-z0-9]{10}$/;
@@ -50,8 +51,8 @@ const EXAMPLES: Record<PublicationKind, string> = {
   kv: '{"kind":"kv","key":"example","value":"hello"}',
 };
 
-function materialFor(kind: PublicationKind, args: MaterialFields & { template?: string }, operation: Operation): Material | Refusal {
-  const { content, format, filename, template, files, entry, url, json, key, value, tags, state, verbatim } = args;
+function materialFor(kind: PublicationKind, args: MaterialFields & { template?: string; title?: string }, operation: Operation): Material | Refusal {
+  const { content, format, filename, template, files, entry, url, json, key, value, tags, state, verbatim, title } = args;
   const otherFields = { content, format, filename, template, files, entry, url, json, key, value, tags, state, verbatim };
   const perKind = {
     html: ["content", "format", "verbatim", "tags", "state", ...(operation === "publish" ? ["filename", "template"] : [])],
@@ -61,6 +62,21 @@ function materialFor(kind: PublicationKind, args: MaterialFields & { template?: 
     kv: ["key", "value", ...(operation === "publish" ? ["tags"] : [])],
   };
   const next = `Use ${EXAMPLES[kind]}${operation === "update" ? " with the original target and owner proof" : ""}.`;
+  if (title !== undefined) {
+    if (kind !== "html" || operation !== "publish" || format !== undefined && format.toLowerCase() !== "html") {
+      return { why: "`title` checks submitted HTML source on create only.", next: "Use kind=html with HTML content and format=html for this source assertion." };
+    }
+    if (verbatim === false) {
+      return { why: "`title` cannot check source while paste repair is requested.", next: "Preserve the intended HTML source when checking its title." };
+    }
+    if (filename !== undefined && format === undefined) {
+      return { why: "A filename with `title` requires an explicit HTML format.", next: 'Set format:"html" to avoid filename-based format inference.' };
+    }
+    if (content === undefined || !matchesHtmlHeadTitle(content, title)) {
+      return { why: "`title` must match a nonblank, explicitly closed document head title within the first 16,384 UTF-16 code units (HTML whitespace normalized, case-sensitive).",
+        next: "Supply matching HTML or correct the expected title. If preserving supplied source conflicts with the requested title, ask which document/title is intended." };
+    }
+  }
   const unexpected = Object.entries(otherFields).find(([field, value]) => value !== undefined && !perKind[kind].includes(field));
   if (unexpected) return { why: `\`${unexpected[0]}\` is unavailable for ${kind} ${operation}.`, next };
   if (kind === "html" && content !== undefined) {
@@ -316,9 +332,11 @@ function isTextType(contentType: string | null) {
 export function registerPublications(ctx: CompactContext): void {
   ctx.register("publish", {
     title: "Publish on BrewPage", annotations: { readOnlyHint: false, destructiveHint: false },
-    description: "Explicitly public/listed publication: namespace:\"public\"; ordinary link-only: omit namespace. HTML: content; kind=site: files; kind=file: url; kind=json: json; kind=kv: key,value. Site: {\"kind\":\"site\",\"namespace\":\"public\",\"files\":[{\"path\":\"index.html\",\"content\":\"<h1>Hi</h1>\"}]}. A public input URL does not request listing. New HTML titles go in <title>, not publish.title; preserve supplied HTML. For visitor input read get_guide topic page-data first; publish HTML and state together. Use domain for an owned hostname.",
+    description: "Explicitly public/listed publication: namespace:\"public\"; ordinary link-only: omit namespace. HTML: content; kind=site: files; kind=file: url; kind=json: json; kind=kv: key,value. Site: {\"kind\":\"site\",\"namespace\":\"public\",\"files\":[{\"path\":\"index.html\",\"content\":\"<h1>Hi</h1>\"}]}. A public input URL does not request listing. New HTML titles go in <title>; preserve supplied HTML. For visitor input read get_guide topic page-data first; publish HTML and state together. Use domain for an owned hostname.",
     inputSchema: {
       kind: kind.describe("Default html"), ...materialFields,
+      title: z.string().refine((value) => value.length <= 400 && [...value].length <= 200, "Use at most 200 Unicode code points").optional()
+        .describe("HTML create only, at most 200 Unicode code points. Checks the existing static document head title before publishing, not stored metadata or script changes. Omit when no check is needed."),
       namespace: z.string().refine((value) => value === "" || NAMESPACES.test(value), "Use an empty string or a valid namespace")
         .optional().describe("Use public for requested public/listed publications; omit otherwise."),
       password: z.string().optional().describe("New reader password. Omit for no password. Send only the exact password requested, never a placeholder."),

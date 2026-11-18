@@ -141,7 +141,7 @@ The compact catalog advertises 13 tools on HTTP and stdio. Check the tool list t
 
 | Tool | Purpose |
 |------|---------|
-| `publish` | Create HTML, Markdown, a static site, a file from a public URL, JSON or a KV store |
+| `publish` | Create HTML, Markdown, a static site, a file from a public URL, JSON or a KV store. Optional `title` checks the existing HTML head title before creating an HTML page; it never renames or changes the source or asserts stored metadata. The explicitly closed title must be within the first 16,384 UTF-16 code units, including any leading BOM (one initial U+FEFF is skipped only for inspection); matching is case-sensitive after HTML entity decoding and ASCII whitespace normalization (expected title: at most 200 Unicode code points). With a filename, set `format:"html"`; paste repair and other formats/kinds cannot use this check. |
 | `list_publications` | List publications you own, or search the public gallery with `scope: "gallery"` |
 | `read_publication` | Read content, original source, settings or statistics |
 | `update_publication` | Replace content on the existing publication |
