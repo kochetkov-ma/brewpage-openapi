@@ -4176,7 +4176,7 @@ info:
     url: https://www.apache.org/licenses/LICENSE-2.0
   termsOfService: https://brewpage.app/terms
   title: BrewPage API
-  version: 2.47.0
+  version: 2.56.0
 openapi: 3.1.0
 paths:
   /api/domains:
@@ -7781,8 +7781,8 @@ paths:
     get:
       description: >-
         Per-content OG preview URLs (sitemap-image/1.1) for every qualifying public HTML/site publication. Reuses the
-        publishable-items Caffeine cache slot shared with /sitemap.xml. Caddy should route /sitemap-images.xml to this
-        endpoint.
+        publishable-items Caffeine cache slot shared with /sitemap-publications.xml. Caddy should route
+        /sitemap-images.xml to this endpoint.
       operationId: sitemapImages
       responses:
         '200':
@@ -7799,8 +7799,8 @@ paths:
   /api/sitemap-index.xml:
     get:
       description: >-
-        sitemaps.org 0.9 sitemapindex pointing at /sitemap.xml and /sitemap-images.xml. Advertised in robots.txt so
-        crawlers discover both children from a single URL. Caddy should route /sitemap-index.xml to this endpoint.
+        sitemaps.org 0.9 sitemapindex, byte-equal to /sitemap.xml: lists /sitemap-pages.xml, /sitemap-publications.xml
+        and /sitemap-images.xml. Caddy should route /sitemap-index.xml to this endpoint.
       operationId: sitemapIndex
       responses:
         '200':
@@ -7814,12 +7814,12 @@ paths:
       summary: Top-level sitemap index
       tags:
         - SEO
-  /api/sitemap.xml:
+  /api/sitemap-pages.xml:
     get:
       description: >-
-        Generates sitemap with static pages and all public gallery entries. Caddy should route /sitemap.xml to this
-        endpoint
-      operationId: sitemap
+        BrewPage's own pages: home, guides, comparisons, templates, landing pages, llms files and, while public
+        publications are listed, /galleries. Caddy should route /sitemap-pages.xml to this endpoint.
+      operationId: sitemapPages
       responses:
         '200':
           content:
@@ -7829,7 +7829,44 @@ paths:
           description: Sitemap XML
       security:
         - {}
-      summary: Dynamic XML sitemap
+      summary: Site pages sitemap
+      tags:
+        - SEO
+  /api/sitemap-publications.xml:
+    get:
+      description: >-
+        Every qualifying public publication at its primary link, with lastmod = last content change when known. Caddy
+        should route /sitemap-publications.xml to this endpoint.
+      operationId: sitemapPublications
+      responses:
+        '200':
+          content:
+            application/xml:
+              schema:
+                type: string
+          description: Sitemap XML
+      security:
+        - {}
+      summary: Public publications sitemap
+      tags:
+        - SEO
+  /api/sitemap.xml:
+    get:
+      description: >-
+        sitemaps.org 0.9 sitemapindex, byte-equal to /sitemap-index.xml: lists /sitemap-pages.xml,
+        /sitemap-publications.xml and /sitemap-images.xml. Advertised in robots.txt. Caddy should route /sitemap.xml to
+        this endpoint.
+      operationId: sitemap
+      responses:
+        '200':
+          content:
+            application/xml:
+              schema:
+                type: string
+          description: Sitemap index XML
+      security:
+        - {}
+      summary: Sitemap index
       tags:
         - SEO
   /api/sites:

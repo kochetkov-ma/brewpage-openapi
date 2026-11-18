@@ -7,6 +7,14 @@
 - Compact MCP publishing preserves supplied HTML source by default. When replacing a site with the compact tool, send the complete bundle and its entry file.
 - Existing HTML-only integrations can keep their original `publish_html` discovery and permissions. Local installations use `brewpage-mcp@3.0.0`; the remote endpoint is `https://brewpage.app/mcp`.
 
+## API contract 2.56.0 — 2026-11-17
+
+- Exported from brewpage-app source `67955c348a50a77d646362cba301d48e618ba8e2` (brewpage-app release v2.56.0), clean tree. 72 paths and 97 operations (70 and 95 before).
+- `GET /api/sitemap.xml` and `GET /api/sitemap-index.xml` now answer the same sitemap index, listing three sitemaps: BrewPage's own pages, public publications and preview images.
+- New `GET /api/sitemap-pages.xml` (operation `sitemapPages`, no credentials): BrewPage's own pages, such as home, guides, comparisons, templates and the llms files.
+- New `GET /api/sitemap-publications.xml` (operation `sitemapPublications`, no credentials): public publications at their primary link, with `lastmod` = last content change when known.
+- No other path, field or code change. `brewpage-mcp` 2.1.2 works with this contract as it is.
+
 ## MCP 2.1.2 — 2026-11-17
 
 - The remote server `https://brewpage.app/mcp` now passes MCP directory connection checks that read its first answer as a stream: one sentence of the connect instructions was reworded, with the same meaning.
