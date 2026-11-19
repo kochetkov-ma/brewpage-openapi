@@ -42,15 +42,33 @@ jobs:
           RUN_ATTEMPT: ${{ github.event.workflow_run.run_attempt }}
           WORKFLOW_ID: ${{ github.event.workflow_run.workflow_id }}
           REF_NAME: ${{ github.event.workflow_run.head_branch }}
-          REVISION: ${{ github.event.workflow_run.head_sha }}
+          CONTROL_REVISION: ${{ github.event.workflow_run.head_sha }}
+          RUN_TITLE: ${{ github.event.workflow_run.display_title }}
+          DEFAULT_REF: ${{ github.ref }}
+          DEFAULT_REVISION: ${{ github.sha }}
         run: |
           set -euo pipefail
           [[ "$RUN_ID" =~ ^[1-9][0-9]*$ && "$RUN_ATTEMPT" =~ ^[1-9][0-9]*$ ]] || exit 1
-          [[ "$REF_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ && "$REVISION" =~ ^[0-9a-f]{40}$ ]] || exit 1
+          [[ "$CONTROL_REVISION" =~ ^[0-9a-f]{40}$ ]] || exit 1
           SOURCE=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/release.yml")
           jq -e --arg id "$WORKFLOW_ID" '(.id | tostring) == $id and .path == ".github/workflows/release.yml"' <<< "$SOURCE" >/dev/null
-          TAG_REF=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$REF_NAME")
-          TAG_OBJECT=$(jq -ce --arg ref "refs/tags/$REF_NAME" 'select(.ref == $ref) | .object' <<< "$TAG_REF")
+          if [[ "$REF_NAME" == main ]]; then
+            [[ "$DEFAULT_REF" == refs/heads/main && "$DEFAULT_REVISION" =~ ^[0-9a-f]{40}$ ]] || exit 1
+            gh api "repos/$GITHUB_REPOSITORY/compare/$CONTROL_REVISION...$DEFAULT_REVISION?per_page=1" |
+              jq -e --arg control "$CONTROL_REVISION" '
+                .base_commit.sha == $control and .merge_base_commit.sha == $control
+                and (.status == "identical" or .status == "ahead")
+              ' >/dev/null
+            [[ "$RUN_TITLE" =~ ^Publish\ (v[0-9]+\.[0-9]+\.[0-9]+)\ at\ ([0-9a-f]{40})$ ]] || exit 1
+            RELEASE_TAG="${BASH_REMATCH[1]}"
+            REVISION="${BASH_REMATCH[2]}"
+          else
+            [[ "$REF_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || exit 1
+            RELEASE_TAG="$REF_NAME"
+            REVISION="$CONTROL_REVISION"
+          fi
+          TAG_REF=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$RELEASE_TAG")
+          TAG_OBJECT=$(jq -ce --arg ref "refs/tags/$RELEASE_TAG" 'select(.ref == $ref) | .object' <<< "$TAG_REF")
           for _ in 1 2 3 4 5 6 7 8; do
             TYPE=$(jq -er '.type' <<< "$TAG_OBJECT")
             SHA=$(jq -er '.sha' <<< "$TAG_OBJECT")
@@ -64,7 +82,7 @@ jobs:
           done
           [[ "$TYPE" == commit && "$SHA" == "$REVISION" ]] || exit 1
           gh api "repos/$GITHUB_REPOSITORY/actions/runs/$RUN_ID/attempts/$RUN_ATTEMPT/jobs?per_page=100" |
-            jq -e --argjson id "$RUN_ID" --argjson attempt "$RUN_ATTEMPT" --arg sha "$REVISION" '
+            jq -e --argjson id "$RUN_ID" --argjson attempt "$RUN_ATTEMPT" --arg sha "$CONTROL_REVISION" '
               .jobs as $jobs
               | .total_count == ($jobs | length)
                 and all(["qualification", "release", "registry", "advertise"][]; . as $name
@@ -72,7 +90,7 @@ jobs:
                     == [{run_id: $id, run_attempt: $attempt, head_sha: $sha, conclusion: "success"}])
             ' >/dev/null
           echo "revision=$REVISION" >> "$GITHUB_OUTPUT"
-          echo "tag=$REF_NAME" >> "$GITHUB_OUTPUT"
+          echo "tag=$RELEASE_TAG" >> "$GITHUB_OUTPUT"
 
   build:
     needs: qualification

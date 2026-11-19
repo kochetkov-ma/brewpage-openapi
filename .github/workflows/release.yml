@@ -1,10 +1,15 @@
 name: Release
+run-name: ${{ github.event_name == 'workflow_dispatch' && format('Publish {0} at {1}', inputs.release_tag || github.ref_name, fromJSON(inputs.hosted_receipt || '{}').revision) || format('Build {0}', github.ref_name) }}
 
 on:
   push:
     tags: ['v*']
   workflow_dispatch:
     inputs:
+      release_tag:
+        description: "Immutable release tag when running the publishing workflow from main"
+        type: string
+        required: false
       hosted_receipt:
         description: "Reviewed sanitized hosted qualification receipt JSON for this exact release tag"
         type: string
@@ -21,7 +26,7 @@ env:
   IMAGE: ghcr.io/kochetkov-ma/brewpage-mcp
 
 concurrency:
-  group: mcp-release-${{ github.ref }}
+  group: mcp-release-${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.ref_name }}
   cancel-in-progress: false
 
 jobs:
@@ -145,16 +150,18 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
   qualification:
-    if: github.event_name == 'workflow_dispatch' && github.ref_type == 'tag'
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     outputs:
       tag: ${{ steps.receipt.outputs.tag }}
+      revision: ${{ steps.receipt.outputs.revision }}
     steps:
       - uses: actions/checkout@v7.0.1
         with:
           ref: ${{ github.sha }}
           fetch-depth: 0
+          persist-credentials: false
 
       - uses: actions/setup-node@v7.1.0
         with:
@@ -163,20 +170,37 @@ jobs:
       - name: Validate reviewed hosted receipt and release identity
         id: receipt
         env:
+          SELECTED_TAG: ${{ inputs.release_tag }}
           HOSTED_RECEIPT: ${{ inputs.hosted_receipt }}
           HOSTED_RECEIPT_SHA256: ${{ inputs.hosted_receipt_sha256 }}
         run: |
           set -euo pipefail
           refuse() { echo "::error::$1"; exit 1; }
+          case "$GITHUB_REF" in
+            refs/heads/main) RELEASE_TAG="$SELECTED_TAG" ;;
+            refs/tags/*)
+              RELEASE_TAG="${GITHUB_REF#refs/tags/}"
+              [[ -z "$SELECTED_TAG" || "$SELECTED_TAG" == "$RELEASE_TAG" ]] || refuse 'Selected tag differs from the dispatch tag'
+              ;;
+            *) refuse 'Dispatch at main with a selected release tag, or at the release tag' ;;
+          esac
+          [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || refuse 'Select an exact stable release tag'
+          REVISION=$(git rev-parse --verify "refs/tags/${RELEASE_TAG}^{commit}") || refuse 'Selected release tag does not exist'
+          [[ "$REVISION" =~ ^[a-f0-9]{40}$ ]] || refuse 'Invalid release tag revision'
+          if [[ "$GITHUB_REF" == refs/heads/main ]]; then
+            git merge-base --is-ancestor "$REVISION" "$GITHUB_SHA" || refuse 'Selected artifact is outside the main workflow history'
+          else
+            [[ "$REVISION" == "$GITHUB_SHA" ]] || refuse 'Release tag commit does not match the dispatch revision'
+          fi
+          git switch --detach "$REVISION"
+          [[ "$(git rev-parse HEAD)" == "$REVISION" ]] || refuse 'Artifact checkout revision mismatch'
           node scripts/verify-package-identity.mjs
           VERSION=$(node -p "require('./mcp-server/package.json').version")
-          RELEASE_TAG="v${VERSION}"
-          [[ "$GITHUB_REF" == "refs/tags/$RELEASE_TAG" ]] || refuse 'Dispatch at the exact package version tag'
-          [[ "$(git rev-parse "refs/tags/${RELEASE_TAG}^{commit}")" == "$GITHUB_SHA" ]] || refuse 'Release tag commit does not match the checked out revision'
+          [[ "$RELEASE_TAG" == "v${VERSION}" ]] || refuse 'Release tag does not match the package version'
           [[ "$HOSTED_RECEIPT_SHA256" =~ ^[0-9a-f]{64}$ ]] || refuse 'Expected the receipt SHA-256 in lowercase hex'
           printf '%s' "$HOSTED_RECEIPT" > "$RUNNER_TEMP/hosted-receipt.json"
           echo "$HOSTED_RECEIPT_SHA256  $RUNNER_TEMP/hosted-receipt.json" | sha256sum --check --strict -
-          jq -es --arg version "$VERSION" --arg revision "$GITHUB_SHA" --arg image "${IMAGE}:${VERSION}@" '
+          jq -es --arg version "$VERSION" --arg revision "$REVISION" --arg image "${IMAGE}:${VERSION}@" '
             def semver: test("^[0-9]+\\.[0-9]+\\.[0-9]+$");
             def positive_integer: type == "number" and . >= 1 and floor == .;
             def fresh: fromdateiso8601 as $observed | now - $observed | . >= -60 and . <= 1800;
@@ -204,13 +228,28 @@ jobs:
           PIN=$(jq -r .image "$RUNNER_TEMP/hosted-receipt.json")
           DIGEST=$(docker buildx imagetools inspect "${IMAGE}:${VERSION}" --format '{{.Manifest.Digest}}')
           [[ "$PIN" == "${IMAGE}:${VERSION}@${DIGEST}" ]] || refuse 'Hosted receipt pin does not match the GHCR version digest'
-          docker pull "$PIN"
-          [[ "$(docker image inspect --format '{{index .Config.Labels "org.opencontainers.image.revision"}}' "$PIN")" == "$GITHUB_SHA" ]] || refuse 'OCI revision does not match the release tag'
+          MANIFEST="$RUNNER_TEMP/mcp-manifest.json"
+          docker buildx imagetools inspect --raw "${IMAGE}@${DIGEST}" > "$MANIFEST"
+          echo "${DIGEST#sha256:}  $MANIFEST" | sha256sum --check --strict -
+          CONFIG_DIGEST=$(jq -er '
+            select(.schemaVersion == 2 and (has("manifests") | not) and (.layers | type == "array"))
+            | .config.digest | select(test("^sha256:[0-9a-f]{64}$"))
+          ' "$MANIFEST") || refuse 'Expected one image manifest with a versioned config digest'
+          IMAGE_ID=$(jq -r .runtime.mcpImageId "$RUNNER_TEMP/hosted-receipt.json")
+          [[ "$IMAGE_ID" == "$DIGEST" || "$IMAGE_ID" == "$CONFIG_DIGEST" ]] || refuse 'Observed MCP container image ID does not match the verified manifest or config'
+          docker pull --platform linux/amd64 "$PIN"
+          [[ "$(docker image inspect --format '{{.Os}}/{{.Architecture}}' "$PIN")" == linux/amd64 ]] || refuse 'OCI image platform must be Linux amd64'
+          [[ "$(docker image inspect --format '{{index .Config.Labels "org.opencontainers.image.revision"}}' "$PIN")" == "$REVISION" ]] || refuse 'OCI revision does not match the release tag'
           [[ "$(docker image inspect --format '{{index .Config.Labels "org.opencontainers.image.version"}}' "$PIN")" == "$VERSION" ]] || refuse 'OCI version does not match the package version'
-          [[ "$(docker image inspect --format '{{.Id}}' "$PIN")" == "$(jq -r .runtime.mcpImageId "$RUNNER_TEMP/hosted-receipt.json")" ]] || refuse 'Observed MCP container image ID does not match the pulled immutable image'
-          echo "tag=$RELEASE_TAG" >> "$GITHUB_OUTPUT"
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          echo "Hosted qualification receipt SHA-256: \`${HOSTED_RECEIPT_SHA256}\` for \`${PIN}\`" >> "$GITHUB_STEP_SUMMARY"
+          {
+            echo "tag=$RELEASE_TAG"
+            echo "revision=$REVISION"
+            echo "version=$VERSION"
+          } >> "$GITHUB_OUTPUT"
+          {
+            echo "Artifact revision: \`$REVISION\`, publishing workflow revision: \`$GITHUB_SHA\`"
+            echo "Hosted qualification receipt SHA-256: \`${HOSTED_RECEIPT_SHA256}\` for \`${PIN}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Recheck hosted discovery and OAuth without writes
         env:
@@ -229,7 +268,8 @@ jobs:
       - uses: actions/checkout@v7.0.1
         with:
           fetch-depth: 0
-          ref: ${{ github.sha }}
+          ref: ${{ needs.qualification.outputs.revision }}
+          persist-credentials: false
 
       - uses: actions/setup-node@v7.1.0
         with:
@@ -267,13 +307,15 @@ jobs:
       - name: Check if version already published
         id: check
         working-directory: mcp-server
+        env:
+          ARTIFACT_REVISION: ${{ needs.qualification.outputs.revision }}
         run: |
           set -euo pipefail
           PKG_NAME=$(node -p "require('./package.json').name")
           PKG_VERSION=$(node -p "require('./package.json').version")
           if npm view "${PKG_NAME}@${PKG_VERSION}" version --json > "$RUNNER_TEMP/npm-version.json" 2> "$RUNNER_TEMP/npm-version.err"; then
             node -e 'const fs=require("fs"); if(JSON.parse(fs.readFileSync(process.argv[1],"utf8"))!==process.argv[2]) process.exit(1)' "$RUNNER_TEMP/npm-version.json" "$PKG_VERSION"
-            [[ "$(npm view "${PKG_NAME}@${PKG_VERSION}" gitHead)" == "$GITHUB_SHA" ]] || {
+            [[ "$(npm view "${PKG_NAME}@${PKG_VERSION}" gitHead)" == "$ARTIFACT_REVISION" ]] || {
               echo '::error::Published version belongs to another Git revision'
               exit 1
             }
@@ -287,13 +329,35 @@ jobs:
             exit 1
           fi
 
+      - &verify_remote_tag
+        name: Revalidate the remote artifact tag
+        env:
+          RELEASE_TAG: ${{ needs.qualification.outputs.tag }}
+          ARTIFACT_REVISION: ${{ needs.qualification.outputs.revision }}
+        run: |
+          set -euo pipefail
+          REF="refs/tags/$RELEASE_TAG"
+          REMOTE_TAGS=$(git ls-remote --exit-code origin "$REF" "$REF^{}")
+          REVISION=$(awk -v ref="$REF" '
+            $2 == ref { direct = $1; direct_count++ }
+            $2 == ref "^{}" { peeled = $1; peeled_count++ }
+            END {
+              if (direct_count != 1 || peeled_count > 1) exit 1
+              print (peeled_count == 1 ? peeled : direct)
+            }
+          ' <<< "$REMOTE_TAGS")
+          [[ "$REVISION" == "$ARTIFACT_REVISION" ]] || {
+            echo "::error::Remote release tag no longer resolves to the qualified revision"
+            exit 1
+          }
+
       - name: Publish to npm
         if: steps.check.outputs.exists != 'true'
         working-directory: mcp-server
         run: npm publish --access public --provenance
 
   registry:
-    needs: release
+    needs: [qualification, release]
     if: github.event_name == 'workflow_dispatch' && needs.release.result == 'success'
     runs-on: ubuntu-24.04
     timeout-minutes: 15
@@ -306,7 +370,8 @@ jobs:
     steps:
       - uses: actions/checkout@v7.0.1
         with:
-          ref: ${{ github.sha }}
+          ref: ${{ needs.qualification.outputs.revision }}
+          persist-credentials: false
 
       - name: Validate server.json
         run: |
@@ -338,6 +403,8 @@ jobs:
           mcp-publisher validate server.json
 
       - name: Wait for npm to serve the exact revision
+        env:
+          ARTIFACT_REVISION: ${{ needs.qualification.outputs.revision }}
         run: |
           set -euo pipefail
           PKG_NAME=$(jq -r .name mcp-server/package.json)
@@ -347,7 +414,7 @@ jobs:
           while true; do
             CODE=$(curl -s -o "$RUNNER_TEMP/npm-release.json" -w '%{http_code}' --max-time 20 "$URL" || true)
             if [[ "$CODE" == 200 ]]; then
-              jq -e --arg version "$PKG_VERSION" --arg revision "$GITHUB_SHA" \
+              jq -e --arg version "$PKG_VERSION" --arg revision "$ARTIFACT_REVISION" \
                 '.version == $version and .gitHead == $revision' "$RUNNER_TEMP/npm-release.json" >/dev/null
               echo "npm serves ${PKG_NAME}@${PKG_VERSION}"
               break
@@ -359,6 +426,8 @@ jobs:
             echo "HTTP ${CODE} for ${URL}; retrying in 15 s"
             sleep 15
           done
+
+      - *verify_remote_tag
 
       - name: Publish to MCP registry
         run: |
@@ -400,7 +469,8 @@ jobs:
     steps:
       - uses: actions/checkout@v7.0.1
         with:
-          ref: ${{ github.sha }}
+          ref: ${{ needs.qualification.outputs.revision }}
+          persist-credentials: false
 
       - name: Read reviewed release notes
         env:
@@ -410,10 +480,13 @@ jobs:
           awk -v head="## MCP ${RELEASE_TAG#v} " 'index($0, head) == 1 {on = 1; next} on && /^## / {exit} on {print}' RELEASE-NOTES.md > "$RUNNER_TEMP/notes.md"
           grep -q '[^[:space:]]' "$RUNNER_TEMP/notes.md"
 
+      - *verify_remote_tag
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v3.0.4
         with:
           tag_name: ${{ needs.qualification.outputs.tag }}
+          target_commitish: ${{ needs.qualification.outputs.revision }}
           body_path: ${{ runner.temp }}/notes.md
           files: |
             openapi/openapi.json

@@ -181,13 +181,16 @@ The `brewpage-mcp` package provides **13 tools** for AI-assisted publishing and 
 
 Package releases use `.github/workflows/release.yml` with package-scoped npm Trusted Publisher/OIDC for `kochetkov-ma/brewpage-openapi`, workflow `release.yml`, without an environment. CI needs no `NPM_TOKEN`, manual npm login or static-token rotation. Local `npm whoami` does not validate GitHub Actions OIDC authentication. Publication to the official MCP registry (`io.github.kochetkov-ma/brewpage-mcp`) is automatic via GitHub OIDC in the same workflow; no local `mcp-publisher` token is needed.
 
-To retry publication from a local terminal, dispatch the current `main` workflow:
+The version tag builds the image. After hosted qualification, dispatch the publishing workflow with the fresh reviewed receipt. Use the current `main` workflow to publish an existing immutable tag:
 
 ```bash
-gh workflow run release.yml --repo kochetkov-ma/brewpage-openapi --ref main
+receipt_sha=$(shasum -a 256 hosted-receipt.json)
+gh workflow run release.yml --repo kochetkov-ma/brewpage-openapi --ref main \
+  -f release_tag=vX.Y.Z -F hosted_receipt=@hosted-receipt.json \
+  -f "hosted_receipt_sha256=${receipt_sha%% *}"
 ```
 
-Rerunning historical tag workflows that used token authentication is unsupported; use current `main` instead. The retry checks the matching version tag and unchanged MCP source, and skips publication when that version already exists.
+Replace `vX.Y.Z` with the exact version tag. Dispatching a tag that supports hosted qualification selects that tag automatically. The workflow builds and publishes from the verified tag commit and recognizes an existing npm version only when its `gitHead` matches. Trusted publishing attests the workflow invocation, whose revision can differ from the artifact revision.
 
 ### Legacy calls
 
