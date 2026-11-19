@@ -58,7 +58,7 @@ function registerAccount(context: CompactContext): void {
   context.register("account", {
     title: "Check or manage a BrewPage connection",
     description: "Check connection status, view masked tokens or change account publishing access. Use status with requireAccount=true to request a connection.",
-    annotations: { readOnlyHint: false, destructiveHint: true },
+    annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: false },
     inputSchema: {
       action: z.enum(ACCOUNT_ACTIONS).default("status"),
       requireAccount: z.boolean().optional(),
@@ -137,7 +137,7 @@ function registerNotifications(context: CompactContext): void {
   context.register("notifications", {
     title: "Manage BrewPage notifications",
     description: "List your profile notices and publication activity, mark items read, or change profile and page notification settings.",
-    annotations: { readOnlyHint: false, destructiveHint: true },
+    annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: false },
     inputSchema: {
       action: z.enum(NOTIFICATION_ACTIONS).default("list"),
       ownerToken: OWNER_TOKEN,
@@ -201,7 +201,7 @@ function registerGuides(context: CompactContext): void {
   context.register("get_guide", {
     title: "Read a BrewPage guide",
     description: "Get a short workflow for publishing, Page data, templates, custom domains or account connection. Use limits or stats for current platform data.",
-    annotations: { readOnlyHint: true },
+    annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
     inputSchema: {
       topic: z.enum([...LEGACY_GUIDES, "publishing", "limits", "stats", "account"]),
       q: z.string().trim().min(1).max(200).optional().describe("A few words about the desired template"),

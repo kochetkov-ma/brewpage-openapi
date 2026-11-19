@@ -122,7 +122,7 @@ function registerRead(context: CompactContext) {
     title: "Read page data",
     description: "Read saved visitor data on an owned HTML page or site. Leave out collection for settings and usage. " +
       "Use collection for entries, include=files for uploads, countBy for totals, or format=csv or fileId for a protected download.",
-    annotations: { readOnlyHint: true },
+    annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
     inputSchema: {
       ...PAGE_ADDRESS,
       collection: COLLECTION.optional(),
@@ -172,7 +172,7 @@ function registerWrite(context: CompactContext) {
   context.register("write_page_data", {
     title: "Write author entries",
     description: "Save up to 20 author entries in one Page data list. Use the last read version to replace only that version.",
-    annotations: { readOnlyHint: false, destructiveHint: true },
+    annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: true },
     inputSchema: {
       ...PAGE_ADDRESS,
       collection: COLLECTION,
@@ -221,7 +221,7 @@ function registerDelete(context: CompactContext) {
   context.register("delete_page_data", {
     title: "Delete page data entries",
     description: "Permanently delete entries or uploaded files from one list. Select docIds, fileIds, a timestamp range or all=true.",
-    annotations: { readOnlyHint: false, destructiveHint: true },
+    annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: true },
     inputSchema: {
       ...PAGE_ADDRESS,
       collection: COLLECTION,

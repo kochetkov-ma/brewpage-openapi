@@ -12,6 +12,6 @@ When the server lists `publish`:
 - For the user's own hostname, attach with `domains`, relay the actual DNS records and have the user set them. After that, use `domains` with `action: "check"` once and read status with `action: "get"`.
 - For a guide to publishing, account access, limits or domains, use `get_guide`. Manage the badge with `publication_settings`.
 
-The pinned 3.0.0 extension starts the compact catalog. For a local account connection on macOS, run `npx -y brewpage-mcp@3.0.0 login` explicitly and restart the client. Cached 2.1.2 calls still accept their original arguments. [MCP package](https://www.npmjs.com/package/brewpage-mcp/v/3.0.0)
+The pinned 3.0.1 extension starts the compact catalog. For a local account connection on macOS, run `npx -y brewpage-mcp@3.0.1 login` explicitly and restart the client. Cached 2.1.2 calls still accept their original arguments. [MCP package](https://www.npmjs.com/package/brewpage-mcp/v/3.0.1)
 
 [BrewPage reference](https://brewpage.app/llms.txt)

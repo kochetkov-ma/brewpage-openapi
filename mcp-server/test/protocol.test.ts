@@ -29,6 +29,21 @@ const COMPACT_TOOL_NAMES = [
   "publish", "list_publications", "read_publication", "update_publication", "publication_settings",
   "delete_publication", "read_page_data", "write_page_data", "delete_page_data", "domains", "account", "notifications", "get_guide",
 ];
+const COMPACT_TOOL_ANNOTATIONS = {
+  publish: { readOnlyHint: false, destructiveHint: true, openWorldHint: true },
+  list_publications: { readOnlyHint: true, destructiveHint: false, openWorldHint: true },
+  read_publication: { readOnlyHint: true, destructiveHint: false, openWorldHint: true },
+  update_publication: { readOnlyHint: false, destructiveHint: true, openWorldHint: true },
+  publication_settings: { readOnlyHint: false, destructiveHint: true, openWorldHint: true },
+  delete_publication: { readOnlyHint: false, destructiveHint: true, openWorldHint: true },
+  read_page_data: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
+  write_page_data: { readOnlyHint: false, destructiveHint: true, openWorldHint: true },
+  delete_page_data: { readOnlyHint: false, destructiveHint: true, openWorldHint: true },
+  domains: { readOnlyHint: false, destructiveHint: true, openWorldHint: true },
+  account: { readOnlyHint: false, destructiveHint: true, openWorldHint: false },
+  notifications: { readOnlyHint: false, destructiveHint: true, openWorldHint: false },
+  get_guide: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
+};
 
 type Rpc = { id?: number; result?: Record<string, unknown>; error?: { code: number; message: string } };
 /** One JSON-RPC exchange in the transport's own framing. */
@@ -127,7 +142,7 @@ const PROTOCOL_MATRIX = [
 
 for (const [transport, connect] of [["stdio", stdio], ["HTTP", http]] as const) {
   for (const row of PROTOCOL_MATRIX.slice(0, 2)) {
-    test(`${transport} ${row.label} lists the compact default and still runs cached calls`, { timeout: 15_000 }, async (t) => {
+    test(`${transport} ${row.label} lists annotated compact tools and still runs cached calls`, { timeout: 15_000 }, async (t) => {
       // GIVEN the ordinary entry point with no catalog override.
       const api = await backend(t);
       const send = await connect(t, api.url, "");
@@ -137,18 +152,22 @@ for (const [transport, connect] of [["stdio", stdio], ["HTTP", http]] as const) 
       const listed = await send({ jsonrpc: "2.0", id: 2, method: "tools/list", params }, opened.era);
       const cached = await send({ jsonrpc: "2.0", id: 3, method: "tools/call",
         params: { ...params, name: "get_json", arguments: { namespace: "public", id: "TestPage01" } } }, opened.era);
-      // THEN discovery is compact and the cached call reaches its legacy route and returns the alias note.
+      // THEN discovery includes explicit hints and the cached call returns the legacy alias note.
       const text = (cached.result?.content as Array<{ text: string }>)[0].text;
-      const tools = listed.result?.tools as Array<{ name: string; inputSchema: { properties: Record<string, { description?: string }> } }>;
+      const tools = listed.result?.tools as Array<{
+        name: string; annotations: unknown; inputSchema: { properties: Record<string, { description?: string }> };
+      }>;
       const entryHint = (name: string) => tools.find((tool) => tool.name === name)?.inputSchema.properties.entry.description ?? "";
       assert.deepEqual({
         names: tools.map(({ name }) => name), newEntryDefault: /default index\.html/i.test(entryHint("publish")),
+        annotations: Object.fromEntries(tools.map(({ name, annotations }) => [name, annotations])),
         updateEntryRequired: /required.*entryFile/i.test(entryHint("update_publication")),
         calls: api.requests.map(({ url }) => url), cachedId: cached.id,
         aliasNote: text.split("\n").at(-1),
-      }, { names: COMPACT_TOOL_NAMES, newEntryDefault: true, updateEntryRequired: true, calls: ["/api/json/public/TestPage01"], cachedId: 3,
+      }, { names: COMPACT_TOOL_NAMES, annotations: COMPACT_TOOL_ANNOTATIONS,
+        newEntryDefault: true, updateEntryRequired: true, calls: ["/api/json/public/TestPage01"], cachedId: 3,
         aliasNote: "Note: get_json is now get_page (with `type: json`); the old name still works." },
-      "regular discovery and cached call compatibility");
+      "compact tool order and explicit annotations, site schemas, and cached call compatibility");
     });
   }
 }
