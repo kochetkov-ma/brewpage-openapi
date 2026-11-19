@@ -141,7 +141,7 @@ The compact catalog advertises 13 tools on HTTP and stdio. Check the tool list t
 
 | Tool | Purpose |
 |------|---------|
-| `publish` | Create HTML, Markdown, a static site, a file from a public URL, JSON or a KV store. Optional `title` checks the existing HTML head title before creating an HTML page; it never renames or changes the source or asserts stored metadata. The explicitly closed title must be within the first 16,384 UTF-16 code units, including any leading BOM (one initial U+FEFF is skipped only for inspection); matching is case-sensitive after HTML entity decoding and ASCII whitespace normalization (expected title: at most 200 Unicode code points). With a filename, set `format:"html"`; paste repair and other formats/kinds cannot use this check. |
+| `publish` | Create HTML, Markdown, a static site, a file from a public URL, JSON or a KV store. Optional `public:true` selects the shared public namespace; `namespace:"public"` remains supported. Omit both for existing private defaults. `public:false` conflicts with namespace `public`; true conflicts with a custom namespace. Empty namespace counts as omitted. Listing still depends on eligibility; password-protected publications and JSON/KV stay unlisted. Optional `title` checks the existing HTML head title before creating an HTML page; it never renames or changes the source or asserts stored metadata. The explicitly closed title must be within the first 16,384 UTF-16 code units, including any leading BOM (one initial U+FEFF is skipped only for inspection); matching is case-sensitive after HTML entity decoding and ASCII whitespace normalization (expected title: at most 200 Unicode code points). With a filename, set `format:"html"`; paste repair and other formats/kinds cannot use this check. |
 | `list_publications` | List publications you own, or search the public gallery with `scope: "gallery"` |
 | `read_publication` | Read content, original source, settings or statistics |
 | `update_publication` | Replace content on the existing publication |
@@ -168,7 +168,7 @@ Send the smallest input that carries the material.
 | JSON document | `{"kind":"json","json":{"ready":true}}` |
 | KV store | `{"kind":"kv","key":"status","value":"ready"}` |
 
-Omit `namespace` for an unlisted publication that anyone with its link can open. Send `namespace: "public"` when the user wants eligible material in the gallery and search. For content that needs access control, use a reader password. Return the exact reader link, effective access and expiry from the result.
+Omit both `public` and `namespace` for an ordinary unlisted publication that anyone with its link can open. Send `public: true` (or `namespace: "public"`) to select the shared public namespace. Use the returned `listed` value for gallery/search presence. For content that needs access control, use a reader password. Return the exact reader link, effective access and expiry from the result.
 
 Use `update_publication` with the returned `kind`, `namespace` and `id`, plus the new content. A site replacement takes the complete set of files and the intended `entry`. Reuse the existing `entryFile` unless the owner wants to change it. Inline updates with the default preservation setting keep the saved format when `format` is omitted. Send `format: "html"` when replacing Markdown or code with HTML. Reuse the intended account or existing owner proof. Keep any management link private. [Owner credentials](#owner-token)
 

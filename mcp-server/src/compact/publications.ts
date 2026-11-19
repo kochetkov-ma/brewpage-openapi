@@ -332,13 +332,14 @@ function isTextType(contentType: string | null) {
 export function registerPublications(ctx: CompactContext): void {
   ctx.register("publish", {
     title: "Publish on BrewPage", annotations: { readOnlyHint: false, destructiveHint: false },
-    description: "Explicitly public/listed publication: namespace:\"public\"; ordinary link-only: omit namespace. HTML: content; kind=site: files; kind=file: url; kind=json: json; kind=kv: key,value. Site: {\"kind\":\"site\",\"namespace\":\"public\",\"files\":[{\"path\":\"index.html\",\"content\":\"<h1>Hi</h1>\"}]}. A public input URL does not request listing. New HTML titles go in <title>; preserve supplied HTML. For visitor input read get_guide topic page-data first; publish HTML and state together. Use domain for an owned hostname.",
+    description: "Shared public namespace: public:true (or namespace:\"public\"); ordinary link-only: omit both. HTML: content; kind=site: files; kind=file: url; kind=json: json; kind=kv: key,value. Site: {\"kind\":\"site\",\"public\":true,\"files\":[{\"path\":\"index.html\",\"content\":\"<h1>Hi</h1>\"}]}. A public input URL does not request listing. New HTML titles go in <title>; preserve supplied HTML. For visitor input read get_guide topic page-data first; publish HTML and state together. Use domain for an owned hostname.",
     inputSchema: {
       kind: kind.describe("Default html"), ...materialFields,
       title: z.string().refine((value) => value.length <= 400 && [...value].length <= 200, "Use at most 200 Unicode code points").optional()
         .describe("HTML create only, at most 200 Unicode code points. Checks the existing static document head title before publishing, not stored metadata or script changes. Omit when no check is needed."),
+      public: z.boolean().optional().describe("True selects the shared public namespace. Conflicting namespace refuses. Omit for existing defaults; false disallows namespace=public."),
       namespace: z.string().refine((value) => value === "" || NAMESPACES.test(value), "Use an empty string or a valid namespace")
-        .optional().describe("Use public for requested public/listed publications; omit otherwise."),
+        .optional().describe("Use public for the shared public namespace, or a custom namespace. Omit for existing defaults."),
       password: z.string().optional().describe("New reader password. Omit for no password. Send only the exact password requested, never a placeholder."),
       ttlDays: z.union([z.number().positive(), z.string().min(1).max(32)]).optional(),
       ownerToken,
@@ -349,11 +350,17 @@ export function registerPublications(ctx: CompactContext): void {
     },
     oauthScopes: ["publications:write", "page-data:write", "domains:write"],
   }, async (args) => {
+    const requestedNamespace = args.namespace === "" ? undefined : args.namespace;
+    if (args.public === true && requestedNamespace !== undefined && requestedNamespace !== "public" ||
+      args.public === false && requestedNamespace === "public") {
+      return ctx.refuse("publish", { why: "`public` conflicts with `namespace`.",
+        next: 'Use public:true with namespace omitted or "public", or public:false with namespace omitted or a custom namespace.' });
+    }
+    const namespace = args.public === true ? "public" : requestedNamespace;
     const selectedKind = args.kind ?? "html";
     const material = materialFor(selectedKind, args, "publish");
     if ("why" in material) return ctx.refuse("publish", material);
     const { ttlDays, password, deliveryMode, tags, state, domain, ownerToken } = args;
-    const namespace = args.namespace === "" ? undefined : args.namespace;
     if (domain !== undefined && (selectedKind !== "html" && selectedKind !== "site" ||
       selectedKind === "html" && args.format !== undefined && args.format.toLowerCase() !== "html" || Boolean(password))) {
       return ctx.refuse("publish", { why: "`domain` requires an HTML-format page or site without a password.", next: `Use ${EXAMPLES.html} with the hostname as \`domain\`.` });

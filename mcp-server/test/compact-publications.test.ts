@@ -211,6 +211,115 @@ test("Empty signed creates leave namespace resolution to the same owning account
   ], "every create stays on the signed bridge with the intended namespace handling");
 });
 
+test("The public shortcut selects the namespace consistently without changing publication wire contracts", async () => {
+  // GIVEN the visibility matrix, five publication types and an independent receipt for each write.
+  const state = { collections: { poll: {} } };
+  const content = "<h1>Notes</h1>";
+  const entry = "docs/index.html", files = [{ path: entry, content }];
+  const url = "https://example.org/notes.txt", notes = { type: "text/plain", text: "A public source file." };
+  const json = { suggestion: "Bring the notebook" }, kv = { key: "agenda", value: "Monday" };
+  const artifacts = {
+    html: { input: { content, state }, segment: "html", query: [["verbatim", "true"]],
+      rest: { content, state }, bridge: { content, state, verbatim: true }, listable: true },
+    site: { input: { files, entry, state }, segment: "sites", query: [["entry", entry]],
+      rest: [["state", JSON.stringify(state)], ["files", { name: entry, type: "text/html", text: content }], ["paths", entry]],
+      bridge: { files, entry, state }, listable: true },
+    file: { input: { url }, segment: "files", query: [],
+      rest: [["file", { name: "notes.txt", ...notes }]], bridge: { filename: "notes.txt" }, listable: true },
+    json: { input: { json }, segment: "json", query: [], rest: json, bridge: { json }, listable: false },
+    kv: { input: kv, segment: "kv", query: [], rest: kv, bridge: kv, listable: false },
+  };
+  const namespaces = [undefined, "", "public", "studio"];
+  const matrix = [
+    [undefined, ["default", "default", "public", "studio"]],
+    [false, ["default", "default", "refuse", "studio"]],
+    [true, ["public", "public", "public", "refuse"]],
+  ] as const;
+  const kindCases = [
+    ...matrix.flatMap(([flag, outcomes]) => namespaces.map((namespace, index) =>
+      ({ kind: "html" as const, flag, namespace, expected: outcomes[index] }))),
+    ...(["site", "file", "json", "kv"] as const).map((kind) =>
+      ({ kind, flag: true, namespace: undefined, expected: "public" })),
+    { kind: "file" as const, flag: false, namespace: "public", expected: "refuse" },
+    { kind: "file" as const, flag: true, namespace: "studio", expected: "refuse" },
+    { kind: "html" as const, flag: "true", namespace: undefined, expected: "refuse" },
+  ];
+  const cases = (["unsigned", "account"] as const).flatMap((authority) =>
+    kindCases.map((row) => ({ ...row, authority, proof: authority === "unsigned" && row.kind === "file" ? owner : null })));
+  const nsPattern = /^priv-[a-z0-9]{6}$/;
+  const normalized = (name: unknown) => typeof name === "string" && nsPattern.test(name) ? "generated-private" : name;
+  const backendReceipt = (kind: keyof typeof artifacts, namespace: string, confirmedState: boolean) => ({
+    namespace, id, kind, link: `${origin}/${namespace}/${id}`,
+    listed: artifacts[kind].listable && namespace === "public", listable: artifacts[kind].listable,
+    access: namespace === "public" ? "public" : "unlisted",
+    ...(confirmedState ? { stateApplied: true } : {}),
+  });
+  const bytes = async (file: Blob) => ({ type: file.type, text: await file.text() });
+  const requestBody = async (request: Request, body: BodyInit | null | undefined) => body instanceof FormData
+    ? Promise.all([...(await request.formData()).entries()].map(async ([field, part]) => [
+      field, typeof part === "string" ? part : { name: part.name, ...await bytes(part) },
+    ]))
+    : parseBody(body);
+  const label = ({ authority, kind, flag, namespace }: typeof cases[number]) =>
+    [authority, kind, flag, namespace];
+
+  // WHEN each direct or signed request reaches the registered publish tool.
+  const results = await Promise.all(cases.map(async (row) => {
+    const { authority, kind, flag, namespace, proof } = row, artifact = artifacts[kind], effects: unknown[] = [];
+    let returnedNamespace: string | undefined;
+    const confirmedState = "state" in artifact.input;
+    const answer = await call("publish", { kind, ...artifact.input, public: flag, namespace,
+      ...(authority === "account" ? { requireAccount: true } : proof ? { ownerToken: proof } : {}) }, {
+      authority,
+      async fetch(url, init) {
+        const request = new Request(url, init), target = new URL(request.url);
+        returnedNamespace = target.searchParams.get("ns") ?? "";
+        const query = [...target.searchParams].map(([key, value]) => [key, key === "ns" ? normalized(value) : value]);
+        effects.push(["REST", request.method, target.origin, target.pathname, query, await requestBody(request, init?.body),
+          request.headers.get("X-Owner-Token"), request.headers.get("X-Manage-Key")]);
+        return Response.json(backendReceipt(kind, returnedNamespace, confirmedState), { status: 201 });
+      },
+      async bridge(operation, args, options) {
+        const input = JSON.parse(JSON.stringify(args)), file = (options as { file?: Blob } | undefined)?.file;
+        returnedNamespace = input.namespace ?? "priv-account";
+        effects.push(["bridge", operation, input, Object.hasOwn(args, "public"), file ? await bytes(file) : undefined]);
+        return { ok: true, status: 201, headers: new Headers(), data: backendReceipt(kind, returnedNamespace!, confirmedState) };
+      },
+      async compactFetchSource(source) {
+        effects.push(["download", source]);
+        return new Blob([notes.text], { type: notes.type });
+      },
+    });
+    const result = answer.structuredContent;
+    const generated = returnedNamespace !== undefined && nsPattern.test(returnedNamespace);
+    return { row: label(row), effects, error: answer.isError, result: result && {
+      ...result,
+      namespace: generated && result.namespace === returnedNamespace ? "generated-private" : result.namespace,
+      link: generated && result.link === `${origin}/${returnedNamespace}/${id}` ? `${origin}/generated-private/${id}` : result.link,
+    } };
+  }));
+
+  // THEN every accepted write retains its original wire, and conflicts leave the effect trace empty.
+  const expected = cases.map((row) => {
+    const { authority, kind, proof } = row, artifact = artifacts[kind], signed = authority === "account";
+    const namespace = row.expected === "default" ? signed ? "priv-account" : "generated-private" : row.expected;
+    const confirmedState = "state" in artifact.input;
+    const effects = [
+      ...(kind === "file" ? [["download", url]] : []),
+      signed
+        ? ["bridge", kind === "file" ? "publish_file" : "publish",
+          { kind, ...artifact.bridge, ...(row.expected === "default" ? {} : { namespace }) }, false, kind === "file" ? notes : undefined]
+        : ["REST", "POST", origin, `/api/${artifact.segment}`, [["ns", namespace], ...artifact.query], artifact.rest, proof, null],
+    ];
+    return row.expected === "refuse" ? { row: label(row), effects: [], error: true, result: undefined }
+      : { row: label(row), effects, error: undefined, result: {
+        ...backendReceipt(kind, namespace, confirmedState), isOwner: true, existing: false,
+        ...(confirmedState ? { pageDataEnabled: true } : {}),
+      } };
+  });
+  assert.deepEqual(results, expected, "The visibility matrix must preserve exact payloads, owner proof, returned listing and zero-effect refusals");
+});
+
 test("Supplied HTML defaults to verbatim for compact writes while cached writes keep paste repair", async () => {
   // GIVEN one HTML source and the same target on typed account and public REST transports.
   const requests: unknown[] = [];
