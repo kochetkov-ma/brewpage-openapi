@@ -7,8 +7,8 @@ import { matchesHtmlHeadTitle } from "./html-title.js";
 const NAMESPACES = /^[a-z0-9-]{1,32}$/;
 const PUBLICATION_ID = /^[A-Za-z0-9]{10}$/;
 const KINDS = ["html", "site", "file", "json", "kv"] as const;
-const READ_ONLY = { readOnlyHint: true };
-const DESTRUCTIVE = { readOnlyHint: false, destructiveHint: true };
+const READ_ONLY = { readOnlyHint: true, destructiveHint: false, openWorldHint: true };
+const DESTRUCTIVE = { readOnlyHint: false, destructiveHint: true, openWorldHint: true };
 const ownerToken = z.string().trim().min(1).optional().describe("Owner token of the publication. Keep it private.");
 const kind = z.enum(KINDS).optional();
 const targetFields = {
@@ -331,7 +331,7 @@ function isTextType(contentType: string | null) {
 
 export function registerPublications(ctx: CompactContext): void {
   ctx.register("publish", {
-    title: "Publish on BrewPage", annotations: { readOnlyHint: false, destructiveHint: false },
+    title: "Publish on BrewPage", annotations: DESTRUCTIVE,
     description: "Shared public namespace: public:true (or namespace:\"public\"); ordinary link-only: omit both. HTML: content; kind=site: files; kind=file: url; kind=json: json; kind=kv: key,value. Site: {\"kind\":\"site\",\"public\":true,\"files\":[{\"path\":\"index.html\",\"content\":\"<h1>Hi</h1>\"}]}. A public input URL does not request listing. New HTML titles go in <title>; preserve supplied HTML. For visitor input read get_guide topic page-data first; publish HTML and state together. Use domain for an owned hostname.",
     inputSchema: {
       kind: kind.describe("Default html"), ...materialFields,

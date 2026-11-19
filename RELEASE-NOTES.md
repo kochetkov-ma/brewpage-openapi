@@ -1,5 +1,10 @@
 # Release Notes
 
+## MCP 3.0.1 — Tool annotations
+
+- The 13 compact tools explicitly identify read-only, potentially destructive and open-world operations for clients that use these hints. Publishing can replace existing owner-authorized content.
+- Local installations can pin `brewpage-mcp@3.0.1`. The remote endpoint is `https://brewpage.app/mcp`. Existing calls continue to use their original arguments and permissions.
+
 ## MCP 3.0.0 — Agent publishing
 
 - The usual tool list has 13 operations for publishing and managing HTML, sites, files, JSON and key-value stores. Existing clients can keep calling the previous tools, including earlier aliases.

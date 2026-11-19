@@ -195,7 +195,7 @@ function registerSettings(context: CompactContext) {
     title: "Change publication settings",
     description: "Change listing, badge, title, password, storage, hosting or Page data on an owned publication. " +
       "Use a disruptive action alone. Ask before making a publication private: its public address stops working.",
-    annotations: { readOnlyHint: false, destructiveHint: true },
+    annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: true },
     inputSchema: settingsSchema,
     oauthScopes: ["publications:write", "page-data:write"],
   }, async ({ kind, namespace, id, manageUrl, ownerToken, ...changes }) => {
@@ -267,7 +267,7 @@ function registerDomains(context: CompactContext) {
     title: "Manage custom domains",
     description: "List, add, attach, check, detach or remove custom domains. Attach requires a hostname and an HTML page or site target. " +
       "Set the returned DNS records at the provider, then check once and read status with get. Detach keeps the hostname registered.",
-    annotations: { readOnlyHint: false, destructiveHint: true },
+    annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: true },
     inputSchema: domainSchema,
     hidden: ["manageUrl"],
     oauthScopes: ["domains:read", "domains:write"],
