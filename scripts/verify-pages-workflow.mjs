@@ -28,7 +28,12 @@ assert.deepEqual(
   Array.from({ length: 3 }, () => [qualifiedRevision, false]), 'Publishing checkouts use the artifact and retain no Git credentials',
 );
 assert.deepEqual(release.jobs.registry.needs, ['qualification', 'release'], 'Registry depends on the qualified revision and npm publication');
-const advertiseInputs = release.jobs.advertise.steps.at(-1).with;
+const createRelease = release.jobs.advertise.steps.at(-1);
+const advertiseInputs = createRelease.with;
+const releaseReadback = release.jobs.advertise.steps.find(({ id }) => id === 'existing');
+assert.equal(createRelease.if, "steps.existing.outputs.exists == 'false'", 'GitHub Release creation requires the missing-release result');
+assert.deepEqual(releaseReadback.env, { GH_TOKEN: '${{ github.token }}', RELEASE_TAG: qualifiedTag, ARTIFACT_REVISION: qualifiedRevision },
+  'Release readback uses the qualified artifact and existing job credential');
 assert.deepEqual([release.jobs.release.steps.find(({ id }) => id === 'check').env.ARTIFACT_REVISION,
   release.jobs.registry.steps.find(({ name }) => name === 'Wait for npm to serve the exact revision').env.ARTIFACT_REVISION,
   advertiseInputs.tag_name, advertiseInputs.target_commitish], [qualifiedRevision, qualifiedRevision, qualifiedTag, qualifiedRevision], 'Registry and GitHub Release use the artifact tag and revision');
@@ -112,6 +117,9 @@ case "$*" in
     test "$FIXTURE_TAG" != missing || exit 44
     printf '%s\\n' "$FIXTURE_TAG";;
   "api repos/${repository}/git/tags/${tagObjectSha}") printf '%s\\n' "$FIXTURE_TAG_OBJECT";;
+  "api repos/${repository}/releases/tags/${tag}")
+    test -z "$FIXTURE_RELEASE_ERROR" || { printf '%s\\n' "$FIXTURE_RELEASE_ERROR" >&2; exit 1; }
+    printf '%s\\n' "$FIXTURE_RELEASE";;
   "api --paginate repos/${repository}/releases?per_page=100") printf '%s\\n' "$FIXTURE_RELEASES";;
   *) exit 98;;
 esac
@@ -164,6 +172,37 @@ esac
     });
     assert.equal(result.status, expected, `${name} qualification exit: ${result.stderr}`);
     assert.equal(readFileSync(output, 'utf8'), expected === 0 ? `revision=${sha}\ntag=${tag}\n` : '', `${name} verified checkout SHA and tag`);
+  }
+
+  // GIVEN the artifact's notes and OpenAPI files; WHEN checking Release readback; THEN only exact publication or genuine absence is accepted.
+  const notes = 'Reviewed release notes.\n';
+  const assets = ['openapi.json', 'openapi.yaml'].map((name) => {
+    const bytes = readFileSync(new URL(`../openapi/${name}`, import.meta.url));
+    return { name, state: 'uploaded', digest: `sha256:${createHash('sha256').update(bytes).digest('hex')}` };
+  });
+  const stable = { tag_name: tag, name: tag, target_commitish: sha, body: notes, draft: false, prerelease: false,
+    published_at: '2026-11-19T02:54:52Z', assets };
+  writeFileSync(join(work, 'notes.md'), notes);
+  for (const [name, changes, error, expected, decision] of [
+    ['already exact release', { assets: assets.toReversed() }, '', 0, 'exists=true\n'],
+    ['wrong tag', { tag_name: 'v99.0.0' }, '', 1, ''],
+    ['wrong target commit', { target_commitish: otherSha }, '', 1, ''],
+    ['different notes bytes', { body: notes.trimEnd() }, '', 1, ''],
+    ['missing OpenAPI asset', { assets: assets.slice(0, 1) }, '', 1, ''],
+    ['wrong asset name', { assets: [{ ...assets[0], name: 'schema.json' }, assets[1]] }, '', 1, ''],
+    ['wrong asset digest', { assets: [{ ...assets[0], digest: assets[1].digest }, assets[1]] }, '', 1, ''],
+    ['asset not uploaded', { assets: [{ ...assets[0], state: 'new' }, assets[1]] }, '', 1, ''],
+    ['draft release', { draft: true }, '', 1, ''],
+    ['prerelease', { prerelease: true }, '', 1, ''],
+    ['not published', { published_at: null }, '', 1, ''],
+    ['missing release', {}, 'gh: Not Found (HTTP 404)', 0, 'exists=false\n'],
+    ['forbidden readback', {}, 'gh: Resource not accessible by integration (HTTP 403)', 1, ''],
+    ['unavailable readback', {}, 'gh: Bad Gateway (HTTP 502)', 1, ''],
+  ]) {
+    const result = run(releaseReadback.run, { RELEASE_TAG: tag, ARTIFACT_REVISION: sha,
+      FIXTURE_RELEASE: JSON.stringify({ ...stable, ...changes }), FIXTURE_RELEASE_ERROR: error });
+    assert.equal(result.status, expected, `${name} GitHub Release verification: ${result.stderr}`);
+    assert.equal(readFileSync(output, 'utf8'), decision, `${name} GitHub Release creation decision`);
   }
 
   // GIVEN the live remote ref; WHEN a publisher revalidates it; THEN only the qualified commit is accepted.
@@ -353,4 +392,4 @@ esac
   rmSync(work, { force: true, recursive: true });
 }
 console.log('Pages release qualification passed: 7 event, 33 Actions API and 4 deployment ordering cases');
-console.log('MCP release gates passed: 6 remote ref, 5 registry, 5 image and 26 hosted receipt cases');
+console.log('MCP release gates passed: 6 remote ref, 5 registry, 5 image, 26 hosted receipt and 14 GitHub Release cases');
