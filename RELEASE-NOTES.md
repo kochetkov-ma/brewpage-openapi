@@ -1,5 +1,12 @@
 # Release Notes
 
+## API contract 2.65.0 — 2026-11-20
+
+- Synced from the live contract of brewpage-app release v2.65.0 (source `cd2d39fb8c6aef317879cc6df2756ee848623886`), clean tree. 73 paths and 98 operations (72 and 97 before).
+- New `makePublic` (`POST /api/{type}/{ns}/{id}/public`, no body, owner token or management key): a private publication gets a new public link and the private link stops working. The answer is the same as `makePrivate`; give the user the new `link` and `manageUrl`. 409 `NOT_PRIVATE`, `PUBLIC_COPY_EXISTS` or `MOVE_UNAVAILABLE`; 429 `ROTATE_LIMITED` (at most 3 link changes a day).
+- `makePrivate` is no longer one-way: a publication made private can be made public again with `makePublic`.
+- No other path, field or code change. The MCP server is unchanged.
+
 ## MCP 3.0.1 — Tool annotations
 
 - The 13 compact tools explicitly identify read-only, potentially destructive and open-world operations for clients that use these hints. Publishing can replace existing owner-authorized content.

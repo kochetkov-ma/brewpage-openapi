@@ -197,7 +197,8 @@ function publicContract(spec) {
     'Page data answers: an entry page with next, a delete count, a write receipt with its version');
   assert.deepEqual(schemas.StateEntry.required, ['createdAt', 'id', 'key', 'sizeBytes', 'updatedAt', 'value', 'version', 'visitor'],
     'A page data entry carries key, id, visitor, version, size, times and value');
-  for (const [suffix, operationId, answer] of [['badge', 'setBadge', 'BadgeResponse'], ['private', 'makePrivate', 'PublicationRotateResponse']]) {
+  for (const [suffix, operationId, answer] of [['badge', 'setBadge', 'BadgeResponse'], ['private', 'makePrivate', 'PublicationRotateResponse'],
+    ['public', 'makePublic', 'PublicationRotateResponse']]) {
     const action = spec.paths[`/api/{type}/{ns}/{id}/${suffix}`]?.post;
     assert.equal(action?.operationId, operationId, `Owner action /${suffix} is published as ${operationId}`);
     assert.deepEqual(action.security, [{ OwnerToken: [] }, { ManageKey: [] }], `${operationId} requires owner authority: owner token or management key`);

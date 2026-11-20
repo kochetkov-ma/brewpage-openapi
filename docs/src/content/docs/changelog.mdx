@@ -6,6 +6,10 @@ order: 5
 
 # Changelog
 
+## API contract 2.65.0 — private back to public
+
+New `POST /api/{type}/{ns}/{id}/public` (`makePublic`, owner token or management key, no body) makes a private publication public: it gets a new public link and the private link stops working. The answer matches `makePrivate`; give the user the new `link` and `manageUrl`. Refusals: 409 `NOT_PRIVATE`, `PUBLIC_COPY_EXISTS` or `MOVE_UNAVAILABLE`, 429 `ROTATE_LIMITED`. `makePrivate` is no longer one-way. 73 paths and 98 operations.
+
 ## API contract 2.56.0 — one sitemap index, three sitemaps
 
 `GET /api/sitemap.xml` and `GET /api/sitemap-index.xml` now answer the same sitemap index. It lists `GET /api/sitemap-pages.xml` (BrewPage's own pages: home, guides, comparisons, templates, the llms files), the new `GET /api/sitemap-publications.xml` (public publications at their primary link, `lastmod` = last content change when known) and the image sitemap. No credentials needed. 72 paths and 97 operations.
