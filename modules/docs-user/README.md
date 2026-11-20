@@ -1,7 +1,7 @@
 # brewpage-docs (user-facing full docs)
 
 > **Module stub.** Dev repo: [`kochetkov-ma/brewpage-docs`](https://github.com/kochetkov-ma/brewpage-docs) -- not created yet (TaskList #9).
-> Once created, this folder holds a plain snapshot of it (no git submodules). No subagent owns this yet -- the existing `astro-content-writer` and `astro-platform-engineer` agents (team `brewpage-openapi`) will likely cover it during migration.
+> Once created, this folder holds a plain snapshot of it (no git submodules).
 
 **Status:** SCAFFOLD -- repo not yet created.
 
@@ -19,7 +19,7 @@
 - Getting started / quickstart.
 - API reference (rendered from `brewpage-openapi/openapi/openapi.yaml`).
 - Module pages -- one per module, summarizing the dev repo.
-- Category landing pages from `.claude/features/deep-research-report.md` (host-claude-artifacts, host-chatgpt-canvas-html, etc.).
+- Category landing pages (host-claude-artifacts, host-chatgpt-canvas-html, etc.).
 - Cross-links to brewpage.app and to every module's marketplace listing.
 
 **Links.**

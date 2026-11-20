@@ -1,7 +1,7 @@
 # brewpage-client-python
 
 > **Module stub.** Dev repo: [`kochetkov-ma/brewpage-client-python`](https://github.com/kochetkov-ma/brewpage-client-python) -- not created yet (TaskList #2).
-> Once created, this folder holds a plain snapshot of it (no git submodules). Development is coordinated from `brewpage-openapi` via the `client-python-engineer` subagent (`.claude/agents/client-python-engineer.md`).
+> Once created, this folder holds a plain snapshot of it (no git submodules).
 
 **Status:** SCAFFOLD -- repo not yet created.
 
@@ -25,4 +25,3 @@
 - OpenAPI contract -- https://github.com/kochetkov-ma/brewpage-openapi
 - Master plan -- ../../ECOSYSTEM-PLAN.md
 - Dev repo -- TBD (TaskList #2)
-- Subagent -- ../../.claude/agents/client-python-engineer.md

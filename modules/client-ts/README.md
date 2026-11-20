@@ -1,11 +1,11 @@
 # brewpage-client-ts
 
 > **Module stub.** Dev repo: [`kochetkov-ma/brewpage-client-ts`](https://github.com/kochetkov-ma/brewpage-client-ts) -- not created yet (TaskList #1).
-> Once created, this folder holds a plain snapshot of it (no git submodules). Development is coordinated from `brewpage-openapi` via the `client-ts-engineer` subagent (`.claude/agents/client-ts-engineer.md`).
+> Once created, this folder holds a plain snapshot of it (no git submodules).
 
 **Status:** SCAFFOLD -- repo not yet created.
 
-**Intent.** Shared, framework-free TypeScript SDK over the BrewPage REST API. Foundation package -- consumed by `cli-node`, `ext-vscode`, `ext-chrome`.
+**Intent.** Shared, framework-free TypeScript SDK over the BrewPage REST API. Planned foundation for `ext-vscode` and later TypeScript clients; `cli-node` and the released browser extension (`ext-chrome`) call the REST API directly.
 
 **Channel.** npm. Package name: `brewpage-client`.
 
@@ -24,4 +24,3 @@
 - OpenAPI contract -- https://github.com/kochetkov-ma/brewpage-openapi
 - Master plan -- ../../ECOSYSTEM-PLAN.md
 - Dev repo -- TBD (TaskList #1)
-- Subagent -- ../../.claude/agents/client-ts-engineer.md

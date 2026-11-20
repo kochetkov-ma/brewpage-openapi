@@ -8,7 +8,7 @@
 
 **Intent.** Standalone product brand: **BrewPage Cookbook** -- interactive guides, recipes, mini-apps and demos for AI artifact workflows. Each entry is a self-contained interactive artifact published to BrewPage. First recipe: a long-form RAG guide (12 pages, plain static HTML + vanilla JS, inline-SVG drill-down diagrams, mini-games, calculators, client-side search; EN default, RU via the language toggle). Target: ~40 recipes covering AI artifact patterns, agent workflows, content hosting, MCP integrations.
 
-**Why a separate product.** Three reasons: (1) own release cadence, decoupled from OpenAPI/MCP `vX.Y.Z`; (2) first production consumer of `brewpage-action` -- true end-to-end dogfood, not same-repo loopback; (3) standalone SEO entity per `deep-research-report.md` (templates/starters as P1 growth lever).
+**Why a separate product.** Three reasons: (1) own release cadence, decoupled from OpenAPI/MCP `vX.Y.Z`; (2) first production consumer of `brewpage-action` -- true end-to-end dogfood, not same-repo loopback; (3) standalone SEO entity (templates/starters as P1 growth lever).
 
 **Channel.** Published to BrewPage hosting via `brewpage-action` (multi-file site publish). Each recipe is its own published URL on `brewpage.app` (or a custom subdomain when curation matures). Source on GitHub for OSS visibility.
 

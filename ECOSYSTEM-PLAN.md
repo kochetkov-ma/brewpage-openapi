@@ -6,7 +6,7 @@
 
 **Per-repo distribution + monorepo coordination from `brewpage-openapi`.**
 
-Every module ships from its own GitHub repo (`kochetkov-ma/brewpage-*`). This repo is the coordination layer: it holds the OpenAPI contract, the existing `mcp-server`, agents and skills, the master plan, and one reference folder per module under `modules/<name>/`. No git submodules. The reference folder either holds a stub README (module not yet built) or a working snapshot of the dev repo's tree (module built and tracked here for visibility).
+Every module ships from its own GitHub repo (`kochetkov-ma/brewpage-*`). This repo is the coordination layer: it holds the OpenAPI contract, the existing `mcp-server`, the master plan, and one reference folder per module under `modules/<name>/`. Maintainer agents and skills live in the private BrewPage app repository, not here. No git submodules. The reference folder either holds a stub README (module not yet built) or a working snapshot of the dev repo's tree (module built and tracked here for visibility).
 
 | Layer | Where | Why |
 |---|---|---|
@@ -14,14 +14,14 @@ Every module ships from its own GitHub repo (`kochetkov-ma/brewpage-*`). This re
 | `brewpage-mcp` (MCP server) | this repo `mcp-server/` | Already released; explicit exception |
 | Every other module | dedicated repo `kochetkov-ma/brewpage-*` | One marketplace listing per repo, entity-graph SEO, clean `@v1` for Actions, per-repo issues/stars/topics |
 | Module reference folder | this repo `modules/<name>/` | Stub README until dev repo exists; working snapshot once it does. Plain files in master -- no git submodules |
-| Agents, skills, CLAUDE.md | this repo `.claude/` | Single dev coordination point -- all work driven from here |
+| Maintainer agents and skills | private BrewPage app repository | Contract sync and module work are driven from there; a module repo may carry its own (e.g. `brewpage-cookbook`) |
 | Per-repo dev docs | inside each module repo | Full developer docs in the dev repo |
 | User-facing full docs | separate repo `brewpage-docs` (Astro) | Distinct audience; site assembled from this repo until migration completes |
 | Cross-links | every README, every package listing, every marketplace page | Link to brewpage.app + back-link to brewpage-openapi for the spec |
 
 **Decision log.**
-- 2026-05-20 -- monorepo proposal rejected. Per-repo wins because the SEO entity-graph + per-marketplace listing + clean `@v1` Action semantics matter more for AI-search discovery than the velocity saved by sharing one CI surface. Source: `.claude/features/deep-research-report.md`.
-- 2026-06-09 -- `brewpage-action` decoupled from `brewpage-cli` -- calls the BrewPage REST API directly (native `fetch`, Node 24), only runtime dep `@actions/core`. CLI dependency dropped; action is self-contained and shipped (v1.0.2 that day, current release v1.2.4; listed on the GitHub Marketplace since v1.1.2 at https://github.com/marketplace/actions/publish-to-brewpage, use it by `uses: kochetkov-ma/brewpage-action@v1.2.4`). `brewpage-cli` (`modules/cli-node/`) remains its own sibling module.
+- 2026-05-20 -- monorepo proposal rejected. Per-repo wins because the SEO entity-graph + per-marketplace listing + clean `@v1` Action semantics matter more for AI-search discovery than the velocity saved by sharing one CI surface. (The source research report was not kept in any repo.)
+- 2026-06-09 -- `brewpage-action` decoupled from `brewpage-cli` -- calls the BrewPage REST API directly (native `fetch`, Node 24), only runtime dep `@actions/core`. CLI dependency dropped; action is self-contained and shipped (v1.0.2 that day, current release v1.2.5; listed on the GitHub Marketplace since v1.1.2 at https://github.com/marketplace/actions/publish-to-brewpage, use it by `uses: kochetkov-ma/brewpage-action@v1.2.5`). `brewpage-cli` (`modules/cli-node/`) remains its own sibling module.
 - 2026-10-28 -- Homebrew uses the existing owner tap `kochetkov-ma/homebrew-brew` (`brew install kochetkov-ma/brew/<formula>`), not a new `homebrew-tap`. It carries `brewpage-mcp` (from that day) and `brewdoc`; the CLI formula order is set by the 2026-11-20 entry.
 - 2026-11-20 -- `brewpage` CLI ships on the tap first, npm later (brewpage-app issue #123, owner ruling of that day). Dev repo `kochetkov-ma/brewpage-cli` (public, Apache-2.0, Node >= 22, no runtime dependencies) attaches the `npm pack` tarball and `SHA256SUMS` to each `vX.Y.Z` GitHub Release; formula `brewpage` in the owner tap installs that tarball (`brew install kochetkov-ma/brew/brewpage`). npm `brewpage` (fallback `brewpage-cli`, command stays `brewpage`) follows after the owner's first publish of the verified Release tarball; later releases use Trusted Publishing with `--provenance`. Replaces the 2026-10-28 order (formula only after the npm CLI ships): #123 asks only that the artifact and install flow work, and the Release tarball qualifies.
 - 2026-11-20 -- Apple Shortcut (brewpage-app issue #122): source, generator and inspectable action list live in `modules/shortcuts/` here, public so people can read what it does; the signed file follows the owner's signing pass.
@@ -34,10 +34,10 @@ Every module ships from its own GitHub repo (`kochetkov-ma/brewpage-*`). This re
 | `modules/client-ts/` | `kochetkov-ma/brewpage-client-ts` | npm `brewpage-client` | P1 | #1 |
 | `modules/cli-node/` | `kochetkov-ma/brewpage-cli` (created; v0.1.0 in progress) | GitHub Release + owner tap first; npm `brewpage` after the owner's first publish | P1 | #3 |
 | `modules/ext-vscode/` | `kochetkov-ma/brewpage-vscode` | VS Marketplace + Open VSX | P1 | #6 |
-| `modules/action/` | `kochetkov-ma/brewpage-action` | `uses: kochetkov-ma/brewpage-action@v1.2.4` ([GitHub Marketplace](https://github.com/marketplace/actions/publish-to-brewpage)) | RELEASED (v1.1.2) | #8 |
+| `modules/action/` | `kochetkov-ma/brewpage-action` | `uses: kochetkov-ma/brewpage-action@v1.2.5` ([GitHub Marketplace](https://github.com/marketplace/actions/publish-to-brewpage)) | RELEASED (v1.2.5) | #8 |
 | `modules/client-python/` | `kochetkov-ma/brewpage-client-python` | PyPI `brewpage-client` | P2 | #2 |
 | `modules/cli-python/` | `kochetkov-ma/brewpage-cli-python` | PyPI `brewpage` | P2 | #4 |
-| `modules/ext-chrome/` | `kochetkov-ma/brewpage-chrome` | Chrome Web Store + Edge + AMO | P2 | #7 |
+| `modules/ext-chrome/` | `kochetkov-ma/brewpage-browser-extension` (planned as `brewpage-chrome`) | Firefox Add-ons + Chromium build on the GitHub Release; other stores pending | RELEASED (v1.0.0) | #7 |
 | `modules/cli-homebrew/` | `kochetkov-ma/homebrew-brew` (owner tap, exists; carries `brewpage-mcp`, `brewdoc`) | `brew install kochetkov-ma/brew/brewpage` (formula from the CLI Release tarball, with v0.1.0) | P1 | #5 |
 | `modules/docs-user/` | `kochetkov-ma/brewpage-docs` | Pages (route TBD) | P2 | #9 |
 | `modules/hf-space/` | `kochetkov-ma/brewpage-hf-space` | HuggingFace Spaces (static SDK) | P3 | #10 |
@@ -47,8 +47,8 @@ Every module ships from its own GitHub repo (`kochetkov-ma/brewpage-*`). This re
 ## Workflow
 
 **Development.**
-- All work coordinated from this repo. Each agent in `.claude/agents/` owns exactly one module.
-- When a module repo exists: the agent maintains the dev repo independently and refreshes `modules/<name>/` here with the latest snapshot (manual copy or scripted sync). No submodules, no commit-SHA tracking.
+- Work is coordinated from the private BrewPage app repository and its maintainer agents; this repo carries no agents.
+- When a module repo exists: its maintainer develops in the dev repo independently and refreshes `modules/<name>/` here with the latest snapshot (manual copy or scripted sync). No submodules, no commit-SHA tracking.
 - For modules small enough to fit in a few files (e.g. `hf-space` -- 3 static files), `modules/<name>/` IS the canonical working tree; the dev repo is bootstrapped from it once needed.
 - For larger modules, the dev repo stays authoritative and the reference folder under `modules/` is informational (stub README + links).
 
@@ -77,8 +77,8 @@ No submodules. No branches. Plain files in master.
 ## Build order
 
 ```
-client-ts ---+--- ext-vscode
-             +--- ext-chrome
+client-ts --- ext-vscode
+ext-chrome (released -- direct REST, no client-ts)
 cli-node -- cli-homebrew  (direct REST; no client-ts first; tap from the Release tarball, npm later)
 action    (independent -- direct REST since 2026-06-09)
 client-python -- cli-python
@@ -100,7 +100,7 @@ Reflected in the TaskList via `blockedBy` edges.
 | VS Code extension id | `kochetkov-ma.brewpage` |
 | Chrome extension display name | `BrewPage Publisher` |
 | Homebrew formula | `kochetkov-ma/brew/brewpage` (tap `kochetkov-ma/homebrew-brew`) |
-| Action ref | `kochetkov-ma/brewpage-action@v1.2.4` |
+| Action ref | `kochetkov-ma/brewpage-action@v1.2.5` |
 | Release tag | `vX.Y.Z` (unprefixed -- one repo per package) |
 
 ## Out of scope

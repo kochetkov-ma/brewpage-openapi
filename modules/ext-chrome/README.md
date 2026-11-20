@@ -1,26 +1,17 @@
-# brewpage-chrome
+# brewpage-browser-extension
 
-> **Module stub.** Dev repo: [`kochetkov-ma/brewpage-chrome`](https://github.com/kochetkov-ma/brewpage-chrome) -- not created yet (TaskList #7).
-> Once created, this folder holds a plain snapshot of it (no git submodules). Development is coordinated from `brewpage-openapi` via the `ext-chrome-engineer` subagent (`.claude/agents/ext-chrome-engineer.md`).
+> **Module stub.** Dev repo: [`kochetkov-ma/brewpage-browser-extension`](https://github.com/kochetkov-ma/brewpage-browser-extension) -- live (MIT; TaskList #7). The planned name `brewpage-chrome` was not used.
+> Code, tests and releases live there; this folder stays a short stub (no git submodules).
 
-**Status:** SCAFFOLD -- repo not yet created.
+**Status:** RELEASED -- [v1.0.0](https://github.com/kochetkov-ma/brewpage-browser-extension/releases/tag/v1.0.0) ships Firefox and Chromium builds; installable from [Firefox Add-ons](https://addons.mozilla.org/en-US/firefox/addon/brewpage-publisher/). Other stores are pending.
 
-**Intent.** Capture the current tab as HTML (or selection / image) and publish to BrewPage. Use cases: "share this AI chat output", "share this generated page", "mirror this report to a stable URL".
+**Intent.** Publish the current tab, selected text (including an AI answer), an image or a file to BrewPage and get a share link.
 
-**Channel.** Chrome Web Store + Edge Add-ons. Same Manifest V3 build ships to both. Firefox via `webextension-polyfill` as a separate build target inside the same dev repo (no separate dir).
+**Channel.** Firefox Add-ons; Chromium build attached to the GitHub Release.
 
-**Depends on.** `brewpage-client` (npm).
+**Depends on.** The public REST API directly; no runtime dependencies (`brewpage-client` is unpublished).
 
-**Planned features.**
-- Browser action popup: "Publish this tab as HTML".
-- Context menu on selection: "Publish selection".
-- Context menu on image: "Mirror image to BrewPage".
-- Options page: default namespace, TTL, owner-token storage (`chrome.storage.local`).
-- Auto-copy URL to clipboard, toast notification with the link.
-
-**Manifest.** MV3, minimal permissions: `activeTab`, `clipboardWrite`, `storage`, `contextMenus`. NO `<all_urls>` host permission.
-
-**Release.** Inside dev repo: tag `vX.Y.Z` -> CI builds and uploads via Chrome Web Store API, Edge Add-ons API, and AMO for Firefox.
+**Manifest.** MV3; permissions `activeTab`, `scripting`, `storage`, `contextMenus`; host permission `https://brewpage.app/*` only.
 
 **Display name.** `BrewPage Publisher`.
 
@@ -28,5 +19,4 @@
 - BrewPage -- https://brewpage.app
 - OpenAPI contract -- https://github.com/kochetkov-ma/brewpage-openapi
 - Master plan -- ../../ECOSYSTEM-PLAN.md
-- Dev repo -- TBD (TaskList #7)
-- Subagent -- ../../.claude/agents/ext-chrome-engineer.md
+- Dev repo -- https://github.com/kochetkov-ma/brewpage-browser-extension
