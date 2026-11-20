@@ -22,7 +22,9 @@ Every module ships from its own GitHub repo (`kochetkov-ma/brewpage-*`). This re
 **Decision log.**
 - 2026-05-20 -- monorepo proposal rejected. Per-repo wins because the SEO entity-graph + per-marketplace listing + clean `@v1` Action semantics matter more for AI-search discovery than the velocity saved by sharing one CI surface. Source: `.claude/features/deep-research-report.md`.
 - 2026-06-09 -- `brewpage-action` decoupled from `brewpage-cli` -- calls the BrewPage REST API directly (native `fetch`, Node 24), only runtime dep `@actions/core`. CLI dependency dropped; action is self-contained and shipped (v1.0.2 that day, current release v1.2.4; listed on the GitHub Marketplace since v1.1.2 at https://github.com/marketplace/actions/publish-to-brewpage, use it by `uses: kochetkov-ma/brewpage-action@v1.2.4`). `brewpage-cli` (`modules/cli-node/`) remains its own sibling module.
-- 2026-10-28 -- Homebrew uses the existing owner tap `kochetkov-ma/homebrew-brew` (`brew install kochetkov-ma/brew/<formula>`), not a new `homebrew-tap`. It carries `brewpage-mcp` (from that day) and `brewdoc`; a CLI formula is added only after the npm CLI ships.
+- 2026-10-28 -- Homebrew uses the existing owner tap `kochetkov-ma/homebrew-brew` (`brew install kochetkov-ma/brew/<formula>`), not a new `homebrew-tap`. It carries `brewpage-mcp` (from that day) and `brewdoc`; the CLI formula order is set by the 2026-11-20 entry.
+- 2026-11-20 -- `brewpage` CLI ships on the tap first, npm later (brewpage-app issue #123, owner ruling of that day). Dev repo `kochetkov-ma/brewpage-cli` (public, Apache-2.0, Node >= 22, no runtime dependencies) attaches the `npm pack` tarball and `SHA256SUMS` to each `vX.Y.Z` GitHub Release; formula `brewpage` in the owner tap installs that tarball (`brew install kochetkov-ma/brew/brewpage`). npm `brewpage` (fallback `brewpage-cli`, command stays `brewpage`) follows after the owner's first publish of the verified Release tarball; later releases use Trusted Publishing with `--provenance`. Replaces the 2026-10-28 order (formula only after the npm CLI ships): #123 asks only that the artifact and install flow work, and the Release tarball qualifies.
+- 2026-11-20 -- Apple Shortcut (brewpage-app issue #122): source, generator and inspectable action list live in `modules/shortcuts/` here, public so people can read what it does; the signed file follows the owner's signing pass.
 
 ## Repo map
 
@@ -30,16 +32,17 @@ Every module ships from its own GitHub repo (`kochetkov-ma/brewpage-*`). This re
 |---|---|---|---|---|
 | `mcp-server/` (root, NOT under modules/) | this repo | npm `brewpage-mcp` | RELEASED | -- |
 | `modules/client-ts/` | `kochetkov-ma/brewpage-client-ts` | npm `brewpage-client` | P1 | #1 |
-| `modules/cli-node/` | `kochetkov-ma/brewpage-cli` | npm `brewpage` | P1 | #3 |
+| `modules/cli-node/` | `kochetkov-ma/brewpage-cli` (created; v0.1.0 in progress) | GitHub Release + owner tap first; npm `brewpage` after the owner's first publish | P1 | #3 |
 | `modules/ext-vscode/` | `kochetkov-ma/brewpage-vscode` | VS Marketplace + Open VSX | P1 | #6 |
 | `modules/action/` | `kochetkov-ma/brewpage-action` | `uses: kochetkov-ma/brewpage-action@v1.2.4` ([GitHub Marketplace](https://github.com/marketplace/actions/publish-to-brewpage)) | RELEASED (v1.1.2) | #8 |
 | `modules/client-python/` | `kochetkov-ma/brewpage-client-python` | PyPI `brewpage-client` | P2 | #2 |
 | `modules/cli-python/` | `kochetkov-ma/brewpage-cli-python` | PyPI `brewpage` | P2 | #4 |
 | `modules/ext-chrome/` | `kochetkov-ma/brewpage-chrome` | Chrome Web Store + Edge + AMO | P2 | #7 |
-| `modules/cli-homebrew/` | `kochetkov-ma/homebrew-brew` (owner tap, exists; carries `brewpage-mcp`, `brewdoc`) | `brew install kochetkov-ma/brew/brewpage` (planned formula) | P2 | #5 |
+| `modules/cli-homebrew/` | `kochetkov-ma/homebrew-brew` (owner tap, exists; carries `brewpage-mcp`, `brewdoc`) | `brew install kochetkov-ma/brew/brewpage` (formula from the CLI Release tarball, with v0.1.0) | P1 | #5 |
 | `modules/docs-user/` | `kochetkov-ma/brewpage-docs` | Pages (route TBD) | P2 | #9 |
 | `modules/hf-space/` | `kochetkov-ma/brewpage-hf-space` | HuggingFace Spaces (static SDK) | P3 | #10 |
 | `modules/cookbook/` | `kochetkov-ma/brewpage-cookbook` | BrewPage hosting (publish-site via `brewpage-action`) | RELEASED | #11 |
+| `modules/shortcuts/` | this repo (`modules/shortcuts/` is the source) | Apple Shortcuts: signed `.shortcut` file after the owner's signing pass | P1 | brewpage-app #122 |
 
 ## Workflow
 
@@ -76,12 +79,13 @@ No submodules. No branches. Plain files in master.
 ```
 client-ts ---+--- ext-vscode
              +--- ext-chrome
-cli-node -- cli-homebrew  (direct REST; no client-ts first)
+cli-node -- cli-homebrew  (direct REST; no client-ts first; tap from the Release tarball, npm later)
 action    (independent -- direct REST since 2026-06-09)
 client-python -- cli-python
 docs-user (independent)
 hf-space  (independent -- depends only on mcp-server content; P3 backlink surface)
 cookbook  (independent -- consumes brewpage-action for publish; first production consumer / dogfood)
+shortcuts (independent -- direct REST; owner signs the file)
 ```
 
 Reflected in the TaskList via `blockedBy` edges.
@@ -108,7 +112,7 @@ Reflected in the TaskList via `blockedBy` edges.
 
 ## Open questions
 
-1. **`brewpage` name availability** on npm and PyPI. Claim before P1 ship. Fallback: `brewpage-cli`.
+1. **`brewpage` name availability** on npm and PyPI. npm: settled at the owner's first publish, after the tap ships (2026-11-20); PyPI: claim before the P2 Python CLI ships. Fallback: `brewpage-cli` (command stays `brewpage`).
 2. **`docs/` migration to `brewpage-docs`.** Existing `docs/` deploys to GitHub Pages via `.github/workflows/docs.yml`. Migrate after `brewpage-docs` ships; needs Pages source switch + redirect plan.
 3. **Public surface for module stubs.** Options: (a) GitHub tree only; (b) routed under `brewpage.app/modules/<name>` for SEO. Decide before P1 ship.
 4. **Snapshot sync cadence.** For modules carried as `modules/<name>/` snapshots (e.g. `hf-space/`), how often the dev repo and the in-tree snapshot are reconciled. Default: manual, on every dev repo tag. Automate only if drift becomes painful.

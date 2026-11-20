@@ -12,16 +12,17 @@ See `../ECOSYSTEM-PLAN.md` for strategy, repo map, naming, workflow, and open qu
 | Folder | Future repo | Channel | Phase | Status |
 |---|---|---|---|---|
 | `client-ts/` | `brewpage-client-ts` | npm | P1 | SCAFFOLD |
-| `cli-node/` | `brewpage-cli` | npm | P1 | SCAFFOLD |
+| `cli-node/` | `brewpage-cli` (created) | GitHub Release + Homebrew tap; npm later | P1 | IN PROGRESS (v0.1.0) |
 | `ext-vscode/` | `brewpage-vscode` | VS Marketplace + Open VSX | P1 | SCAFFOLD |
 | `action/` | `brewpage-action` | `uses: kochetkov-ma/brewpage-action@v1.2.4` ([GitHub Marketplace](https://github.com/marketplace/actions/publish-to-brewpage)) | P1 | RELEASED (v1.2.0) |
 | `client-python/` | `brewpage-client-python` | PyPI | P2 | SCAFFOLD |
 | `cli-python/` | `brewpage-cli-python` | PyPI | P2 | SCAFFOLD |
 | `ext-chrome/` | `brewpage-chrome` | Chrome + Edge + AMO | P2 | SCAFFOLD |
-| `cli-homebrew/` | `homebrew-brew` (owner tap, live) | Homebrew tap | P2 | SCAFFOLD (CLI formula) |
+| `cli-homebrew/` | `homebrew-brew` (owner tap, live) | Homebrew tap | P1 | IN PROGRESS (CLI formula with v0.1.0) |
 | `docs-user/` | `brewpage-docs` | Pages (route TBD) | P2 | SCAFFOLD |
 | `hf-space/` | `brewpage-hf-space` | HuggingFace Spaces (static SDK) | P3 | SCAFFOLD |
 | `cookbook/` | `brewpage-cookbook` | BrewPage hosting (publish-site via `brewpage-action`) | P1 | RELEASED |
+| `shortcuts/` | this repo (source here) | Apple Shortcuts (signed `.shortcut` file) | P1 | IN PROGRESS (owner signs before release) |
 
 > `mcp-server/` (at repo root, not under `modules/`) is the exception -- already released from this repo.
 
