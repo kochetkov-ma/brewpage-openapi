@@ -32,7 +32,7 @@ Every module ships from its own GitHub repo (`kochetkov-ma/brewpage-*`). This re
 |---|---|---|---|---|
 | `mcp-server/` (root, NOT under modules/) | this repo | npm `brewpage-mcp` | RELEASED | -- |
 | `modules/client-ts/` | `kochetkov-ma/brewpage-client-ts` | npm `brewpage-client` | P1 | #1 |
-| `modules/cli-node/` | `kochetkov-ma/brewpage-cli` (created; v0.1.0 in progress) | GitHub Release + owner tap first; npm `brewpage` after the owner's first publish | P1 | #3 |
+| `modules/cli-node/` | `kochetkov-ma/brewpage-cli` (GitHub Release v0.1.0, 2026-11-20) | GitHub Release + owner tap first (formula pending); npm `brewpage` after the owner's first publish | P1 | #3 |
 | `modules/ext-vscode/` | `kochetkov-ma/brewpage-vscode` | VS Marketplace + Open VSX | P1 | #6 |
 | `modules/action/` | `kochetkov-ma/brewpage-action` | `uses: kochetkov-ma/brewpage-action@v1.2.5` ([GitHub Marketplace](https://github.com/marketplace/actions/publish-to-brewpage)) | RELEASED (v1.2.5) | #8 |
 | `modules/client-python/` | `kochetkov-ma/brewpage-client-python` | PyPI `brewpage-client` | P2 | #2 |
@@ -43,6 +43,22 @@ Every module ships from its own GitHub repo (`kochetkov-ma/brewpage-*`). This re
 | `modules/hf-space/` | `kochetkov-ma/brewpage-hf-space` | HuggingFace Spaces (static SDK) | P3 | #10 |
 | `modules/cookbook/` | `kochetkov-ma/brewpage-cookbook` | BrewPage hosting (publish-site via `brewpage-action`) | RELEASED | #11 |
 | `modules/shortcuts/` | this repo (`modules/shortcuts/` is the source) | Apple Shortcuts: signed `.shortcut` file after the owner's signing pass | P1 | brewpage-app #122 |
+
+**Other public repos** (no folder under `modules/`; registry state checked 2026-11-20).
+
+| Repo (GitHub) | Surface | Status |
+|---|---|---|
+| `kochetkov-ma/n8n-nodes-brewpage` | n8n community node | npm `n8n-nodes-brewpage` 0.2.0 (provenance); n8n verified-node directory lists 0.1.5; tags only, no GitHub Release |
+| `kochetkov-ma/langchain-brewpage` | LangChain tools | PyPI `langchain-brewpage` 0.2.0; latest GitHub Release v0.1.2 |
+| `kochetkov-ma/llama-index-tools-brewpage` | LlamaIndex tool spec | PyPI `llama-index-tools-brewpage` 0.2.0; latest GitHub Release v0.1.2 |
+| `kochetkov-ma/brewpage-obsidian` | Obsidian plugin `BrewPage Publisher` | GitHub Release 1.0.0; listed in Obsidian community plugins (`brewpage-publisher`) |
+| `kochetkov-ma/brewpage-emacs` | Emacs package | MELPA (snapshot 20260910.1644) and MELPA Stable 0.1.2; tags only, no GitHub Release |
+| `kochetkov-ma/brewpage-nvim` | Neovim plugin | No tag or release; installed from the repo (lazy.nvim, packer); not on LuaRocks |
+| `kochetkov-ma/brewpage-circleci-orb` | CircleCI orb source | Orb `brewpage/publish@1.0.0`, public in the CircleCI orb registry; tag v1.0.0 |
+| `kochetkov-ma/brewpage-buildkite-plugin` | Buildkite plugin | GitHub Release v1.0.0, used as `kochetkov-ma/brewpage#v1.0.0`; not in the Buildkite plugin directory |
+| `kochetkov-ma/brewpage-azure-devops` | Azure Pipelines task | Visual Studio Marketplace `brewpage.publish-to-brewpage` 1.0.0 (public); GitHub Release v1.0.0 with the `.vsix` |
+| `kochetkov-ma/brewpage-codex-plugin` | Codex plugin (skill + remote MCP) | GitHub Release v0.2.1 |
+| `kochetkov-ma/brewpage-publish-plugins` | Publishing skill packages for AI coding hosts | GitHub Release v1.1.3 with per-host packages and `SHASUMS256.txt`; its README claims no vendor-catalog acceptance; Zapier listing pending |
 
 ## Workflow
 
@@ -94,9 +110,9 @@ Reflected in the TaskList via `blockedBy` edges.
 
 | Surface | Convention |
 |---|---|
-| Repo name | `brewpage-<module>` (exception: owner tap `homebrew-brew` -- Homebrew `homebrew-<tap>` naming requirement) |
-| npm package | `brewpage`, `brewpage-client`, `brewpage-mcp` |
-| PyPI package | `brewpage`, `brewpage-client` |
+| Repo name | `brewpage-<module>` (exceptions: owner tap `homebrew-brew` -- Homebrew `homebrew-<tap>` naming requirement; `n8n-nodes-brewpage`, `langchain-brewpage`, `llama-index-tools-brewpage` follow their host's package naming) |
+| npm package | `brewpage`, `brewpage-client`, `brewpage-mcp`, `n8n-nodes-brewpage` |
+| PyPI package | `brewpage`, `brewpage-client`, `langchain-brewpage`, `llama-index-tools-brewpage` |
 | VS Code extension id | `kochetkov-ma.brewpage` |
 | Chrome extension display name | `BrewPage Publisher` |
 | Homebrew formula | `kochetkov-ma/brew/brewpage` (tap `kochetkov-ma/homebrew-brew`) |

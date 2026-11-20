@@ -3,7 +3,7 @@
 > **Module stub.** Dev repo: [`kochetkov-ma/brewpage-cli`](https://github.com/kochetkov-ma/brewpage-cli) (public, Apache-2.0; TaskList #3). Code, tests, CI and releases live there.
 > This folder stays a short stub until a plain snapshot is worth carrying (no git submodules).
 
-**Status:** IN PROGRESS -- repo created, v0.1.0 not released yet.
+**Status:** IN PROGRESS -- [v0.1.0 GitHub Release](https://github.com/kochetkov-ma/brewpage-cli/releases/tag/v0.1.0) (2026-11-20, `brewpage-0.1.0.tgz` + `SHA256SUMS`); tap formula and npm pending.
 
 **Intent.** One-shot publish from the terminal: a file or stdin in, one share link out. For people who do not use MCP.
 

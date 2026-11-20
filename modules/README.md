@@ -12,7 +12,7 @@ See `../ECOSYSTEM-PLAN.md` for strategy, repo map, naming, workflow, and open qu
 | Folder | Future repo | Channel | Phase | Status |
 |---|---|---|---|---|
 | `client-ts/` | `brewpage-client-ts` | npm | P1 | SCAFFOLD |
-| `cli-node/` | `brewpage-cli` (created) | GitHub Release + Homebrew tap; npm later | P1 | IN PROGRESS (v0.1.0) |
+| `cli-node/` | `brewpage-cli` | GitHub Release + Homebrew tap; npm later | P1 | IN PROGRESS (v0.1.0 GitHub Release; tap pending) |
 | `ext-vscode/` | `brewpage-vscode` | VS Marketplace + Open VSX | P1 | SCAFFOLD |
 | `action/` | `brewpage-action` | `uses: kochetkov-ma/brewpage-action@v1.2.5` ([GitHub Marketplace](https://github.com/marketplace/actions/publish-to-brewpage)) | P1 | RELEASED (v1.2.5) |
 | `client-python/` | `brewpage-client-python` | PyPI | P2 | SCAFFOLD |
