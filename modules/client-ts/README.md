@@ -1,7 +1,7 @@
 # brewpage-client-ts
 
 > **Module stub.** Dev repo: [`kochetkov-ma/brewpage-client-ts`](https://github.com/kochetkov-ma/brewpage-client-ts) -- not created yet (TaskList #1).
-> Once created, this folder becomes a git submodule. Development is coordinated from `brewpage-openapi` via the `client-ts-engineer` subagent (`.claude/agents/client-ts-engineer.md`).
+> Once created, this folder holds a plain snapshot of it (no git submodules). Development is coordinated from `brewpage-openapi` via the `client-ts-engineer` subagent (`.claude/agents/client-ts-engineer.md`).
 
 **Status:** SCAFFOLD -- repo not yet created.
 

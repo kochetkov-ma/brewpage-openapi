@@ -1,7 +1,7 @@
 # brewpage-cli (Node)
 
 > **Module stub.** Dev repo: [`kochetkov-ma/brewpage-cli`](https://github.com/kochetkov-ma/brewpage-cli) -- not created yet (TaskList #3).
-> Once created, this folder becomes a git submodule. Development is coordinated from `brewpage-openapi` via the `cli-node-engineer` subagent (`.claude/agents/cli-node-engineer.md`).
+> Once created, this folder holds a plain snapshot of it (no git submodules). Development is coordinated from `brewpage-openapi` via the `cli-node-engineer` subagent (`.claude/agents/cli-node-engineer.md`).
 
 **Status:** SCAFFOLD -- repo not yet created.
 
@@ -13,18 +13,13 @@
 - `npx brewpage publish ./report.html`
 - `npm i -g brewpage && brewpage publish ...`
 
-**Depends on.** `brewpage-client` (npm).
+**Depends on.** The public REST API directly (reads `/api/limits`); reuses the `brewpage-mcp` HTTP publish client and login behaviour. No new SDK first: `brewpage-client` is unpublished.
 
-**Planned commands.**
-- `brewpage publish <file>` -- HTML / Markdown / JSON / file -> live URL.
-- `brewpage publish-site <dir|zip>` -- multi-file site.
-- `brewpage update <id> <file>` -- in-place via owner token.
-- `brewpage delete <id>` -- via owner token.
-- `brewpage info <id>` -- stats / metadata.
-- `brewpage list` -- own resources (owner-token scoped).
-- Flags: `--ns`, `--password`, `--ttl-days`, `--json`. Stdin via `-`.
+**First release.** `brewpage publish <file|->` -- file or stdin with explicit visibility and TTL -> prints the returned `link` unchanged. Tokens never as arguments, on stdout or in logs.
 
-**Release.** Inside dev repo: tag `vX.Y.Z` -> CI publishes to npm with `--provenance`.
+**Later, on real use.** Site folder/ZIP, structured output, update/delete.
+
+**Release.** Inside dev repo: tag `vX.Y.Z` -> CI publishes to npm with `--provenance` (Trusted Publishing). Homebrew formula in `kochetkov-ma/homebrew-brew` follows ([cli-homebrew](../cli-homebrew/README.md)).
 
 **Links.**
 - BrewPage -- https://brewpage.app

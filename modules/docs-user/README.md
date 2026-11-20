@@ -1,7 +1,7 @@
 # brewpage-docs (user-facing full docs)
 
 > **Module stub.** Dev repo: [`kochetkov-ma/brewpage-docs`](https://github.com/kochetkov-ma/brewpage-docs) -- not created yet (TaskList #9).
-> Once created, this folder becomes a git submodule. No subagent owns this yet -- the existing `astro-content-writer` and `astro-platform-engineer` agents (team `brewpage-openapi`) will likely cover it during migration.
+> Once created, this folder holds a plain snapshot of it (no git submodules). No subagent owns this yet -- the existing `astro-content-writer` and `astro-platform-engineer` agents (team `brewpage-openapi`) will likely cover it during migration.
 
 **Status:** SCAFFOLD -- repo not yet created.
 

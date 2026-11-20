@@ -18,7 +18,7 @@ See `../ECOSYSTEM-PLAN.md` for strategy, repo map, naming, workflow, and open qu
 | `client-python/` | `brewpage-client-python` | PyPI | P2 | SCAFFOLD |
 | `cli-python/` | `brewpage-cli-python` | PyPI | P2 | SCAFFOLD |
 | `ext-chrome/` | `brewpage-chrome` | Chrome + Edge + AMO | P2 | SCAFFOLD |
-| `cli-homebrew/` | `homebrew-tap` | Homebrew tap | P2 | SCAFFOLD |
+| `cli-homebrew/` | `homebrew-brew` (owner tap, live) | Homebrew tap | P2 | SCAFFOLD (CLI formula) |
 | `docs-user/` | `brewpage-docs` | Pages (route TBD) | P2 | SCAFFOLD |
 | `hf-space/` | `brewpage-hf-space` | HuggingFace Spaces (static SDK) | P3 | SCAFFOLD |
 | `cookbook/` | `brewpage-cookbook` | BrewPage hosting (publish-site via `brewpage-action`) | P1 | RELEASED |

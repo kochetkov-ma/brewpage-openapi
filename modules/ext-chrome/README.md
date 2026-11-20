@@ -1,7 +1,7 @@
 # brewpage-chrome
 
 > **Module stub.** Dev repo: [`kochetkov-ma/brewpage-chrome`](https://github.com/kochetkov-ma/brewpage-chrome) -- not created yet (TaskList #7).
-> Once created, this folder becomes a git submodule. Development is coordinated from `brewpage-openapi` via the `ext-chrome-engineer` subagent (`.claude/agents/ext-chrome-engineer.md`).
+> Once created, this folder holds a plain snapshot of it (no git submodules). Development is coordinated from `brewpage-openapi` via the `ext-chrome-engineer` subagent (`.claude/agents/ext-chrome-engineer.md`).
 
 **Status:** SCAFFOLD -- repo not yet created.
 

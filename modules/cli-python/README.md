@@ -1,7 +1,7 @@
 # brewpage-cli-python
 
 > **Module stub.** Dev repo: [`kochetkov-ma/brewpage-cli-python`](https://github.com/kochetkov-ma/brewpage-cli-python) -- not created yet (TaskList #4).
-> Once created, this folder becomes a git submodule. Development is coordinated from `brewpage-openapi` via the `cli-python-engineer` subagent (`.claude/agents/cli-python-engineer.md`).
+> Once created, this folder holds a plain snapshot of it (no git submodules). Development is coordinated from `brewpage-openapi` via the `cli-python-engineer` subagent (`.claude/agents/cli-python-engineer.md`).
 
 **Status:** SCAFFOLD -- repo not yet created.
 
