@@ -240,16 +240,20 @@ function receipt(ctx: CompactContext, operation: Operation, kind: PublicationKin
     : `BrewPage did not confirm the requested Page data change. Next: read_page_data with the returned private manageUrl alone, or selected owner proof and {kind:"${actualKind}",namespace:"${data.namespace}",id:"${data.id}"}; omit collection to confirm configuration. Unconfirmed does not mean off. Do not repeat create or settings writes.`);
   if (domain !== undefined && !data.customDomain) lines.push(`Custom domain not attached. The publication is available at its BrewPage link.`);
   if (linkName !== undefined) lines.push(...linkNameLines(data, reportedNotices, fromEnv));
+  // Hosts may show the model only structuredContent, so issued private values go there too.
+  const issued: { ownerToken?: string; manageUrl?: string } = {};
   if (operation === "publish" && isOwner && ctx.authority === "unsigned") {
     const issuedToken = typeof ownerToken === "string" && ownerToken.length > 0 && !proof["X-Owner-Token"];
     const issuedLink = typeof manageUrl === "string" && manageUrl.length > 0;
     if (issuedToken) {
       lines.push(`OWNER TOKEN (private): ${ownerToken}`);
+      issued.ownerToken = ownerToken;
     } else if (proof["X-Owner-Token"] && (typeof ownerToken !== "string" || ownerToken === proof["X-Owner-Token"])) {
       lines.push("Existing owner token reused.");
     }
     if (issuedLink) {
       lines.push(`MANAGE LINK (private): ${manageUrl}`);
+      issued.manageUrl = manageUrl;
     }
     if (issuedToken || issuedLink) {
       lines.push("Save the issued private values in verified private storage. If storage is unavailable and the conversation is verified owner-only, give the owner the exact issued values above, label each private and tell them to save them now.");
@@ -257,7 +261,8 @@ function receipt(ctx: CompactContext, operation: Operation, kind: PublicationKin
   }
   if (accountManagementUrl) lines.push(`Account management (sign in as owner): ${accountManagementUrl}`);
   if (!isOwner) lines.push("The selected credential does not manage this publication.");
-  return { ...ctx.text(lines.join("\n")), structuredContent: { ...structuredContent, ...(accountManagementUrl ? { accountManagementUrl } : {}) } };
+  return { ...ctx.text(lines.join("\n")),
+    structuredContent: { ...structuredContent, ...issued, ...(accountManagementUrl ? { accountManagementUrl } : {}) } };
 }
 
 async function responseRecord(response: Response): Promise<ApiAnswer> {

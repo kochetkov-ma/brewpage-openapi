@@ -7,6 +7,13 @@
 - `makePrivate` is no longer one-way: a publication made private can be made public again with `makePublic`.
 - No other path, field or code change. The MCP server is unchanged.
 
+## MCP 3.1.1 — Owner link after publishing
+
+- Publishing through MCP without an account now also returns your private owner token and manage link in the result data assistants read, so the assistant can hand them to you and you can edit or delete the page later. Some clients, including Claude Code, show the assistant only that data.
+- Nothing new is issued: a reused owner token is never repeated, and account publishing still returns only the sign-in management link.
+- Includes everything from 3.1.0: readable link names on `publish` and `publication_settings`, and the `make_public` action.
+- Local installations can pin `brewpage-mcp@3.1.1`. The remote endpoint is `https://brewpage.app/mcp`. Tool names are unchanged and existing calls keep their original arguments and permissions.
+
 ## MCP 3.1.0 — Link names
 
 - `publish` takes `linkName` for a readable public link on a page, site or file; `publication_settings` sets, changes or removes it (`linkName`, `null` removes it). A link name needs a free BrewPage profile; the receipt says when it was not set and what to do next.

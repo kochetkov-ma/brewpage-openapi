@@ -75,8 +75,9 @@ test("Compact publication writes keep their REST shapes and actual private recei
       ...(published && row.proof[0] === null ? [`OWNER TOKEN (private): ${owner}`] : []),
       ...(published ? [`MANAGE LINK (private): ${manageUrl}`] : []),
     ], "Only the issued values appear in the private handoff with their exact labels");
-    assert.deepEqual([result.structuredContent?.ownerToken, result.structuredContent?.manageUrl], [undefined, undefined],
-      "transferable values remain outside the structured result");
+    assert.deepEqual([result.structuredContent?.ownerToken, result.structuredContent?.manageUrl],
+      [published && row.proof[0] === null ? owner : undefined, published ? manageUrl : undefined],
+      "The structured result carries exactly the issued private values the text hands off");
   });
 
   await t.test("site replacement via management link", async () => {
@@ -140,6 +141,45 @@ test("Compact publication writes keep their REST shapes and actual private recei
     assert.deepEqual(seen, [fileUrl, ["PUT", `${origin}/api/files/public/${id}`, "notes.md", "# Notes"]], "A file replacement must send one multipart PUT after the isolated source fetch");
     assert.match(result.content[0].text, /Updated: html public\/DEMO123456[\s\S]+markdown-file-as-page/, "The result should report the conversion and backend notice");
   });
+});
+
+test("Issued private values reach structuredContent exactly when the text hands them off", async (t) => {
+  const accountOrigin = "https://account.example.org";
+  const accountLink = `${accountOrigin}/p/html/public/${id}`;
+  const privateLines = (text: string) => text.split("\n").filter((line) => /^(?:OWNER TOKEN|MANAGE LINK) \(private\):|^Account management/.test(line));
+  const rows = [
+    { name: "anonymous publish issues token and link", tool: "publish", args: { content: htmlSource }, options: {}, data: receipt,
+      expected: { ownerToken: owner, manageUrl, accountManagementUrl: undefined },
+      lines: [`OWNER TOKEN (private): ${owner}`, `MANAGE LINK (private): ${manageUrl}`] },
+    { name: "anonymous site publish issues token and link", tool: "publish",
+      args: { kind: "site", files: [{ path: "index.html", content: htmlSource }] }, options: {}, data: { ...receipt, manageUrl: siteManageUrl },
+      expected: { ownerToken: owner, manageUrl: siteManageUrl, accountManagementUrl: undefined },
+      lines: [`OWNER TOKEN (private): ${owner}`, `MANAGE LINK (private): ${siteManageUrl}`] },
+    { name: "reused token issues no token, only the new page link", tool: "publish", args: { content: htmlSource, ownerToken: owner }, options: {},
+      data: receipt, expected: { ownerToken: undefined, manageUrl, accountManagementUrl: undefined }, lines: [`MANAGE LINK (private): ${manageUrl}`] },
+    { name: "reused token from settings issues no token", tool: "publish", args: { content: htmlSource }, options: { ownerToken: owner },
+      data: { namespace: "public", id, link, ownerToken: owner }, expected: { ownerToken: undefined, manageUrl: undefined, accountManagementUrl: undefined }, lines: [] },
+    { name: "existing publication of another owner issues nothing", tool: "publish", args: { content: htmlSource }, options: {},
+      data: { ...receipt, isOwner: false }, expected: { ownerToken: undefined, manageUrl: undefined, accountManagementUrl: undefined }, lines: [] },
+    { name: "update issues nothing", tool: "update_publication", args: { kind: "html", namespace: "public", id, ownerToken: owner, content: htmlSource },
+      options: {}, data: receipt, expected: { ownerToken: undefined, manageUrl: undefined, accountManagementUrl: undefined }, lines: [] },
+    { name: "account authority returns only the account link", tool: "publish", args: { content: htmlSource },
+      options: { authority: "account", accountOrigin }, data: { ...receipt, manageUrl: accountLink },
+      expected: { ownerToken: undefined, manageUrl: undefined, accountManagementUrl: accountLink },
+      lines: [`Account management (sign in as owner): ${accountLink}`] },
+  ] as const;
+  await Promise.all(rows.map((row) => t.test(row.name, async () => {
+    // GIVEN a backend create receipt that carries private values
+    const options: ServerOptions = { ...row.options, fetch: async () => Response.json(row.data, { status: 201 }),
+      bridge: async () => ({ ok: true, status: 201, data: row.data, headers: new Headers() }) };
+    // WHEN the compact tool answers
+    const result = await call(row.tool, row.args, options);
+    // THEN the structured result and the labelled text carry the same issued values
+    const { ownerToken, manageUrl: structuredLink, accountManagementUrl } = result.structuredContent!;
+    assert.deepEqual({ error: result.isError, structured: { ownerToken, manageUrl: structuredLink, accountManagementUrl },
+      lines: privateLines(result.content[0].text) }, { error: undefined, structured: row.expected, lines: row.lines },
+    "Only issued private values appear, identically, in text and structuredContent");
+  })));
 });
 
 test("Only compact creation treats an empty namespace like the private default", async () => {
@@ -439,7 +479,8 @@ test("Compact title assertions preserve the whole create payload and backend tit
   const rows = [
     { name: "explicit head and HTML whitespace", tool: "publish",
       args: { content: explicit, title: "\tNorth & South\n agenda ", state, namespace: "public" },
-      data: { ...receipt, ...stored }, status: 201, write: publicWrite(explicit, null, { state }), result: publicResult },
+      data: { ...receipt, ...stored }, status: 201, write: publicWrite(explicit, null, { state }),
+      result: { ...publicResult, ownerToken: owner, manageUrl } },
     { name: "implied head with explicit HTML filename format and selected owner", tool: "publish",
       args: { content: implied, title: "Notes\u00a0today", format: "HTML", filename: "source.md", namespace: "public", ownerToken: owner },
       data: prior, status: 200, headers: { "X-Existing-Resource": "1" },

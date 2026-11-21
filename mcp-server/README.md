@@ -33,17 +33,17 @@ Claude Code: `claude mcp add --transport http brewpage --scope user https://brew
 
 ### Local (npx)
 
-For clients that start a local stdio server, pin the package version. Version 3.1.0 lists the [13 compact tools](#tools) and accepts cached legacy calls.
+For clients that start a local stdio server, pin the package version. Version 3.1.1 lists the [13 compact tools](#tools) and accepts cached legacy calls.
 
 ```bash
-npx -y brewpage-mcp@3.1.0
+npx -y brewpage-mcp@3.1.1
 ```
 
 Requires Node.js 20 or newer.
 
-On macOS, run `npx -y brewpage-mcp@3.1.0 login` to open BrewPage consent and save the grant in Keychain. With `login --no-browser`, open the link from your terminal and keep the command running until your browser returns to the loopback callback. Restart the MCP client to use the connection. Run `npx -y brewpage-mcp@3.1.0 logout` to revoke and clear the selected grant. An ordinary stdio run uses the selected grant through the same HTTPS MCP endpoint on a compatible MCP 3.x server. Run with `--anonymous` for a session without the stored account or default owner token.
+On macOS, run `npx -y brewpage-mcp@3.1.1 login` to open BrewPage consent and save the grant in Keychain. With `login --no-browser`, open the link from your terminal and keep the command running until your browser returns to the loopback callback. Restart the MCP client to use the connection. Run `npx -y brewpage-mcp@3.1.1 logout` to revoke and clear the selected grant. An ordinary stdio run uses the selected grant through the same HTTPS MCP endpoint on a compatible MCP 3.x server. Run with `--anonymous` for a session without the stored account or default owner token.
 
-The default login requests `publications:write`. To add account status, run `npx -y brewpage-mcp@3.1.0 login --scope publications:write --scope account:read`, approve it and restart the client. Repeat `--scope` for every permission the new grant should include. Owned listings use `publications:read` and changing Page data settings uses `page-data:write`. A denied permission leaves the action pending until the owner consents.
+The default login requests `publications:write`. To add account status, run `npx -y brewpage-mcp@3.1.1 login --scope publications:write --scope account:read`, approve it and restart the client. Repeat `--scope` for every permission the new grant should include. Owned listings use `publications:read` and changing Page data settings uses `page-data:write`. A denied permission leaves the action pending until the owner consents.
 
 Set `BREWPAGE_MCP_CATALOG=legacy` to discover the previous 25 tools in stdio. For a managed HTML-only client, set `BREWPAGE_MCP_TOOL_SELECTION=publish_html` to discover and call only the original HTML publishing tool. This narrower setting takes precedence and applies with either an account or anonymous access. Managed HTTP clients can send `BrewPage-Tool-Selection: publish_html` for the same behavior.
 
@@ -69,7 +69,7 @@ For the pinned stdio fallback, add this to `~/Library/Application Support/Claude
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@3.1.0"]
+      "args": ["-y", "brewpage-mcp@3.1.1"]
     }
   }
 }
@@ -92,7 +92,7 @@ Custom servers follow your ChatGPT plan and workspace settings.
 The remote command above is the default. Local fallback: register a project-scoped stdio server:
 
 ```bash
-claude mcp add --transport stdio --scope project brewpage -- npx -y brewpage-mcp@3.1.0
+claude mcp add --transport stdio --scope project brewpage -- npx -y brewpage-mcp@3.1.1
 ```
 
 This writes `.mcp.json` in the project root. Use `--scope user` for user-scoped registration. See the [official Claude Code MCP guide](https://code.claude.com/docs/en/mcp).
@@ -116,7 +116,7 @@ For the pinned stdio fallback, open **Settings > MCP** and add this configuratio
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@3.1.0"]
+      "args": ["-y", "brewpage-mcp@3.1.1"]
     }
   }
 }
@@ -130,7 +130,7 @@ Open the Cline MCP settings panel and add:
 {
   "brewpage": {
     "command": "npx",
-    "args": ["-y", "brewpage-mcp@3.1.0"]
+    "args": ["-y", "brewpage-mcp@3.1.1"]
   }
 }
 ```
@@ -235,7 +235,7 @@ A failed call answers `Failed to <operation> (<status>): <server answer>` and a 
 
 `publish_html` takes optional `deliveryMode: "path" | "subdomain"`, sent only as `X-Delivery-Mode`; authored JSON and multipart bodies keep their existing format. `set_publication` changes the mode later. Visibility and password protection are separate choices. Omitted namespace is private (a generated `priv-<random>` namespace): unlisted and not indexed; anyone with the link can still open it. `public` lists HTML, sites and files in the gallery and sitemap, so Google, Bing and AI search can find and index them; public pages are served on the brewpage.app domain for the strongest reach (a site always gets its own subdomain). Never put secrets in a public publication. Password-protected publications, JSON and KV are never listed.
 
-The MCP server wraps a subset of the backend-generated public [REST contract](../openapi/openapi.json). TTL inputs are days: up to 30 days without an account, up to 90 with a free profile (an owner token held in the profile); a default applies when omitted; whole days such as `15`, `15d` or `15 days`. Use returned `expiresAt`. Every tolerated-input adjustment (format alias, skipped site member, normalised namespace) comes back in the response `notices` array and is printed as `Notice (code): message`; `secret-detected` prints as `WARNING (code): message`: relay it to the user. A live BrewPage token or manage link in public content (`credential-published`) prints first as `SECURITY ALERT (credential-published): …`: tell the user to remove and reset it; that result is hidden from the gallery, so it prints no `VISIBILITY` line. A minted `manageUrl` prints as `MANAGE LINK (private): …`: the assistant gives it to the user together with the page link; whoever has it can edit or delete the publication, so it is never posted publicly. A listed public result prints `VISIBILITY: public, listed. Unlist: set_publication listed=false`. `get_page` reads stored rendered HTML or format-specific code/text from the API; it does not call the owner-only original-source endpoint or a browser viewer. `publish_file` uploads from a source URL, not from a local path.
+The MCP server wraps a subset of the backend-generated public [REST contract](../openapi/openapi.json). TTL inputs are days: up to 30 days without an account, up to 90 with a free profile (an owner token held in the profile); a default applies when omitted; whole days such as `15`, `15d` or `15 days`. Use returned `expiresAt`. Every tolerated-input adjustment (format alias, skipped site member, normalised namespace) comes back in the response `notices` array and is printed as `Notice (code): message`; `secret-detected` prints as `WARNING (code): message`: relay it to the user. A live BrewPage token or manage link in public content (`credential-published`) prints first as `SECURITY ALERT (credential-published): …`: tell the user to remove and reset it; that result is hidden from the gallery, so it prints no `VISIBILITY` line. A minted `manageUrl` prints as `MANAGE LINK (private): …`: the assistant gives it to the user together with the page link; whoever has it can edit or delete the publication, so it is never posted publicly. From 3.1.1 the compact `publish` result also carries a newly issued `ownerToken` and `manageUrl` in its structured content, for clients that show the assistant only that part. A listed public result prints `VISIBILITY: public, listed. Unlist: set_publication listed=false`. `get_page` reads stored rendered HTML or format-specific code/text from the API; it does not call the owner-only original-source endpoint or a browser viewer. `publish_file` uploads from a source URL, not from a local path.
 
 For a fresh publication, sites and HTML pages of format `HTML` outside `public` (including the generated unlisted namespace) always use Dedicated subdomain (`subdomain`); omit `deliveryMode` there. The result states the mode in effect, with a `Delivery notice:` line when a reason applies. Everything else in any namespace (Markdown, code/text, files, JSON, KV, public HTML) defaults to Promotion (`path`) and may choose Dedicated subdomain, including password-protected content. Promotion uses a BrewPage path with stricter active-document restrictions. Each NEW site gets one publication-specific host for its complete bundle, preserving relative/root-relative paths; missing assets return 404, with no SPA fallback. Third-party widgets may still need provider configuration.
 
