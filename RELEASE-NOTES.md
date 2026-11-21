@@ -7,6 +7,12 @@
 - `makePrivate` is no longer one-way: a publication made private can be made public again with `makePublic`.
 - No other path, field or code change. The MCP server is unchanged.
 
+## MCP 3.1.0 — Link names
+
+- `publish` takes `linkName` for a readable public link on a page, site or file; `publication_settings` sets, changes or removes it (`linkName`, `null` removes it). A link name needs a free BrewPage profile; the receipt says when it was not set and what to do next.
+- `publication_settings` gains the `make_public` action: a publication made private can be made public again, with a new public link.
+- Local installations can pin `brewpage-mcp@3.1.0`. The remote endpoint is `https://brewpage.app/mcp`. Tool names are unchanged and existing calls keep their original arguments and permissions.
+
 ## MCP 3.0.1 — Tool annotations
 
 - The 13 compact tools explicitly identify read-only, potentially destructive and open-world operations for clients that use these hints. Publishing can replace existing owner-authorized content.

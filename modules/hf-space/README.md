@@ -16,7 +16,7 @@ license: apache-2.0
 
 ## Tools
 
-The `brewpage-mcp` 3.0.1 server advertises 13 tools. Cached names from earlier versions remain callable. See the [package README](https://www.npmjs.com/package/brewpage-mcp) for the complete catalog.
+The `brewpage-mcp` 3.1.0 server advertises 13 tools. Cached names from earlier versions remain callable. See the [package README](https://www.npmjs.com/package/brewpage-mcp) for the complete catalog.
 
 | Tool | Purpose | Key parameters |
 |------|---------|----------------|
@@ -57,7 +57,7 @@ Claude Desktop local fallback: add to `~/Library/Application Support/Claude/clau
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@3.0.1"]
+      "args": ["-y", "brewpage-mcp@3.1.0"]
     }
   }
 }
@@ -70,7 +70,7 @@ Add to `~/.codex/config.toml`:
 ```toml
 [mcp_servers.brewpage]
 command = "npx"
-args = ["-y", "brewpage-mcp@3.0.1"]
+args = ["-y", "brewpage-mcp@3.1.0"]
 ```
 
 #### Cursor
@@ -82,7 +82,7 @@ Open **Settings > MCP** and add:
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@3.0.1"]
+      "args": ["-y", "brewpage-mcp@3.1.0"]
     }
   }
 }
@@ -96,7 +96,7 @@ Open the Cline MCP settings panel and add:
 {
   "brewpage": {
     "command": "npx",
-    "args": ["-y", "brewpage-mcp@3.0.1"]
+    "args": ["-y", "brewpage-mcp@3.1.0"]
   }
 }
 ```
