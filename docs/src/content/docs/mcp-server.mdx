@@ -8,7 +8,7 @@ order: 3
 
 Last updated: 2026-11-18
 
-`brewpage-mcp` 3.1.1 provides 13 tools to publish and manage HTML, Markdown, JSON, KV, files, multi-file sites and visitor entries. It runs locally over stdio (Node.js 20 or newer) or remotely over Streamable HTTP. Start with `publish`; saved 2.x and 1.x calls remain callable. [Compact tool and local account setup](https://github.com/kochetkov-ma/brewpage-openapi/tree/main/mcp-server)
+`brewpage-mcp` 3.1.2 provides 13 tools to publish and manage HTML, Markdown, JSON, KV, files, multi-file sites and visitor entries. It runs locally over stdio (Node.js 20 or newer) or remotely over Streamable HTTP. Start with `publish`; saved 2.x and 1.x calls remain callable. [Compact tool and local account setup](https://github.com/kochetkov-ma/brewpage-openapi/tree/main/mcp-server)
 
 ## Installation
 
@@ -47,7 +47,7 @@ Local fallback (stdio, needs Node.js; the same tools): add to Claude Desktop's `
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@3.1.1"]
+      "args": ["-y", "brewpage-mcp@3.1.2"]
     }
   }
 }
@@ -58,7 +58,7 @@ Local fallback (stdio, needs Node.js; the same tools): add to Claude Desktop's `
 The remote command above is the default. Local fallback: register a project-scoped stdio server:
 
 ```bash
-claude mcp add --transport stdio --scope project brewpage -- npx -y brewpage-mcp@3.1.1
+claude mcp add --transport stdio --scope project brewpage -- npx -y brewpage-mcp@3.1.2
 ```
 
 This writes `.mcp.json` in the project root; user-scoped registration uses `--scope user`. See the [official Claude Code MCP guide](https://code.claude.com/docs/en/mcp).
@@ -66,7 +66,7 @@ This writes `.mcp.json` in the project root; user-scoped registration uses `--sc
 ### One-liner
 
 ```bash
-npx -y brewpage-mcp@3.1.1
+npx -y brewpage-mcp@3.1.2
 ```
 
 This starts a stdio server for an MCP client, not an interactive publishing shell. Other clients can use the same `npx` command and pinned arguments.

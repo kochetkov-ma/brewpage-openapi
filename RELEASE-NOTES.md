@@ -1,5 +1,11 @@
 # Release Notes
 
+## MCP 3.1.2 — API reference with link names
+
+- The public API reference now documents readable link names: setting, changing or removing a link name on a public page, site or file, and the `linkName` field in publishing answers.
+- The MCP tools are unchanged from 3.1.1: `publish` still returns your private owner token and manage link after publishing without an account.
+- Local installations can pin `brewpage-mcp@3.1.2`. The remote endpoint is `https://brewpage.app/mcp`. Tool names are unchanged and existing calls keep their original arguments and permissions.
+
 ## API contract 2.73.0 — 2026-11-21
 
 - Synced from the integration-tested contract of brewpage-app release v2.73.0 (source `797f6222917dc76d0619b5b384519c7703a8e4d5`, backend sources identical to the tag), clean tree. 74 paths and 99 operations (73 and 98 before).
