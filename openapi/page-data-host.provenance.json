@@ -1,10 +1,10 @@
 {
-  "backendBuildVersion": "2.65.0",
-  "backendCommit": "cd2d39fb8c6aef317879cc6df2756ee848623886",
+  "backendBuildVersion": "2.73.0",
+  "backendCommit": "797f6222917dc76d0619b5b384519c7703a8e4d5",
   "backendDirty": false,
-  "backendSourceSha256": "e0dc8e064cb7fbf623a3237243190366effe0dc27007f9d490bd6e2aa25d2f2c",
-  "exporter": "backend/src/main/resources/openapi/page-data-host.yaml of release v2.65.0",
-  "jsonSha256": "57dc24d000f103f77f11087b5fc3ce52f8372956cc742ca2cf17c1dfd73471f8",
+  "backendSourceSha256": "533928d693de5a6ad83be6751f2b5921f88982a8577623b55e5e1ed1778ae0aa",
+  "exporter": ".codex/scripts/export-openapi.py",
+  "jsonSha256": "988bfcd3bfeb54523f4525ba78aeb0c924e6f9bd0d9d32dae3d6462e1b254913",
   "locale": "en",
   "serverOrigin": "https://{host}"
 }

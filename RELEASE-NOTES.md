@@ -1,5 +1,13 @@
 # Release Notes
 
+## API contract 2.73.0 — 2026-11-21
+
+- Synced from the integration-tested contract of brewpage-app release v2.73.0 (source `797f6222917dc76d0619b5b384519c7703a8e4d5`, backend sources identical to the tag), clean tree. 74 paths and 99 operations (73 and 98 before).
+- New `setLinkName` (`POST /api/{type}/{ns}/{id}/link-name`, owner token, a free BrewPage profile): set, change or remove a readable link name on a public page, site or file (6-20 lowercase letters, digits and hyphens, at least one letter; at most 3 per publication over its life).
+- `POST /api/html`, `/api/sites` and `/api/files` take an optional `linkName` query parameter. Publication answers carry optional `linkName` (null = the random link); owner hosting reads add `linkNamesLeft`; `GET /api/limits` adds `linkNames`.
+- New error codes `LINK_NAME_INVALID`, `LINK_NAME_NEEDS_ACCOUNT`, `LINK_NAME_UNAVAILABLE`, `LINK_NAME_PUBLIC_ONLY`, `LINK_NAME_LIMIT`; 429 `LINK_NAME_LIMITED` and `LINK_NAME_PAUSED` (wait `Retry-After`; `ErrorResponse.level` 1-4).
+- The Page data host document changes only its version. The MCP server is unchanged.
+
 ## API contract 2.65.0 — 2026-11-20
 
 - Synced from the live contract of brewpage-app release v2.65.0 (source `cd2d39fb8c6aef317879cc6df2756ee848623886`), clean tree. 73 paths and 98 operations (72 and 97 before).

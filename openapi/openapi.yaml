@@ -329,6 +329,10 @@ components:
           type: string
         error:
           type: string
+        level:
+          description: 'With LINK_NAME_PAUSED: pause level 1-4; the wait is Retry-After'
+          format: int32
+          type: integer
         limit:
           format: int32
           type: integer
@@ -554,6 +558,13 @@ components:
         link:
           description: Primary URL returned for browser download and sharing
           type: string
+        linkName:
+          description: >-
+            Link name of this public page, site or file; null = its random link. Absent when link names are not
+            available.
+          type:
+            - string
+            - 'null'
         listable:
           description: >-
             false = never listed in the gallery whatever the namespace (JSON and KV, JSON pages, HTML and JSON files);
@@ -975,6 +986,19 @@ components:
             - 'null'
         link:
           type: string
+        linkName:
+          description: >-
+            Link name of this public page, site or file; null = its random link. Absent when link names are not
+            available.
+          type:
+            - string
+            - 'null'
+        linkNamesLeft:
+          description: >-
+            Owner hosting read of a public page, site or file only: link names this publication can still take (at most
+            3 over its life). Absent otherwise.
+          format: int32
+          type: integer
         managementLink:
           type:
             - string
@@ -1085,6 +1109,19 @@ components:
             - 'null'
         link:
           type: string
+        linkName:
+          description: >-
+            Link name of this public page, site or file; null = its random link. Absent when link names are not
+            available.
+          type:
+            - string
+            - 'null'
+        linkNamesLeft:
+          description: >-
+            Owner hosting read of a public page, site or file only: link names this publication can still take (at most
+            3 over its life). Absent otherwise.
+          format: int32
+          type: integer
         listable:
           description: >-
             false = never listed in the gallery whatever the namespace (JSON and KV, JSON pages, HTML and JSON files);
@@ -1230,6 +1267,13 @@ components:
         link:
           description: Primary URL returned for browser viewing and sharing
           type: string
+        linkName:
+          description: >-
+            Link name of this public page, site or file; null = its random link. Absent when link names are not
+            available.
+          type:
+            - string
+            - 'null'
         listable:
           description: >-
             false = never listed in the gallery whatever the namespace (JSON and KV, JSON pages, HTML and JSON files);
@@ -1384,6 +1428,13 @@ components:
         link:
           description: Primary URL returned for browser viewing and sharing
           type: string
+        linkName:
+          description: >-
+            Link name of this public page, site or file; null = its random link. Absent when link names are not
+            available.
+          type:
+            - string
+            - 'null'
         listable:
           description: >-
             false = never listed in the gallery whatever the namespace (JSON and KV, JSON pages, HTML and JSON files);
@@ -1523,6 +1574,13 @@ components:
         link:
           description: Primary URL returned for browser viewing and sharing
           type: string
+        linkName:
+          description: >-
+            Link name of this public page, site or file; null = its random link. Absent when link names are not
+            available.
+          type:
+            - string
+            - 'null'
         listed:
           description: 'Always false: JSON is never listed in the gallery or sitemap.'
           type: boolean
@@ -1678,6 +1736,13 @@ components:
         link:
           description: Primary URL returned for browser viewing and sharing
           type: string
+        linkName:
+          description: >-
+            Link name of this public page, site or file; null = its random link. Absent when link names are not
+            available.
+          type:
+            - string
+            - 'null'
         listed:
           description: 'Always false: JSON is never listed in the gallery or sitemap.'
           type: boolean
@@ -1794,6 +1859,13 @@ components:
         link:
           description: Primary URL returned for browser viewing and sharing of the initial key
           type: string
+        linkName:
+          description: >-
+            Link name of this public page, site or file; null = its random link. Absent when link names are not
+            available.
+          type:
+            - string
+            - 'null'
         listed:
           description: 'Always false: KV is never listed in the gallery or sitemap.'
           type: boolean
@@ -2005,6 +2077,13 @@ components:
         link:
           description: Primary URL returned for browser viewing and sharing of this key
           type: string
+        linkName:
+          description: >-
+            Link name of this public page, site or file; null = its random link. Absent when link names are not
+            available.
+          type:
+            - string
+            - 'null'
         listed:
           description: 'Always false: KV is never listed in the gallery or sitemap.'
           type: boolean
@@ -2074,6 +2153,9 @@ components:
           $ref: '#/components/schemas/JsonLimitsResponse'
         kv:
           $ref: '#/components/schemas/KvLimitsResponse'
+        linkNames:
+          $ref: '#/components/schemas/LinkNamesBlock'
+          description: 'Link names: `enabled` = names can be set now; existing named addresses keep working either way'
         ownerMaxTtlDays:
           description: Per-owner TTL cap in days for this token; absent = per-type maximum
           format: int32
@@ -2098,10 +2180,114 @@ components:
         - html
         - json
         - kv
+        - linkNames
         - profileMaxTtlDays
         - reach
         - requestMaxBytes
         - sites
+      type: object
+    LinkNameRequest:
+      properties:
+        linkName:
+          description: >-
+            Optional. New link name (6-20 lowercase letters, digits and hyphens, at least one letter); null or empty
+            removes it
+          type:
+            - string
+            - 'null'
+      type: object
+    LinkNameResponse:
+      properties:
+        access:
+          description: >-
+            public: html, site and file listed in gallery and sitemap. unlisted: private, not listed. protected: link +
+            password.
+          enum:
+            - public
+            - unlisted
+            - protected
+          type: string
+        deliveryMode:
+          type:
+            - string
+            - 'null'
+        deliveryModeMatched:
+          type:
+            - boolean
+            - 'null'
+        deliveryModeReason:
+          description: >-
+            Why this mode is in effect:'policy:subdomain-required', 'policy:mode-locked', 'policy:classic-link',
+            'policy:version-stale', 'policy:republish-keeps-mode', 'policy:custom-domain-attached' or
+            'policy:state-declared'. Absent when nothing applies.
+          type: string
+        deliveryNotice:
+          description: Human-readable explanation of deliveryModeReason. Absent whenever deliveryModeReason is absent.
+          type: string
+        effectiveDeliveryMode:
+          type:
+            - string
+            - 'null'
+        hostingVersion:
+          format: int64
+          type:
+            - integer
+            - 'null'
+        link:
+          type: string
+        linkName:
+          description: >-
+            Link name of this public page, site or file; null = its random link. Absent when link names are not
+            available.
+          type:
+            - string
+            - 'null'
+        managementLink:
+          type:
+            - string
+            - 'null'
+        modeLocked:
+          type: boolean
+        namespace:
+          type: string
+        notices:
+          description: link-name-normalized when the name was saved in its normalized form
+          items:
+            $ref: '#/components/schemas/PublishNotice'
+          type: array
+        ownerLink:
+          type: string
+        previousLinkName:
+          description: Link name before this call; it keeps forwarding to the new address and can't be used again
+          type:
+            - string
+            - 'null'
+        requestedDeliveryMode:
+          type:
+            - string
+            - 'null'
+        routingCohort:
+          type: string
+      required:
+        - access
+        - deliveryMode
+        - deliveryModeMatched
+        - effectiveDeliveryMode
+        - hostingVersion
+        - link
+        - linkName
+        - managementLink
+        - modeLocked
+        - namespace
+        - ownerLink
+        - previousLinkName
+        - requestedDeliveryMode
+        - routingCohort
+      type: object
+    LinkNamesBlock:
+      properties:
+        enabled:
+          type: boolean
       type: object
     ManageKeyResponse:
       properties:
@@ -2553,6 +2739,13 @@ components:
           type: string
         link:
           type: string
+        linkName:
+          description: >-
+            Link name of this public page, site or file; null = its random link. Absent when link names are not
+            available.
+          type:
+            - string
+            - 'null'
         listable:
           description: >-
             false = never listed in the gallery whatever the namespace (JSON and KV, JSON pages, HTML and JSON files);
@@ -2684,6 +2877,13 @@ components:
           type: string
         link:
           type: string
+        linkName:
+          description: >-
+            Link name of this public page, site or file; null = its random link. Absent when link names are not
+            available.
+          type:
+            - string
+            - 'null'
         listed:
           type: boolean
         manageUrl:
@@ -2697,7 +2897,8 @@ components:
         notices:
           description: >-
             rotate-still-listed while the row is listed in gallery and search; private-domain-detached when Make private
-            detached a custom domain
+            detached a custom domain; rotate-link-name-released or private-link-name-released when the link name stopped
+            working
           items:
             $ref: '#/components/schemas/RotateNotice'
           type: array
@@ -3063,6 +3264,13 @@ components:
         link:
           description: Primary URL returned for browser viewing and sharing
           type: string
+        linkName:
+          description: >-
+            Link name of this public page, site or file; null = its random link. Absent when link names are not
+            available.
+          type:
+            - string
+            - 'null'
         listed:
           description: true = listed in the gallery and sitemap now (public, no password, not hidden).
           type: boolean
@@ -3188,6 +3396,13 @@ components:
         link:
           description: Primary URL returned for browser viewing and sharing
           type: string
+        linkName:
+          description: >-
+            Link name of this public page, site or file; null = its random link. Absent when link names are not
+            available.
+          type:
+            - string
+            - 'null'
         listed:
           description: true = listed in the gallery and sitemap now (public, no password, not hidden).
           type: boolean
@@ -4177,7 +4392,7 @@ info:
     url: https://www.apache.org/licenses/LICENSE-2.0
   termsOfService: https://brewpage.app/terms
   title: BrewPage API
-  version: 2.65.0
+  version: 2.73.0
 openapi: 3.1.0
 paths:
   /api/domains:
@@ -4692,6 +4907,19 @@ paths:
           name: verbatim
           schema:
             type: boolean
+        - description: >-
+            Optional. Readable name for the public link of the new page, site or file, e.g. my-recipes (query parameter
+            or form/multipart field; 6-20 lowercase letters, digits and hyphens with at least one letter). Needs
+            ns=public and an X-Owner-Token added to a free BrewPage profile. The publication is always created; on
+            success the answer carries `linkName` and `link` is https://brewpage.app/public/{linkName} (or
+            https://{linkName}.brewpage.app/ on its own address). Otherwise it keeps its random link and one notice says
+            why the name was not set: link-name-needs-account, link-name-unavailable, link-name-invalid,
+            link-name-public-only, link-name-paused or link-name-limited. Updates ignore it (notice link-name-ignored):
+            use POST /api/{type}/public/{id}/link-name.
+          in: query
+          name: linkName
+          schema:
+            type: string
         - description: Reuse existing owner token to group entities under one owner. If omitted, a new token is generated
           in: header
           name: X-Owner-Token
@@ -5211,6 +5439,19 @@ paths:
             /api/publications/{type}/{ns}/{id}/domain.
           in: query
           name: domain
+          schema:
+            type: string
+        - description: >-
+            Optional. Readable name for the public link of the new page, site or file, e.g. my-recipes (query parameter
+            or form/multipart field; 6-20 lowercase letters, digits and hyphens with at least one letter). Needs
+            ns=public and an X-Owner-Token added to a free BrewPage profile. The publication is always created; on
+            success the answer carries `linkName` and `link` is https://brewpage.app/public/{linkName} (or
+            https://{linkName}.brewpage.app/ on its own address). Otherwise it keeps its random link and one notice says
+            why the name was not set: link-name-needs-account, link-name-unavailable, link-name-invalid,
+            link-name-public-only, link-name-paused or link-name-limited. Updates ignore it (notice link-name-ignored):
+            use POST /api/{type}/public/{id}/link-name.
+          in: query
+          name: linkName
           schema:
             type: string
         - description: Slug of the official template this page was made from (the `slug` of a `GET /api/templates` item).
@@ -7944,6 +8185,19 @@ paths:
           name: domain
           schema:
             type: string
+        - description: >-
+            Optional. Readable name for the public link of the new page, site or file, e.g. my-recipes (query parameter
+            or form/multipart field; 6-20 lowercase letters, digits and hyphens with at least one letter). Needs
+            ns=public and an X-Owner-Token added to a free BrewPage profile. The publication is always created; on
+            success the answer carries `linkName` and `link` is https://brewpage.app/public/{linkName} (or
+            https://{linkName}.brewpage.app/ on its own address). Otherwise it keeps its random link and one notice says
+            why the name was not set: link-name-needs-account, link-name-unavailable, link-name-invalid,
+            link-name-public-only, link-name-paused or link-name-limited. Updates ignore it (notice link-name-ignored):
+            use POST /api/{type}/public/{id}/link-name.
+          in: query
+          name: linkName
+          schema:
+            type: string
       requestBody:
         content:
           multipart/form-data:
@@ -9692,6 +9946,105 @@ paths:
       summary: >-
         Change delivery mode for a new publication. Sites and non-public HTML pages are always on subdomain; the answer
         states the mode in effect
+      tags:
+        - Hosting Management
+  /api/{type}/{ns}/{id}/link-name:
+    post:
+      description: >-
+        Gives a public publication a readable address instead of its random id: brewpage.app/public/<name> on a Link
+        address, <name>.brewpage.app on a Subdomain. Needs an owner token added to a free BrewPage profile, a profile
+        token or the management key of a publication in a profile. A new name keeps the old one forwarding; null or
+        empty removes it (back to a random link, the name forwards). Each name can be used only once, at most 3 per
+        publication.
+      operationId: setLinkName
+      parameters:
+        - in: path
+          name: type
+          required: true
+          schema:
+            enum:
+              - html
+              - files
+              - sites
+            type: string
+        - in: path
+          name: ns
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+        - description: Owner token in a free BrewPage profile
+          in: header
+          name: X-Owner-Token
+        - description: Management key of this publication
+          in: header
+          name: X-Manage-Key
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LinkNameRequest'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LinkNameResponse'
+          description: Saved, or the same name (no change)
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: 'LINK_NAME_INVALID: 6-20 lowercase letters, digits and hyphens, with at least one letter'
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: >-
+            LINK_NAME_NEEDS_ACCOUNT: link names need a free BrewPage profile: sign in at
+            https://account.brewpage.app/tokens, press Add existing token and paste this owner token, then set the link
+            name again; OWNER_AUTHORIZATION_FAILED, OWNER_TOKEN_REVOKED or OWNER_TOKEN_EXPIRED
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: >-
+            PUBLICATION_UNAVAILABLE: missing or expired publication; FEATURE_DISABLED: link names are not available
+            right now
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: >-
+            LINK_NAME_UNAVAILABLE: this link name is not available; LINK_NAME_PUBLIC_ONLY: only public publications can
+            have a link name; LINK_NAME_LIMIT: this publication can't take another link name (`used`, `limit`);
+            OLD_PUBLICATION_READ_ONLY; PUBLICATION_CHANGED: try again
+        '429':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: >-
+            Rate limited: wait Retry-After (= retryAfterSeconds); or LINK_NAME_LIMITED: try again later (Retry-After);
+            or LINK_NAME_PAUSED: too many tries, wait Retry-After seconds (`level` 1-4)
+        '503':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: 'HOSTING_CREATION_PAUSED: address changes are briefly unavailable; retry after Retry-After'
+      security:
+        - OwnerToken: []
+        - ManageKey: []
+      summary: Set, change or remove the link name of a public page, site or file
       tags:
         - Hosting Management
   /api/{type}/{ns}/{id}/manage-key:

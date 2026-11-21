@@ -135,8 +135,9 @@ function publicContract(spec) {
   assert.equal(limits.responses['200'].content['application/json'].schema.$ref, '#/components/schemas/LimitsResponse',
     'Limits answer with the LimitsResponse DTO');
   assert.deepEqual(Object.keys(schemas.LimitsResponse.properties).sort(), ['customDomains', 'files', 'html', 'json', 'kv',
-    'ownerMaxTtlDays', 'profileMaxTtlDays', 'reach', 'requestMaxBytes', 'sites'],
-    'Limits expose the request size, per-type limits, profile TTL cap, optional owner reach and TTL cap, optional custom domains');
+    'linkNames', 'ownerMaxTtlDays', 'profileMaxTtlDays', 'reach', 'requestMaxBytes', 'sites'],
+    'Limits expose the request size, per-type limits, profile TTL cap, optional owner reach and TTL cap, optional custom domains, link names');
+  linkNameContract(spec);
   assert.deepEqual(taggedIds(spec, 'Custom Domains'), ['addDomain', 'attachDomain', 'checkDomain', 'checkPublicationDomain', 'detachDomain',
     'getDomain', 'getPublicationDomain', 'listDomains', 'removeDomain', 'removePublicationDomain', 'setPublicationDomain'],
     'Custom Domains publishes its eleven operations');
@@ -209,6 +210,46 @@ function publicContract(spec) {
   assert.equal(schemas.BadgeRequest.properties.hidden.type, 'boolean', 'A badge request takes the optional boolean hidden');
   assert.deepEqual(spec.paths['/api/json'].post.requestBody.content['application/json'].schema, {},
     'JSON creation admits arbitrary JSON values');
+}
+
+/** Link names: create parameter, owner route with its coded refusals, optional answer fields; the availability check stays hidden. */
+function linkNameContract(spec) {
+  const schemas = spec.components.schemas;
+  const nullableName = ['string', 'null'];
+  assert.deepEqual([dereference(spec, schemas.LimitsResponse.properties.linkNames.$ref).properties, schemas.LimitsResponse.required.includes('linkNames')],
+    [{ enabled: { type: 'boolean' } }, true], 'Limits always carry linkNames {enabled}');
+  for (const path of ['/api/html', '/api/sites', '/api/files']) {
+    const parameter = spec.paths[path].post.parameters.find((candidate) => candidate.name === 'linkName');
+    assert.deepEqual([parameter?.in, parameter?.required ?? false, parameter?.schema], ['query', false, { type: 'string' }],
+      `POST ${path} takes the optional linkName query parameter`);
+    assert.match(parameter.description, /^Optional\. Readable name for the public link .*link-name-needs-account.*POST \/api\/\{type\}\/public\/\{id\}\/link-name\.$/,
+      `POST ${path} linkName names the profile requirement, the create notices and the owner route`);
+  }
+  const route = spec.paths['/api/{type}/{ns}/{id}/link-name']?.post;
+  assert.equal(route?.operationId, 'setLinkName', 'Link names are set, changed and removed by setLinkName');
+  assert.deepEqual(route.security, [{ OwnerToken: [] }, { ManageKey: [] }], 'setLinkName requires owner authority: owner token or management key');
+  assert.deepEqual(route.parameters.find((parameter) => parameter.name === 'type').schema.enum, ['html', 'files', 'sites'],
+    'Only pages, sites and files take a link name');
+  assert.deepEqual(Object.keys(route.responses).sort(), ['200', '400', '403', '404', '409', '429', '503'], 'setLinkName declares its answers');
+  for (const [status, codes] of [['400', ['LINK_NAME_INVALID']], ['403', ['LINK_NAME_NEEDS_ACCOUNT']], ['404', ['FEATURE_DISABLED']],
+    ['409', ['LINK_NAME_UNAVAILABLE', 'LINK_NAME_PUBLIC_ONLY', 'LINK_NAME_LIMIT']], ['429', ['LINK_NAME_LIMITED', 'LINK_NAME_PAUSED', 'Retry-After']]]) {
+    for (const code of codes) assert.ok(route.responses[status].description.includes(code), `setLinkName ${status} names ${code}`);
+  }
+  assert.deepEqual([route.requestBody.content['application/json'].schema.$ref, schemas.LinkNameRequest.properties.linkName.type],
+    ['#/components/schemas/LinkNameRequest', nullableName], 'setLinkName takes {"linkName": string|null}; null or empty removes the name');
+  assert.equal(route.responses['200'].content['application/json'].schema.$ref, '#/components/schemas/LinkNameResponse', 'setLinkName answers with LinkNameResponse');
+  const answer = schemas.LinkNameResponse.properties;
+  assert.deepEqual([answer.link?.type, answer.linkName?.type, answer.previousLinkName?.type, answer.notices?.items?.$ref],
+    ['string', nullableName, nullableName, '#/components/schemas/PublishNotice'], 'A link-name answer carries the hosting fields, linkName, previousLinkName and notices');
+  for (const name of ['HostingProjection', 'HostingReadResponse', 'HtmlUploadResponse', 'SiteUploadResponse', 'FileUploadResponse',
+    'PublicationRotateResponse', 'PublicationListItemResponse']) {
+    assert.deepEqual(schemas[name].properties.linkName?.type, nullableName, `${name} carries the optional linkName, string or null`);
+    assert.ok(!(schemas[name].required ?? []).includes('linkName'), `${name} omits linkName while link names are off`);
+  }
+  assert.deepEqual([schemas.HostingReadResponse.properties.linkNamesLeft?.type, (schemas.HostingReadResponse.required ?? []).includes('linkNamesLeft')],
+    ['integer', false], 'The owner hosting read carries the optional linkNamesLeft');
+  assert.deepEqual(Object.keys(spec.paths).filter((path) => /link-names|bug-report/.test(path)), [],
+    'The availability check and bug-report routes stay out of the contract paths');
 }
 
 /** The host document: only visitor routes of one page, cookie security, the state header on all but the file read. */
