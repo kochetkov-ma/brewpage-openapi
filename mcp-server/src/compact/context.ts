@@ -65,6 +65,7 @@ interface CreateOptions {
   deliveryMode?: "path" | "subdomain";
   state?: StateConfig;
   domain?: string;
+  linkName?: string;
 }
 type Artifact =
   | { kind: "html"; content: string; format?: string; template?: string; filename?: string; showTopBar?: boolean; verbatim?: boolean }
@@ -72,7 +73,7 @@ type Artifact =
   | { kind: "json"; json: unknown }
   | { kind: "kv"; key: string; value: string };
 interface PublicationChanges {
-  action?: "make_private" | "rotate_link" | "reset_manage_link" | "revoke_reader_access";
+  action?: "make_private" | "make_public" | "rotate_link" | "reset_manage_link" | "revoke_reader_access";
   listed?: boolean;
   badgeHidden?: boolean;
   title?: string;
@@ -80,6 +81,7 @@ interface PublicationChanges {
   extend?: boolean;
   deliveryMode?: "path" | "subdomain";
   expectedVersion?: number;
+  linkName?: string | null;
   state?: StateConfig;
 }
 interface PageAddress { kind?: "html" | "site"; namespace: string; id: string }

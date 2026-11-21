@@ -145,7 +145,7 @@ The compact catalog advertises 13 tools on HTTP and stdio. Check the tool list t
 | `list_publications` | List publications you own, or search the public gallery with `scope: "gallery"` |
 | `read_publication` | Read content, original source, settings or statistics |
 | `update_publication` | Replace content on the existing publication |
-| `publication_settings` | Change listing, title, password, retention, hosting mode or Page data. Disruptive actions are separate |
+| `publication_settings` | Change listing, title, password, retention, hosting mode, link name or Page data. Disruptive actions are separate: `make_private`, `make_public`, `rotate_link`, `reset_manage_link`, `revoke_reader_access` |
 | `delete_publication` | Delete a publication or one specified key in a KV store |
 | `read_page_data` | Read settings, saved entries, uploaded files or totals. Also provides protected download instructions |
 | `write_page_data` | Save author entries, optionally guarded by their versions |
@@ -202,7 +202,7 @@ The 2.1.2 catalog advertises the following 25 tools. Cached calls retain their p
 | `set_kv` | Set or replace a key in an owned KV store |
 | `delete_resource` | Delete an HTML page, site, JSON document, KV store or file |
 | `set_publication` | Change settings of a publication: listing, badge, title, password, longer lifetime, delivery mode; only what you send changes |
-| `make_private` | Make a public publication private: new private link, the public link stops working; one-way |
+| `make_private` | Make a public publication private: new private link, the public link stops working; it can be made public again later |
 | `bind_token` | Add an owner token to your profile (admin token) |
 | `mint_token` | Mint a profile token, shown once (admin token) |
 | `set_domain` | Connect a domain you own to an HTML page or site; returns the DNS records to create |
@@ -476,7 +476,7 @@ set_publication(type="html", namespace="public", id="aBcDeFgHiJ", deliveryMode="
 
 ### `make_private`
 
-Make a public publication private (`POST /api/{type}/{ns}/{id}/private`): it gets a new private link in a private namespace under a new id, and the public link stops working. Views and stats stay; a custom domain on it is detached. One-way: to go public again, publish again. The owner token stays the same; later calls take the new namespace and id.
+Make a public publication private (`POST /api/{type}/{ns}/{id}/private`): it gets a new private link in a private namespace under a new id, and the public link stops working. Views and stats stay; a custom domain on it is detached. It can be made public again later (`POST /api/{type}/{ns}/{id}/public`, compact `publication_settings` action `make_public`), with a new public link. The owner token stays the same; later calls take the new namespace and id.
 
 Parameters: `type` (`html` | `site` | `file` | `json` | `kv`), `namespace` (`public`), `id`, `ownerToken` (optional).
 

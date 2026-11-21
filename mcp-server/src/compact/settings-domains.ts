@@ -6,11 +6,37 @@ const PAGE_KINDS = ["html", "site"] as const;
 const SEGMENT = { html: "html", site: "sites", file: "files", json: "json", kv: "kv" };
 const ACTIONS = {
   make_private: ["private"],
+  make_public: ["public"],
   rotate_link: ["rotate"],
   reset_manage_link: ["manage-key"],
   revoke_reader_access: ["access", "revoke"],
 } as const;
 export const SETTINGS_OUTCOME_UNKNOWN = "BrewPage did not confirm the settings change. Read the current publication settings before deciding which changes to request again.";
+/** Kinds a link name exists on; it also needs namespace public. */
+export const LINK_NAME_KINDS: readonly PublicationKind[] = ["html", "site", "file"];
+const ACCOUNT_TOKENS_PAGE = "https://account.brewpage.app/tokens";
+export const LINK_NAME_FORWARDS = "Give the user the exact new link; the previous address forwards to it.";
+
+/** Profile step of `link-name-needs-account` / 403 `LINK_NAME_NEEDS_ACCOUNT`; `then` = the call after it. */
+export function linkNameNeedsProfile(fromEnv: boolean, then: string): string {
+  return `give the user the owner token (it is theirs${fromEnv ? "; it is the BREWPAGE_OWNER_TOKEN value in this server's settings" : ""}) ` +
+    `and ask them to sign in at ${ACCOUNT_TOKENS_PAGE} (free), press "Add existing token" and paste it; then ${then}. ` +
+    "With an admin profile token, the account tool's bind_token action adds it instead.";
+}
+
+/** Next step after a refused link-name change; empty when the server message is enough. */
+export function linkNameHint(code: unknown, retryAfter: unknown, proof: "ownerToken" | "manageKey" | "account", fromEnv = false): string[] {
+  const seconds = Number(retryAfter);
+  switch (code) {
+    case "LINK_NAME_NEEDS_ACCOUNT": return proof === "manageKey"
+      ? ["Link names need a free BrewPage profile: the user opens https://account.brewpage.app/claim while signed in and enters this management link, then repeat this change."]
+      : [`Link names need a free BrewPage profile: ${linkNameNeedsProfile(fromEnv, "repeat this change")}`];
+    case "LINK_NAME_PAUSED": return [`Do not retry link names${Number.isFinite(seconds) && seconds > 0
+      ? ` before ${new Date(Date.now() + seconds * 1000).toISOString()}` : " now"}; never retry in a loop. Tell the user the message above.`];
+    case "LINK_NAME_UNAVAILABLE": return ["That name cannot be used: ask the user for another name."];
+    default: return [];
+  }
+}
 
 export const ownerAddress = {
   namespace: z.string().regex(/^[a-z0-9-]{1,32}$/).optional().describe("Namespace from the publication receipt"),
@@ -77,13 +103,16 @@ const ordinaryFields = {
   extend: z.literal(true).optional().describe("Set true to extend storage to the profile limit"),
   deliveryMode: z.enum(["path", "subdomain"]).optional(),
   expectedVersion: z.number().int().min(1).max(Number.MAX_SAFE_INTEGER).optional().describe("Hosting version, with deliveryMode only"),
+  linkName: z.string().nullable().optional().describe("Readable name for the public link of a page, site or file: 6-20 of a-z, 0-9 and hyphens, " +
+    "with a letter; null removes it. Needs a profile token, or an owner token added to a free BrewPage profile"),
   state: z.record(z.string(), z.unknown()).nullable().optional().describe("{} enables Page data, named rules merge, null disables and keeps entries"),
 };
 const settingsSchema = {
   ...ownerAddress,
   kind: z.enum(PUBLICATION_KINDS).optional(),
-  action: z.enum(["make_private", "rotate_link", "reset_manage_link", "revoke_reader_access"]).optional()
-    .describe("Use alone. Making private is one-way, replaces the public address and detaches its custom domain"),
+  action: z.enum(["make_private", "make_public", "rotate_link", "reset_manage_link", "revoke_reader_access"]).optional()
+    .describe("Use alone. make_private and make_public move it to a new address; make_private and rotate_link end the old address " +
+      "and any link name for good; make_private detaches a custom domain"),
   ...ordinaryFields,
 };
 type Changes = Pick<BridgeInputs["publication_settings"], keyof typeof ordinaryFields | "action">;
@@ -92,8 +121,9 @@ const ROUTES = {
   badgeHidden: ["badge", "hidden"],
   title: ["title", "title"],
   password: ["password", "password"],
+  linkName: ["link-name", "linkName"],
 } as const;
-const SETTINGS_ORDER = ["listed", "badgeHidden", "title", "password", "extend", "deliveryMode", "state"] as const;
+const SETTINGS_ORDER = ["listed", "badgeHidden", "title", "password", "extend", "deliveryMode", "linkName", "state"] as const;
 type SettingName = typeof SETTINGS_ORDER[number];
 
 function settingConfirmed(field: string, value: unknown): boolean {
@@ -105,8 +135,10 @@ function settingConfirmed(field: string, value: unknown): boolean {
     case "password": return typeof data.access === "string" && Boolean(data.access) && typeof data.listed === "boolean";
     case "extend": return typeof data.expiresAt === "string" && Boolean(data.expiresAt);
     case "deliveryMode": return typeof data.link === "string" && Boolean(data.link) && typeof data.deliveryModeMatched === "boolean";
+    case "linkName": return typeof data.link === "string" && Boolean(data.link) && "linkName" in data;
     case "state": return typeof data.declared === "boolean";
     case "make_private":
+    case "make_public":
     case "rotate_link":
       return typeof data.kind === "string" && typeof data.namespace === "string" && typeof data.id === "string" &&
         typeof data.link === "string" && Boolean(data.link) && typeof data.domainDetached === "boolean";
@@ -154,12 +186,15 @@ function signedSettings(context: CompactContext, answer: ApiAnswer, fields: read
     return context.text(`Management-link reset is pending. Open ${next} in your BrewPage account to confirm it.`);
   }
   if (answer.ok && data.failed == null) return settingsConfirmed(data, fields)
-    ? context.text(JSON.stringify(data)) : context.text(SETTINGS_OUTCOME_UNKNOWN, true);
-  const interrupted = Array.isArray(data.applied) && data.applied.length > 0 && record(data.failed).code === "invalid_token";
+    ? context.text([JSON.stringify(data), ...(fields.includes("linkName") ? [LINK_NAME_FORWARDS] : [])].join("\n"))
+    : context.text(SETTINGS_OUTCOME_UNKNOWN, true);
+  const failed = record(data.failed);
+  const interrupted = Array.isArray(data.applied) && data.applied.length > 0 && failed.code === "invalid_token";
   return context.text([
     apiError(answer),
     ...progress.map((key) => `${key}: ${JSON.stringify(data[key])}`),
     ...(interrupted ? ["Reconnect BrewPage, read the current settings and request only the remaining changes."] : []),
+    ...(failed.field === "linkName" ? linkNameHint(failed.code, failed.retryAfterSeconds ?? answer.headers.get("Retry-After"), "account") : []),
   ].join("\n"), true);
 }
 
@@ -181,8 +216,9 @@ async function disruptiveSetting(context: CompactContext, target: Target, action
       const link = context.manageTarget(result.manageUrl);
       if ("refusal" in link || link.kind !== target.kind || link.namespace !== target.namespace || link.id !== target.id) return uncertain();
     }
-    const lead = action === "make_private" ? "Moved to a private address. The former public address is gone."
-      : action === "rotate_link" ? "Link changed. The former address is gone." : action;
+    const lead = action === "make_private" ? "Moved to a private address. The former public address and any link name are gone for good."
+      : action === "make_public" ? "Moved to a public address with a random link. The former private address is gone. linkName can name it next."
+      : action === "rotate_link" ? "Link changed. The former address and any link name are gone for good." : action;
     return context.text([lead, JSON.stringify(result), ...(result.manageUrl ? ["Keep the management link private."] : [])].join("\n"));
   } catch (error) {
     if (isClientAbort(error)) throw error;
@@ -193,8 +229,8 @@ async function disruptiveSetting(context: CompactContext, target: Target, action
 function registerSettings(context: CompactContext) {
   context.register("publication_settings", {
     title: "Change publication settings",
-    description: "Change listing, badge, title, password, storage, hosting or Page data on an owned publication. " +
-      "Use a disruptive action alone. Ask before making a publication private: its public address stops working.",
+    description: "Change listing, badge, title, password, storage, hosting, link name or Page data on an owned publication. " +
+      "Use a disruptive action alone. Ask before make_private or make_public: the current address stops working.",
     annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: true },
     inputSchema: settingsSchema,
     oauthScopes: ["publications:write", "page-data:write"],
@@ -223,6 +259,12 @@ function registerSettings(context: CompactContext) {
     if (action === "make_private" && target.namespace !== "public") {
       return refuse("make_private moves a public publication to a private address.", 'Supply a public target with namespace "public".');
     }
+    if (action === "make_public" && target.namespace === "public") {
+      return refuse("make_public moves a private publication to a public address.", "Supply a private target, outside namespace public.");
+    }
+    if (changes.linkName !== undefined && (!LINK_NAME_KINDS.includes(target.kind) || target.namespace !== "public")) {
+      return refuse("linkName is available on public pages, sites and files.", "Use a public html, site or file target, or make it public first with make_public.");
+    }
     if (action === "reset_manage_link" && proof && "manageKey" in proof) {
       return refuse("A management link cannot reset itself.", "Use the publication's owner token or the owning account.");
     }
@@ -236,7 +278,14 @@ function registerSettings(context: CompactContext) {
       ].join("\n"), true);
       try {
         const answer = await unsignedSetting(context, target, proof, changes, step);
-        if (!answer.ok) return failed(apiError(answer));
+        if (!answer.ok) {
+          const hint = step === "linkName" ? linkNameHint(record(answer.data).code, answer.headers.get("Retry-After"),
+            "manageKey" in proof ? "manageKey" : "ownerToken", context.ownerToken(ownerToken).fromEnv) : [];
+          return failed([apiError(answer), ...hint].join("\n"));
+        }
+        if (step === "linkName" && !settingConfirmed("linkName", answer.data)) {
+          return failed("BrewPage did not confirm the link name. Read the current settings before retrying.");
+        }
         if (step === "state" && steps.length === 1) {
           const mergedState = record(answer.data);
           if (typeof mergedState.declared !== "boolean") return failed("No settings receipt was received. Read the current Page data settings before retrying.");
@@ -247,7 +296,7 @@ function registerSettings(context: CompactContext) {
         return failed("No result was received. Read the current settings before retrying this step.");
       }
     }
-    return context.text(applied.join("\n"));
+    return context.text([...applied, ...(steps.includes("linkName") ? [LINK_NAME_FORWARDS] : [])].join("\n"));
   });
 }
 

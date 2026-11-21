@@ -1840,7 +1840,8 @@ export function createServer(options: ServerOptions = {}): McpServer {
     "make_private",
     {
       ...toolMeta("Make private", DESTRUCTIVE),
-      description: "Make a public publication private: it gets a new private link, the public link stops working, a custom domain on it is detached. One-way.",
+      description: "Make a public publication private: it gets a new private link, the public link stops working, a custom domain on it is detached. " +
+        "It can be made public again later, with a new public link.",
       inputSchema: {
         type: z.enum(PUBLICATION_TYPES),
         namespace: z.string(),

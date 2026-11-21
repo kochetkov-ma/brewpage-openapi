@@ -221,7 +221,7 @@ export function toolAuthority(name: string | undefined, args: Record<string, unk
   }
 }
 
-const SETTINGS_FIELDS = new Set(["action", "listed", "badgeHidden", "title", "password", "extend", "deliveryMode", "expectedVersion"]);
+const SETTINGS_FIELDS = new Set(["action", "listed", "badgeHidden", "title", "password", "extend", "deliveryMode", "expectedVersion", "linkName"]);
 const COMPACT = new Set<string>(COMPACT_TOOL_NAMES);
 const PUBLIC_LEGACY = new Set(["get_page", "get_stats", "get_limits", "get_guide"]);
 

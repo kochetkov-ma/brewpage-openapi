@@ -97,7 +97,7 @@ npx -y brewpage-mcp@3.0.1
 | `publish_file` | Upload file from URL → link, owner token, management link; HTML and Markdown become pages |
 | `delete_resource` | Delete with owner token (incl. sites) |
 | `set_publication` | Change settings: `listed`, `badgeHidden` (profile, up to 5 hidden), `title`, `password`, `extend`, `deliveryMode`; only what you send changes |
-| `make_private` | Make a public publication private: new private link, one-way |
+| `make_private` | Make a public publication private: new private link; it can be made public again later |
 | `bind_token` | Add a token to your profile (admin token) |
 | `mint_token` | Mint a profile token, shown once (admin token) |
 | `set_domain` | Connect a domain you own to an HTML page or site → DNS records to create |

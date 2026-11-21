@@ -211,6 +211,65 @@ test("Empty signed creates leave namespace resolution to the same owning account
   ], "every create stays on the signed bridge with the intended namespace handling");
 });
 
+test("A link name on publish travels as linkName and the receipt states the outcome", async (t) => {
+  const named = `${origin}/public/my-recipes`;
+  const profileStep = 'Only if the user asked for a name: give the user the owner token (it is theirs) and ask them to sign in at https://account.brewpage.app/tokens (free), ' +
+    'press "Add existing token" and paste it; then call publication_settings with linkName for this publication. With an admin profile token, the account tool\'s bind_token action adds it instead.';
+  const notice = (code: string) => ({ notices: [{ code, message: `Fixture ${code}.` }] });
+  const rows = [
+    { name: "named page", args: { content: "<h1>Recipes</h1>", public: true, linkName: "My Recipes" },
+      path: "/api/html?ns=public&linkName=My+Recipes&verbatim=true", data: { ...receipt, link: named, linkName: "my-recipes" },
+      lines: ["Link name set: my-recipes. The link above is its named address."] },
+    { name: "site without a profile", args: { kind: "site", files: [{ path: "index.html", content: "<h1>Hi</h1>" }], public: true, linkName: "my-recipes" },
+      path: "/api/sites?ns=public&linkName=my-recipes", data: { ...receipt, linkName: null, ...notice("link-name-needs-account") },
+      lines: ["Published with its random link; it works without an account.", profileStep] },
+    { name: "taken name", args: { content: "<h1>Recipes</h1>", namespace: "public", linkName: "my-recipes" },
+      path: "/api/html?ns=public&linkName=my-recipes&verbatim=true", data: { ...receipt, ...notice("link-name-unavailable") },
+      lines: ["Link name not set. The publication is available at its random BrewPage link. That name cannot be used: ask the user for another name; publication_settings with linkName sets one later."] },
+    { name: "older backend without names", args: { content: "<h1>Recipes</h1>", public: true, linkName: "my-recipes" },
+      path: "/api/html?ns=public&linkName=my-recipes&verbatim=true", data: receipt,
+      lines: ["Link name not set. The publication is available at its random BrewPage link. publication_settings with linkName sets one later."] },
+  ];
+  await Promise.all(rows.map((row) => t.test(row.name, async () => {
+    // GIVEN BrewPage's create answer for a requested link name
+    const requests: string[] = [];
+    const fetch: typeof globalThis.fetch = async (url) => {
+      requests.push(String(url));
+      return Response.json(row.data, { status: 201 });
+    };
+    // WHEN publish runs without a stored owner token
+    const result = await call("publish", row.args, { fetch });
+    // THEN the name rides the create query and the receipt carries exactly one outcome block
+    const outcome = result.content[0].text.split("\n").filter((line) => /^(?:Link name|Published with|Only if)/.test(line));
+    assert.deepEqual({ requests, outcome, error: result.isError }, { requests: [`${origin}${row.path}`], outcome: row.lines, error: undefined },
+      "The create should send linkName once and state the name or the next step");
+  })));
+
+  await t.test("local refusals and the account bridge", async () => {
+    // GIVEN a connected account bridge and unsigned REST that must stay unused for refusals
+    const requests: unknown[] = [];
+    const options: ServerOptions = {
+      authority: "account",
+      fetch: async () => { throw new Error("Unexpected anonymous dispatch."); },
+      compactFetchSource: async () => new Blob(["Fixture"], { type: "text/plain" }),
+      async bridge(operation, args) {
+        requests.push([operation, JSON.parse(JSON.stringify(args))]);
+        return { ok: true, status: 201, headers: new Headers(), data: { kind: "file", ...receipt, link: named, linkName: "my-recipes" } };
+      },
+    };
+    // WHEN private, JSON and public file creates ask for a name
+    const refused = await Promise.all([
+      call("publish", { content: "<h1>Notes</h1>", linkName: "my-recipes" }, options),
+      call("publish", { kind: "json", json: {}, public: true, linkName: "my-recipes" }, options),
+    ]);
+    const file = await call("publish", { kind: "file", url: "https://example.org/menu.pdf", public: true, linkName: "my-recipes" }, options);
+    // THEN only the eligible create reaches the bridge, with linkName beside the other options
+    assert.deepEqual({ refused: refused.map((answer) => answer.isError), requests, link: file.structuredContent?.link },
+      { refused: [true, true], requests: [["publish_file", { kind: "file", namespace: "public", linkName: "my-recipes", filename: "menu.pdf" }]], link: named },
+      "Ineligible names are refused locally and the account bridge receives linkName unchanged");
+  });
+});
+
 test("The public shortcut selects the namespace consistently without changing publication wire contracts", async () => {
   // GIVEN the visibility matrix, five publication types and an independent receipt for each write.
   const state = { collections: { poll: {} } };

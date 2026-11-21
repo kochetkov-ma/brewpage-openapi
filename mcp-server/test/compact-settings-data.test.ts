@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { test, type TestContext } from "node:test";
 import { Client, InMemoryTransport } from "@modelcontextprotocol/client";
 import { createServer, type ServerOptions } from "../src/tools.js";
+import { toolAuthority } from "../src/compact/auth.js";
 import type { ApiAnswer, ToolAnswer } from "../src/compact/context.js";
 
 const origin = "https://brewpage.app";
@@ -101,6 +102,114 @@ test("Compact publication settings preserve applied effects and isolate disrupti
       assert.deepEqual(result.structuredContent, { mergedState }, "The successful structured receipt should retain settings for all effective lists");
       assert.equal(unavailable.isError, true, "The missing atomic seam should refuse the update");
       assert.deepEqual(calls, [], "Atomic updates must never read and replace state through public REST");
+    }),
+  ]);
+});
+
+const named = { link: `${origin}/public/my-recipes`, linkName: "my-recipes", previousLinkName: null };
+const privateId = "PRIV123457";
+const madePublic = { type: "html", namespace: "public", id, link: `${origin}/public/${id}`, ownerLink: `${origin}/api/html/public/${id}`,
+  managementLink: `${origin}/manage/html/public/${id}`, manageUrl, listed: false, notices: [] };
+const forwards = "Give the user the exact new link; the previous address forwards to it.";
+const profileStep = 'give the user the owner token (it is theirs) and ask them to sign in at https://account.brewpage.app/tokens (free), ' +
+  'press "Add existing token" and paste it; then repeat this change. With an admin profile token, the account tool\'s bind_token action adds it instead.';
+
+test("Compact link names and make_public keep their REST shapes and next steps", async (t) => {
+  const rows = [
+    { name: "set by owner token", args: { ...target, linkName: "my-recipes" }, response: Response.json(named),
+      request: { method: "POST", url: `/api/html/public/${id}/link-name`, body: { linkName: "my-recipes" }, proof: owner, ifMatch: null },
+      result: { content: [{ type: "text", text: `linkName: ${JSON.stringify(named)}\n${forwards}` }] } },
+    { name: "remove by management link", args: { manageUrl, linkName: null }, response: Response.json({ ...named, link: `${origin}/public/${id}`, linkName: null, previousLinkName: "my-recipes" }),
+      request: { method: "POST", url: `/api/html/public/${id}/link-name`, body: { linkName: null }, proof: ["X-Manage-Key", manageKey], ifMatch: null },
+      result: { content: [{ type: "text", text: `linkName: ${JSON.stringify({ ...named, link: `${origin}/public/${id}`, linkName: null, previousLinkName: "my-recipes" })}\n${forwards}` }] } },
+    { name: "make_public on a private page", args: { ...target, namespace: "priv-ab12cd", id: privateId, action: "make_public" }, response: Response.json(madePublic),
+      request: { method: "POST", url: `/api/html/priv-ab12cd/${privateId}/public`, body: undefined, proof: owner, ifMatch: null },
+      result: { content: [{ type: "text", text: ["Moved to a public address with a random link. The former private address is gone. linkName can name it next.",
+        JSON.stringify(madePublic), "Keep the management link private."].join("\n") }] } },
+    { name: "owner token outside a profile", args: { ...target, linkName: "my-recipes" },
+      response: Response.json({ code: "LINK_NAME_NEEDS_ACCOUNT", message: "Link names need a free BrewPage profile." }, { status: 403 }),
+      request: { method: "POST", url: `/api/html/public/${id}/link-name`, body: { linkName: "my-recipes" }, proof: owner, ifMatch: null },
+      result: { isError: true, content: [{ type: "text", text: ["Applied: none",
+        "Failed: linkName · HTTP 403 · LINK_NAME_NEEDS_ACCOUNT · Link names need a free BrewPage profile.",
+        `Link names need a free BrewPage profile: ${profileStep}`, "Skipped: none"].join("\n") }] } },
+    { name: "taken name", args: { ...target, linkName: "my-recipes" },
+      response: Response.json({ code: "LINK_NAME_UNAVAILABLE", message: "This link name is not available." }, { status: 409 }),
+      request: { method: "POST", url: `/api/html/public/${id}/link-name`, body: { linkName: "my-recipes" }, proof: owner, ifMatch: null },
+      result: { isError: true, content: [{ type: "text", text: ["Applied: none",
+        "Failed: linkName · HTTP 409 · LINK_NAME_UNAVAILABLE · This link name is not available.",
+        "That name cannot be used: ask the user for another name.", "Skipped: none"].join("\n") }] } },
+  ];
+  await Promise.all(rows.map((row) => t.test(row.name, async (subtest) => {
+    // GIVEN BrewPage's answer to one link-name or visibility change
+    const { fetch, calls } = fixture(row.response);
+    // WHEN the compact settings tool runs it with direct owner proof
+    const result = await call(subtest, "publication_settings", row.args, { fetch });
+    // THEN exactly one owner route receives the documented body and the receipt names the next step
+    assert.deepEqual(calls, [row.request], "The change should reach only its owner route with its exact body and proof");
+    assert.deepEqual(result, row.result, "The receipt should carry the server answer and the matching next step");
+  })));
+});
+
+test("Compact link-name pauses name the end time and never invite a loop", async (t) => {
+  // GIVEN a paused account answering 429 with Retry-After
+  const { fetch } = fixture(Response.json({ code: "LINK_NAME_PAUSED", message: "That's a lot of tries.", level: 1 },
+    { status: 429, headers: { "Retry-After": "60" } }));
+  const before = Date.now();
+  // WHEN a link name is requested
+  const result = await call(t, "publication_settings", { ...target, linkName: "my-recipes" }, { fetch });
+  // THEN the hint names an absolute end time one minute ahead (tolerance: the call's own duration)
+  const text = result.content[0].text;
+  const end = /Do not retry link names before (\S+); never retry in a loop\. Tell the user the message above\./.exec(text);
+  assert.equal(result.isError, true, "A paused change should be an error");
+  assert.match(text, /^Applied: none\nFailed: linkName · HTTP 429 · LINK_NAME_PAUSED · That's a lot of tries\. · Retry-After: 60\n/, "The server text should stay verbatim");
+  assert.notEqual(end, null, "The hint should name the end time");
+  const delta = Date.parse(end![1]) - before;
+  assert.equal(delta >= 60_000 && delta <= 60_000 + (Date.now() - before), true, `The end time should be Retry-After from now, got ${delta} ms`);
+});
+
+test("Compact link names and visibility actions refuse locally and travel the account bridge", async (t) => {
+  await Promise.all([
+    t.test("local refusals", async (row) => {
+      // GIVEN link-name and visibility requests that the publication cannot take
+      const { fetch, calls } = fixture();
+      const invalid = [
+        { ...target, kind: "kv", linkName: "my-recipes" },
+        { ...target, namespace: "priv-ab12cd", linkName: "my-recipes" },
+        { ...target, action: "make_public" },
+        { ...target, action: "make_public", linkName: "my-recipes" },
+      ];
+      // WHEN each reaches the tool
+      const results = await Promise.all(invalid.map((args) => call(row, "publication_settings", args, { fetch })));
+      // THEN each is refused before any request
+      assert.deepEqual(results.map((result) => result.isError), [true, true, true, true], "Every ineligible request should be refused");
+      assert.deepEqual(calls, [], "No backend call should follow a local refusal");
+    }),
+    t.test("signed bridge", async (row) => {
+      // GIVEN a connected account whose bridge confirms each change
+      const operations: unknown[] = [];
+      const answers = [
+        { kind: "html", ...address, applied: [{ field: "linkName", result: named }] },
+        { kind: "html", namespace: "public", id, applied: [{ field: "make_public", result: { kind: "html", namespace: "public", id,
+          link: `${origin}/public/${id}`, managementLink: madePublic.managementLink, listed: false, domainDetached: false } }] },
+      ];
+      const bridge: ServerOptions["bridge"] = async (operation, args) => {
+        operations.push({ operation, args: JSON.parse(JSON.stringify(args)) });
+        return bridgeAnswer(answers[operations.length - 1]);
+      };
+      // WHEN a link name and make_public are requested without explicit proof
+      const set = await call(row, "publication_settings", { kind: "html", ...address, linkName: "my-recipes" }, { authority: "account", bridge });
+      const visible = await call(row, "publication_settings", { kind: "html", namespace: "priv-ab12cd", id: privateId, action: "make_public" }, { authority: "account", bridge });
+      // THEN the bridge gets the documented fields and the confirmed receipts pass through
+      assert.deepEqual(operations, [
+        { operation: "publication_settings", args: { kind: "html", ...address, linkName: "my-recipes" } },
+        { operation: "publication_settings", args: { kind: "html", namespace: "priv-ab12cd", id: privateId, action: "make_public" } },
+      ], "The bridge should receive linkName and make_public verbatim");
+      assert.deepEqual([set, visible], [
+        { content: [{ type: "text", text: `${JSON.stringify(answers[0])}\n${forwards}` }] },
+        { content: [{ type: "text", text: JSON.stringify(answers[1]) }] },
+      ], "Confirmed receipts should be returned with the forwarding note for a link name");
+      assert.deepEqual(toolAuthority("publication_settings", { linkName: null }).scopes, ["publications:write"],
+        "Removing a link name should require the publication write scope");
     }),
   ]);
 });

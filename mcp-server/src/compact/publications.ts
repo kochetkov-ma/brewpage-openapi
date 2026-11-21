@@ -3,6 +3,7 @@ import { PUBLICATION_SEGMENTS as SEGMENTS, validatedAccountManagementUrl } from 
 import { bridgeOutcomeUnknown } from "./auth.js";
 import { isClientAbort, type ApiAnswer, type BridgeInputs, type CompactContext, type PublicationKind, type Refusal, type Target } from "./context.js";
 import { matchesHtmlHeadTitle } from "./html-title.js";
+import { LINK_NAME_KINDS, linkNameNeedsProfile } from "./settings-domains.js";
 
 const NAMESPACES = /^[a-z0-9-]{1,32}$/;
 const PUBLICATION_ID = /^[A-Za-z0-9]{10}$/;
@@ -174,11 +175,28 @@ const RECEIPT_FIELDS = [
   "shortUrl", "expiresAt", "updatedAt", "listed", "listable", "visibilityNotice", "routingCohort", "deliveryMode", "requestedDeliveryMode",
   "effectiveDeliveryMode", "deliveryModeMatched", "deliveryModeReason", "deliveryNotice", "hostingVersion", "modeLocked", "access",
   "state", "stateUsage", "stateApplied", "domain", "customDomain", "customDomains", "domainFailure", "contentDropped", "tags", "updated",
+  "linkName",
 ] as const;
 const PAGE_DATA_BLOCKERS = new Set(["state-unavailable", "state-needs-html", "state-needs-subdomain"]);
+const LINK_NAME_NOT_SET = "Link name not set. The publication is available at its random BrewPage link.";
+const LINK_NAME_LATER = "publication_settings with linkName sets one later.";
+
+/** Lines after a create that asked for `linkName`: the name, else why not and the next step. */
+function linkNameLines(data: Record<string, unknown>, notices: Array<Record<string, unknown>>, fromEnv: boolean): string[] {
+  if (typeof data.linkName === "string" && data.linkName) return [`Link name set: ${data.linkName}. The link above is its named address.`];
+  const code = notices.map(({ code }) => String(code)).find((value) => value.startsWith("link-name-"));
+  switch (code) {
+    case "link-name-needs-account": return ["Published with its random link; it works without an account.",
+      `Only if the user asked for a name: ${linkNameNeedsProfile(fromEnv, "call publication_settings with linkName for this publication")}`];
+    case "link-name-paused": return [`${LINK_NAME_NOT_SET} Link names are paused for now: do not retry the name in a loop; tell the user the notice above.`];
+    case "link-name-unavailable": return [`${LINK_NAME_NOT_SET} That name cannot be used: ask the user for another name; ${LINK_NAME_LATER}`];
+    case "link-name-invalid": return [`${LINK_NAME_NOT_SET} Names use 6-20 lowercase letters, digits and hyphens, with a letter; ${LINK_NAME_LATER}`];
+    default: return [`${LINK_NAME_NOT_SET} ${LINK_NAME_LATER}`];
+  }
+}
 
 function receipt(ctx: CompactContext, operation: Operation, kind: PublicationKind, answer: ApiAnswer, proof: Record<string, string>,
-  state?: MaterialFields["state"], domain?: string) {
+  state?: MaterialFields["state"], domain?: string, linkName?: string, fromEnv = false) {
   if (!answer.ok) return failure(ctx, operation, answer, proof);
   const data = record(answer.data);
   const link = data.link ?? data.url;
@@ -221,6 +239,7 @@ function receipt(ctx: CompactContext, operation: Operation, kind: PublicationKin
   else if (pageDataRequested) lines.push(data.stateApplied === false ? "BrewPage did not apply the requested Page data change."
     : `BrewPage did not confirm the requested Page data change. Next: read_page_data with the returned private manageUrl alone, or selected owner proof and {kind:"${actualKind}",namespace:"${data.namespace}",id:"${data.id}"}; omit collection to confirm configuration. Unconfirmed does not mean off. Do not repeat create or settings writes.`);
   if (domain !== undefined && !data.customDomain) lines.push(`Custom domain not attached. The publication is available at its BrewPage link.`);
+  if (linkName !== undefined) lines.push(...linkNameLines(data, reportedNotices, fromEnv));
   if (operation === "publish" && isOwner && ctx.authority === "unsigned") {
     const issuedToken = typeof ownerToken === "string" && ownerToken.length > 0 && !proof["X-Owner-Token"];
     const issuedLink = typeof manageUrl === "string" && manageUrl.length > 0;
@@ -332,7 +351,7 @@ function isTextType(contentType: string | null) {
 export function registerPublications(ctx: CompactContext): void {
   ctx.register("publish", {
     title: "Publish on BrewPage", annotations: DESTRUCTIVE,
-    description: "Shared public namespace: public:true (or namespace:\"public\"); ordinary link-only: omit both. HTML: content; kind=site: files; kind=file: url; kind=json: json; kind=kv: key,value. Site: {\"kind\":\"site\",\"public\":true,\"files\":[{\"path\":\"index.html\",\"content\":\"<h1>Hi</h1>\"}]}. A public input URL does not request listing. New HTML titles go in <title>; preserve supplied HTML. For visitor input read get_guide topic page-data first; publish HTML and state together. Use domain for an owned hostname.",
+    description: "Shared public namespace: public:true (or namespace:\"public\"); ordinary link-only: omit both. HTML: content; kind=site: files; kind=file: url; kind=json: json; kind=kv: key,value. Site: {\"kind\":\"site\",\"public\":true,\"files\":[{\"path\":\"index.html\",\"content\":\"<h1>Hi</h1>\"}]}. A public input URL does not request listing. New HTML titles go in <title>; preserve supplied HTML. For visitor input read get_guide topic page-data first; publish HTML and state together. Use domain for an owned hostname, linkName for a readable public link.",
     inputSchema: {
       kind: kind.describe("Default html"), ...materialFields,
       title: z.string().refine((value) => value.length <= 400 && [...value].length <= 200, "Use at most 200 Unicode code points").optional()
@@ -346,6 +365,8 @@ export function registerPublications(ctx: CompactContext): void {
       requireAccount: z.boolean().optional().describe("True requires an authorized BrewPage account before publishing"),
       deliveryMode: z.enum(["path", "subdomain"]).optional(),
       domain: z.string().min(1).optional().describe("Hostname on HTML-format pages or sites, with the required owning profile"),
+      linkName: z.string().min(1).optional().describe("Readable name for the public link of a page, site or file, with the required owning profile: " +
+        "6-20 of a-z, 0-9 and hyphens, with a letter"),
       template: z.string().min(1).optional().describe("Template slug for an HTML copy"),
     },
     oauthScopes: ["publications:write", "page-data:write", "domains:write"],
@@ -360,21 +381,27 @@ export function registerPublications(ctx: CompactContext): void {
     const selectedKind = args.kind ?? "html";
     const material = materialFor(selectedKind, args, "publish");
     if ("why" in material) return ctx.refuse("publish", material);
-    const { ttlDays, password, deliveryMode, tags, state, domain, ownerToken } = args;
+    const { ttlDays, password, deliveryMode, tags, state, domain, linkName, ownerToken } = args;
     if (domain !== undefined && (selectedKind !== "html" && selectedKind !== "site" ||
       selectedKind === "html" && args.format !== undefined && args.format.toLowerCase() !== "html" || Boolean(password))) {
       return ctx.refuse("publish", { why: "`domain` requires an HTML-format page or site without a password.", next: `Use ${EXAMPLES.html} with the hostname as \`domain\`.` });
     }
+    if (linkName !== undefined && (namespace !== "public" || !LINK_NAME_KINDS.includes(selectedKind))) {
+      return ctx.refuse("publish", { why: "`linkName` needs a public page, site or file.",
+        next: "Add public:true to a page, site or file, or omit linkName to keep a random link." });
+    }
     if (args.requireAccount === true && (ctx.authority !== "account" || ownerToken !== undefined)) {
       return ctx.refuse("publish", { why: "`requireAccount` needs the account connection without an explicit owner token.", next: "Connect BrewPage in this client and pass requireAccount=true." });
     }
-    const options = { namespace, ttlDays, password, deliveryMode, tags, state, domain };
-    const token = ctx.authority === "unsigned" ? ctx.ownerToken(ownerToken).token : undefined;
+    const options = { namespace, ttlDays, password, deliveryMode, tags, state, domain, linkName };
+    const selectedToken = ctx.authority === "unsigned" ? ctx.ownerToken(ownerToken) : undefined;
+    const token = selectedToken?.token;
     const proof: Record<string, string> = token ? { "X-Owner-Token": token } : {};
     const headers = { ...proof, ...(password ? { "X-Password": password } : {}), ...(deliveryMode ? { "X-Delivery-Mode": deliveryMode } : {}) };
     const path = ctx.apiPath(SEGMENTS[selectedKind]);
     const query: Query = ctx.authority === "account" ? [] : [
       ["ns", ctx.resolveNamespace(namespace)], ["ttl", ttlDays], ["tags", tags?.length ? tags.join(",") : undefined], ["domain", domain],
+      ["linkName", linkName],
     ];
     let answer: ApiAnswer;
     if (material.kind === "file") {
@@ -387,7 +414,7 @@ export function registerPublications(ctx: CompactContext): void {
       answer = await attemptWrite(() => ctx.authority === "account" ? ctx.bridge("publish", { ...material, ...options })
         : writeMaterial(ctx, "POST", material, path, headers, state, query));
     }
-    return receipt(ctx, "publish", selectedKind, answer, headers, state, domain);
+    return receipt(ctx, "publish", selectedKind, answer, headers, state, domain, linkName, selectedToken?.fromEnv ?? false);
   });
 
   ctx.register("list_publications", {
