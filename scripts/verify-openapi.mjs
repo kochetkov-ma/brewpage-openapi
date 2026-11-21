@@ -183,6 +183,7 @@ function publicContract(spec) {
     assert.deepEqual(operation.security, [{ OwnerToken: [] }], `${operation.operationId} requires the owner token`);
   }
   assert.ok(spec.tags.some((tag) => tag.name === 'Notifications'), 'Notifications is a described top-level tag');
+  newsNoticeContract(spec);
   assert.deepEqual([taggedIds(spec, 'Templates'), spec.paths['/api/templates']?.get?.security], [['templates'], [{}]],
     'Templates publishes the anonymous template catalogue');
   assert.deepEqual(Object.keys(spec.paths).filter((path) => path.startsWith('/api/stats/')), [],
@@ -250,6 +251,24 @@ function linkNameContract(spec) {
     ['integer', false], 'The owner hosting read carries the optional linkNamesLeft');
   assert.deepEqual(Object.keys(spec.paths).filter((path) => /link-names|bug-report/.test(path)), [],
     'The availability check and bug-report routes stay out of the contract paths');
+}
+
+/** News notices: type news with an optional body object, an action link with its button label; sign-in routes stay on the account host. */
+function newsNoticeContract(spec) {
+  const schemas = spec.components.schemas;
+  const item = schemas.NotificationItem;
+  assert.deepEqual(item.properties.type.enum, ['page_expiring', 'page_removed', 'entries_new', 'quota_close', 'quota_reached',
+    'published', 'updated', 'news'], 'A notification type is one of the seven page types or news');
+  assert.deepEqual([item.properties.news?.oneOf, item.required.includes('news')], [[{ $ref: '#/components/schemas/NotificationNews' }], false],
+    'A notification carries the optional news body, absent for other types');
+  const news = schemas.NotificationNews;
+  assert.deepEqual([Object.fromEntries(Object.entries(news.properties).map(([name, value]) => [name, value.type])), news.required],
+    [{ html: 'string', text: 'string', title: 'string' }, ['text', 'title']], 'A news body has title and plain text; its safe HTML is optional');
+  const link = schemas.NotificationLink;
+  assert.deepEqual([link.properties.rel.enum, link.properties.label?.type, link.required],
+    [['page', 'data', 'manage', 'settings', 'action'], 'string', ['rel', 'url']], 'Only a news action link adds its optional button label');
+  assert.deepEqual(Object.keys(spec.paths).filter((path) => /telegram|\/auth\//.test(path)), [],
+    'Sign-in and Telegram link routes stay out of the contract paths');
 }
 
 /** The host document: only visitor routes of one page, cookie security, the state header on all but the file read. */

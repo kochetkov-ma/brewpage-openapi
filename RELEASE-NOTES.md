@@ -1,5 +1,13 @@
 # Release Notes
 
+## API contract 2.75.0 — 2026-11-22
+
+- Synced from the integration-tested contract of brewpage-app release v2.75.0 (source `bf767b26e42bf20643f884ca7a7563f02db21516`, the tag), clean tree. 74 paths and 99 operations, unchanged.
+- Profile notifications (`GET /api/profile/notifications`) can now carry BrewPage news: `type` `news`, a notice with `group` null and `message` = its headline. The new optional `news` object (`NotificationNews`) holds `title`, `text` (plain text) and optional `html` (safe HTML: paragraphs, line breaks, bold, italic, code, lists and https links).
+- A news item's button is a link with `rel` `action`, any https `url` and the new optional `label` (button text). Other links carry no label.
+- No path, operation, parameter or error code change. Telegram sign-in stays on the account site, outside this contract, like Google and GitHub sign-in.
+- The Page data host document changes only its version. The MCP server is unchanged: `notifications` returns news items as BrewPage sends them.
+
 ## MCP 3.1.2 — API reference with link names
 
 - The public API reference now documents readable link names: setting, changing or removing a link name on a public page, site or file, and the `linkName` field in publishing answers.

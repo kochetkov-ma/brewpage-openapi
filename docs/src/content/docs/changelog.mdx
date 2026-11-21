@@ -6,6 +6,14 @@ order: 5
 
 # Changelog
 
+## API contract 2.75.0 — BrewPage news in notifications
+
+Profile notifications (`GET /api/profile/notifications`, a profile's owner token) can now carry BrewPage news: `type` `news`, a notice with `group` null and `message` = its headline. The new optional `news` object holds `title`, `text` (plain text) and optional `html` (safe HTML: paragraphs, line breaks, bold, italic, code, lists and https links). A news link has `rel` `action`, any https `url` and a button `label`. No path or operation change: 74 paths and 99 operations.
+
+## API contract 2.73.0 — readable link names
+
+New `POST /api/{type}/{ns}/{id}/link-name` (`setLinkName`, owner token or management key, a free BrewPage profile) sets, changes or removes a readable name for the public link of a page, site or file: 6-20 lowercase letters, digits and hyphens with at least one letter, at most 3 per publication. `POST /api/html`, `/api/sites` and `/api/files` take an optional `linkName`. Answers carry `linkName` (null = the random link). Refusals: 400 `LINK_NAME_INVALID`, 403 `LINK_NAME_NEEDS_ACCOUNT`, 409 `LINK_NAME_UNAVAILABLE`, `LINK_NAME_PUBLIC_ONLY` or `LINK_NAME_LIMIT`, 429 `LINK_NAME_LIMITED` or `LINK_NAME_PAUSED`. 74 paths and 99 operations.
+
 ## API contract 2.65.0 — private back to public
 
 New `POST /api/{type}/{ns}/{id}/public` (`makePublic`, owner token or management key, no body) makes a private publication public: it gets a new public link and the private link stops working. The answer matches `makePrivate`; give the user the new `link` and `manageUrl`. Refusals: 409 `NOT_PRIVATE`, `PUBLIC_COPY_EXISTS` or `MOVE_UNAVAILABLE`, 429 `ROTATE_LIMITED`. `makePrivate` is no longer one-way. 73 paths and 98 operations.
