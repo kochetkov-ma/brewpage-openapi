@@ -11,7 +11,7 @@
 
 ## API contract 2.80.0 — 2026-11-22
 
-- Synced from the integration-tested contract of brewpage-app branch `feat/owned-secrets` (source `ea42a06d02b193bcc8c5b5b3738950a333971f04`), clean tree; re-exported from the v2.80.0 tag before release. 81 paths and 110 operations (was 79 and 105).
+- Synced from the integration-tested contract of brewpage-app release v2.80.0 (source `8045d5e514fd180070caf642cade2c05d00500a6`, the tag), clean tree. 81 paths and 110 operations (was 79 and 105).
 - One-time secrets are owned and private: `POST /api/secrets` takes an optional `X-Owner-Token`, requires `title`, accepts `note`, `tags`, `kind` (`text` or `file`) and `keyCheck`, and answers `ref`, `ownerToken` and a private `manageUrl`. Status and reveal answer only live secrets; every ended one is 410 `SECRET_GONE`. New owner operations by `ref`: `listSecrets`, `getSecret`, `updateSecret`, `burnSecret`, `deleteSecret`.
 - `GET /api/publications` adds `secretCounts` on the first page; notifications add `secret_opened`, `secret_expired` and `secret_deleted`.
 - The Page data host document changes only its version.
