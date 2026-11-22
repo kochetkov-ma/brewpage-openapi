@@ -72,7 +72,7 @@ claude mcp add --transport http brewpage --scope user https://brewpage.app/mcp
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@3.2.1"]
+      "args": ["-y", "brewpage-mcp@3.3.0"]
     }
   }
 }

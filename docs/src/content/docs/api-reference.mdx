@@ -58,7 +58,7 @@ Base URL: [`https://brewpage.app`](https://brewpage.app) (alias: [`https://brewd
 | **Notifications** | Your profile's notifications: list, unread count, mark read, settings, a page's new-entry switch | `GET /api/profile/notifications`, `GET /api/profile/notifications/unread-count`, `POST /api/profile/notifications/read`, `GET/PUT /api/profile/notifications/settings`, `GET/PUT /api/profile/notifications/pages/{type}/{ns}/{id}` |
 | **Templates** | Official templates for a request: source, what it saves, how to publish a copy | [`GET /api/templates?q=wedding%20rsvp`](https://brewpage.app/api/templates?q=wedding%20rsvp) |
 | **Publications** | Your publications: list (`tag` filter), stats and your private tags (profile publications) | `GET /api/publications`, `GET /api/publications/tags`, `GET/POST /api/publications/{type}/{ns}/{id}/tags` |
-| **One-time secrets** | A password or key behind a link that stops working after the allowed views; encrypted in the client, key only in the `#fragment` | `POST /api/secrets`, `GET /api/secrets/{id}`, `POST /api/secrets/{id}/reveal` |
+| **One-time secrets** | A password, key or small key file behind a link that stops working after the allowed views; encrypted in the client, key only in the `#fragment`; owned like a publication, managed by `ref` | `POST /api/secrets`, `GET /api/secrets/{id}`, `POST /api/secrets/{id}/reveal`, `GET /api/secrets`, `GET`/`PATCH`/`DELETE /api/secrets/owner/{ref}`, `POST /api/secrets/owner/{ref}/burn` |
 | **Stats** | Platform statistics | [`GET /api/stats`](https://brewpage.app/swagger-ui/index.html#/Stats) |
 | **Limits** | Current upload limits | [`GET /api/limits`](https://brewpage.app/api/limits) |
 | **Short Links** | URL shortener | `GET /s/{code}` |

@@ -57,7 +57,7 @@ Local fallback (stdio, needs Node.js; the same tools): edit `~/Library/Applicati
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@3.2.1"]
+      "args": ["-y", "brewpage-mcp@3.3.0"]
     }
   }
 }
@@ -67,14 +67,14 @@ Windows: `%APPDATA%\Claude\claude_desktop_config.json`
 
 ### Claude Code
 
-The remote command above is the default. Local fallback: run `claude mcp add --transport stdio --scope project brewpage -- npx -y brewpage-mcp@3.2.1`, or add this to project-root `.mcp.json`:
+The remote command above is the default. Local fallback: run `claude mcp add --transport stdio --scope project brewpage -- npx -y brewpage-mcp@3.3.0`, or add this to project-root `.mcp.json`:
 
 ```json
 {
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@3.2.1"]
+      "args": ["-y", "brewpage-mcp@3.3.0"]
     }
   }
 }
@@ -83,7 +83,7 @@ The remote command above is the default. Local fallback: run `claude mcp add --t
 ### Direct run
 
 ```bash
-npx -y brewpage-mcp@3.2.1
+npx -y brewpage-mcp@3.3.0
 ```
 
 ---
@@ -118,7 +118,7 @@ npx -y brewpage-mcp@3.2.1
 | `configure_page_data` | Turn Page data on or off, change who can read a list and its limits; only what you name changes |
 | `delete_page_data` | Delete entries (`docIds`) or files (`fileIds`) by id, by time range, or the whole list (`all: true`) |
 
-Version 3.2.1 lists 13 compact tools. Its saved calls include the 25 tool names from 2.1.2 and eight earlier aliases, including `publish_site` and `update_hosting`. [Compact tool reference](https://github.com/kochetkov-ma/brewpage-openapi/tree/main/mcp-server)
+Version 3.3.0 lists 13 compact tools. Its saved calls include the 25 tool names from 2.1.2 and eight earlier aliases, including `publish_site` and `update_hosting`. [Compact tool reference](https://github.com/kochetkov-ma/brewpage-openapi/tree/main/mcp-server)
 
 Omitted `namespace` is private (a generated namespace): unlisted and not indexed; anyone with the link can still open it. `public` lists HTML, sites and files in the gallery and sitemap, so Google, Bing and AI search can index them. Password-protected publications are never listed. Keep the exact server-returned `link`, cohort and effective mode.
 

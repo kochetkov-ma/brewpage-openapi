@@ -1,5 +1,21 @@
 # Release Notes
 
+## MCP 3.3.0 — Secrets you own
+
+- A one-time secret now needs a short title: the recipient sees it before opening, so never put the secret in it. Add your own note and tags if you like; only you see them.
+- Send a key file instead of text: with `filename` (for example `id_ed25519`, `server.pem` or `.env`) the recipient downloads the text as that file. Scripts, programs and archives are refused.
+- The secret is yours like a publication: the result gives its owner token and private manage link, or the account page when BrewPage is connected. `list_publications` shows your secrets, `read_publication` when they were opened, `publication_settings` changes title, note or tags, and `delete_publication` stops a link at once. None of them shows the secret itself.
+- `notifications` lists the new secret notices: opened, expired and deleted.
+- The API reference attached to this release is contract 2.80.0.
+- Local installations can pin `brewpage-mcp@3.3.0`. The remote endpoint is `https://brewpage.app/mcp`. Tool names are unchanged and existing calls keep their original arguments and permissions, except that a secret now needs `title`.
+
+## API contract 2.80.0 — 2026-11-22
+
+- Synced from the integration-tested contract of brewpage-app branch `feat/owned-secrets` (source `ea42a06d02b193bcc8c5b5b3738950a333971f04`), clean tree; re-exported from the v2.80.0 tag before release. 81 paths and 110 operations (was 79 and 105).
+- One-time secrets are owned and private: `POST /api/secrets` takes an optional `X-Owner-Token`, requires `title`, accepts `note`, `tags`, `kind` (`text` or `file`) and `keyCheck`, and answers `ref`, `ownerToken` and a private `manageUrl`. Status and reveal answer only live secrets; every ended one is 410 `SECRET_GONE`. New owner operations by `ref`: `listSecrets`, `getSecret`, `updateSecret`, `burnSecret`, `deleteSecret`.
+- `GET /api/publications` adds `secretCounts` on the first page; notifications add `secret_opened`, `secret_expired` and `secret_deleted`.
+- The Page data host document changes only its version.
+
 ## MCP 3.2.1 — Knowing who saved what
 
 - The Page data guide (`get_guide` topic `page-data`) now says that an entry's `visitor` label is not unique: to know who saved what, the page asks a name once, keeps it and saves it in every entry. The name is what the visitor typed.

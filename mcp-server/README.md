@@ -33,17 +33,17 @@ Claude Code: `claude mcp add --transport http brewpage --scope user https://brew
 
 ### Local (npx)
 
-For clients that start a local stdio server, pin the package version. Version 3.2.1 lists the [13 compact tools](#tools) and accepts cached legacy calls.
+For clients that start a local stdio server, pin the package version. Version 3.3.0 lists the [13 compact tools](#tools) and accepts cached legacy calls.
 
 ```bash
-npx -y brewpage-mcp@3.2.1
+npx -y brewpage-mcp@3.3.0
 ```
 
 Requires Node.js 20 or newer.
 
-On macOS, run `npx -y brewpage-mcp@3.2.1 login` to open BrewPage consent and save the grant in Keychain. With `login --no-browser`, open the link from your terminal and keep the command running until your browser returns to the loopback callback. Restart the MCP client to use the connection. Run `npx -y brewpage-mcp@3.2.1 logout` to revoke and clear the selected grant. An ordinary stdio run uses the selected grant through the same HTTPS MCP endpoint on a compatible MCP 3.x server. Run with `--anonymous` for a session without the stored account or default owner token.
+On macOS, run `npx -y brewpage-mcp@3.3.0 login` to open BrewPage consent and save the grant in Keychain. With `login --no-browser`, open the link from your terminal and keep the command running until your browser returns to the loopback callback. Restart the MCP client to use the connection. Run `npx -y brewpage-mcp@3.3.0 logout` to revoke and clear the selected grant. An ordinary stdio run uses the selected grant through the same HTTPS MCP endpoint on a compatible MCP 3.x server. Run with `--anonymous` for a session without the stored account or default owner token.
 
-The default login requests `publications:write`. To add account status, run `npx -y brewpage-mcp@3.2.1 login --scope publications:write --scope account:read`, approve it and restart the client. Repeat `--scope` for every permission the new grant should include. Owned listings use `publications:read` and changing Page data settings uses `page-data:write`. A denied permission leaves the action pending until the owner consents.
+The default login requests `publications:write`. To add account status, run `npx -y brewpage-mcp@3.3.0 login --scope publications:write --scope account:read`, approve it and restart the client. Repeat `--scope` for every permission the new grant should include. Owned listings use `publications:read` and changing Page data settings uses `page-data:write`. A denied permission leaves the action pending until the owner consents.
 
 Set `BREWPAGE_MCP_CATALOG=legacy` to discover the previous 25 tools in stdio. For a managed HTML-only client, set `BREWPAGE_MCP_TOOL_SELECTION=publish_html` to discover and call only the original HTML publishing tool. This narrower setting takes precedence and applies with either an account or anonymous access. Managed HTTP clients can send `BrewPage-Tool-Selection: publish_html` for the same behavior.
 
@@ -69,7 +69,7 @@ For the pinned stdio fallback, add this to `~/Library/Application Support/Claude
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@3.2.1"]
+      "args": ["-y", "brewpage-mcp@3.3.0"]
     }
   }
 }
@@ -92,7 +92,7 @@ Custom servers follow your ChatGPT plan and workspace settings.
 The remote command above is the default. Local fallback: register a project-scoped stdio server:
 
 ```bash
-claude mcp add --transport stdio --scope project brewpage -- npx -y brewpage-mcp@3.2.1
+claude mcp add --transport stdio --scope project brewpage -- npx -y brewpage-mcp@3.3.0
 ```
 
 This writes `.mcp.json` in the project root. Use `--scope user` for user-scoped registration. See the [official Claude Code MCP guide](https://code.claude.com/docs/en/mcp).
@@ -116,7 +116,7 @@ For the pinned stdio fallback, open **Settings > MCP** and add this configuratio
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@3.2.1"]
+      "args": ["-y", "brewpage-mcp@3.3.0"]
     }
   }
 }
@@ -130,7 +130,7 @@ Open the Cline MCP settings panel and add:
 {
   "brewpage": {
     "command": "npx",
-    "args": ["-y", "brewpage-mcp@3.2.1"]
+    "args": ["-y", "brewpage-mcp@3.3.0"]
   }
 }
 ```
@@ -141,18 +141,18 @@ The compact catalog advertises 13 tools on HTTP and stdio. Check the tool list t
 
 | Tool | Purpose |
 |------|---------|
-| `publish` | Create HTML, Markdown, a static site, a file from a public URL, JSON or a KV store. Optional `public:true` selects the shared public namespace; `namespace:"public"` remains supported. Omit both for existing private defaults. `public:false` conflicts with namespace `public`; true conflicts with a custom namespace. Empty namespace counts as omitted. Listing still depends on eligibility; password-protected publications and JSON/KV stay unlisted. Optional `title` checks the existing HTML head title before creating an HTML page; it never renames or changes the source or asserts stored metadata. The explicitly closed title must be within the first 16,384 UTF-16 code units, including any leading BOM (one initial U+FEFF is skipped only for inspection); matching is case-sensitive after HTML entity decoding and ASCII whitespace normalization (expected title: at most 200 Unicode code points). With a filename, set `format:"html"`; paste repair and other formats/kinds cannot use this check. `kind:"secret"` with `text` (optional `ttl` `1h`/`1d`/`7d`/`30d`, `maxViews` 1-10) returns a one-time secret link: this server encrypts the text (AES-GCM-256) and BrewPage stores only ciphertext; the key is only in the link's `#fragment`. The assistant and this MCP process see the plain text. |
-| `list_publications` | List publications you own (optional exact `tag`; items carry your private `tags`), or search the public gallery with `scope: "gallery"` |
-| `read_publication` | Read content, original source, settings or statistics |
+| `publish` | Create HTML, Markdown, a static site, a file from a public URL, JSON or a KV store. Optional `public:true` selects the shared public namespace; `namespace:"public"` remains supported. Omit both for existing private defaults. `public:false` conflicts with namespace `public`; true conflicts with a custom namespace. Empty namespace counts as omitted. Listing still depends on eligibility; password-protected publications and JSON/KV stay unlisted. Optional `title` checks the existing HTML head title before creating an HTML page; it never renames or changes the source or asserts stored metadata. The explicitly closed title must be within the first 16,384 UTF-16 code units, including any leading BOM (one initial U+FEFF is skipped only for inspection); matching is case-sensitive after HTML entity decoding and ASCII whitespace normalization (expected title: at most 200 Unicode code points). With a filename, set `format:"html"`; paste repair and other formats/kinds cannot use this check. `kind:"secret"` with `title` (required, the recipient sees it before opening) and `text` (optional `ttl` `1h`/`1d`/`7d`/`30d`, `maxViews` 1-10, owner-only `note` and `tags`) returns a one-time secret link: this server encrypts the text (AES-GCM-256) and BrewPage stores only ciphertext and a key check; the key is only in the link's `#fragment`. With `filename` (a key, certificate, config or text name such as `id_ed25519`, `.pem`, `.env`) the text arrives as that file. The secret is yours like a publication: the result gives the owner token and private manage link, or the account page when connected. The assistant and this MCP process see the plain text. |
+| `list_publications` | List publications you own (optional exact `tag`; items carry your private `tags`), or search the public gallery with `scope: "gallery"`. The first page adds `secretCounts` and your active one-time `secrets`; `kind: "secret"` lists only them (`ended: true` for ended ones) |
+| `read_publication` | Read content, original source, settings or statistics. A secret (`kind: "secret"`, `id` = its ref, or its manage link) returns its state, views and open times, never its content |
 | `update_publication` | Replace content on the existing publication |
-| `publication_settings` | Change listing, title, private `tags` (replaces the set of a profile publication), password, retention, hosting mode, link name or Page data. Disruptive actions are separate: `make_private`, `make_public`, `rotate_link`, `reset_manage_link`, `revoke_reader_access` |
-| `delete_publication` | Delete a publication or one specified key in a KV store |
+| `publication_settings` | Change listing, title, private `tags` (replaces the set of a profile publication), password, retention, hosting mode, link name or Page data. Disruptive actions are separate: `make_private`, `make_public`, `rotate_link`, `reset_manage_link`, `revoke_reader_access`. A secret takes only `title`, `note` (`""` clears) and `tags` |
+| `delete_publication` | Delete a publication or one specified key in a KV store. A secret's link stops working at once and its record leaves your list |
 | `read_page_data` | Read settings, saved entries, uploaded files or totals. Also provides protected download instructions |
 | `write_page_data` | Save author entries, optionally guarded by their versions |
 | `delete_page_data` | Remove entries or files by ID, time range or an explicit `all: true` |
 | `domains` | Attach an owned hostname, read its DNS state or check it once after DNS changes |
 | `account` | Check the connection and manage account publishing access |
-| `notifications` | Read notices (expiry, removal, takedown and restore, new entries, quota, custom-domain status, news) and publication activity; manage notification preferences |
+| `notifications` | Read notices (expiry, removal, takedown and restore, new entries, quota, custom-domain status, secrets opened, expired or deleted, news) and publication activity; manage notification preferences |
 | `get_guide` | Read a focused recipe, search templates or retrieve current limits and stats |
 
 ### Publish and update

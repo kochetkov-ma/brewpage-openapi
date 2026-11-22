@@ -3,7 +3,7 @@
   "name": "io.github.kochetkov-ma/brewpage-mcp",
   "title": "BrewPage",
   "description": "Publish HTML, Markdown, sites, KV, JSON, files and forms/polls that save answers; keep owner token.",
-  "version": "3.2.1",
+  "version": "3.3.0",
   "websiteUrl": "https://brewpage.app",
   "icons": [
     {
@@ -23,7 +23,7 @@
     {
       "registryType": "npm",
       "identifier": "brewpage-mcp",
-      "version": "3.2.1",
+      "version": "3.3.0",
       "transport": {
         "type": "stdio"
       }
