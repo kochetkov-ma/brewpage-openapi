@@ -3024,6 +3024,9 @@
               "page_removed",
               "page_taken_down",
               "page_restored",
+              "page_link_changed",
+              "page_deleted",
+              "page_extended",
               "entries_new",
               "quota_close",
               "quota_reached",
@@ -5860,7 +5863,7 @@
     },
     "termsOfService": "https://brewpage.app/terms",
     "title": "BrewPage API",
-    "version": "2.78.0"
+    "version": "2.79.0"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -15306,7 +15309,7 @@
             "ManageKey": []
           }
         ],
-        "summary": "Make a private publication public: new public link, the private link stops working. Give the user the new link and manageUrl",
+        "summary": "Make a private publication public: new public link, the private one leads there for 30 days. Give the user the new link and manageUrl",
         "tags": [
           "Hosting Management"
         ]

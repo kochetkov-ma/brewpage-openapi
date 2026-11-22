@@ -124,7 +124,7 @@ test("Compact link names, tags and make_public keep their REST shapes and next s
       result: { content: [{ type: "text", text: `linkName: ${JSON.stringify({ ...named, link: `${origin}/public/${id}`, linkName: null, previousLinkName: "my-recipes" })}\n${forwards}` }] } },
     { name: "make_public on a private page", args: { ...target, namespace: "priv-ab12cd", id: privateId, action: "make_public" }, response: Response.json(madePublic),
       request: { method: "POST", url: `/api/html/priv-ab12cd/${privateId}/public`, body: undefined, proof: owner, ifMatch: null },
-      result: { content: [{ type: "text", text: ["Moved to a public address with a random link. The former private address is gone. linkName can name it next.",
+      result: { content: [{ type: "text", text: ["Moved to a public address with a random link. The former private address leads here for 30 days. linkName can name it next.",
         JSON.stringify(madePublic), "Give the user the new link and, privately, the manageUrl."].join("\n") }] } },
     { name: "tags replaced by owner token", args: { ...target, tags: ["Work", "trip"] }, response: Response.json({ tags: ["work", "trip"] }),
       request: { method: "POST", url: `/api/publications/html/public/${id}/tags`, body: { tags: ["Work", "trip"] }, proof: owner, ifMatch: null },

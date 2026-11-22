@@ -6,6 +6,10 @@ order: 5
 
 # Changelog
 
+## API contract 2.79.0 — made-public links keep working
+
+`POST /api/{type}/{ns}/{id}/public` (`makePublic`) now keeps the former private link working for 30 days: it leads to the new public link. Give the user the new `link` and `manageUrl`. Profile notifications add the types `page_link_changed` (made public or private, a new link, a link name set or removed), `page_deleted` (the owner deleted a page) and `page_extended` (activity: a page is kept longer). No path or operation change: 79 paths and 105 operations.
+
 ## API contract 2.78.0 — one-time secrets and private tags
 
 New tag `One-time secrets`: `POST /api/secrets` (`createSecret`, anonymous) stores client-encrypted text (AES-GCM-256, base64url `ciphertext` and 12-byte `iv`) for 1-10 views (`maxViews`, default 1) and `ttl` `1h`, `1d`, `7d` (default) or `30d`; share `https://brewpage.app/secret/{id}#{key}` with the key only in the fragment. `GET /api/secrets/{id}` reads the state without spending a view; `POST /api/secrets/{id}/reveal` spends one (410 when burned or expired). Private tags on profile publications: `GET /api/publications` takes `tag` and items carry `tags`; `GET`/`POST /api/publications/{type}/{ns}/{id}/tags` read and replace them (up to 10, 1-32 characters, saved lowercase; 400 `TAGS_INVALID`, `TAGS_TOO_MANY`); `GET /api/publications/tags` lists them. Notifications add takedown, restore and five custom-domain types, and link relations `domain` and `terms`. 79 paths and 105 operations.

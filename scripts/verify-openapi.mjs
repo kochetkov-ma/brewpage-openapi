@@ -208,6 +208,8 @@ function publicContract(spec) {
     assert.equal(action.responses['200'].content['application/json'].schema.$ref, `#/components/schemas/${answer}`, `${operationId} answers with ${answer}`);
     assert.ok(action.responses['409'], `${operationId} declares its 409 refusal`);
   }
+  assert.equal(spec.paths['/api/{type}/{ns}/{id}/public'].post.summary, 'Make a private publication public: new public link, ' +
+    'the private one leads there for 30 days. Give the user the new link and manageUrl', 'makePublic: the private link leads to the public one for 30 days');
   assert.deepEqual(schemas.BadgeResponse.required, ['hidden', 'limit', 'used'], 'A badge answer carries the state and the profile counts');
   assert.equal(schemas.BadgeRequest.properties.hidden.type, 'boolean', 'A badge request takes the optional boolean hidden');
   assert.deepEqual(spec.paths['/api/json'].post.requestBody.content['application/json'].schema, {},
@@ -258,9 +260,9 @@ function linkNameContract(spec) {
 function newsNoticeContract(spec) {
   const schemas = spec.components.schemas;
   const item = schemas.NotificationItem;
-  assert.deepEqual(item.properties.type.enum, ['page_expiring', 'page_removed', 'page_taken_down', 'page_restored', 'entries_new',
-    'quota_close', 'quota_reached', 'published', 'updated', 'domain_problem', 'domain_paused', 'domain_active', 'domain_lost',
-    'domain_released', 'news'], 'A notification type is one of the nine page types, five custom-domain types or news');
+  assert.deepEqual(item.properties.type.enum, ['page_expiring', 'page_removed', 'page_taken_down', 'page_restored', 'page_link_changed',
+    'page_deleted', 'page_extended', 'entries_new', 'quota_close', 'quota_reached', 'published', 'updated', 'domain_problem', 'domain_paused',
+    'domain_active', 'domain_lost', 'domain_released', 'news'], 'A notification type is one of the twelve page types, five custom-domain types or news');
   assert.deepEqual([item.properties.news?.oneOf, item.required.includes('news')], [[{ $ref: '#/components/schemas/NotificationNews' }], false],
     'A notification carries the optional news body, absent for other types');
   const news = schemas.NotificationNews;

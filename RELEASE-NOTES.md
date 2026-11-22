@@ -1,5 +1,12 @@
 # Release Notes
 
+## API contract 2.79.0 — 2026-11-22
+
+- Synced from the integration-tested contract of brewpage-app release v2.79.0 (source `db2807d876a0d2b14c94986f7357a6322e9dbcbf`, the tag), clean tree. 79 paths and 105 operations, unchanged.
+- `makePublic` (`POST /api/{type}/{ns}/{id}/public`): the former private link now leads to the new public link for 30 days instead of stopping at once. Still give the user the new `link` and `manageUrl`.
+- Notifications add the types `page_link_changed` (a page was made public or private, got a new link, or its link name was set or removed), `page_deleted` (the owner deleted a page) and `page_extended` (activity: a page is kept longer).
+- No path, operation, parameter, field or error code change. The Page data host document changes only its version. MCP 3.2.0 is unchanged: `notifications` returns the new types as BrewPage sends them.
+
 ## MCP 3.2.0 — One-time secrets and private tags
 
 - Ask the assistant to share a password or key, and `publish` with `kind: "secret"` returns a one-time link that stops working after it is opened (up to 10 openings, from 1 hour to 30 days). The text is encrypted before it leaves the MCP server and the key stays in the link; the assistant itself still sees the text you give it.

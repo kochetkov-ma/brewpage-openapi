@@ -224,7 +224,7 @@ async function disruptiveSetting(context: CompactContext, target: Target, action
       if ("refusal" in link || link.kind !== target.kind || link.namespace !== target.namespace || link.id !== target.id) return uncertain();
     }
     const lead = action === "make_private" ? "Moved to a private address. The former public address and any link name are gone for good."
-      : action === "make_public" ? "Moved to a public address with a random link. The former private address is gone. linkName can name it next."
+      : action === "make_public" ? "Moved to a public address with a random link. The former private address leads here for 30 days. linkName can name it next."
       : action === "rotate_link" ? "Link changed. The former address and any link name are gone for good." : action;
     const handoff = action === "reset_manage_link" ? "Give the user the new manageUrl privately." : "Give the user the new link and, privately, the manageUrl.";
     return context.text([lead, JSON.stringify(result), ...(result.manageUrl ? [handoff] : [])].join("\n"));
@@ -238,7 +238,8 @@ function registerSettings(context: CompactContext) {
   context.register("publication_settings", {
     title: "Change publication settings",
     description: "Change listing, badge, title, tags, password, storage, hosting, link name or Page data on an owned publication. " +
-      "Use a disruptive action alone. Ask before make_private or make_public: the current address stops working.",
+      "Use a disruptive action alone. Ask before make_private or make_public: the current address stops working " +
+      "(after make_public it leads to the new one for 30 days).",
     annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: true },
     inputSchema: settingsSchema,
     oauthScopes: ["publications:write", "page-data:write"],
