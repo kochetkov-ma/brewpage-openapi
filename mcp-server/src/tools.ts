@@ -51,7 +51,7 @@ export function serverInstructions(profile: Profile = LOCAL): string {
       "deliveryMode: path = a brewpage.app link, subdomain = the publication's own subdomain; omitted = chosen by type. Owner tokens and management links never go into published content; other secrets fit a private namespace plus a password.",
     "A page that must save what its visitors enter (form answers, guestbook, votes, scores, game progress) needs Page data, so read get_guide topic page-data BEFORE writing the page, then publish with the state argument. " +
       "get_page_data reads it, set_page_data writes author entries, configure_page_data changes settings, delete_page_data moderates; each takes namespace, id and ownerToken, or the management link as manageUrl. " +
-      "For a form, poll, quiz, RSVP, guestbook or game first look for a ready template: get_guide topic templates.",
+      "For a form, poll, quiz, RSVP, guestbook, game, flashcards, habit tracker, to-do planner or movie club first look for a ready template: get_guide topic templates.",
     "HTML pages and sites show a small BrewPage badge; page code must not hide or alter it. A profile can turn it off on up to 5 pages (set_publication).",
     "A custom domain, only when the user asks for their own domain: set_domain, the user creates the returned DNS records, check_domain once, then list_domains until it is active. Steps and fixes: get_guide topic custom-domain.",
   ].join("\n");
@@ -2280,7 +2280,7 @@ export function createServer(options: ServerOptions = {}): McpServer {
     {
       ...toolMeta("Read BrewPage guide", READ_ONLY),
       description: "Reference texts: `page-data` (meant to be read before writing a page that saves visitor input), " +
-        "`templates` (ready pages for forms, polls, RSVPs, quizzes, games: find one, publish a copy), " +
+        "`templates` (ready pages for forms, polls, RSVPs, quizzes, games, flashcards, habit trackers, to-do planners, movie clubs: find one, publish a copy), " +
         "`custom-domain` (steps, DNS records, statuses, fixes).",
       inputSchema: {
         topic: z.enum(["page-data", "templates", "custom-domain"]),

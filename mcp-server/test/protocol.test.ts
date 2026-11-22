@@ -10,6 +10,7 @@ import { Client, StreamableHTTPClientTransport } from "@modelcontextprotocol/cli
 import { StdioClientTransport } from "@modelcontextprotocol/client/stdio";
 import { InMemoryTransport } from "@modelcontextprotocol/server";
 import { createServer as createMcpServer } from "../dist/tools.js";
+import { PAGE_DATA_PACKAGES_GUIDE } from "../dist/guides/page-data.js";
 
 const PACKAGE_VERSION = (JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8")) as { version: string }).version;
 const STDIO_ENTRY = fileURLToPath(new URL("../dist/index.js", import.meta.url));
@@ -44,6 +45,8 @@ const COMPACT_TOOL_ANNOTATIONS = {
   notifications: { readOnlyHint: false, destructiveHint: true, openWorldHint: false },
   get_guide: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
 };
+const COMPACT_GUIDE_DESCRIPTION = "Get a short workflow for publishing, Page data, templates (forms, polls, quizzes, games, flashcards, " +
+  "habit trackers, to-do planners, movie clubs), custom domains or account connection. Use limits or stats for current platform data.";
 
 type Rpc = { id?: number; result?: Record<string, unknown>; error?: { code: number; message: string } };
 /** One JSON-RPC exchange in the transport's own framing. */
@@ -155,19 +158,21 @@ for (const [transport, connect] of [["stdio", stdio], ["HTTP", http]] as const) 
       // THEN discovery includes explicit hints and the cached call returns the legacy alias note.
       const text = (cached.result?.content as Array<{ text: string }>)[0].text;
       const tools = listed.result?.tools as Array<{
-        name: string; annotations: unknown; inputSchema: { properties: Record<string, { description?: string }> };
+        name: string; description?: string; annotations: unknown; inputSchema: { properties: Record<string, { description?: string }> };
       }>;
       const entryHint = (name: string) => tools.find((tool) => tool.name === name)?.inputSchema.properties.entry.description ?? "";
       assert.deepEqual({
         names: tools.map(({ name }) => name), newEntryDefault: /default index\.html/i.test(entryHint("publish")),
         annotations: Object.fromEntries(tools.map(({ name, annotations }) => [name, annotations])),
         updateEntryRequired: /required.*entryFile/i.test(entryHint("update_publication")),
+        guideDescription: tools.find((tool) => tool.name === "get_guide")?.description,
         calls: api.requests.map(({ url }) => url), cachedId: cached.id,
         aliasNote: text.split("\n").at(-1),
       }, { names: COMPACT_TOOL_NAMES, annotations: COMPACT_TOOL_ANNOTATIONS,
-        newEntryDefault: true, updateEntryRequired: true, calls: ["/api/json/public/TestPage01"], cachedId: 3,
+        newEntryDefault: true, updateEntryRequired: true, guideDescription: COMPACT_GUIDE_DESCRIPTION,
+        calls: ["/api/json/public/TestPage01"], cachedId: 3,
         aliasNote: "Note: get_json is now get_page (with `type: json`); the old name still works." },
-      "compact tool order and explicit annotations, site schemas, and cached call compatibility");
+      "compact tool order and explicit annotations, site schemas, served guide cue, and cached call compatibility");
     });
   }
 }
@@ -192,15 +197,16 @@ test("compact guide recipes work with only discovered tool names", { timeout: 15
   const domains = await call(5, "get_guide", { topic: "custom-domain" });
   const lookup = await call(6, "get_guide", { topic: "templates", q: "guestbook" });
   const receipt = await call(7, "publish", { namespace: "public", content: "<h1>Guestbook</h1>", template: "guestbook", format: "html", state: {} });
-  // THEN compact workflows prescribe supported calls, keep the Browser SDK and attribute the copy.
+  // THEN compact workflows prescribe supported calls, keep the Browser SDK and framework packages, and attribute the copy.
   assert.deepEqual({
     hidden: EXPECTED_TOOL_NAMES.filter((name) => !allowed.has(name) && [pageData, templates, domains].some((text) => new RegExp(`\\b${name}\\b`).test(text))),
-    pageData: ["read_page_data", "write_page_data", "publication_settings", "delete_page_data", "https://brewpage.app/js/state.js"].map((needle) => pageData.includes(needle)),
+    pageData: ["read_page_data", "write_page_data", "publication_settings", "delete_page_data", "https://brewpage.app/js/state.js",
+      PAGE_DATA_PACKAGES_GUIDE].map((needle) => pageData.includes(needle)),
     templates: ["`publish`", "`template`", "`update_publication`"].map((needle) => templates.includes(needle)),
     domains: domains.includes("`domains`"), lookup: lookup.includes('"slug":"guestbook"'), receipt: receipt.includes(publication.link),
     requests: api.requests.map(({ url }) => url),
   }, {
-    hidden: [], pageData: [true, true, true, true, true], templates: [true, true, true], domains: true, lookup: true, receipt: true,
+    hidden: [], pageData: [true, true, true, true, true, true], templates: [true, true, true], domains: true, lookup: true, receipt: true,
     requests: ["/api/templates?q=guestbook", "/api/html?ns=public&format=html&template=guestbook&verbatim=true"],
   }, "compact recipes use listed tools and the template-slug write path");
 });
@@ -337,7 +343,7 @@ const serverInstructions = (envDefault: string) => [
     "deliveryMode: path = a brewpage.app link, subdomain = the publication's own subdomain; omitted = chosen by type. Owner tokens and management links never go into published content; other secrets fit a private namespace plus a password.",
   "A page that must save what its visitors enter (form answers, guestbook, votes, scores, game progress) needs Page data, so read get_guide topic page-data BEFORE writing the page, then publish with the state argument. " +
     "get_page_data reads it, set_page_data writes author entries, configure_page_data changes settings, delete_page_data moderates; each takes namespace, id and ownerToken, or the management link as manageUrl. " +
-    "For a form, poll, quiz, RSVP, guestbook or game first look for a ready template: get_guide topic templates.",
+    "For a form, poll, quiz, RSVP, guestbook, game, flashcards, habit tracker, to-do planner or movie club first look for a ready template: get_guide topic templates.",
   "HTML pages and sites show a small BrewPage badge; page code must not hide or alter it. A profile can turn it off on up to 5 pages (set_publication).",
   "A custom domain, only when the user asks for their own domain: set_domain, the user creates the returned DNS records, check_domain once, then list_domains until it is active. Steps and fixes: get_guide topic custom-domain.",
 ].join("\n");

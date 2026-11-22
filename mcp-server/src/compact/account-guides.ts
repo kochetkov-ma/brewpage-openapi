@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { ACCOUNT_GUIDE } from "../guides/account.js";
 import { DOMAIN_MCP_GUIDE } from "../guides/custom-domain.js";
-import { PAGE_DATA_GUIDE, PAGE_DATA_MCP_GUIDE } from "../guides/page-data.js";
+import { PAGE_DATA_GUIDE, PAGE_DATA_MCP_GUIDE, PAGE_DATA_PACKAGES_GUIDE } from "../guides/page-data.js";
 import { PUBLISHING_GUIDE } from "../guides/publishing.js";
 import { withGuideReference } from "../guides/reference.js";
 import { TEMPLATES_MCP_GUIDE } from "../guides/templates.js";
@@ -200,7 +200,7 @@ function profileNotifications(context: CompactContext, args: BridgeInputs["notif
 function registerGuides(context: CompactContext): void {
   context.register("get_guide", {
     title: "Read a BrewPage guide",
-    description: "Get a short workflow for publishing, Page data, templates, custom domains or account connection. Use limits or stats for current platform data.",
+    description: "Get a short workflow for publishing, Page data, templates (forms, polls, quizzes, games, flashcards, habit trackers, to-do planners, movie clubs), custom domains or account connection. Use limits or stats for current platform data.",
     annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
     inputSchema: {
       topic: z.enum([...LEGACY_GUIDES, "publishing", "limits", "stats", "account"]),
@@ -217,7 +217,7 @@ function registerGuides(context: CompactContext): void {
       return context.legacy("get_limits", { ownerToken });
     }
     if (topic === "stats") return context.legacy("get_stats", { tz });
-    if (topic === "page-data") return context.text(withGuideReference(PAGE_DATA_MCP_GUIDE + "\n" + PAGE_DATA_GUIDE));
+    if (topic === "page-data") return context.text(withGuideReference(PAGE_DATA_MCP_GUIDE + "\n" + PAGE_DATA_GUIDE + "\n" + PAGE_DATA_PACKAGES_GUIDE));
     if (topic === "custom-domain") return context.text(withGuideReference(DOMAIN_MCP_GUIDE));
     if (topic === "templates" && q !== undefined) {
       const answer = await context.api("GET", context.withQuery("/api/templates", [["q", q]]));

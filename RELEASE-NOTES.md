@@ -1,5 +1,13 @@
 # Release Notes
 
+## MCP 3.1.3 — Newer templates and app packages in the guides
+
+- Asked for flashcards, a habit tracker, a to-do planner or a movie club, the assistant now finds BrewPage's ready templates: `get_guide` names them next to forms, polls, quizzes and games.
+- The Page data guide (`get_guide` topic `page-data`) now covers the `brewpage-data` npm package for apps built with React, Vue, Svelte, Angular or web components: the same calls, keep the state.js tag, publish the build as a site.
+- The API reference attached to this release includes BrewPage news in profile notifications (contract 2.75.0).
+- Dependencies refreshed.
+- Local installations can pin `brewpage-mcp@3.1.3`. The remote endpoint is `https://brewpage.app/mcp`. Tool names are unchanged and existing calls keep their original arguments and permissions.
+
 ## API contract 2.75.0 — 2026-11-22
 
 - Synced from the integration-tested contract of brewpage-app release v2.75.0 (source `bf767b26e42bf20643f884ca7a7563f02db21516`, the tag), clean tree. 74 paths and 99 operations, unchanged.

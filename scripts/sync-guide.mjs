@@ -7,6 +7,7 @@ const GUIDE_FILE = 'llms-full.txt';
 const SECTION = '## Page data';
 const SUBSECTION = '### Browser SDK';
 const PAGE_DATA_MCP = '### Manage Page data with MCP';
+const PACKAGES = '### Framework packages';
 const FENCE = '```';
 const FENCE_OPEN = '```text';
 const CALLS_PREFIX = 'bp.state() -> s|null';
@@ -120,6 +121,7 @@ const guideChars = [...`${guide.join('\n')}\n`].length;
 if (guide.length === 0 || guide.length > MAX_LINES || guideChars > MAX_CHARS) throw new Error(
   `${GUIDE_FILE} cheat-sheet is ${guide.length} lines, ${guideChars} chars; the shared text allows 1-${MAX_LINES} lines, ${MAX_CHARS} chars`);
 
+const packages = recipe(pageData, PACKAGES, `${GUIDE_FILE} "${SECTION}"`);
 const calls = lines.filter((line) => line.startsWith(CALLS_PREFIX));
 if (calls.length !== 1) throw new Error(`${GUIDE_FILE}: expected exactly one line starting "${CALLS_PREFIX}", found ${calls.length}`);
 
@@ -128,8 +130,11 @@ outputs.set('page-data.ts', GENERATED +
     textLiteral(guide)) +
   constant('PAGE_DATA_CALLS', `Page script call shapes: the "${CALLS_PREFIX}" line of ${GUIDE_FILE}.`, JSON.stringify(calls[0])) +
   constant('PAGE_DATA_MCP_GUIDE', `Compact owner recipe from "${PAGE_DATA_MCP}".`,
-    textLiteral(recipe(tooling, PAGE_DATA_MCP, GUIDE_FILE).split('\n'))));
-summaries.push(`Page data guide: ${guide.length} lines, ${guideChars} chars. Call shapes: ${[...calls[0]].length} chars.`);
+    textLiteral(recipe(tooling, PAGE_DATA_MCP, GUIDE_FILE).split('\n'))) +
+  constant('PAGE_DATA_PACKAGES_GUIDE', `The "${SECTION}" -> "${PACKAGES}" section of ${GUIDE_FILE}, heading included.`,
+    textLiteral([PACKAGES, '', ...packages.split('\n')])));
+summaries.push(`Page data guide: ${guide.length} lines, ${guideChars} chars. Call shapes: ${[...calls[0]].length} chars. ` +
+  `Framework packages: ${[...packages].length + 1} chars.`);
 
 const domains = section(lines, DOMAIN_SECTION, /^## /, GUIDE_FILE);
 const where = `${GUIDE_FILE} "${DOMAIN_SECTION}"`;
