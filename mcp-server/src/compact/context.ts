@@ -86,16 +86,25 @@ interface PublicationChanges {
   state?: StateConfig;
 }
 interface PageAddress { kind?: "html" | "site"; namespace: string; id: string }
+/** A secret on the bridge: kind secret, id = its 10-character ref, no namespace (app McpSecretOwnerAdapter.ref). */
+export interface SecretTarget { kind: "secret"; id: string }
+interface SecretPublish {
+  kind: "secret"; secretKind: "text" | "file"; ciphertext: string; iv: string; keyCheck: string; title?: string; note?: string; tags?: string[];
+  ttl?: string; maxViews?: number;
+}
 
 export interface BridgeInputs {
-  publish: Artifact & CreateOptions & { namespace?: string };
+  publish: (Artifact & CreateOptions & { namespace?: string }) | SecretPublish;
   publish_file: CreateOptions & { kind: "file"; namespace?: string; filename?: string };
-  list_publications: { kind?: PublicationKind; scope?: "mine"; status?: string; tag?: string; q?: string; expiring?: boolean; cursor?: string; limit?: number };
-  read_publication: Target & { view?: "content" | "source" | "settings" | "stats"; key?: string; path?: string; offset?: number; range?: number; tz?: string; password?: string };
+  list_publications: { kind?: PublicationKind | "secret"; scope?: "mine"; status?: string; tag?: string; q?: string; expiring?: boolean; cursor?: string;
+    limit?: number; ended?: boolean };
+  read_publication: (Target & { view?: "content" | "source" | "settings" | "stats"; key?: string; path?: string; offset?: number; range?: number; tz?: string;
+    password?: string }) | SecretTarget;
   update_publication: Artifact & CreateOptions & { namespace: string; id: string };
   update_file: Target & { kind: "file"; filename?: string };
-  publication_settings: Target & Omit<PublicationChanges, "badgeHidden" | "title"> & { badgeHidden?: boolean | null; title?: string | null };
-  delete_publication: Target & { key?: string };
+  publication_settings: (Target & Omit<PublicationChanges, "badgeHidden" | "title"> & { badgeHidden?: boolean | null; title?: string | null })
+    | (SecretTarget & { title?: string; note?: string; tags?: string[] });
+  delete_publication: (Target & { key?: string }) | SecretTarget;
   read_page_data: PageAddress & { collection?: string; order?: string; limit?: number; cursor?: string; countBy?: string; include?: "docs" | "files"; format?: "csv"; fileId?: string };
   write_page_data: PageAddress & { collection: string; docs: Array<{ key: string; value: unknown; version?: number }> };
   delete_page_data: PageAddress & { collection: string; docIds?: string[]; fileIds?: string[]; after?: string; before?: string; all?: boolean };

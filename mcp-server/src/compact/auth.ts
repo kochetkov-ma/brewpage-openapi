@@ -197,7 +197,7 @@ export function toolAuthority(name: string | undefined, args: Record<string, unk
       return selected(args.scope === "gallery" ? [] : ["publications:read"]);
     case "read_publication":
       return selected(args.view === "source" || args.view === "settings" || args.view === "stats"
-        || (typeof args.namespace === "string" && args.namespace !== "public")
+        || (typeof args.namespace === "string" && args.namespace !== "public") || args.kind === "secret"
         || (args.kind === "site" && args.path === undefined) ? ["publications:read"] : []);
     case "publication_settings": {
       const changes = Object.keys(args).some((key) => SETTINGS_FIELDS.has(key));
@@ -221,7 +221,7 @@ export function toolAuthority(name: string | undefined, args: Record<string, unk
   }
 }
 
-const SETTINGS_FIELDS = new Set(["action", "listed", "badgeHidden", "title", "password", "extend", "deliveryMode", "expectedVersion", "linkName", "tags"]);
+const SETTINGS_FIELDS = new Set(["action", "listed", "badgeHidden", "title", "password", "extend", "deliveryMode", "expectedVersion", "linkName", "tags", "note"]);
 const COMPACT = new Set<string>(COMPACT_TOOL_NAMES);
 const PUBLIC_LEGACY = new Set(["get_page", "get_stats", "get_limits", "get_guide"]);
 

@@ -1,5 +1,7 @@
 import { z } from "zod";
 import { bridgeOutcomeUnknown, isClientAbort, type ApiAnswer, type BridgeInputs, type CompactContext, type OwnerProof, type PublicationKind, type Refusal, type Target } from "./context.js";
+// Functions only: secret.js imports this module too, so no value of it may run at load time here.
+import { secretItemAnswer, selectSecret } from "./secret.js";
 
 const PUBLICATION_KINDS = ["html", "site", "file", "json", "kv"] as const;
 const PAGE_KINDS = ["html", "site"] as const;
@@ -111,13 +113,17 @@ const ordinaryFields = {
 };
 const settingsSchema = {
   ...ownerAddress,
-  kind: z.enum(PUBLICATION_KINDS).optional(),
+  id: ownerAddress.id.describe("ID from the publication receipt, or a secret's 10-character ref"),
+  manageUrl: ownerAddress.manageUrl.describe("Private management link of a publication or secret; use in place of the address and owner token"),
+  kind: z.enum([...PUBLICATION_KINDS, "secret"]).optional().describe("Publication kind, or secret: then only title, note and tags"),
+  note: z.string().max(500).optional().describe("Secrets only. Your own note; \"\" clears it"),
   action: z.enum(["make_private", "make_public", "rotate_link", "reset_manage_link", "revoke_reader_access"]).optional()
     .describe("Use alone. make_private and make_public move it to a new address; make_private and rotate_link end the old address " +
       "and any link name for good; make_private detaches a custom domain"),
   ...ordinaryFields,
 };
-type Changes = Pick<BridgeInputs["publication_settings"], keyof typeof ordinaryFields | "action">;
+type Changes = Pick<Extract<BridgeInputs["publication_settings"], { namespace: string }>, keyof typeof ordinaryFields | "action">;
+const SECRET_SETTINGS = ["title", "note", "tags"];
 const ROUTES = {
   listed: ["visibility", "listed"],
   badgeHidden: ["badge", "hidden"],
@@ -239,11 +245,27 @@ function registerSettings(context: CompactContext) {
     title: "Change publication settings",
     description: "Change listing, badge, title, tags, password, storage, hosting, link name or Page data on an owned publication. " +
       "Use a disruptive action alone. Ask before make_private or make_public: the current address stops working " +
-      "(after make_public it leads to the new one for 30 days).",
+      "(after make_public it leads to the new one for 30 days). A secret ({\"kind\":\"secret\",\"id\":<ref>} or its manage link) takes title, note and tags only.",
     annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: true },
     inputSchema: settingsSchema,
     oauthScopes: ["publications:write", "page-data:write"],
-  }, async ({ kind, namespace, id, manageUrl, ownerToken, ...changes }) => {
+  }, async ({ kind, namespace, id, manageUrl, ownerToken, note, ...changes }) => {
+    const secret = selectSecret(context, { kind, namespace, id, manageUrl, ownerToken });
+    if (secret && "refusal" in secret) return context.refuse("change secret", secret.refusal);
+    if (secret) {
+      const { title, tags } = changes;
+      const other = Object.entries(changes).find(([field, value]) => value !== undefined && !SECRET_SETTINGS.includes(field));
+      if (other) return context.refuse("change secret", { why: `\`${other[0]}\` is unavailable for a secret.`, next: "Send title, note or tags with the secret target." });
+      if (title === undefined && note === undefined && tags === undefined) {
+        return context.refuse("change secret", { why: "No change was supplied.", next: 'Send title, note or tags, for example {"kind":"secret","id":"<ref>","note":""}.' });
+      }
+      if (title !== undefined && title.trim() === "") return context.refuse("change secret", { why: "A secret's title can't be cleared.", next: "Send a new one-line title." });
+      const answer = context.authority === "account" && !secret.headers["X-Manage-Key"]
+        ? await context.bridge("publication_settings", { kind: "secret", id: secret.ref, title, note, tags })
+        : await context.api("PATCH", context.apiPath("secrets", "owner", secret.ref), { title, note, tags }, secret.headers);
+      return secretItemAnswer(context, "change secret", answer);
+    }
+    if (note !== undefined || kind === "secret") return context.refuse("change publication settings", { why: "`note` is only for a secret.", next: "Use title or tags on a publication." });
     const operation = "change publication settings";
     const steps = SETTINGS_ORDER.filter((key) => changes[key] !== undefined);
     const { action, expectedVersion } = changes;
