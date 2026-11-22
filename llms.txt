@@ -7,7 +7,7 @@ Public contract snapshots, documentation and the BrewPage MCP server. The backen
 - `openapi/openapi.json` — exported backend-generated public OpenAPI 3.1 contract; version and provenance identify the backend source.
 - `openapi/openapi.yaml` — deterministic derived representation; `docs/public/openapi.json` is the identical Scalar copy.
 - `openapi/page-data-host.json`, `.yaml` — second document, "BrewPage Page data host API": what a page's own script calls on the page's address under `/_bp/state/v1`; same export and version.
-- `mcp-server/` — TypeScript implementation of the BrewPage MCP server. Release version `3.2.0`. Package name `brewpage-mcp` on npm.
+- `mcp-server/` — TypeScript implementation of the BrewPage MCP server. Release version `3.2.1`. Package name `brewpage-mcp` on npm.
 - `docs/` — Astro docs site published at https://kochetkov-ma.github.io/brewpage-openapi/.
 
 ## Where to read the live API
@@ -99,7 +99,7 @@ Public contract snapshots, documentation and the BrewPage MCP server. The backen
 ## How to use the MCP server
 
 ```bash
-npx -y brewpage-mcp@3.2.0
+npx -y brewpage-mcp@3.2.1
 ```
 
 Always pin an exact version.

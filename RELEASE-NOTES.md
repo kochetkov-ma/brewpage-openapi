@@ -1,5 +1,11 @@
 # Release Notes
 
+## MCP 3.2.1 — Knowing who saved what
+
+- The Page data guide (`get_guide` topic `page-data`) now says that an entry's `visitor` label is not unique: to know who saved what, the page asks a name once, keeps it and saves it in every entry. The name is what the visitor typed.
+- The API reference attached to this release is contract 2.79.0.
+- Local installations can pin `brewpage-mcp@3.2.1`. The remote endpoint is `https://brewpage.app/mcp`. Tool names are unchanged and existing calls keep their original arguments and permissions.
+
 ## API contract 2.79.0 — 2026-11-22
 
 - Synced from the integration-tested contract of brewpage-app release v2.79.0 (source `db2807d876a0d2b14c94986f7357a6322e9dbcbf`, the tag), clean tree. 79 paths and 105 operations, unchanged.
