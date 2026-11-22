@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs";
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/server";
 import { createServer, type ServerOptions } from "../src/tools.js";
 import { openSecret, SecretOpenError, sealSecretFile, sealSecretText, secretKeyCheck, type OpenedSecret } from "../src/compact/secret.js";
+import { checkSecretFile } from "../src/compact/secret-files.js";
 import type { ApiAnswer, ToolAnswer } from "../src/compact/context.js";
 import { toolAuthority } from "../src/compact/auth.js";
 
@@ -56,6 +57,15 @@ test("GIVEN the app's shared secret vectors WHEN the MCP seals, opens and checks
     keyChecks: VECTORS.keyChecks.map(({ keyCheck }) => keyCheck),
     seals: VECTORS.seals.map((row) => [row.label, row.input && { ciphertext: row.ciphertext, keyCheck: secretKeyCheck(raw(row.key)) }, row.open]),
   }, "Key checks, raw-text and envelope seals equal the app's bytes; the reader opens text and files and refuses newer or malformed plaintexts");
+});
+
+test("GIVEN .env-shaped names WHEN the file gate checks text THEN only .env and .env. plus one listed part pass", () => {
+  const bytes = Buffer.from("API_KEY=x1y2z3\n");
+  const names = [".env.bat", ".env.html", ".env.local.bat", ".env.local", ".env.Production", ".env"];
+  assert.deepEqual(names.map((name) => [name, checkSecretFile(name, bytes, true)?.code ?? null]), [
+    [".env.bat", "SECRET_FILE_TYPE"], [".env.html", "SECRET_FILE_TYPE"], [".env.local.bat", "SECRET_FILE_TYPE"],
+    [".env.local", null], [".env.Production", null], [".env", null],
+  ], "A .env. name takes exactly one listed part; executables and markup after the prefix are refused at step 4");
 });
 
 test("GIVEN kind=secret WHEN publish runs unsigned or on an account THEN only ciphertext and its key check leave, the link opens it", async (t) => {
@@ -119,6 +129,7 @@ test("GIVEN a secret with a bad field or a refused create WHEN publish runs THEN
     { name: "namespace", args: { ...secret, namespace: "public" }, answer: unused, calls: 0, text: /`namespace` is unavailable for kind=secret/ },
     { name: "blank text", args: { ...secret, text: "  " }, answer: unused, calls: 0, text: /`text` is required for kind=secret/ },
     { name: "script name", args: { ...secret, filename: "run.sh" }, answer: unused, calls: 0, text: /can't be sent as a secret\. Send a key, .*\(SECRET_FILE_TYPE\)/ },
+    { name: "executable after .env.", args: { ...secret, filename: ".env.bat" }, answer: unused, calls: 0, text: /can't be sent as a secret\. .*\(SECRET_FILE_TYPE\)/ },
     { name: "binary type as text", args: { ...secret, filename: "vault.p12" }, answer: unused, calls: 0, text: /doesn't look like a \.p12 file\. \(SECRET_FILE_MISMATCH\)/ },
     { name: "shebang text", args: { ...secret, text: "#!/bin/sh\nrm -rf /", filename: "notes.txt" }, answer: unused, calls: 0, text: /\(SECRET_FILE_TYPE\)/ },
     { name: "note on html", args: { content: "<p>x</p>", note: "n" }, answer: unused, calls: 0, text: /`note` is only for kind=secret/ },

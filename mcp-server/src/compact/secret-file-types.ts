@@ -110,6 +110,7 @@ export const SECRET_FILE_MODEL: SecretFileModel = {
       ],
       "names": [],
       "namePrefixes": [],
+      "namePrefixParts": [],
       "content": [
         "text"
       ]
@@ -124,6 +125,7 @@ export const SECRET_FILE_MODEL: SecretFileModel = {
       ],
       "names": [],
       "namePrefixes": [],
+      "namePrefixParts": [],
       "content": [
         "text",
         "derCertificate"
@@ -138,6 +140,7 @@ export const SECRET_FILE_MODEL: SecretFileModel = {
       ],
       "names": [],
       "namePrefixes": [],
+      "namePrefixParts": [],
       "content": [
         "derBundle"
       ]
@@ -150,6 +153,7 @@ export const SECRET_FILE_MODEL: SecretFileModel = {
       ],
       "names": [],
       "namePrefixes": [],
+      "namePrefixParts": [],
       "content": [
         "kdbx"
       ]
@@ -162,6 +166,7 @@ export const SECRET_FILE_MODEL: SecretFileModel = {
       ],
       "names": [],
       "namePrefixes": [],
+      "namePrefixParts": [],
       "content": [
         "openpgpBinary",
         "pgpArmored"
@@ -185,6 +190,18 @@ export const SECRET_FILE_MODEL: SecretFileModel = {
       "namePrefixes": [
         ".env."
       ],
+      "namePrefixParts": [
+        "local",
+        "development",
+        "production",
+        "staging",
+        "test",
+        "example",
+        "sample",
+        "template",
+        "dev",
+        "prod"
+      ],
       "content": [
         "text"
       ]
@@ -199,6 +216,7 @@ export const SECRET_FILE_MODEL: SecretFileModel = {
       ],
       "names": [],
       "namePrefixes": [],
+      "namePrefixParts": [],
       "content": [
         "text"
       ]
@@ -225,6 +243,7 @@ export const SECRET_FILE_MODEL: SecretFileModel = {
         ".git-credentials"
       ],
       "namePrefixes": [],
+      "namePrefixParts": [],
       "content": [
         "text"
       ]

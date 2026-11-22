@@ -12,7 +12,8 @@ export interface SecretFileModel {
   notStart: string;
   rules: Record<string, { kind: "text"; startsWith?: string } | { kind: "der"; first: number; min: number; max: number }
     | { kind: "prefix"; hex: string } | { kind: "highBit" }>;
-  groups: Array<{ id: string; label: string; extensions: string[]; names: string[]; namePrefixes: string[]; content: string[] }>;
+  groups: Array<{ id: string; label: string; extensions: string[]; names: string[]; namePrefixes: string[]; namePrefixParts: string[];
+    content: string[] }>;
   neverAllowed: { categories: string[]; examples: string[] };
 }
 export interface SecretFileRefusal { step: number; code: string; copy: string; hint?: string }
@@ -22,6 +23,9 @@ const bytesOf = (hex: string) => Uint8Array.from(Buffer.from(hex, "hex"));
 const starts = (bytes: Uint8Array, prefix: Uint8Array) => bytes.length >= prefix.length && prefix.every((byte, i) => bytes[i] === byte);
 const DENIED = D.denied.map(bytesOf);
 const BOMS: Array<[Uint8Array, string]> = [[bytesOf(D.bom.utf8), "utf-8"], [bytesOf(D.bom.le), "utf-16le"], [bytesOf(D.bom.be), "utf-16be"]];
+// Prefix + exactly one listed part (.env.local yes, .env.bat no), as the app's PREFIXED map.
+const PREFIXED = new Map(D.groups.flatMap((group) => group.namePrefixes.flatMap((prefix) =>
+  group.namePrefixParts.map((part) => [prefix + part, [group, prefix.replace(/\.+$/, "")]] as const))));
 
 function refusal(code: string, step?: number): SecretFileRefusal {
   const known = D.refusals[code];
@@ -63,11 +67,8 @@ function match(name: string): [SecretFileModel["groups"][number], string] | null
   if (byExtension) return [byExtension, extension!];
   const byName = D.groups.find((group) => group.names.includes(name));
   if (byName) return [byName, name];
-  for (const group of D.groups) {
-    const prefix = group.namePrefixes.find((candidate) => lower.length > candidate.length && lower.startsWith(candidate));
-    if (prefix) return [group, prefix.replace(/\.+$/, "")];
-  }
-  return null;
+  const prefixed = PREFIXED.get(lower);
+  return prefixed ? [prefixed[0], prefixed[1]] : null;
 }
 
 /** Gate steps 2-5 of one file (the app's `check`); `textOnly` tries only text content rules (MCP input is text). */
@@ -83,8 +84,9 @@ export function checkSecretFile(name: string, bytes: Uint8Array, textOnly = fals
   return { ...mismatch, copy: mismatch.copy.split("{extension}").join(matched[1]) };
 }
 
-/** Allowed text-shaped names for tool hints: extensions, exact names and prefixes of groups with a text rule. */
+/** Allowed text-shaped names for tool hints: extensions, exact names and prefixed names of groups with a text rule. */
 export const SECRET_TEXT_FILE_NAMES: readonly string[] = D.groups
   .filter((group) => group.content.some((id) => D.rules[id].kind === "text"))
-  .flatMap((group) => [...group.extensions, ...group.names, ...group.namePrefixes.map((prefix) => `${prefix}*`)]);
+  .flatMap((group) => [...group.extensions, ...group.names,
+    ...group.namePrefixes.flatMap((prefix) => group.namePrefixParts.map((part) => prefix + part))]);
 export const SECRET_FILE_MAX_BYTES = D.maxBytes;
