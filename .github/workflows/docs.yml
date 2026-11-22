@@ -92,8 +92,45 @@ jobs:
           echo "revision=$REVISION" >> "$GITHUB_OUTPUT"
           echo "tag=$RELEASE_TAG" >> "$GITHUB_OUTPUT"
 
+  contract:
+    if: github.event_name != 'workflow_run' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      tag: ${{ steps.current.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Require the released MCP version in the contract docs
+        id: current
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          VERSION=$(jq -er '.version' mcp-server/package.json)
+          [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || exit 1
+          RELEASE_TAG="v$VERSION"
+          LATEST=$(gh api --paginate "repos/$GITHUB_REPOSITORY/releases?per_page=100" |
+            jq -r '.[] | select(.draft == false and .prerelease == false and .published_at != null)
+              | .tag_name | select(test("^v[0-9]+\\.[0-9]+\\.[0-9]+$"))' |
+            sort -V | tail -n 1)
+          if [[ -z "$LATEST" || "$RELEASE_TAG" != "$LATEST" ]]; then
+            echo "::error::mcp-server $RELEASE_TAG is not the highest published stable MCP release ${LATEST:-none}"
+            exit 1
+          fi
+          # Changelog entries keep historical pins; every other docs pin must be the released version.
+          PINS=$(grep -rhoE --exclude=changelog.mdx 'brewpage-mcp@[0-9A-Za-z.+-]*' docs/src | sort -u)
+          if [[ "$PINS" != "brewpage-mcp@$VERSION" ]]; then
+            echo "::error::docs/src pins must all be brewpage-mcp@$VERSION"
+            exit 1
+          fi
+          echo "tag=$RELEASE_TAG" >> "$GITHUB_OUTPUT"
+
   build:
-    needs: qualification
+    needs: [qualification, contract]
     if: "!cancelled() && (github.event_name != 'workflow_run' || needs.qualification.result == 'success')"
     runs-on: ubuntu-24.04
     timeout-minutes: 15
@@ -130,14 +167,14 @@ jobs:
         run: npm run build
 
       - name: Upload artifact
-        if: github.event_name == 'workflow_run' && needs.qualification.result == 'success'
+        if: needs.qualification.result == 'success' || needs.contract.result == 'success'
         uses: actions/upload-pages-artifact@v5.0.0
         with:
           path: docs/dist
 
   deploy:
-    needs: [qualification, build]
-    if: github.event_name == 'workflow_run' && needs.qualification.result == 'success' && needs.build.result == 'success'
+    needs: [qualification, contract, build]
+    if: "!cancelled() && (needs.qualification.result == 'success' || needs.contract.result == 'success') && needs.build.result == 'success'"
     permissions:
       contents: read
       pages: write
@@ -154,9 +191,16 @@ jobs:
       - name: Refuse a superseded Pages artifact
         env:
           GH_TOKEN: ${{ github.token }}
-          RELEASE_TAG: ${{ needs.qualification.outputs.tag }}
+          RELEASE_TAG: ${{ needs.qualification.outputs.tag || needs.contract.outputs.tag }}
         run: |
           set -euo pipefail
+          if [[ "$GITHUB_EVENT_NAME" != workflow_run ]]; then
+            MAIN=$(gh api "repos/$GITHUB_REPOSITORY/commits/main" --jq .sha)
+            if [[ "$GITHUB_SHA" != "$MAIN" ]]; then
+              echo '::error::Pages from a contract push requires the current main commit'
+              exit 1
+            fi
+          fi
           LATEST=$(gh api --paginate "repos/$GITHUB_REPOSITORY/releases?per_page=100" |
             jq -r '.[] | select(.draft == false and .prerelease == false and .published_at != null)
               | .tag_name | select(test("^v[0-9]+\\.[0-9]+\\.[0-9]+$"))' |

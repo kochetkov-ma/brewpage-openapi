@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -10,7 +10,7 @@ const require = createRequire(new URL('../docs/package.json', import.meta.url));
 const yaml = require('js-yaml');
 const workflow = yaml.load(readFileSync(new URL('../.github/workflows/docs.yml', import.meta.url), 'utf8'));
 const release = yaml.load(readFileSync(new URL('../.github/workflows/release.yml', import.meta.url), 'utf8'));
-const { qualification, build, deploy } = workflow.jobs;
+const { qualification, contract, build, deploy } = workflow.jobs;
 const required = ['qualification', 'release', 'registry', 'advertise'];
 const qualifiedRevision = '${{ needs.qualification.outputs.revision }}';
 const qualifiedTag = '${{ needs.qualification.outputs.tag }}';
@@ -44,9 +44,11 @@ assert.deepEqual(required.slice(1).map((job, i) => {
   return steps[steps.findIndex(({ name }) => name === publishers[i]) - 1];
 }), [remoteTagGate, remoteTagGate, remoteTagGate], 'Every publisher immediately follows exact remote tag validation');
 
-// GIVEN each Docs event; WHEN selected; THEN only a fully qualified release can upload and deploy.
+// GIVEN each Docs event; WHEN selected; THEN a qualified release or a contract push/dispatch on main can upload and deploy.
 assert.deepEqual(workflow.on.workflow_run, { workflows: [release.name], types: ['completed'] }, 'Release workflow identity');
 assert.deepEqual(Object.keys(workflow.on).sort(), ['pull_request', 'push', 'workflow_dispatch', 'workflow_run'], 'Validation events');
+assert.deepEqual(workflow.on.push.branches, ['main'], 'Contract pushes deploy only from main');
+assert.deepEqual(workflow.on.push.paths.slice(0, 2), ['docs/**', 'openapi/**'], 'Contract and docs changes trigger the push run');
 const predicate = qualification.if.trim().split(/\s*&&\s*/);
 const terms = [
   "github.event_name == 'workflow_run'",
@@ -54,26 +56,39 @@ const terms = [
   "github.event.workflow_run.conclusion == 'success'",
   'github.event.workflow_run.head_repository.full_name == github.repository',
 ];
-assert.deepEqual(predicate, terms, 'Authenticated successful manual release is the only qualifying event');
-for (const [event, trigger, conclusion, sameRepo, expected] of [
-  ['push', '', '', false, false], ['pull_request', '', '', false, false], ['workflow_dispatch', '', '', false, false],
-  ['workflow_run', 'push', 'success', true, false], ['workflow_run', 'workflow_dispatch', 'failure', true, false],
-  ['workflow_run', 'workflow_dispatch', 'success', false, false], ['workflow_run', 'workflow_dispatch', 'success', true, true],
+assert.deepEqual(predicate, terms, 'Authenticated successful manual release is the only qualifying release event');
+const contractPredicate = contract.if.trim().split(/\s*&&\s*/);
+const contractTerms = ["github.event_name != 'workflow_run'", "github.ref == 'refs/heads/main'"];
+assert.deepEqual(contractPredicate, contractTerms, 'Contract guard runs for non-release events on main only');
+for (const [event, ref, trigger, conclusion, sameRepo, expected] of [
+  ['push', 'refs/heads/main', '', '', false, true], ['workflow_dispatch', 'refs/heads/main', '', '', false, true],
+  ['push', 'refs/heads/feature', '', '', false, false], ['workflow_dispatch', 'refs/heads/feature', '', '', false, false],
+  ['workflow_dispatch', 'refs/tags/v3.0.0', '', '', false, false], ['pull_request', 'refs/pull/7/merge', '', '', false, false],
+  ['workflow_run', 'refs/heads/main', 'push', 'success', true, false], ['workflow_run', 'refs/heads/main', 'workflow_dispatch', 'failure', true, false],
+  ['workflow_run', 'refs/heads/main', 'workflow_dispatch', 'success', false, false], ['workflow_run', 'refs/heads/main', 'workflow_dispatch', 'success', true, true],
 ]) {
   const values = [event === 'workflow_run', trigger === 'workflow_dispatch', conclusion === 'success', sameRepo];
-  assert.equal(predicate.every((term) => values[terms.indexOf(term)]), expected, `Pages event ${event}/${trigger}/${conclusion}/${sameRepo}`);
+  const contractValues = [event !== 'workflow_run', ref === 'refs/heads/main'];
+  const eligible = predicate.every((term) => values[terms.indexOf(term)])
+    || contractPredicate.every((term) => contractValues[contractTerms.indexOf(term)]);
+  assert.equal(eligible, expected, `Pages event ${event}/${ref}/${trigger}/${conclusion}/${sameRepo}`);
 }
-assert.equal(build.needs, 'qualification', 'Build depends on qualification decision');
+assert.deepEqual(build.needs, ['qualification', 'contract'], 'Build depends on both deploy decisions');
 assert.equal(build.if, "!cancelled() && (github.event_name != 'workflow_run' || needs.qualification.result == 'success')", 'Ordinary events build, refused release events cannot');
 assert.deepEqual(build.steps[0].with, { ref: '${{ needs.qualification.outputs.revision || github.sha }}', 'persist-credentials': false }, 'Release build uses exact qualifying revision');
+assert.deepEqual(contract.steps[0].with, { ref: '${{ github.sha }}', 'persist-credentials': false }, 'Contract guard reads the event commit without Git credentials');
+const eligibleDeploy = "needs.qualification.result == 'success' || needs.contract.result == 'success'";
 assert.deepEqual(build.steps.filter(({ uses }) => uses?.startsWith('actions/upload-pages-artifact@')).map((step) => step.if),
-  ["github.event_name == 'workflow_run' && needs.qualification.result == 'success'"], 'Pages upload condition');
-assert.deepEqual(deploy.needs, ['qualification', 'build'], 'Pages requires a qualifying release and build');
-assert.equal(deploy.if, "github.event_name == 'workflow_run' && needs.qualification.result == 'success' && needs.build.result == 'success'", 'No Pages deployment from ordinary build');
-assert.deepEqual({ workflow: workflow.permissions, qualify: qualification.permissions, deploy: deploy.permissions },
-  { workflow: { contents: 'read' }, qualify: { actions: 'read', contents: 'read' }, deploy: { contents: 'read', pages: 'write', 'id-token': 'write' } }, 'Only deploy has Pages write and OpenID');
+  [eligibleDeploy], 'Pages upload needs a qualified release or a passed contract guard');
+assert.deepEqual(deploy.needs, ['qualification', 'contract', 'build'], 'Pages requires a deploy decision and build');
+assert.equal(deploy.if, `!cancelled() && (${eligibleDeploy}) && needs.build.result == 'success'`, 'No Pages deployment from a refused or ordinary build');
+assert.deepEqual({ workflow: workflow.permissions, qualify: qualification.permissions, contract: contract.permissions, deploy: deploy.permissions },
+  { workflow: { contents: 'read' }, qualify: { actions: 'read', contents: 'read' }, contract: undefined, deploy: { contents: 'read', pages: 'write', 'id-token': 'write' } }, 'Only deploy has Pages write and OpenID');
 assert.deepEqual(deploy.concurrency, { group: 'pages', queue: 'max' }, 'One Pages deploy at a time without replacing earlier queue entries');
-assert.equal(deploy.steps[0].env.RELEASE_TAG, '${{ needs.qualification.outputs.tag }}', 'Ordering check uses the qualified tag under the Pages lock');
+assert.equal(deploy.steps[0].env.RELEASE_TAG, '${{ needs.qualification.outputs.tag || needs.contract.outputs.tag }}', 'Ordering check uses the qualified or contract tag under the Pages lock');
+const latestQuery = deploy.steps[0].run.match(/LATEST=\$\(gh api[\s\S]*?tail -n 1\)/)?.[0];
+const contractScript = contract.steps.find((step) => step.id === 'current').run;
+assert.equal(typeof latestQuery === 'string' && contractScript.includes(latestQuery), true, 'Contract guard reuses the deploy release-order query');
 
 // GIVEN an Actions API publisher attempt; WHEN the actual qualification shell runs; THEN only its exact success set emits a SHA.
 const repository = 'kochetkov-ma/brewpage-openapi';
@@ -99,10 +114,10 @@ const gate = join(work, 'gate.sh');
 const output = join(work, 'output');
 const summary = join(work, 'summary');
 const trace = join(work, 'trace');
-const run = (shell, env) => {
+const run = (shell, env, cwd = new URL('..', import.meta.url)) => {
   writeFileSync(gate, shell);
   for (const file of [output, summary, trace]) writeFileSync(file, '');
-  return spawnSync('/bin/bash', [gate], { cwd: new URL('..', import.meta.url), encoding: 'utf8', timeout: 5_000, env: {
+  return spawnSync('/bin/bash', [gate], { cwd, encoding: 'utf8', timeout: 5_000, env: {
     PATH: `${work}:${process.env.PATH}`, GITHUB_REPOSITORY: repository, GITHUB_OUTPUT: output,
     GITHUB_STEP_SUMMARY: summary, GITHUB_SHA: sha, RUNNER_TEMP: work, FIXTURE_TRACE: trace, ...env,
   } });
@@ -121,6 +136,9 @@ case "$*" in
     test -z "$FIXTURE_RELEASE_ERROR" || { printf '%s\\n' "$FIXTURE_RELEASE_ERROR" >&2; exit 1; }
     printf '%s\\n' "$FIXTURE_RELEASE";;
   "api --paginate repos/${repository}/releases?per_page=100") printf '%s\\n' "$FIXTURE_RELEASES";;
+  "api repos/${repository}/commits/main --jq .sha")
+    test "$FIXTURE_MAIN" != unavailable || exit 1
+    printf '%s\\n' "$FIXTURE_MAIN";;
   *) exit 98;;
 esac
 `, { mode: 0o700 });
@@ -227,14 +245,49 @@ exit "$FIXTURE_REMOTE_RC"
 
   // GIVEN overlapping releases; WHEN the Pages lock is acquired; THEN only the highest published stable MCP release deploys.
   const published = (tagName, options = {}) => ({ tag_name: tagName, draft: false, prerelease: false, published_at: '2026-11-18T00:00:00Z', ...options });
-  for (const [name, candidate, pages, expected] of [
-    ['newest qualified', 'v3.10.0', [[published('v3.9.0'), published('data-v4.0.0')], [published('v3.10.0')]], 0],
-    ['delayed older artifact', 'v3.9.0', [[published('v3.9.0')], [published('v3.10.0')]], 1],
-    ['unpublished candidate', 'v3.10.0', [[published('v3.9.0')]], 1],
-    ['drafts and prereleases do not block', 'v3.10.0', [[published('v3.10.0'), published('v4.0.0', { draft: true }), published('v5.0.0', { prerelease: true })]], 0],
+  const contractPush = { GITHUB_EVENT_NAME: 'push', FIXTURE_MAIN: sha };
+  for (const [name, candidate, pages, env, expected] of [
+    ['newest qualified', 'v3.10.0', [[published('v3.9.0'), published('data-v4.0.0')], [published('v3.10.0')]], {}, 0],
+    ['delayed older artifact', 'v3.9.0', [[published('v3.9.0')], [published('v3.10.0')]], {}, 1],
+    ['unpublished candidate', 'v3.10.0', [[published('v3.9.0')]], {}, 1],
+    ['drafts and prereleases do not block', 'v3.10.0', [[published('v3.10.0'), published('v4.0.0', { draft: true }), published('v5.0.0', { prerelease: true })]], {}, 0],
+    ['release ignores a newer main commit', 'v3.10.0', [[published('v3.10.0')]], { FIXTURE_MAIN: otherSha }, 0],
+    ['contract push at current main', 'v3.10.0', [[published('v3.10.0')]], contractPush, 0],
+    ['contract dispatch at current main', 'v3.10.0', [[published('v3.10.0')]], { ...contractPush, GITHUB_EVENT_NAME: 'workflow_dispatch' }, 0],
+    ['contract push superseded on main', 'v3.10.0', [[published('v3.10.0')]], { ...contractPush, FIXTURE_MAIN: otherSha }, 1],
+    ['contract push with unreadable main', 'v3.10.0', [[published('v3.10.0')]], { ...contractPush, FIXTURE_MAIN: 'unavailable' }, 1],
+    ['contract push after a newer release', 'v3.9.0', [[published('v3.9.0'), published('v3.10.0')]], contractPush, 1],
   ]) {
-    const result = run(deploy.steps[0].run, { RELEASE_TAG: candidate, FIXTURE_RELEASES: pages.map((page) => JSON.stringify(page)).join('\n') });
+    const result = run(deploy.steps[0].run, { GITHUB_EVENT_NAME: 'workflow_run', RELEASE_TAG: candidate,
+      FIXTURE_RELEASES: pages.map((page) => JSON.stringify(page)).join('\n'), ...env });
     assert.equal(result.status, expected, `${name} Pages deploy decision: ${result.stderr}`);
+  }
+
+  // GIVEN a contract push or dispatch on main; WHEN the guard runs; THEN package, release and docs pins name one version.
+  const docsTree = (pins, changelogPin) => {
+    const root = mkdtempSync(join(work, 'contract-'));
+    mkdirSync(join(root, 'mcp-server'));
+    mkdirSync(join(root, 'docs/src/content/docs'), { recursive: true });
+    writeFileSync(join(root, 'mcp-server/package.json'), JSON.stringify({ name: 'brewpage-mcp', version }));
+    writeFileSync(join(root, 'docs/src/content/docs/mcp-server.mdx'), pins.map((pin) => `npx -y brewpage-mcp@${pin}\n`).join(''));
+    writeFileSync(join(root, 'docs/src/content/docs/changelog.mdx'), `npx -y brewpage-mcp@${changelogPin}\n`);
+    return root;
+  };
+  const repoRoot = new URL('..', import.meta.url);
+  const current = [[published(tag)]];
+  for (const [name, cwd, pages, expected] of [
+    ['repository tree at its released version', repoRoot, current, 0],
+    ['historical changelog pin ignored', docsTree([version, version], '1.19.1'), current, 0],
+    ['stale docs pin', docsTree([version, '1.19.1'], version), current, 1],
+    ['floating docs pin', docsTree([version, 'latest'], version), current, 1],
+    ['no docs pin', docsTree([], version), current, 1],
+    ['package ahead of the published release', docsTree([version], version), [[published('v0.0.1')]], 1],
+    ['package behind a newer release', docsTree([version], version), [[published(tag), published('v999.0.0')]], 1],
+    ['no published release', docsTree([version], version), [[published(tag, { draft: true })]], 1],
+  ]) {
+    const result = run(contractScript, { FIXTURE_RELEASES: pages.map((page) => JSON.stringify(page)).join('\n') }, cwd);
+    assert.equal(result.status, expected, `${name} contract guard exit: ${result.stderr}`);
+    assert.equal(readFileSync(output, 'utf8'), expected === 0 ? `tag=${tag}\n` : '', `${name} contract guard tag`);
   }
 
   // GIVEN official registry responses; WHEN publishing or retrying; THEN the exact active descriptor must be served.
@@ -391,5 +444,5 @@ esac
 } finally {
   rmSync(work, { force: true, recursive: true });
 }
-console.log('Pages release qualification passed: 7 event, 33 Actions API and 4 deployment ordering cases');
+console.log('Pages release qualification passed: 10 event, 33 Actions API, 10 deployment ordering and 8 contract guard cases');
 console.log('MCP release gates passed: 6 remote ref, 5 registry, 5 image, 26 hosted receipt and 14 GitHub Release cases');
