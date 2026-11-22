@@ -2960,7 +2960,7 @@
             "type": "string"
           },
           "group": {
-            "description": "Settings group of a notice; null for activity and news",
+            "description": "Settings group of a notice; null for activity, news and domain notices",
             "enum": [
               "pages",
               "entries"
@@ -3018,15 +3018,22 @@
             "type": "boolean"
           },
           "type": {
-            "description": "What happened; news: BrewPage news, its body in news",
+            "description": "What happened; news: BrewPage news, its body in news; domain_*: a custom domain of the profile",
             "enum": [
               "page_expiring",
               "page_removed",
+              "page_taken_down",
+              "page_restored",
               "entries_new",
               "quota_close",
               "quota_reached",
               "published",
               "updated",
+              "domain_problem",
+              "domain_paused",
+              "domain_active",
+              "domain_lost",
+              "domain_released",
               "news"
             ],
             "type": "string"
@@ -3058,12 +3065,14 @@
             "type": "string"
           },
           "rel": {
-            "description": "page: the page itself; data: its Data tab; manage: its management page; settings: notification settings; action: the button of a news item",
+            "description": "page: the page itself; data: its Data tab; manage: its management page; settings: notification settings; domain: where a custom domain's records are shown; terms: the terms of use; action: the button of a news item",
             "enum": [
               "page",
               "data",
               "manage",
               "settings",
+              "domain",
+              "terms",
               "action"
             ],
             "type": "string"
@@ -3512,6 +3521,13 @@
             "description": "public, hidden, private, password or unavailable",
             "type": "string"
           },
+          "tags": {
+            "description": "Your tags, lowercase, at most 10; only you see them (never on the page, gallery or search); absent when none",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
           "title": {
             "type": "string"
           },
@@ -3937,6 +3953,136 @@
         "required": [
           "code",
           "message"
+        ],
+        "type": "object"
+      },
+      "SecretCreateRequest": {
+        "properties": {
+          "ciphertext": {
+            "description": "AES-GCM-256 output (encrypted text plus its 16-byte tag) as base64url without padding, at most 54000 characters. Encrypt in the client; the key never reaches the server.",
+            "maxLength": 54000,
+            "minLength": 23,
+            "pattern": "^[A-Za-z0-9_-]+$",
+            "type": "string"
+          },
+          "iv": {
+            "description": "The 12-byte AES-GCM nonce as 16 base64url characters.",
+            "maxLength": 16,
+            "minLength": 16,
+            "pattern": "^[A-Za-z0-9_-]{16}$",
+            "type": "string"
+          },
+          "maxViews": {
+            "default": 1,
+            "description": "How many times it can be opened, 1 to 10. Omitted: 1.",
+            "format": "int32",
+            "maximum": 10,
+            "minimum": 1,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "ttl": {
+            "default": "7d",
+            "description": "How long the secret stays readable: 1h, 1d, 7d or 30d. Omitted: 7d.",
+            "enum": [
+              "1h",
+              "1d",
+              "7d",
+              "30d"
+            ],
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "ciphertext",
+          "iv"
+        ],
+        "type": "object"
+      },
+      "SecretCreateResponse": {
+        "properties": {
+          "expiresAt": {
+            "description": "When the secret stops being readable",
+            "format": "date-time",
+            "type": "string"
+          },
+          "id": {
+            "description": "22-character secret id. Share https://brewpage.app/secret/{id}#{key}, the key in the fragment only.",
+            "type": "string"
+          },
+          "maxViews": {
+            "description": "How many times it can be opened",
+            "format": "int32",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "expiresAt",
+          "id",
+          "maxViews"
+        ],
+        "type": "object"
+      },
+      "SecretRevealResponse": {
+        "properties": {
+          "ciphertext": {
+            "description": "base64url AES-GCM output as created",
+            "type": "string"
+          },
+          "iv": {
+            "description": "base64url 12-byte nonce as created",
+            "type": "string"
+          },
+          "viewsLeft": {
+            "description": "Views left after this one; 0 = this was the last, the server no longer holds the secret",
+            "format": "int32",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "ciphertext",
+          "iv",
+          "viewsLeft"
+        ],
+        "type": "object"
+      },
+      "SecretStatusResponse": {
+        "properties": {
+          "expiresAt": {
+            "description": "When the secret stops being readable",
+            "format": "date-time",
+            "type": "string"
+          },
+          "maxViews": {
+            "description": "Views allowed at creation",
+            "format": "int32",
+            "type": "integer"
+          },
+          "state": {
+            "description": "active: can be opened; burned: opened the allowed number of times; expired: past expiresAt",
+            "enum": [
+              "active",
+              "burned",
+              "expired"
+            ],
+            "type": "string"
+          },
+          "viewsLeft": {
+            "description": "Views still possible; 0 unless active",
+            "format": "int32",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "expiresAt",
+          "maxViews",
+          "state",
+          "viewsLeft"
         ],
         "type": "object"
       },
@@ -5295,6 +5441,68 @@
         },
         "type": "object"
       },
+      "TagCountResponse": {
+        "properties": {
+          "count": {
+            "description": "Your live publications with this tag",
+            "format": "int64",
+            "type": "integer"
+          },
+          "tag": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "count",
+          "tag"
+        ],
+        "type": "object"
+      },
+      "TagListResponse": {
+        "properties": {
+          "items": {
+            "description": "Most used first, then by name",
+            "items": {
+              "$ref": "#/components/schemas/TagCountResponse"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "type": "object"
+      },
+      "TagsRequest": {
+        "properties": {
+          "tags": {
+            "description": "Replaces the tags: no commas, saved in lowercase, each once; [] clears them; omitted reports them.",
+            "items": {
+              "maxLength": 32,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 10,
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
+      "TagsResponse": {
+        "properties": {
+          "tags": {
+            "description": "Your tags, lowercase, at most 10; only you see them (never on the page, gallery or search)",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "tags"
+        ],
+        "type": "object"
+      },
       "TemplateCatalogItem": {
         "properties": {
           "copies": {
@@ -5645,14 +5853,14 @@
       "name": "BrewPage",
       "url": "https://brewpage.app"
     },
-    "description": "Free instant hosting for HTML, Markdown, JSON, key-value stores, files and sites. Send ns=public to be found: gallery + Google, Bing & AI search. Omitted ns: private (MCP: a generated private namespace). Password or listed=false: unlisted. A private link is not a lock: anyone with it can open it; add a password to restrict. Secrets allowed; likely ones are flagged in notices. For a secret: private namespace + password. Retain returned links. Give the user link and manageUrl; manageUrl is private (anyone who has it can edit or delete the publication): never post it publicly. Keep ownerToken; send it as X-Owner-Token on later publishes and updates; show it to the user on request. How BrewPage compares with GitHub Pages, GitHub Gist, Netlify Drop, Cloudflare Drop, Tiiny Host and Static.app: https://brewpage.app/compare. Agents: remote MCP at https://brewpage.app/mcp (no auth). HTML pages and sites show a small BrewPage badge; page code must not hide or alter it. A profile can turn it off on up to 5 pages (setBadge).",
+    "description": "Free instant hosting for HTML, Markdown, JSON, key-value stores, files and sites. Send ns=public to be found: gallery + Google, Bing & AI search. Omitted ns: private (MCP: a generated private namespace). Password or listed=false: unlisted. A private link is not a lock: anyone with it can open it; add a password to restrict. Secrets allowed; likely ones are flagged in notices. To share a password or key: POST /api/secrets (client-side encrypted one-time link). Retain returned links. Give the user link and manageUrl; manageUrl is private (anyone who has it can edit or delete the publication): never post it publicly. Keep ownerToken; send it as X-Owner-Token on later publishes and updates; show it to the user on request. How BrewPage compares with GitHub Pages, GitHub Gist, Netlify Drop, Cloudflare Drop, Tiiny Host and Static.app: https://brewpage.app/compare. Agents: remote MCP at https://brewpage.app/mcp (no auth). HTML pages and sites show a small BrewPage badge; page code must not hide or alter it. A profile can turn it off on up to 5 pages (setBadge).",
     "license": {
       "name": "Apache-2.0",
       "url": "https://www.apache.org/licenses/LICENSE-2.0"
     },
     "termsOfService": "https://brewpage.app/terms",
     "title": "BrewPage API",
-    "version": "2.75.0"
+    "version": "2.78.0"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -6292,7 +6500,7 @@
         ]
       },
       "post": {
-        "description": "Stores a file via multipart upload and returns a download link. Only safe file types accepted; a missing or wrong extension is corrected from the content and reported in notices. Reuse existing owner token to group entities under one owner. An HTML or Markdown file is published as a page in any namespace, with or without a password (same rules and limits as POST /api/html). 'format' decides; without one a known extension, then a specific declared part type (text/html, text/markdown, application/json, text/csv), then a content guess; otherwise it stays an inert file. '.txt' without 'format' stays a text file. A whole HTML document sent as 'markdown' is an HTML page. Any readable encoding is stored as UTF-8, notice 'charset-guessed' when no usable charset was named. link and ownerLink point to the page, notice 'html-file-as-page' or 'markdown-file-as-page'; a code format chosen by 'format' or the declared type is published the same way, notice 'file-format-applied'. An HTML file over the page size limit or that no encoding reads is stored as a file and shown as source, notice 'html-file-as-source'. A JSON file in the public namespace is stored as sent, notice 'json-file-not-listed'; JSON data belongs in POST /api/json. Secrets allowed; likely ones are flagged in notices. For a secret: private namespace + password.",
+        "description": "Stores a file via multipart upload and returns a download link. Only safe file types accepted; a missing or wrong extension is corrected from the content and reported in notices. Reuse existing owner token to group entities under one owner. An HTML or Markdown file is published as a page in any namespace, with or without a password (same rules and limits as POST /api/html). 'format' decides; without one a known extension, then a specific declared part type (text/html, text/markdown, application/json, text/csv), then a content guess; otherwise it stays an inert file. '.txt' without 'format' stays a text file. A whole HTML document sent as 'markdown' is an HTML page. Any readable encoding is stored as UTF-8, notice 'charset-guessed' when no usable charset was named. link and ownerLink point to the page, notice 'html-file-as-page' or 'markdown-file-as-page'; a code format chosen by 'format' or the declared type is published the same way, notice 'file-format-applied'. An HTML file over the page size limit or that no encoding reads is stored as a file and shown as source, notice 'html-file-as-source'. A JSON file in the public namespace is stored as sent, notice 'json-file-not-listed'; JSON data belongs in POST /api/json. Secrets allowed; likely ones are flagged in notices. To share a password or key: POST /api/secrets (client-side encrypted one-time link).",
         "operationId": "upload",
         "parameters": [
           {
@@ -7024,7 +7232,7 @@
     },
     "/api/html": {
       "post": {
-        "description": "Stores HTML or markdown content and returns a shareable link. Reuse existing owner token to group entities under one owner. Also accepts raw text/* (HTML, Markdown, YAML, XML, CSV, code) and application/octet-stream bodies — see /llms-full.txt. Secrets allowed; likely ones are flagged in notices. For a secret: private namespace + password.",
+        "description": "Stores HTML or markdown content and returns a shareable link. Reuse existing owner token to group entities under one owner. Also accepts raw text/* (HTML, Markdown, YAML, XML, CSV, code) and application/octet-stream bodies — see /llms-full.txt. Secrets allowed; likely ones are flagged in notices. To share a password or key: POST /api/secrets (client-side encrypted one-time link).",
         "operationId": "create_1",
         "parameters": [
           {
@@ -7964,7 +8172,7 @@
         ]
       },
       "post": {
-        "description": "Stores any valid JSON and returns a shareable link. Reuse existing owner token to group entities under one owner. Secrets allowed; likely ones are flagged in notices. For a secret: private namespace + password.",
+        "description": "Stores any valid JSON and returns a shareable link. Reuse existing owner token to group entities under one owner. Secrets allowed; likely ones are flagged in notices. To share a password or key: POST /api/secrets (client-side encrypted one-time link).",
         "operationId": "create",
         "parameters": [
           {
@@ -8447,7 +8655,7 @@
         ]
       },
       "post": {
-        "description": "Creates a new store with an initial key-value pair and returns a shareable link. Reuse existing owner token to group entities under one owner. Secrets allowed; likely ones are flagged in notices. For a secret: private namespace + password.",
+        "description": "Creates a new store with an initial key-value pair and returns a shareable link. Reuse existing owner token to group entities under one owner. Secrets allowed; likely ones are flagged in notices. To share a password or key: POST /api/secrets (client-side encrypted one-time link).",
         "operationId": "createStore",
         "parameters": [
           {
@@ -10183,9 +10391,18 @@
             }
           },
           {
-            "description": "Title search",
+            "description": "Search: title contains it, or a tag starts with it",
             "in": "query",
             "name": "q",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Only rows with this tag (exact, any case)",
+            "in": "query",
+            "name": "tag",
             "required": false,
             "schema": {
               "type": "string"
@@ -10265,6 +10482,80 @@
           }
         ],
         "summary": "List my publications",
+        "tags": [
+          "Publications"
+        ]
+      }
+    },
+    "/api/publications/tags": {
+      "get": {
+        "description": "Tags of the owner token's publications (a profile token: the whole profile) with how many carry each; for autocomplete.",
+        "operationId": "listTags",
+        "parameters": [
+          {
+            "description": "Only tags starting with it (any case)",
+            "in": "query",
+            "name": "prefix",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Most tags returned, 1-100 (default 20)",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "format": "int32",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Owner token",
+            "in": "header",
+            "name": "X-Owner-Token",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TagListResponse"
+                }
+              }
+            },
+            "description": "Tags, most used first"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "prefix too long (code: TAGS_INVALID)"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Owner token revoked or expired"
+          }
+        },
+        "security": [
+          {
+            "OwnerToken": []
+          }
+        ],
+        "summary": "List my tags",
         "tags": [
           "Publications"
         ]
@@ -10955,6 +11246,219 @@
         ]
       }
     },
+    "/api/publications/{type}/{ns}/{id}/tags": {
+      "get": {
+        "description": "The publication's tags as set; only you see them.",
+        "operationId": "getTags",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "type",
+            "required": true,
+            "schema": {
+              "enum": [
+                "html",
+                "site",
+                "file",
+                "json",
+                "kv"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "ns",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Owner token",
+            "in": "header",
+            "name": "X-Owner-Token"
+          },
+          {
+            "description": "Management key",
+            "in": "header",
+            "name": "X-Manage-Key"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TagsResponse"
+                }
+              }
+            },
+            "description": "Tags as set"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Missing or wrong owner token or management key; token revoked or expired; or no profile owns the publication"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Publication unavailable (outside public also for wrong credentials)"
+          }
+        },
+        "security": [
+          {
+            "OwnerToken": []
+          },
+          {
+            "ManageKey": []
+          }
+        ],
+        "summary": "Get the tags of your publication (profile owners)",
+        "tags": [
+          "Publications"
+        ]
+      },
+      "post": {
+        "description": "Replaces all tags: up to 10, each 1-32 characters without commas, saved in lowercase, each once. Only you see them.",
+        "operationId": "setTags",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "type",
+            "required": true,
+            "schema": {
+              "enum": [
+                "html",
+                "site",
+                "file",
+                "json",
+                "kv"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "ns",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Owner token",
+            "in": "header",
+            "name": "X-Owner-Token"
+          },
+          {
+            "description": "Management key",
+            "in": "header",
+            "name": "X-Manage-Key"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TagsRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TagsResponse"
+                }
+              }
+            },
+            "description": "Tags now set"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "TAGS_INVALID: a tag is empty, longer than 32 characters, has a comma or control character, or tags is not a string array; TAGS_TOO_MANY: more than 10 tags"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Missing or wrong owner token or management key; token revoked or expired; or no profile owns the publication"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Publication unavailable (outside public also for wrong credentials)"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Rate limited: wait Retry-After (= retryAfterSeconds)"
+          }
+        },
+        "security": [
+          {
+            "OwnerToken": []
+          },
+          {
+            "ManageKey": []
+          }
+        ],
+        "summary": "Set the tags of your publication (profile owners)",
+        "tags": [
+          "Publications"
+        ]
+      }
+    },
     "/api/reports": {
       "post": {
         "description": "Records a public report about a resource hosted on brewpage.app for moderator review",
@@ -11017,6 +11521,223 @@
         "summary": "Submit abuse report",
         "tags": [
           "Reports"
+        ]
+      }
+    },
+    "/api/secrets": {
+      "post": {
+        "description": "Stores client-side encrypted text for 1 to 10 views (default 1) and 1h, 1d, 7d or 30d (default 7d). No account or owner token. Share https://brewpage.app/secret/{id}#{key} with the key only in the fragment.",
+        "operationId": "createSecret",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SecretCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SecretCreateResponse"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "SECRET_CIPHERTEXT_INVALID, SECRET_IV_INVALID, SECRET_TTL_INVALID, SECRET_MAX_VIEWS_INVALID or SECRET_TOO_LARGE; or a body that is not a JSON object"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Request body over 64 KB"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Rate limited: wait Retry-After (= retryAfterSeconds); no account: accountUrl, free sign-up with higher limits"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "SECRETS_UNAVAILABLE: temporarily off"
+          }
+        },
+        "security": [
+          {}
+        ],
+        "summary": "Create a one-time secret",
+        "tags": [
+          "One-time secrets"
+        ]
+      }
+    },
+    "/api/secrets/{id}": {
+      "get": {
+        "description": "State, views left and expiry. Never spends a view and never returns the ciphertext.",
+        "operationId": "getSecretStatus",
+        "parameters": [
+          {
+            "description": "22-character secret id",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SecretStatusResponse"
+                }
+              }
+            },
+            "description": "Status (also for a burned or expired secret)"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "SECRET_NOT_FOUND: unknown or deleted id"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Rate limited: wait Retry-After (= retryAfterSeconds)"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "SECRETS_UNAVAILABLE: temporarily off"
+          }
+        },
+        "security": [
+          {}
+        ],
+        "summary": "One-time secret status",
+        "tags": [
+          "One-time secrets"
+        ]
+      }
+    },
+    "/api/secrets/{id}/reveal": {
+      "post": {
+        "description": "Spends one view and returns the ciphertext and iv to decrypt with the fragment key. The last view deletes the ciphertext on the server. No request body.",
+        "operationId": "revealSecret",
+        "parameters": [
+          {
+            "description": "22-character secret id",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SecretRevealResponse"
+                }
+              }
+            },
+            "description": "Ciphertext of this view"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "SECRET_NOT_FOUND: unknown or deleted id"
+          },
+          "410": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "SECRET_BURNED: already opened the allowed number of times; or SECRET_EXPIRED"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Rate limited: wait Retry-After (= retryAfterSeconds)"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "SECRETS_UNAVAILABLE: temporarily off"
+          }
+        },
+        "security": [
+          {}
+        ],
+        "summary": "Open a one-time secret",
+        "tags": [
+          "One-time secrets"
         ]
       }
     },
@@ -11147,7 +11868,7 @@
     },
     "/api/sites": {
       "post": {
-        "description": "Upload a multi-file HTML site as a ZIP archive or as individual files with paths. Returns a link to the published site. Secrets allowed; likely ones are flagged in notices. For a secret: private namespace + password.",
+        "description": "Upload a multi-file HTML site as a ZIP archive or as individual files with paths. Returns a link to the published site. Secrets allowed; likely ones are flagged in notices. To share a password or key: POST /api/secrets (client-side encrypted one-time link).",
         "operationId": "uploadSite",
         "parameters": [
           {
@@ -15575,6 +16296,10 @@
     {
       "description": "Browse public content from the 'public' namespace without password protection; mine=true lists the caller's own publications",
       "name": "Gallery"
+    },
+    {
+      "description": "Password-style secrets behind a link that stops working after the allowed views or at expiry. The client encrypts with AES-GCM-256 and keeps the key in the link's #fragment: the server stores only ciphertext and never sees the key or the text. Never listed, indexed or shown anywhere else.",
+      "name": "One-time secrets"
     },
     {
       "description": "Short URL resolver for sharing",

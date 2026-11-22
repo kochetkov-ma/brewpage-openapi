@@ -184,6 +184,7 @@ function publicContract(spec) {
   }
   assert.ok(spec.tags.some((tag) => tag.name === 'Notifications'), 'Notifications is a described top-level tag');
   newsNoticeContract(spec);
+  secretsTagsContract(spec);
   assert.deepEqual([taggedIds(spec, 'Templates'), spec.paths['/api/templates']?.get?.security], [['templates'], [{}]],
     'Templates publishes the anonymous template catalogue');
   assert.deepEqual(Object.keys(spec.paths).filter((path) => path.startsWith('/api/stats/')), [],
@@ -257,8 +258,9 @@ function linkNameContract(spec) {
 function newsNoticeContract(spec) {
   const schemas = spec.components.schemas;
   const item = schemas.NotificationItem;
-  assert.deepEqual(item.properties.type.enum, ['page_expiring', 'page_removed', 'entries_new', 'quota_close', 'quota_reached',
-    'published', 'updated', 'news'], 'A notification type is one of the seven page types or news');
+  assert.deepEqual(item.properties.type.enum, ['page_expiring', 'page_removed', 'page_taken_down', 'page_restored', 'entries_new',
+    'quota_close', 'quota_reached', 'published', 'updated', 'domain_problem', 'domain_paused', 'domain_active', 'domain_lost',
+    'domain_released', 'news'], 'A notification type is one of the nine page types, five custom-domain types or news');
   assert.deepEqual([item.properties.news?.oneOf, item.required.includes('news')], [[{ $ref: '#/components/schemas/NotificationNews' }], false],
     'A notification carries the optional news body, absent for other types');
   const news = schemas.NotificationNews;
@@ -266,9 +268,32 @@ function newsNoticeContract(spec) {
     [{ html: 'string', text: 'string', title: 'string' }, ['text', 'title']], 'A news body has title and plain text; its safe HTML is optional');
   const link = schemas.NotificationLink;
   assert.deepEqual([link.properties.rel.enum, link.properties.label?.type, link.required],
-    [['page', 'data', 'manage', 'settings', 'action'], 'string', ['rel', 'url']], 'Only a news action link adds its optional button label');
+    [['page', 'data', 'manage', 'settings', 'domain', 'terms', 'action'], 'string', ['rel', 'url']], 'Only a news action link adds its optional button label');
   assert.deepEqual(Object.keys(spec.paths).filter((path) => /telegram|\/auth\//.test(path)), [],
     'Sign-in and Telegram link routes stay out of the contract paths');
+}
+
+/** One-time secrets: anonymous create/status/reveal of client-encrypted text; owner tags: list filter, item field, set/get routes. */
+function secretsTagsContract(spec) {
+  const schemas = spec.components.schemas;
+  assert.deepEqual([taggedIds(spec, 'One-time secrets').sort(), ...['/api/secrets', '/api/secrets/{id}', '/api/secrets/{id}/reveal']
+    .map((path) => Object.values(spec.paths[path]).map((operation) => operation.security))],
+    [['createSecret', 'getSecretStatus', 'revealSecret'], [[{}]], [[{}]], [[{}]]], 'One-time secrets publishes three anonymous operations');
+  const create = schemas.SecretCreateRequest;
+  assert.deepEqual([create.required, create.properties.iv.pattern, create.properties.ttl.enum, create.properties.maxViews.minimum,
+    create.properties.maxViews.maximum, create.properties.ciphertext.maxLength],
+    [['ciphertext', 'iv'], '^[A-Za-z0-9_-]{16}$', ['1h', '1d', '7d', '30d'], 1, 10, 54000],
+    'A secret is base64url ciphertext and a 12-byte iv, ttl 1h-30d, 1-10 views');
+  assert.deepEqual(schemas.SecretCreateResponse.required, ['expiresAt', 'id', 'maxViews'], 'A created secret answers id, expiry and views; never a key');
+  const list = spec.paths['/api/publications'].get.parameters.find((parameter) => parameter.name === 'tag');
+  assert.deepEqual([list?.in, list?.schema], ['query', { type: 'string' }], 'Owner listing takes the exact tag filter');
+  assert.equal(schemas.PublicationListItemResponse.properties.tags?.type, 'array', 'Owner list items carry their tags');
+  const tagsPath = '/api/publications/{type}/{ns}/{id}/tags';
+  assert.deepEqual([spec.paths[tagsPath]?.get?.operationId, spec.paths[tagsPath]?.post?.operationId, spec.paths['/api/publications/tags']?.get?.operationId,
+    spec.paths[tagsPath].post.security], ['getTags', 'setTags', 'listTags', [{ OwnerToken: [] }, { ManageKey: [] }]],
+  'Tags are read and replaced with owner authority, and listed for autocomplete');
+  const tags = schemas.TagsRequest.properties.tags;
+  assert.deepEqual([tags.maxItems, tags.items.minLength, tags.items.maxLength], [10, 1, 32], 'A tag set is up to 10 tags of 1-32 characters');
 }
 
 /** The host document: only visitor routes of one page, cookie security, the state header on all but the file read. */

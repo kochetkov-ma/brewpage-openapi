@@ -1,5 +1,22 @@
 # Release Notes
 
+## MCP 3.2.0 — One-time secrets and private tags
+
+- Ask the assistant to share a password or key, and `publish` with `kind: "secret"` returns a one-time link that stops working after it is opened (up to 10 openings, from 1 hour to 30 days). The text is encrypted before it leaves the MCP server and the key stays in the link; the assistant itself still sees the text you give it.
+- Label your publications with private tags: `publication_settings` sets them and `list_publications` finds publications by tag. Only you see them.
+- Notifications now include takedown and restore notices and custom-domain status changes.
+- A settings change that sets a link name together with Page data rules or tags on a connected account is now confirmed correctly.
+- The API reference attached to this release is contract 2.78.0.
+- Local installations can pin `brewpage-mcp@3.2.0`. The remote endpoint is `https://brewpage.app/mcp`. Tool names are unchanged and existing calls keep their original arguments and permissions.
+
+## API contract 2.78.0 — 2026-11-22
+
+- Synced from the integration-tested contract of brewpage-app release v2.78.0 (source `1bed91a42afe40556a9187de4b2cf0fe67fb7a3e`, the tag), clean tree. 79 paths and 105 operations (was 74 and 99).
+- One-time secrets (new tag): `POST /api/secrets` stores text encrypted in the client (AES-GCM-256) for 1 to 10 views and 1h, 1d, 7d or 30d; share `https://brewpage.app/secret/{id}#{key}` with the key only in the fragment. `GET /api/secrets/{id}` reads its state without spending a view; `POST /api/secrets/{id}/reveal` spends one. No account or owner token.
+- Private tags on profile publications: `GET /api/publications` takes `tag` and lists each item's `tags`; `GET`/`POST /api/publications/{type}/{ns}/{id}/tags` read and replace them (up to 10, 1-32 characters, saved lowercase; `TAGS_INVALID`, `TAGS_TOO_MANY`); `GET /api/publications/tags` lists your tags for autocomplete.
+- Notifications add the types `page_taken_down`, `page_restored`, `domain_problem`, `domain_paused`, `domain_active`, `domain_lost` and `domain_released`, and the link relations `domain` and `terms`.
+- The Page data host document changes only its version.
+
 ## MCP 3.1.3 — Newer templates and app packages in the guides
 
 - Asked for flashcards, a habit tracker, a to-do planner or a movie club, the assistant now finds BrewPage's ready templates: `get_guide` names them next to forms, polls, quizzes and games.

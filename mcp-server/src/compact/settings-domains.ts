@@ -106,6 +106,8 @@ const ordinaryFields = {
   linkName: z.string().nullable().optional().describe("Readable name for the public link of a page, site or file: 6-20 of a-z, 0-9 and hyphens, " +
     "with a letter; null removes it. Needs a profile token, or an owner token added to a free BrewPage profile"),
   state: z.record(z.string(), z.unknown()).nullable().optional().describe("{} enables Page data, named rules merge, null disables and keeps entries"),
+  tags: z.array(z.string()).optional().describe("Your private tags, replacing the set; [] clears. Up to 10, 1-32 characters, no commas, " +
+    "saved lowercase. Needs a profile publication"),
 };
 const settingsSchema = {
   ...ownerAddress,
@@ -123,7 +125,8 @@ const ROUTES = {
   password: ["password", "password"],
   linkName: ["link-name", "linkName"],
 } as const;
-const SETTINGS_ORDER = ["listed", "badgeHidden", "title", "password", "extend", "deliveryMode", "linkName", "state"] as const;
+// Bridge apply order (app McpPublicationSettingsController.steps): a signed receipt lists `applied` in it.
+const SETTINGS_ORDER = ["listed", "badgeHidden", "title", "tags", "password", "extend", "deliveryMode", "state", "linkName"] as const;
 type SettingName = typeof SETTINGS_ORDER[number];
 
 function settingConfirmed(field: string, value: unknown): boolean {
@@ -136,6 +139,7 @@ function settingConfirmed(field: string, value: unknown): boolean {
     case "extend": return typeof data.expiresAt === "string" && Boolean(data.expiresAt);
     case "deliveryMode": return typeof data.link === "string" && Boolean(data.link) && typeof data.deliveryModeMatched === "boolean";
     case "linkName": return typeof data.link === "string" && Boolean(data.link) && "linkName" in data;
+    case "tags": return Array.isArray(data.tags) && data.tags.every((tag) => typeof tag === "string");
     case "state": return typeof data.declared === "boolean";
     case "make_private":
     case "make_public":
@@ -163,6 +167,9 @@ async function unsignedSetting(context: CompactContext, target: Target, proof: O
   const prefix = [SEGMENT[target.kind], target.namespace, target.id];
   const headers = ownerHeaders(proof);
   if (name === "extend") return context.api("POST", context.apiPath(...prefix, "extend"), undefined, headers);
+  if (name === "tags") {
+    return context.api("POST", context.apiPath("publications", target.kind, target.namespace, target.id, "tags"), { tags: changes.tags }, headers);
+  }
   if (name === "deliveryMode") {
     return context.api("PATCH", context.apiPath(...prefix, "hosting"),
       { deliveryMode: changes.deliveryMode, expectedVersion: changes.expectedVersion }, headers);
@@ -219,7 +226,8 @@ async function disruptiveSetting(context: CompactContext, target: Target, action
     const lead = action === "make_private" ? "Moved to a private address. The former public address and any link name are gone for good."
       : action === "make_public" ? "Moved to a public address with a random link. The former private address is gone. linkName can name it next."
       : action === "rotate_link" ? "Link changed. The former address and any link name are gone for good." : action;
-    return context.text([lead, JSON.stringify(result), ...(result.manageUrl ? ["Keep the management link private."] : [])].join("\n"));
+    const handoff = action === "reset_manage_link" ? "Give the user the new manageUrl privately." : "Give the user the new link and, privately, the manageUrl.";
+    return context.text([lead, JSON.stringify(result), ...(result.manageUrl ? [handoff] : [])].join("\n"));
   } catch (error) {
     if (isClientAbort(error)) throw error;
     return uncertain();
@@ -229,7 +237,7 @@ async function disruptiveSetting(context: CompactContext, target: Target, action
 function registerSettings(context: CompactContext) {
   context.register("publication_settings", {
     title: "Change publication settings",
-    description: "Change listing, badge, title, password, storage, hosting, link name or Page data on an owned publication. " +
+    description: "Change listing, badge, title, tags, password, storage, hosting, link name or Page data on an owned publication. " +
       "Use a disruptive action alone. Ask before make_private or make_public: the current address stops working.",
     annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: true },
     inputSchema: settingsSchema,

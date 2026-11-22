@@ -8,7 +8,7 @@ order: 3
 
 Last updated: 2026-11-18
 
-`brewpage-mcp` 3.1.3 provides 13 tools to publish and manage HTML, Markdown, JSON, KV, files, multi-file sites and visitor entries. It runs locally over stdio (Node.js 20 or newer) or remotely over Streamable HTTP. Start with `publish`; saved 2.x and 1.x calls remain callable. [Compact tool and local account setup](https://github.com/kochetkov-ma/brewpage-openapi/tree/main/mcp-server)
+`brewpage-mcp` 3.2.0 provides 13 tools to publish and manage HTML, Markdown, JSON, KV, files, multi-file sites and visitor entries. It runs locally over stdio (Node.js 20 or newer) or remotely over Streamable HTTP. Start with `publish`; saved 2.x and 1.x calls remain callable. [Compact tool and local account setup](https://github.com/kochetkov-ma/brewpage-openapi/tree/main/mcp-server)
 
 ## Installation
 
@@ -47,7 +47,7 @@ Local fallback (stdio, needs Node.js; the same tools): add to Claude Desktop's `
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@3.1.3"]
+      "args": ["-y", "brewpage-mcp@3.2.0"]
     }
   }
 }
@@ -58,7 +58,7 @@ Local fallback (stdio, needs Node.js; the same tools): add to Claude Desktop's `
 The remote command above is the default. Local fallback: register a project-scoped stdio server:
 
 ```bash
-claude mcp add --transport stdio --scope project brewpage -- npx -y brewpage-mcp@3.1.3
+claude mcp add --transport stdio --scope project brewpage -- npx -y brewpage-mcp@3.2.0
 ```
 
 This writes `.mcp.json` in the project root; user-scoped registration uses `--scope user`. See the [official Claude Code MCP guide](https://code.claude.com/docs/en/mcp).
@@ -66,7 +66,7 @@ This writes `.mcp.json` in the project root; user-scoped registration uses `--sc
 ### One-liner
 
 ```bash
-npx -y brewpage-mcp@3.1.3
+npx -y brewpage-mcp@3.2.0
 ```
 
 This starts a stdio server for an MCP client, not an interactive publishing shell. Other clients can use the same `npx` command and pinned arguments.
@@ -154,7 +154,7 @@ After publishing, the assistant gives you the page link and the management link 
 
 `publish_html` takes optional `deliveryMode: "path" | "subdomain"`; it is sent as `X-Delivery-Mode`, without changing content bodies. `set_publication` changes the mode later. Omitted namespace is private (a generated `priv-<random>` namespace): unlisted and not indexed; anyone with the link can still open it. `public` lists HTML, sites and files in the gallery and sitemap, so Google, Bing and AI search can find and index them; public pages are served on the brewpage.app domain for the strongest reach (a site always gets its own subdomain). Never put secrets in a public publication. Password-protected publications, JSON and KV are never listed.
 
-These tools wrap a subset of the backend-generated public REST contract. MCP TTL inputs are days: up to 30 days without an account, up to 90 with a free profile (an owner token held in the profile); a default applies when omitted; whole days such as `15`, `15d` or `15 days`. Use returned `expiresAt`. Tolerated-input adjustments come back in the response `notices` array, printed as `Notice (code): message`; `secret-detected` prints as `WARNING (code): message`; a live BrewPage token or manage link in public content prints first as `SECURITY ALERT (credential-published): …` (remove it and reset it). A minted `manageUrl` prints as `MANAGE LINK (private): …`: the assistant gives it to the user together with the page link; whoever has it can edit or delete the publication, so it is never posted publicly. From 3.1.1 the compact `publish` result also carries a newly issued `ownerToken` and `manageUrl` in its structured content, for clients that show the assistant only that part. Set `BREWPAGE_OWNER_TOKEN` (local server only) for a default owner token; outputs name it instead of printing it. Secrets allowed; likely ones are flagged in notices. For a secret: private namespace + password. `get_page` reads stored rendered HTML or format-specific code/text, rather than owner-only original source or a browser viewer.
+These tools wrap a subset of the backend-generated public REST contract. MCP TTL inputs are days: up to 30 days without an account, up to 90 with a free profile (an owner token held in the profile); a default applies when omitted; whole days such as `15`, `15d` or `15 days`. Use returned `expiresAt`. Tolerated-input adjustments come back in the response `notices` array, printed as `Notice (code): message`; `secret-detected` prints as `WARNING (code): message`; a live BrewPage token or manage link in public content prints first as `SECURITY ALERT (credential-published): …` (remove it and reset it). A minted `manageUrl` prints as `MANAGE LINK (private): …`: the assistant gives it to the user together with the page link; whoever has it can edit or delete the publication, so it is never posted publicly. From 3.1.1 the compact `publish` result also carries a newly issued `ownerToken` and `manageUrl` in its structured content, for clients that show the assistant only that part. Set `BREWPAGE_OWNER_TOKEN` (local server only) for a default owner token; outputs name it instead of printing it. Secrets allowed; likely ones are flagged in notices. To share a password or key, use compact `publish` with `kind:"secret"` (from 3.2.0): a link that stops working after its allowed openings, encrypted by the MCP server with the key only in the link's `#fragment`. For a page that holds secret material: private namespace + password. `get_page` reads stored rendered HTML or format-specific code/text, rather than owner-only original source or a browser viewer.
 
 For a fresh publication, sites and HTML pages of format `HTML` outside `public` (including the generated unlisted namespace) always use **Dedicated subdomain**; omit `deliveryMode` there. The result states the mode in effect, with a `Delivery notice:` line when a reason applies. Everything else in any namespace (Markdown, code/text, files, JSON, KV, public HTML) defaults to **Promotion** (`path`) and may choose **Dedicated subdomain** (`subdomain`), including when password-protected. Markdown raw HTML is rendered through an allowlist (no scripts, styles, event handlers, forms or embeds; links `http`/`https`/`mailto`/`tel`/relative); earlier pages change only when republished. Promotion has stricter active-document restrictions. Each NEW site gets one publication-specific host for its complete bundle, preserving relative/root-relative paths; missing assets return 404 with no SPA fallback. Third-party widgets may need provider configuration.
 

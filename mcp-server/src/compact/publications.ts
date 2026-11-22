@@ -3,9 +3,11 @@ import { PUBLICATION_SEGMENTS as SEGMENTS, validatedAccountManagementUrl } from 
 import { bridgeOutcomeUnknown } from "./auth.js";
 import { isClientAbort, type ApiAnswer, type BridgeInputs, type CompactContext, type PublicationKind, type Refusal, type Target } from "./context.js";
 import { matchesHtmlHeadTitle } from "./html-title.js";
+import { publishSecret, SECRET_MAX_VIEWS, SECRET_TTLS } from "./secret.js";
 import { LINK_NAME_KINDS, linkNameNeedsProfile } from "./settings-domains.js";
 
 const NAMESPACES = /^[a-z0-9-]{1,32}$/;
+const SECRET_FIELDS: readonly string[] = ["kind", "text", "ttl", "maxViews"];
 const PUBLICATION_ID = /^[A-Za-z0-9]{10}$/;
 const KINDS = ["html", "site", "file", "json", "kv"] as const;
 const READ_ONLY = { readOnlyHint: true, destructiveHint: false, openWorldHint: true };
@@ -356,9 +358,12 @@ function isTextType(contentType: string | null) {
 export function registerPublications(ctx: CompactContext): void {
   ctx.register("publish", {
     title: "Publish on BrewPage", annotations: DESTRUCTIVE,
-    description: "Shared public namespace: public:true (or namespace:\"public\"); ordinary link-only: omit both. HTML: content; kind=site: files; kind=file: url; kind=json: json; kind=kv: key,value. Site: {\"kind\":\"site\",\"public\":true,\"files\":[{\"path\":\"index.html\",\"content\":\"<h1>Hi</h1>\"}]}. A public input URL does not request listing. New HTML titles go in <title>; preserve supplied HTML. For visitor input read get_guide topic page-data first; publish HTML and state together. Use domain for an owned hostname, linkName for a readable public link.",
+    description: "Shared public namespace: public:true (or namespace:\"public\"); ordinary link-only: omit both. HTML: content; kind=site: files; kind=file: url; kind=json: json; kind=kv: key,value. Site: {\"kind\":\"site\",\"public\":true,\"files\":[{\"path\":\"index.html\",\"content\":\"<h1>Hi</h1>\"}]}. A public input URL does not request listing. New HTML titles go in <title>; preserve supplied HTML. For visitor input read get_guide topic page-data first; publish HTML and state together. Use domain for an owned hostname, linkName for a readable public link. To share a password or key: {\"kind\":\"secret\",\"text\":\"...\"}, a link that stops working after maxViews openings.",
     inputSchema: {
-      kind: kind.describe("Default html"), ...materialFields,
+      kind: z.enum([...KINDS, "secret"]).optional().describe("Default html. secret: one-time secret link from text, ttl, maxViews only"), ...materialFields,
+      text: z.string().max(40_484).optional().describe("kind=secret only. The password or key; encrypted by this server before upload"),
+      ttl: z.enum(SECRET_TTLS).optional().describe("kind=secret only. How long it stays readable, default 7d"),
+      maxViews: z.number().int().min(1).max(SECRET_MAX_VIEWS).optional().describe("kind=secret only. Openings allowed, 1-10, default 1"),
       title: z.string().refine((value) => value.length <= 400 && [...value].length <= 200, "Use at most 200 Unicode code points").optional()
         .describe("HTML create only, at most 200 Unicode code points. Checks the existing static document head title before publishing, not stored metadata or script changes. Omit when no check is needed."),
       public: z.boolean().optional().describe("True selects the shared public namespace. Conflicting namespace refuses. Omit for existing defaults; false disallows namespace=public."),
@@ -376,6 +381,14 @@ export function registerPublications(ctx: CompactContext): void {
     },
     oauthScopes: ["publications:write", "page-data:write", "domains:write"],
   }, async (args) => {
+    if (args.kind === "secret") {
+      const extra = Object.entries(args).find(([field, value]) => value !== undefined && !SECRET_FIELDS.includes(field));
+      if (extra) return ctx.refuse("create secret", { why: `\`${extra[0]}\` is unavailable for kind=secret.`,
+        next: 'Send only {"kind":"secret","text":"...","ttl":"1d","maxViews":1}: no namespace, password or owner token.' });
+      return publishSecret(ctx, args);
+    }
+    const secretOnly = SECRET_FIELDS.find((field) => field !== "kind" && args[field as keyof typeof args] !== undefined);
+    if (secretOnly) return ctx.refuse("publish", { why: `\`${secretOnly}\` is only for kind=secret.`, next: 'Use {"kind":"secret","text":"..."} to share a password or key.' });
     const requestedNamespace = args.namespace === "" ? undefined : args.namespace;
     if (args.public === true && requestedNamespace !== undefined && requestedNamespace !== "public" ||
       args.public === false && requestedNamespace === "public") {
@@ -424,11 +437,12 @@ export function registerPublications(ctx: CompactContext): void {
 
   ctx.register("list_publications", {
     title: "List BrewPage publications", annotations: READ_ONLY,
-    description: "List publications you own by cursor, or search the public gallery by page. Results can include author-written titles.",
+    description: "List publications you own by cursor, or search the public gallery by page. Your items carry your private tags; tag filters by one. Results can include author-written titles.",
     inputSchema: {
       scope: z.enum(["mine", "gallery"]).optional().describe("Default mine. Gallery is public"),
       kind: kind.describe("Mine only. Publication kind"),
       status: z.enum(["public", "hidden", "private", "password", "unavailable"]).optional().describe("Mine only"),
+      tag: z.string().trim().min(1).max(1000).optional().describe("Mine only. Exact tag, any case"),
       q: z.string().optional(), expiring: z.boolean().optional().describe("Mine only. Expiring within seven days"),
       cursor: z.string().optional().describe("Mine only. nextCursor from the previous result"),
       limit: z.number().int().min(1).max(24).optional().describe("Mine only"),
@@ -437,9 +451,9 @@ export function registerPublications(ctx: CompactContext): void {
       sort: z.enum(["date", "views"]).optional().describe("Gallery only"), ownerToken,
     },
     oauthScopes: ["publications:read"],
-  }, async ({ scope = "mine", kind, status, q, expiring, cursor, limit, page, size, sort, ownerToken }) => {
+  }, async ({ scope = "mine", kind, status, tag, q, expiring, cursor, limit, page, size, sort, ownerToken }) => {
     if (scope === "gallery") {
-      const unsupported = Object.entries({ kind, status, expiring, cursor, limit, ownerToken }).find(([, value]) => value !== undefined);
+      const unsupported = Object.entries({ kind, status, tag, expiring, cursor, limit, ownerToken }).find(([, value]) => value !== undefined);
       if (unsupported) return ctx.refuse("list gallery", { why: `\`${unsupported[0]}\` is for your own publications.`, next: 'Use {"scope":"gallery"} with optional q, page, size and sort.' });
       const path = ctx.withQuery(ctx.apiPath("gallery"), [["q", q], ["page", page ?? 1], ["size", size], ["sort", sort]]);
       return listAnswer(ctx, await ctx.api("GET", path), "gallery");
@@ -447,13 +461,13 @@ export function registerPublications(ctx: CompactContext): void {
     const unsupported = Object.entries({ page, size, sort }).find(([, value]) => value !== undefined);
     if (unsupported) return ctx.refuse("list publications", { why: `\`${unsupported[0]}\` is for the public gallery.`, next: 'Use {"scope":"mine","limit":5} and the previous nextCursor when paging.' });
     if (ctx.authority === "account") {
-      const answer = await ctx.bridge("list_publications", { scope, kind, status, q, expiring, cursor, limit });
+      const answer = await ctx.bridge("list_publications", { scope, kind, status, tag, q, expiring, cursor, limit });
       return listAnswer(ctx, answer, "mine");
     }
     const token = ctx.ownerToken(ownerToken).token;
     if (!token) return ctx.refuse("list publications", { why: "Owner authorization is required.", next: 'Pass ownerToken or connect your account to list your publications.' });
     const headers = { "X-Owner-Token": token };
-    const path = ctx.withQuery(ctx.apiPath("publications"), [["type", kind], ["status", status], ["q", q], ["expiring", expiring?.toString()], ["cursor", cursor], ["limit", limit]]);
+    const path = ctx.withQuery(ctx.apiPath("publications"), [["type", kind], ["status", status], ["q", q], ["tag", tag], ["expiring", expiring?.toString()], ["cursor", cursor], ["limit", limit]]);
     const answer = await ctx.api("GET", path, undefined, headers);
     return listAnswer(ctx, answer, "mine", headers);
   });

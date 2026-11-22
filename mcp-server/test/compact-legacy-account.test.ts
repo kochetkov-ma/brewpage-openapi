@@ -115,7 +115,7 @@ test("ambiguous compact management-link reset preserves the address and advises 
     { reply: () => Promise.resolve(Response.json({ manageUrl: manageUrl.replace("brewpage.app", "outside.fixture.invalid") })), text: uncertain, error: true },
     { reply: () => Promise.resolve(Response.json({ code: "REFUSED", message: "Owner proof refused." }, { status: 403 })),
       text: "reset_manage_link: HTTP 403 · REFUSED · Owner proof refused.", error: true },
-    { reply: () => Promise.resolve(Response.json({ manageUrl })), text: `reset_manage_link\n${JSON.stringify({ manageUrl })}\nKeep the management link private.`, error: undefined },
+    { reply: () => Promise.resolve(Response.json({ manageUrl })), text: `reset_manage_link\n${JSON.stringify({ manageUrl })}\nGive the user the new manageUrl privately.`, error: undefined },
   ];
   for (const row of cases) {
     const requests: unknown[] = [];

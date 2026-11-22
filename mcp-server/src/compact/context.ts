@@ -82,6 +82,7 @@ interface PublicationChanges {
   deliveryMode?: "path" | "subdomain";
   expectedVersion?: number;
   linkName?: string | null;
+  tags?: string[];
   state?: StateConfig;
 }
 interface PageAddress { kind?: "html" | "site"; namespace: string; id: string }
@@ -89,7 +90,7 @@ interface PageAddress { kind?: "html" | "site"; namespace: string; id: string }
 export interface BridgeInputs {
   publish: Artifact & CreateOptions & { namespace?: string };
   publish_file: CreateOptions & { kind: "file"; namespace?: string; filename?: string };
-  list_publications: { kind?: PublicationKind; scope?: "mine"; status?: string; q?: string; expiring?: boolean; cursor?: string; limit?: number };
+  list_publications: { kind?: PublicationKind; scope?: "mine"; status?: string; tag?: string; q?: string; expiring?: boolean; cursor?: string; limit?: number };
   read_publication: Target & { view?: "content" | "source" | "settings" | "stats"; key?: string; path?: string; offset?: number; range?: number; tz?: string; password?: string };
   update_publication: Artifact & CreateOptions & { namespace: string; id: string };
   update_file: Target & { kind: "file"; filename?: string };

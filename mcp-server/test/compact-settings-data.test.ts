@@ -114,7 +114,7 @@ const forwards = "Give the user the exact new link; the previous address forward
 const profileStep = 'give the user the owner token (it is theirs) and ask them to sign in at https://account.brewpage.app/tokens (free), ' +
   'press "Add existing token" and paste it; then repeat this change. With an admin profile token, the account tool\'s bind_token action adds it instead.';
 
-test("Compact link names and make_public keep their REST shapes and next steps", async (t) => {
+test("Compact link names, tags and make_public keep their REST shapes and next steps", async (t) => {
   const rows = [
     { name: "set by owner token", args: { ...target, linkName: "my-recipes" }, response: Response.json(named),
       request: { method: "POST", url: `/api/html/public/${id}/link-name`, body: { linkName: "my-recipes" }, proof: owner, ifMatch: null },
@@ -125,7 +125,16 @@ test("Compact link names and make_public keep their REST shapes and next steps",
     { name: "make_public on a private page", args: { ...target, namespace: "priv-ab12cd", id: privateId, action: "make_public" }, response: Response.json(madePublic),
       request: { method: "POST", url: `/api/html/priv-ab12cd/${privateId}/public`, body: undefined, proof: owner, ifMatch: null },
       result: { content: [{ type: "text", text: ["Moved to a public address with a random link. The former private address is gone. linkName can name it next.",
-        JSON.stringify(madePublic), "Keep the management link private."].join("\n") }] } },
+        JSON.stringify(madePublic), "Give the user the new link and, privately, the manageUrl."].join("\n") }] } },
+    { name: "tags replaced by owner token", args: { ...target, tags: ["Work", "trip"] }, response: Response.json({ tags: ["work", "trip"] }),
+      request: { method: "POST", url: `/api/publications/html/public/${id}/tags`, body: { tags: ["Work", "trip"] }, proof: owner, ifMatch: null },
+      result: { content: [{ type: "text", text: 'tags: {"tags":["work","trip"]}' }] } },
+    { name: "tags over the count", args: { manageUrl, tags: Array.from({ length: 11 }, (_, index) => `t${index}`) },
+      response: Response.json({ code: "TAGS_TOO_MANY", message: "A publication can have at most 10 tags." }, { status: 400 }),
+      request: { method: "POST", url: `/api/publications/html/public/${id}/tags`, body: { tags: Array.from({ length: 11 }, (_, index) => `t${index}`) },
+        proof: ["X-Manage-Key", manageKey], ifMatch: null },
+      result: { isError: true, content: [{ type: "text", text: ["Applied: none",
+        "Failed: tags · HTTP 400 · TAGS_TOO_MANY · A publication can have at most 10 tags.", "Skipped: none"].join("\n") }] } },
     { name: "owner token outside a profile", args: { ...target, linkName: "my-recipes" },
       response: Response.json({ code: "LINK_NAME_NEEDS_ACCOUNT", message: "Link names need a free BrewPage profile." }, { status: 403 }),
       request: { method: "POST", url: `/api/html/public/${id}/link-name`, body: { linkName: "my-recipes" }, proof: owner, ifMatch: null },
@@ -191,6 +200,8 @@ test("Compact link names and visibility actions refuse locally and travel the ac
         { kind: "html", ...address, applied: [{ field: "linkName", result: named }] },
         { kind: "html", namespace: "public", id, applied: [{ field: "make_public", result: { kind: "html", namespace: "public", id,
           link: `${origin}/public/${id}`, managementLink: madePublic.managementLink, listed: false, domainDetached: false } }] },
+        { kind: "html", ...address, applied: [{ field: "tags", result: { tags: ["work"] } }, { field: "state", result: { declared: true } },
+          { field: "linkName", result: named }] },
       ];
       const bridge: ServerOptions["bridge"] = async (operation, args) => {
         operations.push({ operation, args: JSON.parse(JSON.stringify(args)) });
@@ -199,17 +210,20 @@ test("Compact link names and visibility actions refuse locally and travel the ac
       // WHEN a link name and make_public are requested without explicit proof
       const set = await call(row, "publication_settings", { kind: "html", ...address, linkName: "my-recipes" }, { authority: "account", bridge });
       const visible = await call(row, "publication_settings", { kind: "html", namespace: "priv-ab12cd", id: privateId, action: "make_public" }, { authority: "account", bridge });
-      // THEN the bridge gets the documented fields and the confirmed receipts pass through
+      const batch = await call(row, "publication_settings", { kind: "html", ...address, linkName: "my-recipes", state: {}, tags: ["Work"] }, { authority: "account", bridge });
+      // THEN the bridge gets the documented fields and the confirmed receipts, applied in bridge order, pass through
       assert.deepEqual(operations, [
         { operation: "publication_settings", args: { kind: "html", ...address, linkName: "my-recipes" } },
         { operation: "publication_settings", args: { kind: "html", namespace: "priv-ab12cd", id: privateId, action: "make_public" } },
-      ], "The bridge should receive linkName and make_public verbatim");
-      assert.deepEqual([set, visible], [
+        { operation: "publication_settings", args: { kind: "html", ...address, linkName: "my-recipes", state: {}, tags: ["Work"] } },
+      ], "The bridge should receive linkName, make_public and tags verbatim");
+      assert.deepEqual([set, visible, batch], [
         { content: [{ type: "text", text: `${JSON.stringify(answers[0])}\n${forwards}` }] },
         { content: [{ type: "text", text: JSON.stringify(answers[1]) }] },
+        { content: [{ type: "text", text: `${JSON.stringify(answers[2])}\n${forwards}` }] },
       ], "Confirmed receipts should be returned with the forwarding note for a link name");
-      assert.deepEqual(toolAuthority("publication_settings", { linkName: null }).scopes, ["publications:write"],
-        "Removing a link name should require the publication write scope");
+      assert.deepEqual([toolAuthority("publication_settings", { linkName: null }).scopes, toolAuthority("publication_settings", { tags: [] }).scopes],
+        [["publications:write"], ["publications:write"]], "Removing a link name or clearing tags should require the publication write scope");
     }),
   ]);
 });

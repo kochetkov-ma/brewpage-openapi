@@ -136,7 +136,9 @@ function notificationConfirmed(action: typeof NOTIFICATION_ACTIONS[number], valu
 function registerNotifications(context: CompactContext): void {
   context.register("notifications", {
     title: "Manage BrewPage notifications",
-    description: "List your profile notices and publication activity, mark items read, or change profile and page notification settings.",
+    description: "List your profile notices and publication activity, mark items read, or change profile and page notification settings. " +
+      "Types: page_expiring, page_removed, page_taken_down, page_restored, entries_new, quota_close, quota_reached, published, updated, " +
+      "domain_problem, domain_paused, domain_active, domain_lost, domain_released, news. Links with rel page, data, manage or domain open the owner's signed-in pages: give them only to the user, privately.",
     annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: false },
     inputSchema: {
       action: z.enum(NOTIFICATION_ACTIONS).default("list"),

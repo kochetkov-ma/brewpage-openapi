@@ -16,11 +16,11 @@ license: apache-2.0
 
 ## Tools
 
-The `brewpage-mcp` 3.1.3 server advertises 13 tools. Cached names from earlier versions remain callable. See the [package README](https://www.npmjs.com/package/brewpage-mcp) for the complete catalog.
+The `brewpage-mcp` 3.2.0 server advertises 13 tools. Cached names from earlier versions remain callable. See the [package README](https://www.npmjs.com/package/brewpage-mcp) for the complete catalog.
 
 | Tool | Purpose | Key parameters |
 |------|---------|----------------|
-| `publish` | Publish inline content, a complete site bundle, a public file URL, JSON or KV. | `kind` and its content fields |
+| `publish` | Publish inline content, a complete site bundle, a public file URL, JSON or KV, or create a one-time secret link. | `kind` and its content fields |
 | `update_publication` | Replace existing content. Supply all retained site files and the intended entry. | `kind`, `namespace`, `id`, replacement content and owner proof |
 | `read_publication` | Read published content or an authorized owner view. | `kind`, `namespace`, `id`, optional `view` |
 | `delete_publication` | Delete an owned publication or one KV key. | `kind`, `namespace`, `id`, optional `key` and owner proof |
@@ -57,7 +57,7 @@ Claude Desktop local fallback: add to `~/Library/Application Support/Claude/clau
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@3.1.3"]
+      "args": ["-y", "brewpage-mcp@3.2.0"]
     }
   }
 }
@@ -70,7 +70,7 @@ Add to `~/.codex/config.toml`:
 ```toml
 [mcp_servers.brewpage]
 command = "npx"
-args = ["-y", "brewpage-mcp@3.1.3"]
+args = ["-y", "brewpage-mcp@3.2.0"]
 ```
 
 #### Cursor
@@ -82,7 +82,7 @@ Open **Settings > MCP** and add:
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@3.1.3"]
+      "args": ["-y", "brewpage-mcp@3.2.0"]
     }
   }
 }
@@ -96,7 +96,7 @@ Open the Cline MCP settings panel and add:
 {
   "brewpage": {
     "command": "npx",
-    "args": ["-y", "brewpage-mcp@3.1.3"]
+    "args": ["-y", "brewpage-mcp@3.2.0"]
   }
 }
 ```
