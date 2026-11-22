@@ -2428,7 +2428,9 @@ components:
           description: True once read; activity is born read
           type: boolean
         type:
-          description: 'What happened; news: BrewPage news, its body in news; domain_*: a custom domain of the profile'
+          description: >-
+            What happened; news: BrewPage news, its body in news; domain_*: a custom domain of the profile;
+            secret_opened, secret_expired, secret_deleted: a one-time secret you sent was opened, expired or deleted
           enum:
             - page_expiring
             - page_removed
@@ -2447,6 +2449,9 @@ components:
             - domain_active
             - domain_lost
             - domain_released
+            - secret_opened
+            - secret_expired
+            - secret_deleted
             - news
           type: string
         updatedAt:
@@ -2472,9 +2477,9 @@ components:
           type: string
         rel:
           description: >-
-            page: the page itself; data: its Data tab; manage: its management page; settings: notification settings;
-            domain: where a custom domain's records are shown; terms: the terms of use; action: the button of a news
-            item
+            page: the page itself; data: its Data tab; manage: its management page (a secret's page, or your secrets
+            list when one item stands for several); settings: notification settings; domain: where a custom domain's
+            records are shown; terms: the terms of use; action: the button of a news item
           enum:
             - page
             - data
@@ -2847,6 +2852,10 @@ components:
         nextCursor:
           description: Pass as `cursor` for the next page; null on the last page
           type: string
+        secretCounts:
+          description: Your one-time secrets; first page only (no `cursor`), absent when you have none
+          oneOf:
+            - $ref: '#/components/schemas/SecretCountsResponse'
         total:
           format: int64
           type: integer
@@ -3131,6 +3140,21 @@ components:
         - code
         - message
       type: object
+    SecretCountsResponse:
+      description: How many one-time secrets you have
+      properties:
+        active:
+          description: 'Still openable: views left, not expired, not deleted'
+          format: int64
+          type: integer
+        spent:
+          description: 'Ended: opened all the way, expired or deleted, kept in your list for a while'
+          format: int64
+          type: integer
+      required:
+        - active
+        - spent
+      type: object
     SecretCreateRequest:
       properties:
         ciphertext:
@@ -3147,6 +3171,25 @@ components:
           minLength: 16
           pattern: ^[A-Za-z0-9_-]{16}$
           type: string
+        keyCheck:
+          description: >-
+            base64url of the first 16 bytes of SHA-256("brewpage-secret-key-check-v1" + the 32 key bytes): the page
+            checks a key against it before spending a view.
+          maxLength: 22
+          minLength: 22
+          pattern: ^[A-Za-z0-9_-]{22}$
+          type:
+            - string
+            - 'null'
+        kind:
+          default: text
+          description: 'text: UTF-8 text; file: one file in envelope v1. Omitted: text.'
+          enum:
+            - text
+            - file
+          type:
+            - string
+            - 'null'
         maxViews:
           default: 1
           description: 'How many times it can be opened, 1 to 10. Omitted: 1.'
@@ -3156,6 +3199,25 @@ components:
           type:
             - integer
             - 'null'
+        note:
+          description: Your own note, at most 500 characters; only you see it.
+          maxLength: 500
+          type:
+            - string
+            - 'null'
+        tags:
+          description: Your tags, at most 10 of 1-32 characters; only you see them.
+          items:
+            maxLength: 32
+            minLength: 1
+            type: string
+          maxItems: 10
+          type: array
+        title:
+          description: 'Shown to the recipient before opening: never put the secret here. 1-200 characters, one line.'
+          maxLength: 200
+          minLength: 1
+          type: string
         ttl:
           default: 7d
           description: 'How long the secret stays readable: 1h, 1d, 7d or 30d. Omitted: 7d.'
@@ -3170,6 +3232,7 @@ components:
       required:
         - ciphertext
         - iv
+        - title
       type: object
     SecretCreateResponse:
       properties:
@@ -3180,14 +3243,163 @@ components:
         id:
           description: 22-character secret id. Share https://brewpage.app/secret/{id}#{key}, the key in the fragment only.
           type: string
+        kind:
+          description: text or file
+          enum:
+            - text
+            - file
+          type: string
+        manageUrl:
+          description: 'Private manage link (status, opens, delete): give it to the creator only, never to the recipient'
+          type: string
         maxViews:
           description: How many times it can be opened
           format: int32
           type: integer
+        notices:
+          description: How the request was adjusted; absent when not
+          items:
+            $ref: '#/components/schemas/PublishNotice'
+          type: array
+        ownerToken:
+          description: 'Owner token: keep it; send it as X-Owner-Token on later creates and owner routes'
+          type: string
+        ref:
+          description: 10-character owner handle of the owner routes; it can't open the secret
+          type: string
+        tags:
+          description: Your tags; absent when none
+          items:
+            type: string
+          type: array
+        title:
+          description: Title the recipient sees
+          type: string
       required:
         - expiresAt
         - id
+        - kind
+        - manageUrl
         - maxViews
+        - ownerToken
+        - ref
+        - title
+      type: object
+    SecretItem:
+      properties:
+        createdAt:
+          format: date-time
+          type: string
+        endedAt:
+          description: When it ended; absent while it can still be opened
+          format: date-time
+          type: string
+        expiresAt:
+          description: When it stops working
+          format: date-time
+          type: string
+        kind:
+          description: text or file
+          enum:
+            - text
+            - file
+          type: string
+        manageLink:
+          description: Management page of this secret (no key)
+          type: string
+        maxViews:
+          description: Views allowed at creation
+          format: int32
+          type: integer
+        note:
+          description: Owner-only note; absent when none
+          type: string
+        opens:
+          description: When each view was used, oldest first
+          items:
+            format: date-time
+            type: string
+          type: array
+        ref:
+          description: 10-character owner handle; addresses the secret on owner routes, can't open it
+          type: string
+        removeAt:
+          description: When the ended record leaves your list; absent while it can still be opened
+          format: date-time
+          type: string
+        state:
+          description: >-
+            waiting: not opened yet; opened: opened, views left; spent: last view used; expired; deleted by you; removed
+            after a report
+          enum:
+            - waiting
+            - opened
+            - spent
+            - expired
+            - deleted
+            - removed
+          type: string
+        tags:
+          description: Owner-only tags
+          items:
+            type: string
+          type: array
+        title:
+          description: Title, shown to the recipient before opening
+          type: string
+        viewsLeft:
+          description: Views still possible; 0 once ended
+          format: int32
+          type: integer
+      required:
+        - createdAt
+        - expiresAt
+        - kind
+        - manageLink
+        - maxViews
+        - opens
+        - ref
+        - state
+        - tags
+        - title
+        - viewsLeft
+      type: object
+    SecretListResponse:
+      properties:
+        items:
+          items:
+            $ref: '#/components/schemas/SecretItem'
+          type: array
+        nextCursor:
+          description: Pass as cursor for the next page; absent on the last page
+          type: string
+        total:
+          description: Secrets in this group matching the filters
+          format: int64
+          type: integer
+      required:
+        - items
+        - total
+      type: object
+    SecretPatchRequest:
+      properties:
+        note:
+          description: Owner-only note, up to 500 characters; "" clears it
+          maxLength: 500
+          type: string
+        tags:
+          description: 'Replaces the tags: up to 10, each 1-32 characters without commas; [] clears them'
+          items:
+            maxLength: 32
+            minLength: 1
+            type: string
+          maxItems: 10
+          type: array
+        title:
+          description: New title, 1-200 characters, one line; can't be cleared
+          maxLength: 200
+          minLength: 1
+          type: string
       type: object
     SecretRevealResponse:
       properties:
@@ -3197,6 +3409,9 @@ components:
         iv:
           description: base64url 12-byte nonce as created
           type: string
+        sender:
+          description: 'true when X-Owner-Token proves you created it: no view was spent; absent otherwise'
+          type: boolean
         viewsLeft:
           description: Views left after this one; 0 = this was the last, the server no longer holds the secret
           format: int32
@@ -3212,25 +3427,45 @@ components:
           description: When the secret stops being readable
           format: date-time
           type: string
+        keyCheck:
+          description: 'Key check of the creator (see SecretCreateRequest.keyCheck): compare before revealing; null when none'
+          type:
+            - string
+            - 'null'
+        kind:
+          description: text or file
+          enum:
+            - text
+            - file
+          type: string
         maxViews:
           description: Views allowed at creation
           format: int32
           type: integer
+        sender:
+          description: true when X-Owner-Token proves you created it (revealing then spends no view); absent otherwise
+          type: boolean
         state:
-          description: 'active: can be opened; burned: opened the allowed number of times; expired: past expiresAt'
+          description: 'Always active: an ended secret answers 410 SECRET_GONE'
           enum:
             - active
-            - burned
-            - expired
           type: string
+        title:
+          description: Title the creator gave it, plain text; null for an older secret without one
+          type:
+            - string
+            - 'null'
         viewsLeft:
-          description: Views still possible; 0 unless active
+          description: Views still possible
           format: int32
           type: integer
       required:
         - expiresAt
+        - keyCheck
+        - kind
         - maxViews
         - state
+        - title
         - viewsLeft
       type: object
     SetDomainRequest:
@@ -4581,7 +4816,7 @@ info:
     url: https://www.apache.org/licenses/LICENSE-2.0
   termsOfService: https://brewpage.app/terms
   title: BrewPage API
-  version: 2.79.0
+  version: 2.80.0
 openapi: 3.1.0
 paths:
   /api/domains:
@@ -8398,11 +8633,108 @@ paths:
       tags:
         - Reports
   /api/secrets:
+    get:
+      description: >-
+        Secrets of the owner token; a profile token lists the whole profile. ended=false: active ones, newest first;
+        ended=true: ended ones, newest end first. Never the secret link or its content.
+      operationId: listSecrets
+      parameters:
+        - description: 'false: active secrets; true: ended ones'
+          in: query
+          name: ended
+          required: false
+          schema:
+            default: false
+            type: boolean
+        - description: 'Search: title contains it, or a tag starts with it'
+          in: query
+          name: q
+          required: false
+          schema:
+            type: string
+        - description: Only secrets with this tag (exact, any case)
+          in: query
+          name: tag
+          required: false
+          schema:
+            type: string
+        - description: Only secrets created at or after this ISO-8601 instant
+          in: query
+          name: since
+          required: false
+          schema:
+            type: string
+        - description: Only secrets expiring within 7 days
+          in: query
+          name: expiring
+          required: false
+          schema:
+            default: false
+            type: boolean
+        - description: text or file
+          in: query
+          name: kind
+          required: false
+          schema:
+            type: string
+        - description: nextCursor of the previous page
+          in: query
+          name: cursor
+          required: false
+          schema:
+            type: string
+        - description: Page size, 1-50 (default 20)
+          in: query
+          name: limit
+          required: false
+          schema:
+            format: int32
+            type: integer
+        - description: Owner token
+          in: header
+          name: X-Owner-Token
+          required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SecretListResponse'
+          description: One page
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Invalid filter or cursor
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: OWNER_TOKEN_REVOKED or OWNER_TOKEN_EXPIRED
+        '503':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: 'SECRETS_UNAVAILABLE: temporarily off'
+      security:
+        - OwnerToken: []
+      summary: List my one-time secrets
+      tags:
+        - One-time secrets
     post:
       description: >-
-        Stores client-side encrypted text for 1 to 10 views (default 1) and 1h, 1d, 7d or 30d (default 7d). No account
-        or owner token. Share https://brewpage.app/secret/{id}#{key} with the key only in the fragment.
+        Stores client-side encrypted text or one file for 1 to 10 views (default 1) and 1h, 1d, 7d or 30d (default 7d),
+        with a title the recipient sees. Owned like a publication: send X-Owner-Token (none: a new one is returned).
+        Share https://brewpage.app/secret/{id}#{key} with the key only in the fragment; manageUrl is for the creator
+        only.
       operationId: createSecret
+      parameters:
+        - description: Reuse your owner token so the secret joins your other publications. If omitted, a new token is generated
+          in: header
+          name: X-Owner-Token
       requestBody:
         content:
           application/json:
@@ -8422,8 +8754,20 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
           description: >-
-            SECRET_CIPHERTEXT_INVALID, SECRET_IV_INVALID, SECRET_TTL_INVALID, SECRET_MAX_VIEWS_INVALID or
-            SECRET_TOO_LARGE; or a body that is not a JSON object
+            SECRET_CIPHERTEXT_INVALID, SECRET_IV_INVALID, SECRET_TTL_INVALID, SECRET_MAX_VIEWS_INVALID,
+            SECRET_KIND_INVALID or SECRET_TOO_LARGE; or a body that is not a JSON object
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: 'OWNER_TOKEN_REVOKED or OWNER_TOKEN_EXPIRED: omit X-Owner-Token to get a new one'
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: 'SECRET_LIMIT: too many live secrets for this owner (limit, used)'
         '413':
           content:
             application/json:
@@ -8446,12 +8790,232 @@ paths:
           description: 'SECRETS_UNAVAILABLE: temporarily off'
       security:
         - {}
+        - OwnerToken: []
       summary: Create a one-time secret
+      tags:
+        - One-time secrets
+  /api/secrets/owner/{ref}:
+    delete:
+      description: Removes the record; a secret that still works is deleted first, so its link stops working.
+      operationId: deleteSecret
+      parameters:
+        - description: 10-character owner handle (ref) from create or the list
+          in: path
+          name: ref
+          required: true
+          schema:
+            type: string
+        - description: Owner token
+          in: header
+          name: X-Owner-Token
+        - description: Management key
+          in: header
+          name: X-Manage-Key
+      responses:
+        '204':
+          description: Removed
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: OWNER_TOKEN_REVOKED or OWNER_TOKEN_EXPIRED
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: 'PUBLICATION_UNAVAILABLE: unknown ref or not the owner'
+        '429':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: 'Rate limited: wait Retry-After (= retryAfterSeconds)'
+        '503':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: 'SECRETS_UNAVAILABLE: temporarily off'
+      security:
+        - OwnerToken: []
+        - ManageKey: []
+      summary: Remove my one-time secret
+      tags:
+        - One-time secrets
+    get:
+      description: Status, views, open times and your title, note and tags. Never the secret link or its content.
+      operationId: getSecret
+      parameters:
+        - description: 10-character owner handle (ref) from create or the list
+          in: path
+          name: ref
+          required: true
+          schema:
+            type: string
+        - description: Owner token
+          in: header
+          name: X-Owner-Token
+        - description: Management key
+          in: header
+          name: X-Manage-Key
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SecretItem'
+          description: The secret
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: OWNER_TOKEN_REVOKED or OWNER_TOKEN_EXPIRED
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: 'PUBLICATION_UNAVAILABLE: unknown ref or not the owner'
+        '503':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: 'SECRETS_UNAVAILABLE: temporarily off'
+      security:
+        - OwnerToken: []
+        - ManageKey: []
+      summary: Read my one-time secret
+      tags:
+        - One-time secrets
+    patch:
+      description: A missing field keeps its value; "" clears the note, [] clears the tags; the title can't be cleared.
+      operationId: updateSecret
+      parameters:
+        - description: 10-character owner handle (ref) from create or the list
+          in: path
+          name: ref
+          required: true
+          schema:
+            type: string
+        - description: Owner token
+          in: header
+          name: X-Owner-Token
+        - description: Management key
+          in: header
+          name: X-Manage-Key
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SecretPatchRequest'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SecretItem'
+          description: The secret as now saved
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: TITLE_INVALID, SECRET_NOTE_INVALID or TAGS_INVALID
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: OWNER_TOKEN_REVOKED or OWNER_TOKEN_EXPIRED
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: 'PUBLICATION_UNAVAILABLE: unknown ref or not the owner'
+        '429':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: 'Rate limited: wait Retry-After (= retryAfterSeconds)'
+        '503':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: 'SECRETS_UNAVAILABLE: temporarily off'
+      security:
+        - OwnerToken: []
+        - ManageKey: []
+      summary: Edit my one-time secret's title, note or tags
+      tags:
+        - One-time secrets
+  /api/secrets/owner/{ref}/burn:
+    post:
+      description: >-
+        The link stops working at once and the encrypted content is deleted; the record stays in your ended list. An
+        ended secret answers as it is. No request body.
+      operationId: burnSecret
+      parameters:
+        - description: 10-character owner handle (ref) from create or the list
+          in: path
+          name: ref
+          required: true
+          schema:
+            type: string
+        - description: Owner token
+          in: header
+          name: X-Owner-Token
+        - description: Management key
+          in: header
+          name: X-Manage-Key
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SecretItem'
+          description: The secret, now ended
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: OWNER_TOKEN_REVOKED or OWNER_TOKEN_EXPIRED
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: 'PUBLICATION_UNAVAILABLE: unknown ref or not the owner'
+        '429':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: 'Rate limited: wait Retry-After (= retryAfterSeconds)'
+        '503':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: 'SECRETS_UNAVAILABLE: temporarily off'
+      security:
+        - OwnerToken: []
+        - ManageKey: []
+      summary: Delete my one-time secret now
       tags:
         - One-time secrets
   /api/secrets/{id}:
     get:
-      description: State, views left and expiry. Never spends a view and never returns the ciphertext.
+      description: >-
+        Title, kind, key check, views left and expiry of a live secret. Never spends a view and never returns the
+        ciphertext. With the creator's X-Owner-Token the answer adds sender: true.
       operationId: getSecretStatus
       parameters:
         - description: 22-character secret id
@@ -8460,19 +9024,30 @@ paths:
           required: true
           schema:
             type: string
+        - description: >-
+            Optional: the creator's owner token. It answers sender: true and spends no view; any other or no token reads
+            as the recipient
+          in: header
+          name: X-Owner-Token
       responses:
         '200':
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/SecretStatusResponse'
-          description: Status (also for a burned or expired secret)
+          description: Live secret
         '404':
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-          description: 'SECRET_NOT_FOUND: unknown or deleted id'
+          description: 'SECRET_NOT_FOUND: unknown id'
+        '410':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: 'SECRET_GONE: opened the allowed number of times, expired or deleted'
         '429':
           content:
             application/json:
@@ -8487,6 +9062,7 @@ paths:
           description: 'SECRETS_UNAVAILABLE: temporarily off'
       security:
         - {}
+        - OwnerToken: []
       summary: One-time secret status
       tags:
         - One-time secrets
@@ -8494,7 +9070,7 @@ paths:
     post:
       description: >-
         Spends one view and returns the ciphertext and iv to decrypt with the fragment key. The last view deletes the
-        ciphertext on the server. No request body.
+        ciphertext on the server. With the creator's X-Owner-Token no view is spent (sender: true). No request body.
       operationId: revealSecret
       parameters:
         - description: 22-character secret id
@@ -8503,6 +9079,11 @@ paths:
           required: true
           schema:
             type: string
+        - description: >-
+            Optional: the creator's owner token. It answers sender: true and spends no view; any other or no token reads
+            as the recipient
+          in: header
+          name: X-Owner-Token
       responses:
         '200':
           content:
@@ -8515,13 +9096,13 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-          description: 'SECRET_NOT_FOUND: unknown or deleted id'
+          description: 'SECRET_NOT_FOUND: unknown id'
         '410':
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-          description: 'SECRET_BURNED: already opened the allowed number of times; or SECRET_EXPIRED'
+          description: 'SECRET_GONE: opened the allowed number of times, expired or deleted'
         '429':
           content:
             application/json:
@@ -8536,6 +9117,7 @@ paths:
           description: 'SECRETS_UNAVAILABLE: temporarily off'
       security:
         - {}
+        - OwnerToken: []
       summary: Open a one-time secret
       tags:
         - One-time secrets

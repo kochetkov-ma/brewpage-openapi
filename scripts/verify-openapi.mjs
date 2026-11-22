@@ -262,7 +262,8 @@ function newsNoticeContract(spec) {
   const item = schemas.NotificationItem;
   assert.deepEqual(item.properties.type.enum, ['page_expiring', 'page_removed', 'page_taken_down', 'page_restored', 'page_link_changed',
     'page_deleted', 'page_extended', 'entries_new', 'quota_close', 'quota_reached', 'published', 'updated', 'domain_problem', 'domain_paused',
-    'domain_active', 'domain_lost', 'domain_released', 'news'], 'A notification type is one of the twelve page types, five custom-domain types or news');
+    'domain_active', 'domain_lost', 'domain_released', 'secret_opened', 'secret_expired', 'secret_deleted', 'news'],
+  'A notification type is one of the twelve page types, five custom-domain types, three secret types or news');
   assert.deepEqual([item.properties.news?.oneOf, item.required.includes('news')], [[{ $ref: '#/components/schemas/NotificationNews' }], false],
     'A notification carries the optional news body, absent for other types');
   const news = schemas.NotificationNews;
@@ -275,18 +276,35 @@ function newsNoticeContract(spec) {
     'Sign-in and Telegram link routes stay out of the contract paths');
 }
 
-/** One-time secrets: anonymous create/status/reveal of client-encrypted text; owner tags: list filter, item field, set/get routes. */
+/** One-time secrets: owned create, status/reveal with the optional owner arm, owner routes by ref; owner tags: list filter, item field, set/get routes. */
 function secretsTagsContract(spec) {
   const schemas = spec.components.schemas;
-  assert.deepEqual([taggedIds(spec, 'One-time secrets').sort(), ...['/api/secrets', '/api/secrets/{id}', '/api/secrets/{id}/reveal']
-    .map((path) => Object.values(spec.paths[path]).map((operation) => operation.security))],
-    [['createSecret', 'getSecretStatus', 'revealSecret'], [[{}]], [[{}]], [[{}]]], 'One-time secrets publishes three anonymous operations');
+  const owner = [{ OwnerToken: [] }, { ManageKey: [] }];
+  const optional = [{}, { OwnerToken: [] }];
+  const routes = [['post', '/api/secrets'], ['get', '/api/secrets'], ['get', '/api/secrets/{id}'], ['post', '/api/secrets/{id}/reveal'],
+    ['get', '/api/secrets/owner/{ref}'], ['patch', '/api/secrets/owner/{ref}'], ['post', '/api/secrets/owner/{ref}/burn'], ['delete', '/api/secrets/owner/{ref}']];
+  assert.deepEqual([taggedIds(spec, 'One-time secrets'), routes.map(([method, path]) => [spec.paths[path]?.[method]?.operationId, spec.paths[path]?.[method]?.security])],
+    [['burnSecret', 'createSecret', 'deleteSecret', 'getSecret', 'getSecretStatus', 'listSecrets', 'revealSecret', 'updateSecret'],
+      [['createSecret', optional], ['listSecrets', [{ OwnerToken: [] }]], ['getSecretStatus', optional], ['revealSecret', optional],
+        ['getSecret', owner], ['updateSecret', owner], ['burnSecret', owner], ['deleteSecret', owner]]],
+    'One-time secrets publishes create/status/reveal with an optional owner token and five owner operations by ref');
   const create = schemas.SecretCreateRequest;
   assert.deepEqual([create.required, create.properties.iv.pattern, create.properties.ttl.enum, create.properties.maxViews.minimum,
-    create.properties.maxViews.maximum, create.properties.ciphertext.maxLength],
-    [['ciphertext', 'iv'], '^[A-Za-z0-9_-]{16}$', ['1h', '1d', '7d', '30d'], 1, 10, 54000],
-    'A secret is base64url ciphertext and a 12-byte iv, ttl 1h-30d, 1-10 views');
-  assert.deepEqual(schemas.SecretCreateResponse.required, ['expiresAt', 'id', 'maxViews'], 'A created secret answers id, expiry and views; never a key');
+    create.properties.maxViews.maximum, create.properties.ciphertext.maxLength, create.properties.kind.enum, create.properties.keyCheck.pattern,
+    create.properties.title.maxLength],
+    [['ciphertext', 'iv', 'title'], '^[A-Za-z0-9_-]{16}$', ['1h', '1d', '7d', '30d'], 1, 10, 54000, ['text', 'file'], '^[A-Za-z0-9_-]{22}$', 200],
+    'A secret is base64url ciphertext and a 12-byte iv with a title, kind text or file, a 22-char key check, ttl 1h-30d, 1-10 views');
+  assert.deepEqual(schemas.SecretCreateResponse.required, ['expiresAt', 'id', 'kind', 'manageUrl', 'maxViews', 'ownerToken', 'ref', 'title'],
+    'A created secret answers id, ref, owner token and manage link; never a key');
+  for (const status of ['/api/secrets/{id}', '/api/secrets/{id}/reveal']) {
+    const operation = Object.values(spec.paths[status])[0];
+    assert.ok(operation.responses['410'].description.includes('SECRET_GONE'), `${operation.operationId}: every ended secret answers 410 SECRET_GONE`);
+  }
+  assert.deepEqual([schemas.SecretStatusResponse.properties.state.enum, schemas.SecretItem.properties.state.enum,
+    Object.keys(schemas.SecretItem.properties).filter((name) => ['id', 'ciphertext', 'iv', 'keyCheck', 'ownerToken'].includes(name)),
+    schemas.SecretCountsResponse.required, schemas.PublicationListResponse.properties.secretCounts?.oneOf],
+    [['active'], ['waiting', 'opened', 'spent', 'expired', 'deleted', 'removed'], [], ['active', 'spent'], [{ $ref: '#/components/schemas/SecretCountsResponse' }]],
+    'Status reads only live secrets; the owner item has six states and never the link id, content or key check; the owner list carries secretCounts');
   const list = spec.paths['/api/publications'].get.parameters.find((parameter) => parameter.name === 'tag');
   assert.deepEqual([list?.in, list?.schema], ['query', { type: 'string' }], 'Owner listing takes the exact tag filter');
   assert.equal(schemas.PublicationListItemResponse.properties.tags?.type, 'array', 'Owner list items carry their tags');
