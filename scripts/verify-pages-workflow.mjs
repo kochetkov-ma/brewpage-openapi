@@ -77,9 +77,11 @@ assert.deepEqual(build.needs, ['qualification', 'contract'], 'Build depends on b
 assert.equal(build.if, "!cancelled() && (github.event_name != 'workflow_run' || needs.qualification.result == 'success')", 'Ordinary events build, refused release events cannot');
 assert.deepEqual(build.steps[0].with, { ref: '${{ needs.qualification.outputs.revision || github.sha }}', 'persist-credentials': false }, 'Release build uses exact qualifying revision');
 assert.deepEqual(contract.steps[0].with, { ref: '${{ github.sha }}', 'persist-credentials': false }, 'Contract guard reads the event commit without Git credentials');
-const eligibleDeploy = "needs.qualification.result == 'success' || needs.contract.result == 'success'";
+assert.deepEqual(contract.outputs, { tag: '${{ steps.current.outputs.tag }}', deploy: '${{ steps.current.outputs.deploy }}' }, 'Contract guard emits its tag and deploy decision');
+const eligibleDeploy = "needs.qualification.result == 'success' || needs.contract.outputs.deploy == 'true'";
 assert.deepEqual(build.steps.filter(({ uses }) => uses?.startsWith('actions/upload-pages-artifact@')).map((step) => step.if),
-  [eligibleDeploy], 'Pages upload needs a qualified release or a passed contract guard');
+  [eligibleDeploy], 'Pages upload needs a qualified release or a released contract');
+assert.deepEqual(deploy.steps[0].env.CONTRACT_PATHS.split(' '), workflow.on.push.paths, 'Superseded-artifact check reads the push path filter');
 assert.deepEqual(deploy.needs, ['qualification', 'contract', 'build'], 'Pages requires a deploy decision and build');
 assert.equal(deploy.if, `!cancelled() && (${eligibleDeploy}) && needs.build.result == 'success'`, 'No Pages deployment from a refused or ordinary build');
 assert.deepEqual({ workflow: workflow.permissions, qualify: qualification.permissions, contract: contract.permissions, deploy: deploy.permissions },
@@ -139,6 +141,9 @@ case "$*" in
   "api repos/${repository}/commits/main --jq .sha")
     test "$FIXTURE_MAIN" != unavailable || exit 1
     printf '%s\\n' "$FIXTURE_MAIN";;
+  "api repos/${repository}/compare/$GITHUB_SHA...$FIXTURE_MAIN?per_page=1")
+    test "$FIXTURE_MAIN_COMPARE" != unavailable || exit 1
+    printf '%s\\n' "$FIXTURE_MAIN_COMPARE";;
   *) exit 98;;
 esac
 `, { mode: 0o700 });
@@ -243,9 +248,13 @@ exit "$FIXTURE_REMOTE_RC"
     assert.equal(result.status, expected, `${name} remote tag validation: ${result.stderr}`);
   }
 
-  // GIVEN overlapping releases; WHEN the Pages lock is acquired; THEN only the highest published stable MCP release deploys.
+  // GIVEN overlapping releases or newer main commits; WHEN the Pages lock is acquired; THEN only the current released contract deploys.
   const published = (tagName, options = {}) => ({ tag_name: tagName, draft: false, prerelease: false, published_at: '2026-11-18T00:00:00Z', ...options });
   const contractPush = { GITHUB_EVENT_NAME: 'push', FIXTURE_MAIN: sha };
+  const changed = (files, attrs = {}) => JSON.stringify({ status: 'ahead', base_commit: { sha }, merge_base_commit: { sha },
+    files: files.map((file) => (typeof file === 'string' ? { filename: file } : file)), ...attrs });
+  const superseded = (files, attrs) => ({ ...contractPush, FIXTURE_MAIN: otherSha, FIXTURE_MAIN_COMPARE: changed(files, attrs) });
+  const outside = ['mcp-server/src/index.ts', 'README.md', 'docs.md', 'docsite/x.md', 'scripts/verify-openapi.mjs', '.github/workflows/verify.yml'];
   for (const [name, candidate, pages, env, expected] of [
     ['newest qualified', 'v3.10.0', [[published('v3.9.0'), published('data-v4.0.0')], [published('v3.10.0')]], {}, 0],
     ['delayed older artifact', 'v3.9.0', [[published('v3.9.0')], [published('v3.10.0')]], {}, 1],
@@ -254,40 +263,65 @@ exit "$FIXTURE_REMOTE_RC"
     ['release ignores a newer main commit', 'v3.10.0', [[published('v3.10.0')]], { FIXTURE_MAIN: otherSha }, 0],
     ['contract push at current main', 'v3.10.0', [[published('v3.10.0')]], contractPush, 0],
     ['contract dispatch at current main', 'v3.10.0', [[published('v3.10.0')]], { ...contractPush, GITHUB_EVENT_NAME: 'workflow_dispatch' }, 0],
-    ['contract push superseded on main', 'v3.10.0', [[published('v3.10.0')]], { ...contractPush, FIXTURE_MAIN: otherSha }, 1],
+    ['newer main changes only paths outside the Docs filter', 'v3.10.0', [[published('v3.10.0')]], superseded(outside), 0],
+    ['dispatch under a newer main without Docs path changes', 'v3.10.0', [[published('v3.10.0')]],
+      { ...superseded(['mcp-server/package.json']), GITHUB_EVENT_NAME: 'workflow_dispatch' }, 0],
+    ['newer main with no changed files', 'v3.10.0', [[published('v3.10.0')]], superseded([]), 0],
+    ['newer main changes the docs site', 'v3.10.0', [[published('v3.10.0')]], superseded([...outside, 'docs/src/content/docs/mcp-server.mdx']), 1],
+    ['newer main changes the contract', 'v3.10.0', [[published('v3.10.0')]], superseded(['openapi/openapi.json']), 1],
+    ['newer main changes the Docs workflow', 'v3.10.0', [[published('v3.10.0')]], superseded(['.github/workflows/docs.yml']), 1],
+    ['newer main changes the Pages verifier', 'v3.10.0', [[published('v3.10.0')]], superseded(['scripts/verify-pages-workflow.mjs']), 1],
+    ['newer main moves a docs file out of the filter', 'v3.10.0', [[published('v3.10.0')]],
+      superseded([{ filename: 'archive/getting-started.mdx', previous_filename: 'docs/src/content/docs/getting-started.mdx' }]), 1],
+    ['newer main diverged from the artifact', 'v3.10.0', [[published('v3.10.0')]], superseded(outside, { status: 'diverged' }), 1],
+    ['newer main compared from another base', 'v3.10.0', [[published('v3.10.0')]], superseded(outside, { base_commit: { sha: otherSha } }), 1],
+    ['newer main file list may be truncated', 'v3.10.0', [[published('v3.10.0')]],
+      superseded(Array.from({ length: 300 }, (_, i) => `mcp-server/src/f${i}.ts`)), 1],
+    ['newer main comparison unavailable', 'v3.10.0', [[published('v3.10.0')]], { ...contractPush, FIXTURE_MAIN: otherSha, FIXTURE_MAIN_COMPARE: 'unavailable' }, 1],
     ['contract push with unreadable main', 'v3.10.0', [[published('v3.10.0')]], { ...contractPush, FIXTURE_MAIN: 'unavailable' }, 1],
     ['contract push after a newer release', 'v3.9.0', [[published('v3.9.0'), published('v3.10.0')]], contractPush, 1],
   ]) {
-    const result = run(deploy.steps[0].run, { GITHUB_EVENT_NAME: 'workflow_run', RELEASE_TAG: candidate,
+    const result = run(deploy.steps[0].run, { GITHUB_EVENT_NAME: 'workflow_run', RELEASE_TAG: candidate, CONTRACT_PATHS: deploy.steps[0].env.CONTRACT_PATHS,
       FIXTURE_RELEASES: pages.map((page) => JSON.stringify(page)).join('\n'), ...env });
     assert.equal(result.status, expected, `${name} Pages deploy decision: ${result.stderr}`);
   }
 
-  // GIVEN a contract push or dispatch on main; WHEN the guard runs; THEN package, release and docs pins name one version.
-  const docsTree = (pins, changelogPin) => {
+  // GIVEN a contract push or dispatch on main; WHEN the guard runs; THEN released versions deploy, the next version waits green, drift fails.
+  const docsTree = (pkg, pins = [pkg, pkg], changelogPin = '1.19.1') => {
     const root = mkdtempSync(join(work, 'contract-'));
     mkdirSync(join(root, 'mcp-server'));
     mkdirSync(join(root, 'docs/src/content/docs'), { recursive: true });
-    writeFileSync(join(root, 'mcp-server/package.json'), JSON.stringify({ name: 'brewpage-mcp', version }));
+    writeFileSync(join(root, 'mcp-server/package.json'), JSON.stringify({ name: 'brewpage-mcp', version: pkg }));
     writeFileSync(join(root, 'docs/src/content/docs/mcp-server.mdx'), pins.map((pin) => `npx -y brewpage-mcp@${pin}\n`).join(''));
     writeFileSync(join(root, 'docs/src/content/docs/changelog.mdx'), `npx -y brewpage-mcp@${changelogPin}\n`);
     return root;
   };
   const repoRoot = new URL('..', import.meta.url);
   const current = [[published(tag)]];
-  for (const [name, cwd, pages, expected] of [
-    ['repository tree at its released version', repoRoot, current, 0],
-    ['historical changelog pin ignored', docsTree([version, version], '1.19.1'), current, 0],
-    ['stale docs pin', docsTree([version, '1.19.1'], version), current, 1],
-    ['floating docs pin', docsTree([version, 'latest'], version), current, 1],
-    ['no docs pin', docsTree([], version), current, 1],
-    ['package ahead of the published release', docsTree([version], version), [[published('v0.0.1')]], 1],
-    ['package behind a newer release', docsTree([version], version), [[published(tag), published('v999.0.0')]], 1],
-    ['no published release', docsTree([version], version), [[published(tag, { draft: true })]], 1],
+  const latest = (...tags) => [tags.map((name) => published(name))];
+  const deploys = (name) => `tag=${name}\ndeploy=true\n`;
+  const waits = 'deploy=false\n';
+  for (const [name, cwd, pages, expected, decision] of [
+    ['repository tree at its released version', repoRoot, current, 0, deploys(tag)],
+    ['released version with a historical changelog pin', docsTree('3.10.0'), latest('v3.9.0', 'v3.10.0'), 0, deploys('v3.10.0')],
+    ['release prep: next patch', docsTree('3.10.1'), latest('v3.9.9', 'v3.10.0'), 0, waits],
+    ['release prep: next minor', docsTree('3.11.0'), latest('v3.10.4'), 0, waits],
+    ['release prep: next major', docsTree('4.0.0'), latest('v3.10.4'), 0, waits],
+    ['release prep with a stale docs pin', docsTree('3.11.0', ['3.11.0', '3.10.4']), latest('v3.10.4'), 1, ''],
+    ['stale docs pin', docsTree('3.10.0', ['3.10.0', '1.19.1']), latest('v3.10.0'), 1, ''],
+    ['floating docs pin', docsTree('3.10.0', ['3.10.0', 'latest']), latest('v3.10.0'), 1, ''],
+    ['no docs pin', docsTree('3.10.0', []), latest('v3.10.0'), 1, ''],
+    ['two patches ahead', docsTree('3.10.2'), latest('v3.10.0'), 1, ''],
+    ['minor skipped', docsTree('3.12.0'), latest('v3.10.4'), 1, ''],
+    ['next minor with a patch', docsTree('3.11.1'), latest('v3.10.4'), 1, ''],
+    ['next major with a patch', docsTree('4.0.1'), latest('v3.10.4'), 1, ''],
+    ['package behind a newer release', docsTree('3.9.0'), latest('v3.9.0', 'v3.10.0'), 1, ''],
+    ['leading-zero package version', docsTree('3.010.0'), latest('v3.9.0'), 1, ''],
+    ['no published release', docsTree('3.10.0'), [[published('v3.10.0', { draft: true })]], 1, ''],
   ]) {
     const result = run(contractScript, { FIXTURE_RELEASES: pages.map((page) => JSON.stringify(page)).join('\n') }, cwd);
     assert.equal(result.status, expected, `${name} contract guard exit: ${result.stderr}`);
-    assert.equal(readFileSync(output, 'utf8'), expected === 0 ? `tag=${tag}\n` : '', `${name} contract guard tag`);
+    assert.equal(readFileSync(output, 'utf8'), decision, `${name} contract guard decision`);
   }
 
   // GIVEN official registry responses; WHEN publishing or retrying; THEN the exact active descriptor must be served.
@@ -444,5 +478,5 @@ esac
 } finally {
   rmSync(work, { force: true, recursive: true });
 }
-console.log('Pages release qualification passed: 10 event, 33 Actions API, 10 deployment ordering and 8 contract guard cases');
+console.log('Pages release qualification passed: 10 event, 33 Actions API, 21 deployment ordering and 16 contract guard cases');
 console.log('MCP release gates passed: 6 remote ref, 5 registry, 5 image, 26 hosted receipt and 14 GitHub Release cases');

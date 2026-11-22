@@ -98,6 +98,7 @@ jobs:
     timeout-minutes: 5
     outputs:
       tag: ${{ steps.current.outputs.tag }}
+      deploy: ${{ steps.current.outputs.deploy }}
     steps:
       - uses: actions/checkout@v7.0.1
         with:
@@ -111,23 +112,36 @@ jobs:
         run: |
           set -euo pipefail
           VERSION=$(jq -er '.version' mcp-server/package.json)
-          [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || exit 1
+          [[ "$VERSION" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]] || exit 1
           RELEASE_TAG="v$VERSION"
-          LATEST=$(gh api --paginate "repos/$GITHUB_REPOSITORY/releases?per_page=100" |
-            jq -r '.[] | select(.draft == false and .prerelease == false and .published_at != null)
-              | .tag_name | select(test("^v[0-9]+\\.[0-9]+\\.[0-9]+$"))' |
-            sort -V | tail -n 1)
-          if [[ -z "$LATEST" || "$RELEASE_TAG" != "$LATEST" ]]; then
-            echo "::error::mcp-server $RELEASE_TAG is not the highest published stable MCP release ${LATEST:-none}"
-            exit 1
-          fi
-          # Changelog entries keep historical pins; every other docs pin must be the released version.
+          # Changelog entries keep historical pins; every other docs pin must be the package version.
           PINS=$(grep -rhoE --exclude=changelog.mdx 'brewpage-mcp@[0-9A-Za-z.+-]*' docs/src | sort -u)
           if [[ "$PINS" != "brewpage-mcp@$VERSION" ]]; then
             echo "::error::docs/src pins must all be brewpage-mcp@$VERSION"
             exit 1
           fi
-          echo "tag=$RELEASE_TAG" >> "$GITHUB_OUTPUT"
+          LATEST=$(gh api --paginate "repos/$GITHUB_REPOSITORY/releases?per_page=100" |
+            jq -r '.[] | select(.draft == false and .prerelease == false and .published_at != null)
+              | .tag_name | select(test("^v[0-9]+\\.[0-9]+\\.[0-9]+$"))' |
+            sort -V | tail -n 1)
+          if [[ -z "$LATEST" ]]; then
+            echo '::error::No published stable MCP release'
+            exit 1
+          fi
+          if [[ "$RELEASE_TAG" == "$LATEST" ]]; then
+            echo "tag=$RELEASE_TAG" >> "$GITHUB_OUTPUT"
+            echo 'deploy=true' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          IFS=. read -r MAJOR MINOR PATCH <<< "${LATEST#v}"
+          case "$RELEASE_TAG" in
+            "v$MAJOR.$MINOR.$((PATCH + 1))" | "v$MAJOR.$((MINOR + 1)).0" | "v$((MAJOR + 1)).0.0")
+              echo "::notice::mcp-server $RELEASE_TAG awaits its release after $LATEST; the release run publishes Pages"
+              echo 'deploy=false' >> "$GITHUB_OUTPUT";;
+            *)
+              echo "::error::mcp-server $RELEASE_TAG is neither the published $LATEST nor its next version"
+              exit 1;;
+          esac
 
   build:
     needs: [qualification, contract]
@@ -167,14 +181,14 @@ jobs:
         run: npm run build
 
       - name: Upload artifact
-        if: needs.qualification.result == 'success' || needs.contract.result == 'success'
+        if: needs.qualification.result == 'success' || needs.contract.outputs.deploy == 'true'
         uses: actions/upload-pages-artifact@v5.0.0
         with:
           path: docs/dist
 
   deploy:
     needs: [qualification, contract, build]
-    if: "!cancelled() && (needs.qualification.result == 'success' || needs.contract.result == 'success') && needs.build.result == 'success'"
+    if: "!cancelled() && (needs.qualification.result == 'success' || needs.contract.outputs.deploy == 'true') && needs.build.result == 'success'"
     permissions:
       contents: read
       pages: write
@@ -192,12 +206,22 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ needs.qualification.outputs.tag || needs.contract.outputs.tag }}
+          CONTRACT_PATHS: docs/** openapi/** .github/workflows/docs.yml .github/workflows/release.yml scripts/verify-pages-workflow.mjs
         run: |
           set -euo pipefail
           if [[ "$GITHUB_EVENT_NAME" != workflow_run ]]; then
             MAIN=$(gh api "repos/$GITHUB_REPOSITORY/commits/main" --jq .sha)
-            if [[ "$GITHUB_SHA" != "$MAIN" ]]; then
-              echo '::error::Pages from a contract push requires the current main commit'
+            [[ "$MAIN" =~ ^[0-9a-f]{40}$ ]] || exit 1
+            # A newer main may keep this artifact only if it changes no Docs push path (that would start its own run).
+            if [[ "$GITHUB_SHA" != "$MAIN" ]] && ! gh api "repos/$GITHUB_REPOSITORY/compare/$GITHUB_SHA...$MAIN?per_page=1" |
+              jq -e --arg base "$GITHUB_SHA" --arg paths "$CONTRACT_PATHS" '
+                ($paths | split(" ")) as $globs
+                | .status == "ahead" and .base_commit.sha == $base and .merge_base_commit.sha == $base
+                  and (.files | length) < 300
+                  and ([.files[] | .filename, (.previous_filename // empty)] | all(. as $file | $globs
+                    | all(. as $glob | if ($glob | endswith("/**")) then ($file | startswith($glob[:-2]) | not) else $file != $glob end)))
+              ' >/dev/null; then
+              echo '::error::Pages from a contract push requires main to add no Docs path change after it'
               exit 1
             fi
           fi
