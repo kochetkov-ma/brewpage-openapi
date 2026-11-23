@@ -177,7 +177,7 @@ function publicContract(spec) {
     'Visitor host API and host state routes stay out of the contract paths');
   const notifications = operations(spec).filter((operation) => operation.tags?.includes('Notifications'));
   assert.deepEqual(notifications.map((operation) => operation.operationId).sort(), NOTIFICATION_OPERATIONS,
-    'Notifications publishes its seven profile operations');
+    'Notifications publishes its eight profile operations');
   for (const operation of notifications) {
     assert.match(operation.path, /^\/api\/profile\/notifications(?:\/|$)/, `${operation.operationId} is a profile notifications route`);
     assert.deepEqual(operation.security, [{ OwnerToken: [] }], `${operation.operationId} requires the owner token`);
@@ -336,8 +336,8 @@ function hostContract(spec) {
 }
 
 const HOST_DOCUMENT_URL = 'https://kochetkov-ma.github.io/brewpage-openapi/page-data-host.json';
-const NOTIFICATION_OPERATIONS = ['countUnreadNotifications', 'getNotificationPageSwitch', 'getNotificationSettings', 'listNotifications',
-  'markNotificationsRead', 'setNotificationPageSwitch', 'updateNotificationSettings'];
+const NOTIFICATION_OPERATIONS = ['countUnreadNotifications', 'deleteNotification', 'getNotificationPageSwitch', 'getNotificationSettings',
+  'listNotifications', 'markNotificationsRead', 'setNotificationPageSwitch', 'updateNotificationSettings'];
 const HOST_ROUTES = [
   `DELETE ${HOST_BASE}/{col}/_files/{id}`, `DELETE ${HOST_BASE}/{col}/_id/{id}`, `DELETE ${HOST_BASE}/{col}/{key}`,
   `GET ${HOST_BASE}`, `GET ${HOST_BASE}/{col}`, `GET ${HOST_BASE}/{col}/_files/{id}`, `GET ${HOST_BASE}/{col}/_stats`,

@@ -2395,7 +2395,7 @@ components:
             - string
             - 'null'
         id:
-          description: Notification id; mark read takes it
+          description: Notification id; mark read and delete take it
           format: int64
           type: integer
         kind:
@@ -4816,7 +4816,7 @@ info:
     url: https://www.apache.org/licenses/LICENSE-2.0
   termsOfService: https://brewpage.app/terms
   title: BrewPage API
-  version: 2.80.0
+  version: 2.80.4
 openapi: 3.1.0
 paths:
   /api/domains:
@@ -7827,6 +7827,62 @@ paths:
       security:
         - OwnerToken: []
       summary: Count unread notifications
+      tags:
+        - Notifications
+  /api/profile/notifications/{id}:
+    delete:
+      description: >-
+        Removes one notice from the profile's list; it is shown again when something new happens on the same item.
+        Activity stays. Answers the unread count, also when nothing was deleted.
+      operationId: deleteNotification
+      parameters:
+        - description: Notification id from the list
+          in: path
+          name: id
+          required: true
+          schema:
+            format: int64
+            type: integer
+        - description: Owner token added to exactly one BrewPage profile
+          in: header
+          name: X-Owner-Token
+          required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationUnreadResponse'
+          description: Unread count after the change
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: id is not a number
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: >-
+            PROFILE_TOKEN_REQUIRED: no token, or a token not added to exactly one profile; or the token is revoked or
+            expired
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Profiles are not available
+        '429':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: 'Rate limited: wait Retry-After (= retryAfterSeconds)'
+      security:
+        - OwnerToken: []
+      summary: Delete a notification
       tags:
         - Notifications
   /api/publications:
@@ -12156,7 +12212,7 @@ tags:
   - description: >-
       Your profile's notifications: notices (pages expiring, removed or full, new entries, BrewPage news) and activity
       (pages published or updated). Send X-Owner-Token with a token added to exactly one BrewPage profile; any such
-      token reads, marks read and switches a page, changing the settings needs an admin token.
+      token reads, marks read, deletes and switches a page, changing the settings needs an admin token.
     name: Notifications
   - description: Abuse reports for hosted content
     name: Reports

@@ -6,6 +6,10 @@ order: 5
 
 # Changelog
 
+## API contract 2.80.4 — delete a notification
+
+New `DELETE /api/profile/notifications/{id}` (`deleteNotification`, a profile's owner token) removes one notice from the profile's list and answers the unread count, also when nothing was deleted. The notice is shown again when something new happens on the same item; activity stays. 82 paths and 111 operations.
+
 ## MCP 3.3.1 — the account link works as an address
 
 `read_publication`, `publication_settings`, `delete_publication`, `update_publication` and the Page data tools accept, as `manageUrl`, the account management link a signed receipt returns (`accountManagementUrl`: `https://account.brewpage.app/p/<html|sites|files|json|kv>/<namespace>/<id>` or `/p/secrets/<ref>`). On a connected account it acts like the same call by kind and id; without one it is refused with the next step. Tool names, arguments and the 13-tool catalog are unchanged.

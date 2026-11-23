@@ -176,7 +176,7 @@ Both imports run in one step and neither output is hand-edited: `node scripts/sy
 | **Page data** | What visitors save on a page (form answers, guestbook, votes): read, write author entries, change settings, delete |
 | **Templates** | Find an official template for a request: its source, what it saves and how to publish a copy |
 | **Publications** | List your publications (filter by tag), their stats and your private tags |
-| **Notifications** | Your profile's notices: list, mark read, settings, a page's new-entry switch |
+| **Notifications** | Your profile's notices: list, mark read, delete, settings, a page's new-entry switch |
 | **One-time secrets** | A password or key behind a link that stops working after the allowed views; encrypted in the client |
 
 ## MCP Server

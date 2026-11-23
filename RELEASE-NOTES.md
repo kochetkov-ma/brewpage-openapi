@@ -1,5 +1,11 @@
 # Release Notes
 
+## API contract 2.80.4 — 2026-11-23
+
+- Synced from the integration-tested contract of brewpage-app release v2.80.4 (source `8e206ea27ab5196933d655e5b51f9593d4734165`, the tag), clean tree. 82 paths and 111 operations (was 81 and 110).
+- Delete a notification: `DELETE /api/profile/notifications/{id}` (`deleteNotification`, owner token of a profile) removes one notice from the profile's list and answers the unread count, also when nothing was deleted. The notice is shown again when something new happens on the same item; activity stays.
+- The Page data host document changes only its version. MCP 3.3.1 is unchanged.
+
 ## MCP 3.3.1 — The account link works as an address
 
 - Read, delete and settings now accept the account management link the tool returns when BrewPage is connected (`https://account.brewpage.app/p/...`), for secrets and for pages, sites and files alike. It acts like the same call by kind and id.
