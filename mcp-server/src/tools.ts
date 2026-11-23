@@ -6,6 +6,7 @@ import { RETIRED_ARGUMENT, RETIRED_TOOLS, retiredNote } from "./compat.js";
 import { connectionRequired, toolAuthority, type Bridge } from "./compact/auth.js";
 import { bridgeOutcomeUnknown, COMPACT_TOOL_NAMES, isClientAbort, isTimeout, type CompactContext, type CompactToolName, type Scope, type Target, type ToolAnswer, type ToolShape, type ToolSpec } from "./compact/context.js";
 import { registerAccountGuides } from "./compact/account-guides.js";
+import { ACCOUNT_LINK_NEEDS_ACCOUNT, DEFAULT_ACCOUNT_ORIGIN, fromAccountLink } from "./compact/account-url.js";
 import { legacyAccountScopes, signedLegacyCall, type CompactDispatch } from "./compact/legacy-account.js";
 import { registerPageData } from "./compact/page-data.js";
 import { registerPublications } from "./compact/publications.js";
@@ -16,7 +17,7 @@ import { withGuideReference } from "./guides/reference.js";
 import { TEMPLATES_GUIDE } from "./guides/templates.js";
 
 export const DEFAULT_BASE_URL = "https://brewpage.app";
-export const DEFAULT_ACCOUNT_ORIGIN = "https://account.brewpage.app";
+export { DEFAULT_ACCOUNT_ORIGIN };
 const VERSION = (JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8")) as { version: string }).version;
 export const USER_AGENT = `brewpage-mcp/${VERSION}`;
 export const OWNER_TOKEN_ENV = "BREWPAGE_OWNER_TOKEN";
@@ -176,7 +177,7 @@ const MANAGE_KEY_SHAPE = /^bpm_[A-Za-z0-9]{32}$/;
 const NO_PAGE_ADDRESS: Refusal = { why: "the call names no page.",
   next: "pass manageUrl (the page's management link), or namespace and id with ownerToken." };
 const NOT_A_MANAGE_LINK: Refusal = { why: "manageUrl is not a management link.",
-  next: "pass the whole link, https://brewpage.app/manage/html/<namespace>/<id>#k=bpm_...: the part after # is required; a page link cannot stand in for it." };
+  next: "pass the whole private management link from the receipt, https://brewpage.app/manage/<html|sites|files|json|kv>/<namespace>/<id>#k=bpm_... (a secret's: /manage/secrets/<ref>#k=bpm_...): the part after # is required; a page or secret link cannot stand in for it." };
 const MANAGE_LINK_OTHER_KIND: Refusal = { why: "this management link is for another kind of publication.",
   next: "Page data exists only on HTML pages and sites: pass the management link of the page or site." };
 const MANAGE_LINK_MISMATCH: Refusal = { why: "manageUrl is for another publication than namespace and id.", next: "send manageUrl alone." };
@@ -938,8 +939,13 @@ export function createServer(options: ServerOptions = {}): McpServer {
     const scopes = oauthScopes ?? toolAuthority(name, {}).scopes;
     const meta = { securitySchemes: [{ type: "noauth" }, { type: "oauth2", scopes }] };
     compactCatalog.set(name, descriptor(name, listing, schema, meta));
-    const run = async (args: Record<string, unknown>, cachedCall = false): Promise<ToolAnswer> => {
-      const selection = toolAuthority(name, args);
+    const run = async (sent: Record<string, unknown>, cachedCall = false): Promise<ToolAnswer> => {
+      // A signed receipt's account link names the target; the signed account, never a key, is its proof.
+      const linked = fromAccountLink(name, sent, accountOrigin);
+      if (linked && "refusal" in linked) return refused(name, linked.refusal);
+      if (linked && authority !== "account") return refused(name, ACCOUNT_LINK_NEEDS_ACCOUNT);
+      const args = linked ? linked.args : sent;
+      const selection = toolAuthority(name, args, accountOrigin);
       if (selection.accountOnly && authority !== "account") {
         if (args.ownerToken !== undefined || args.manageUrl !== undefined) {
           return refused(name, { why: "an explicit owner proof was sent with requireAccount.", next: "Choose one identity for this action." });

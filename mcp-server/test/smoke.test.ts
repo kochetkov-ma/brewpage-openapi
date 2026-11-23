@@ -1827,7 +1827,8 @@ for (const scenario of [
 /** Refusals before HTTP: the end of the failure's first line, then its `Next:` line. */
 const NO_PAGE_ADDRESS = "the call names no page.\nNext: pass manageUrl (the page's management link), or namespace and id with ownerToken.";
 const NOT_A_MANAGE_LINK = "manageUrl is not a management link.\n" +
-  "Next: pass the whole link, https://brewpage.app/manage/html/<namespace>/<id>#k=bpm_...: the part after # is required; a page link cannot stand in for it.";
+  "Next: pass the whole private management link from the receipt, https://brewpage.app/manage/<html|sites|files|json|kv>/<namespace>/<id>#k=bpm_... " +
+  "(a secret's: /manage/secrets/<ref>#k=bpm_...): the part after # is required; a page or secret link cannot stand in for it.";
 const MANAGE_LINK_MISMATCH = "manageUrl is for another publication than namespace and id.\nNext: send manageUrl alone.";
 const WITH_ENV_TOKEN = { BREWPAGE_OWNER_TOKEN: ENV_TOKEN };
 const PAGE_DATA_OPERATIONS: Record<string, string> = { get_page_data: "read page data", set_page_data: "write page data",

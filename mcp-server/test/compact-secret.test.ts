@@ -14,6 +14,7 @@ const secretId = "AbCdEfGhIjKlMnOpQrStU_";
 const ref = "Rf3kQ9xLm2";
 const manageKey = `bpm_${"a1B2".repeat(8)}`;
 const manageUrl = `${origin}/manage/secrets/${ref}#k=${manageKey}`;
+const accountLink = `${account}/p/secrets/${ref}`;
 // Shared with the app (frontend/test/fixtures/secret-vectors.json), copied by scripts/sync-secret-files.mjs.
 const VECTORS = JSON.parse(readFileSync(new URL("./fixtures/secret-vectors.json", import.meta.url), "utf8")) as {
   keyCheckLabel: string; keyChecks: Array<{ key: string; keyCheck: string }>;
@@ -169,6 +170,16 @@ test("GIVEN a secret target WHEN the owner tools run unsigned or on an account T
     { name: "account settings", tool: "publication_settings", args: { ...target, title: "Home Wi-Fi" }, authority: "account", body: item,
       want: ["publication_settings", { ...target, title: "Home Wi-Fi" }], text: /"ref":"Rf3kQ9xLm2"/ },
     { name: "account delete", tool: "delete_publication", args: target, authority: "account", status: 204, want: ["delete_publication", target], text: /^Deleted secret/ },
+    { name: "account read by account link", tool: "read_publication", args: { manageUrl: accountLink }, authority: "account", body: item,
+      want: ["read_publication", target], text: /"ref":"Rf3kQ9xLm2"/ },
+    { name: "account settings by account link", tool: "publication_settings", args: { manageUrl: accountLink, note: "n" }, authority: "account", body: item,
+      want: ["publication_settings", { ...target, note: "n" }], text: /"ref":"Rf3kQ9xLm2"/ },
+    { name: "account delete by account link", tool: "delete_publication", args: { manageUrl: accountLink }, authority: "account", status: 204,
+      want: ["delete_publication", target], text: /^Deleted secret Rf3kQ9xLm2/ },
+    { name: "account delete by html account link", tool: "delete_publication", args: { manageUrl: `${account}/p/html/priv-ab12cd/DEMO123456` },
+      authority: "account", status: 204, want: ["delete_publication", { kind: "html", namespace: "priv-ab12cd", id: "DEMO123456" }], text: /^Deleted html priv-ab12cd\/DEMO123456/ },
+    { name: "account settings view by site account link", tool: "read_publication", args: { manageUrl: `${account}/p/sites/public/DEMO123456`, view: "settings" },
+      authority: "account", body: { listed: true }, want: ["read_publication", { kind: "site", namespace: "public", id: "DEMO123456", view: "settings" }], text: /"listed":true/ },
     { name: "account list", tool: "list_publications", args: { kind: "secret", ended: false }, authority: "account",
       body: { items: [], total: 0, secretCounts: { active: 1, spent: 0 }, secrets: { items: [item], total: 1 } },
       want: ["list_publications", { scope: "mine", kind: "secret", ended: false }], text: /"secretCounts":\{"active":1,"spent":0\},"secrets"/ },
@@ -203,6 +214,11 @@ test("GIVEN a secret target with a field it lacks WHEN an owner tool runs THEN i
     { tool: "update_publication", args: { ...target, content: "<p>x</p>" }, text: /A secret's content can't be replaced/ },
     { tool: "list_publications", args: { kind: "secret", status: "private", ownerToken: "tok-1" }, text: /`ended` is for secrets and `status` for publications/ },
     { tool: "delete_publication", args: { manageUrl, ownerToken: "tok-1" }, text: /manage link was mixed with another target or owner token/ },
+    { tool: "delete_publication", args: { manageUrl: accountLink }, text: /account management link: it carries no key[^\n]*\nNext: connect BrewPage in this client/ },
+    { tool: "read_publication", args: { manageUrl: `${account}/p/html/priv-ab12cd/DEMO123456` }, text: /works only while this client is signed in/ },
+    { tool: "delete_publication", args: { manageUrl: accountLink, ownerToken: "tok-1" }, text: /account link was mixed with another target or owner token/ },
+    { tool: "read_page_data", args: { manageUrl: `${account}/p/kv/priv-ab12cd/DEMO123456` }, text: /account link is for another kind of publication/ },
+    { tool: "account", args: { action: "claim", manageUrl: accountLink }, text: /does not take an account management link/ },
   ];
   for (const row of rows) await t.test(`${row.tool} ${Object.keys(row.args).join(",")}`, async () => {
     let calls = 0;
@@ -218,6 +234,28 @@ test("GIVEN secret calls on the HTTP connection WHEN scopes are selected THEN ea
   assert.deepEqual(rows.map(([name, args]) => toolAuthority(name, args).scopes),
     [["publications:write"], ["publications:read"], ["publications:write"], ["publications:write"], ["publications:read"]],
     "Secret create, settings and delete write; read and list read; none falls back to an anonymous call");
+});
+
+test("GIVEN a manageUrl WHEN the HTTP connection selects the proof THEN an account link uses the account and a keyed link stays an explicit proof", () => {
+  const html = `${account}/p/html/public/DEMO123456`;
+  const rows: Array<[string, string, Record<string, unknown>]> = [
+    ["secret account link read", "read_publication", { manageUrl: accountLink }],
+    ["secret account link delete", "delete_publication", { manageUrl: accountLink }],
+    ["public html account link read", "read_publication", { manageUrl: html }],
+    ["html account link settings", "publication_settings", { manageUrl: html, listed: false }],
+    ["html account link page data", "read_page_data", { manageUrl: html }],
+    ["keyed secret manage link", "delete_publication", { manageUrl }],
+    ["account link on another account origin", "delete_publication", { manageUrl: accountLink.replace("account.", "other.") }],
+  ];
+  assert.deepEqual(rows.map(([label, name, args]) => [label, toolAuthority(name, args)]), [
+    ["secret account link read", { accountOnly: false, explicitProof: false, scopes: ["publications:read"] }],
+    ["secret account link delete", { accountOnly: false, explicitProof: false, scopes: ["publications:write"] }],
+    ["public html account link read", { accountOnly: false, explicitProof: false, scopes: ["publications:read"] }],
+    ["html account link settings", { accountOnly: false, explicitProof: false, scopes: ["publications:write"] }],
+    ["html account link page data", { accountOnly: false, explicitProof: false, scopes: ["page-data:read"] }],
+    ["keyed secret manage link", { accountOnly: false, explicitProof: true, scopes: ["publications:write"] }],
+    ["account link on another account origin", { accountOnly: false, explicitProof: true, scopes: ["publications:write"] }],
+  ], "Only an exact account link of this origin is signed; its scopes match the same call by kind and id");
 });
 
 test("GIVEN an account and a tag WHEN list_publications runs THEN the bridge gets the tag and the gallery refuses it", async () => {

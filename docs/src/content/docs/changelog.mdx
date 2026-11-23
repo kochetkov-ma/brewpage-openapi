@@ -6,6 +6,10 @@ order: 5
 
 # Changelog
 
+## MCP 3.3.1 — the account link works as an address
+
+`read_publication`, `publication_settings`, `delete_publication`, `update_publication` and the Page data tools accept, as `manageUrl`, the account management link a signed receipt returns (`accountManagementUrl`: `https://account.brewpage.app/p/<html|sites|files|json|kv>/<namespace>/<id>` or `/p/secrets/<ref>`). On a connected account it acts like the same call by kind and id; without one it is refused with the next step. Tool names, arguments and the 13-tool catalog are unchanged.
+
 ## MCP 3.3.0 — secrets you own
 
 `publish` with `kind:"secret"` needs a `title` the recipient sees before opening, takes an owner-only `note` and `tags`, and with `filename` sends the text as a key, certificate, config or text file. The secret belongs to you: the result gives its owner token and private manage link, or the account page when BrewPage is connected. `list_publications` shows your secrets and their counts, `read_publication` their state and open times, `publication_settings` edits title, note and tags, and `delete_publication` stops a link at once. `notifications` names the secret types. 13 tools, unchanged.

@@ -2,7 +2,7 @@
   "mcpServers": {
     "brewpage": {
       "command": "npx",
-      "args": ["-y", "brewpage-mcp@3.3.0"]
+      "args": ["-y", "brewpage-mcp@3.3.1"]
     }
   }
 }

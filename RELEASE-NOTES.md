@@ -1,5 +1,12 @@
 # Release Notes
 
+## MCP 3.3.1 — The account link works as an address
+
+- Read, delete and settings now accept the account management link the tool returns when BrewPage is connected (`https://account.brewpage.app/p/...`), for secrets and for pages, sites and files alike. It acts like the same call by kind and id.
+- Without a connected account, such a link is refused with what to do: connect BrewPage in the client, or use the private manage link or owner token.
+- A link that is neither now gets a clearer hint that shows the private manage link shape for every kind, secrets included.
+- Local installations can pin `brewpage-mcp@3.3.1`. The remote endpoint is `https://brewpage.app/mcp`. Tool names and arguments are unchanged.
+
 ## MCP 3.3.0 — Secrets you own
 
 - A one-time secret now needs a short title: the recipient sees it before opening, so never put the secret in it. Add your own note and tags if you like; only you see them.

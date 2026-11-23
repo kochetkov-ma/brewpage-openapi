@@ -607,7 +607,7 @@ async function main(): Promise<void> {
       const authorization = req.headersDistinct.authorization;
       const bearer = authorization?.length === 1 ? /^Bearer ([A-Za-z0-9._~+/\-]+={0,2})$/i.exec(authorization[0])?.[1] : undefined;
       const bridge = createBridge(config.backendUrl, config.bridgeSecret, bearer, callBridge);
-      const selected = toolAuthority(typeof toolName === "string" ? toolName : undefined, toolArgs);
+      const selected = toolAuthority(typeof toolName === "string" ? toolName : undefined, toolArgs, config.accountOrigin);
       const challenge = (error: AuthChallenge) => refuseCall(error.status, error.description, error);
       if (authorization && !bearer) return challenge(invalidToken);
       let account = false;

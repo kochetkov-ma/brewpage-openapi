@@ -1,5 +1,6 @@
 import { COMPACT_TOOL_NAMES, isClientAbort, type ApiAnswer, type BridgeInputs, type BridgeOperation, type BridgeOptions, type Scope } from "./context.js";
 import { legacyAccountScopes } from "./legacy-account.js";
+import { DEFAULT_ACCOUNT_ORIGIN, fromAccountLink } from "./account-url.js";
 
 export const RESOURCE_METADATA_PATH = "/.well-known/oauth-protected-resource/mcp";
 const BRIDGE_PATH = "/internal/mcp/v1";
@@ -183,7 +184,10 @@ interface ToolAuthority {
   scopes: readonly Scope[];
 }
 
-export function toolAuthority(name: string | undefined, args: Record<string, unknown>): ToolAuthority {
+export function toolAuthority(name: string | undefined, sent: Record<string, unknown>, accountOrigin = DEFAULT_ACCOUNT_ORIGIN): ToolAuthority {
+  // An account link carries no key: the signed account is its proof, scoped like the same call by kind and id.
+  const linked = name === undefined ? undefined : fromAccountLink(name, sent, accountOrigin);
+  const args = linked && "args" in linked ? linked.args : sent;
   const explicitProof = Object.hasOwn(args, "ownerToken") || Object.hasOwn(args, "manageUrl");
   const accountOnly = (name === "publish" || (name === "account" && (args.action === undefined || args.action === "status")))
     && args.requireAccount === true;
@@ -197,7 +201,7 @@ export function toolAuthority(name: string | undefined, args: Record<string, unk
       return selected(args.scope === "gallery" ? [] : ["publications:read"]);
     case "read_publication":
       return selected(args.view === "source" || args.view === "settings" || args.view === "stats"
-        || (typeof args.namespace === "string" && args.namespace !== "public") || args.kind === "secret"
+        || (typeof args.namespace === "string" && args.namespace !== "public") || args.kind === "secret" || linked !== undefined
         || (args.kind === "site" && args.path === undefined) ? ["publications:read"] : []);
     case "publication_settings": {
       const changes = Object.keys(args).some((key) => SETTINGS_FIELDS.has(key));
