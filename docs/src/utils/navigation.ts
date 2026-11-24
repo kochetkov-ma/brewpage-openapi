@@ -17,6 +17,7 @@ export const navigation: NavSection[] = [
       { title: 'API Reference', slug: 'api-reference' },
       { title: 'Page data host API', slug: 'page-data-host-api' },
       { title: 'MCP Server', slug: 'mcp-server' },
+      { title: 'Partners', slug: 'partners' },
       { title: 'Examples', slug: 'examples' },
     ],
   },

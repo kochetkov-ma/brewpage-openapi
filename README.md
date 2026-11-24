@@ -150,6 +150,7 @@ curl https://brewpage.app/api/stats
 
 - **Interactive docs** -- [kochetkov-ma.github.io/brewpage-openapi](https://kochetkov-ma.github.io/brewpage-openapi/)
 - **API Reference (Scalar)** -- [kochetkov-ma.github.io/brewpage-openapi/api-reference](https://kochetkov-ma.github.io/brewpage-openapi/api-reference/)
+- **Partners** (partner key on the API for your own users) -- [kochetkov-ma.github.io/brewpage-openapi/partners](https://kochetkov-ma.github.io/brewpage-openapi/partners/)
 - **OpenAPI spec (YAML)** -- [`openapi/openapi.yaml`](openapi/openapi.yaml)
 - **OpenAPI spec (JSON)** -- [`openapi/openapi.json`](openapi/openapi.json)
 

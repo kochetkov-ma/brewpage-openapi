@@ -16,6 +16,7 @@ Public contract snapshots, documentation and the BrewPage MCP server. The backen
 - Spec (raw JSON): https://kochetkov-ma.github.io/brewpage-openapi/openapi.json
 - Spec (raw YAML): https://raw.githubusercontent.com/kochetkov-ma/brewpage-openapi/main/openapi/openapi.yaml
 - Page data host API (raw JSON): https://kochetkov-ma.github.io/brewpage-openapi/page-data-host.json
+- Partners (partner key on the API for your own users, partner API): https://kochetkov-ma.github.io/brewpage-openapi/partners/
 - Live `/v3/api-docs` from production backend: https://brewpage.app/v3/api-docs
 - `llms.txt`: https://brewpage.app/llms.txt
 - `llms-full.txt`: https://brewpage.app/llms-full.txt

@@ -1,0 +1,127 @@
+---
+title: Partners
+description: Publish on BrewPage for your own users from your server with a partner key — headers, error codes and the partner API
+order: 4
+---
+
+# Partners
+
+Last updated: 2026-11-24
+
+A partner (a bot, an app, an AI service) calls the ordinary [BrewPage API](/brewpage-openapi/api-reference/) from its own server on behalf of its users. With a partner key, each request names the end user and their IP address: limits and checks apply to that user, and each user's publications belong to their own owner. Build your own MCP server, proxy, tools and per-user limits on top of the API.
+
+Keys are issued by BrewPage on request: write to [partners@brewpage.app](mailto:partners@brewpage.app).
+
+## Keep the key on your server
+
+- Send the key only from your server. Never put it in a web page, mobile app, bot message or an MCP configuration you hand to others.
+- The partner API answers no browser origin (no CORS): call it server to server.
+- Whoever holds the key publishes and deletes as you. If it leaks, rotate it at once (`POST /api/partner/key/rotate` or the console).
+
+## Headers
+
+Send these on any `/api` route of the [API Reference](/brewpage-openapi/api-reference/) to act for one of your users.
+
+| Header | Required | Value |
+|--------|----------|-------|
+| `X-Partner-Key` | yes | Your key: `bpp_` followed by 32 letters and digits |
+| `X-Partner-Client-Ip` | yes | The end user's public IP address, one IPv4 or IPv6 address. Per-IP limits count against it; without it every request counts against your server's IP |
+| `X-Partner-User` | no | Your stable id for the end user, `^[A-Za-z0-9._:-]{1,128}$`. Omit it to act as your common owner |
+| `X-Partner-User-Name` | no | Name shown for this user in the console, UTF-8, up to 64 characters |
+
+In partner mode:
+
+- **Limits and checks.** Every per-IP limit and every standard check applies to the IP in `X-Partner-Client-Ip`, exactly as for a direct client. There is no partner-wide limit: set your own limits per user.
+- **Owner.** Each `X-Partner-User` value has one stable owner on BrewPage; requests without it act as your common owner. To update, delete, list (`GET /api/publications`) or change settings and Page data of a user's publication, call the standard route with that user's `X-Partner-User`. The partner key and `X-Partner-User` decide the owner: do not send `X-Owner-Token`, `X-Manage-Key` or `Authorization`.
+- **Namespace.** A create without `ns` publishes into your partner namespace: private, unlisted and not indexed. An explicit `ns`, `public` included, works as for any client.
+- **Answers.** The same as for any client, including `link`, `ownerToken` and `manageUrl`. Give your user `link` and `manageUrl`; `manageUrl` is private: whoever holds it can edit or delete that one publication. `ownerToken` is that user's owner token: whoever holds it manages all of the user's publications and can add them to a BrewPage profile. Keep it on your server unless your user should have that.
+
+### Example: publish an HTML page for a user
+
+```bash
+curl -X POST 'https://brewpage.app/api/html?format=html' \
+  -H 'Content-Type: application/json' \
+  -H "X-Partner-Key: $BREWPAGE_PARTNER_KEY" \
+  -H 'X-Partner-Client-Ip: 203.0.113.7' \
+  -H 'X-Partner-User: user-42' \
+  -H 'X-Partner-User-Name: Anna' \
+  -d '{"content": "<!doctype html><title>Hello</title><h1>Hello, Anna</h1>"}'
+```
+
+Answer `201` (abridged; full schema `HtmlUploadResponse` in the [API Reference](/brewpage-openapi/api-reference/)), here for the partner namespace `acme`:
+
+```json
+{
+  "id": "aBcDeFgHiJ",
+  "namespace": "acme",
+  "link": "https://acme-k3v9q2m7xa.brewpage.app/",
+  "ownerLink": "https://brewpage.app/api/html/acme/aBcDeFgHiJ",
+  "ownerToken": "owner-token-of-user-42",
+  "manageUrl": "https://brewpage.app/manage/html/acme/aBcDeFgHiJ#k=bpm_management-key",
+  "expiresAt": "2026-12-09T10:00:00Z",
+  "access": "unlisted",
+  "listed": false
+}
+```
+
+Use the exact returned `link`.
+
+## Partner API
+
+Your own view of your users and their publications. Every call sends `X-Partner-Key` only; answers are `private, no-store`.
+
+| Method and path | What it does | Answer |
+|-----------------|--------------|--------|
+| `GET /api/partner/overview` | Your partner, key hint and totals | `{name, slug, namespace, keyHint, createdAt, users, livePublications, created24h, created7d, top}` |
+| `GET /api/partner/users?q=&after=` | Your users, 24 per page; `q` finds a name or user id (up to 128 characters); `after` = `next` of the previous page | `{items, next, common}` |
+| `GET /api/partner/publications?user=&common=&cursor=` | Your publications, newest first, 24 per page: `user=<id>` for one user, `common=true` for your common owner, neither for all; `cursor` = `nextCursor` of the previous page | `{items, nextCursor, total}` |
+| `DELETE /api/partner/publications/{type}/{namespace}/{id}` | Delete one of your publications; `type` as in the list (`html`, `site`, `file`, `json`, `kv`) | `204` |
+| `POST /api/partner/key/rotate` | New key; the old key stops at once and console sessions end | `{key, keyHint}`, the key shown only here |
+
+- `overview.top`: up to 5 users with the most live publications, `[{ref, name, count}]`.
+- `users.items`: `[{ref, name, count, lastAt}]`, `lastAt` = newest live publication (null = none); `common` = `{count, lastAt}` of your common owner, only on the first page without `q`.
+- `publications.items`: `[{type, namespace, id, title, format, link, createdAt, expiresAt, userRef, userName}]`; `userRef` null = your common owner; `link` and `title` null = the publication was taken down.
+
+```bash
+curl 'https://brewpage.app/api/partner/publications?user=user-42' \
+  -H "X-Partner-Key: $BREWPAGE_PARTNER_KEY"
+```
+
+```json
+{
+  "items": [
+    {
+      "type": "html",
+      "namespace": "acme",
+      "id": "aBcDeFgHiJ",
+      "title": "Hello",
+      "format": "html",
+      "link": "https://acme-k3v9q2m7xa.brewpage.app/",
+      "createdAt": "2026-11-24T10:00:00Z",
+      "expiresAt": "2026-12-09T10:00:00Z",
+      "userRef": "user-42",
+      "userName": "Anna"
+    }
+  ],
+  "nextCursor": null,
+  "total": 1
+}
+```
+
+## Errors
+
+Errors are the standard `ErrorResponse` (`status`, `error`, `message`, `timestamp`, `code`).
+
+| Status | `code` | When |
+|--------|--------|------|
+| `400` | `PARTNER_USER_INVALID` | `X-Partner-User` does not match `^[A-Za-z0-9._:-]{1,128}$` |
+| `400` | none | Partner API: invalid `q`, `after`, `user` or `cursor`, or `user` with `common=true` |
+| `401` | `PARTNER_AUTH_FAILED` | Key missing (partner API), unknown or revoked |
+| `403` | `PARTNER_DISABLED` | Your partner access is paused: write to partners@brewpage.app |
+| `404` | `PUBLICATION_UNAVAILABLE` | Partner API delete: no such publication of yours |
+
+Every other answer is the standard one of the route you called.
+
+## Console
+
+[partners.brewpage.app](https://partners.brewpage.app): sign in with your key to see totals, users and their publications, open or delete a publication and rotate the key.
