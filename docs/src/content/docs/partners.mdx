@@ -6,9 +6,9 @@ order: 4
 
 # Partners
 
-Last updated: 2026-11-24
+Last updated: 2026-11-25
 
-A partner (a bot, an app, an AI service) calls the ordinary [BrewPage API](/brewpage-openapi/api-reference/) from its own server on behalf of its users. With a partner key, each request names the end user and their IP address: limits and checks apply to that user, and each user's publications belong to their own owner. Build your own MCP server, proxy, tools and per-user limits on top of the API.
+A partner (a bot, an app, an AI service) calls the ordinary [BrewPage API](/brewpage-openapi/api-reference/) from its own server on behalf of its users. With a partner key, each request names the end user: per-user limits apply to that user, and each user's publications belong to their own owner. Build your own MCP server, proxy, tools and per-user limits on top of the API.
 
 Keys are issued by BrewPage on request: write to [partners@brewpage.app](mailto:partners@brewpage.app).
 
@@ -25,19 +25,36 @@ Send these on any `/api` route of the [API Reference](/brewpage-openapi/api-refe
 | Header | Required | Value |
 |--------|----------|-------|
 | `X-Partner-Key` | yes | Your key: `bpp_` followed by 32 letters and digits |
-| `X-Partner-Client-Ip` | yes | The end user's public IP address, one IPv4 or IPv6 address. Per-IP limits count against it; without it every request counts against your server's IP |
-| `X-Partner-User` | no | Your stable id for the end user, `^[A-Za-z0-9._:-]{1,128}$`. Omit it to act as your common owner |
+| `X-Partner-User` | yes, for a user's call | Your stable id for the end user, `^[A-Za-z0-9._:-]{1,128}$`, for example a Telegram user id: `tg:123456789`. Omit it only to act as your common owner |
+| `X-Partner-Client-Ip` | no | The end user's public IP address, one IPv4 or IPv6 address. Send it only if you know it |
 | `X-Partner-User-Name` | no | Name shown for this user in the console, UTF-8, up to 64 characters |
 
-Send `X-Partner-User` and `X-Partner-Client-Ip` on every call for a user: without them all your users share one owner and your server's IP.
+`X-Partner-Key` and `X-Partner-User` are enough for a user's call. A call with neither `X-Partner-User` nor `X-Partner-Client-Ip` acts as your common owner, and its limits count against your server's IP.
 
 In partner mode:
 
-- **Limits and checks.** Every per-IP limit and every standard check applies to the IP in `X-Partner-Client-Ip`, exactly as for a direct client. There is no partner-wide limit: set your own limits per user.
+- **Limits and checks.** The limits of a direct client apply to each of your users: they count against `X-Partner-Client-Ip` when you send it, else against `X-Partner-User`. Every standard check applies as for a direct client. There is no partner-wide limit: set your own limits per user.
 - **Owner.** Each `X-Partner-User` value has one stable owner on BrewPage; requests without it act as your common owner. To update, delete, list (`GET /api/publications`) or change settings and Page data of a user's publication, call the standard route with that user's `X-Partner-User`. The partner key and `X-Partner-User` decide the owner: do not send `X-Owner-Token`, `X-Manage-Key` or `Authorization`.
 - **Namespace.** A create without `ns` publishes into your partner namespace: private, unlisted and not indexed. An explicit `ns`, `public` included, works as for any client.
 - **Answers.** The same as for any client, including `link`, `ownerToken` and `manageUrl`. Give your user `link` and `manageUrl`; `manageUrl` is private: whoever holds it can edit or delete that one publication. `ownerToken` is that user's owner token: whoever holds it manages all of the user's publications, can add it to a BrewPage profile and can revoke it. Keep `ownerToken` on your server, and never hand your common owner's token to anyone: every request without `X-Partner-User` shares it.
 - **Revoked owner token.** An owner token is never issued again: once revoked, that `X-Partner-User` value is refused with `403` `OWNER_TOKEN_REVOKED` for good, and the partner API cannot delete its publications either (they expire on their own). Use a new `X-Partner-User` value for that user.
+
+### How to send the user
+
+- Send `X-Partner-Key` and `X-Partner-User` on every call for a user: reads, updates and deletes as well as creates.
+- Use the same id for the same person forever: it decides the owner (only exception: a revoked owner token, above). Prefix it with the platform, such as `tg:123456789` for a Telegram user id.
+- Set it on your server from the platform's authenticated user id, never from text the user typed.
+- `X-Partner-User-Name` is optional and only a label.
+- Add `X-Partner-Client-Ip` only when you really have the user's IP. Never send your server's IP or an invented one.
+- A call without `X-Partner-User` acts as your common owner: use it only for your own pages.
+
+A Telegram bot knows only the user id, and that is enough. It lists the user's publications:
+
+```bash
+curl 'https://brewpage.app/api/publications' \
+  -H "X-Partner-Key: $BREWPAGE_PARTNER_KEY" \
+  -H 'X-Partner-User: tg:123456789'
+```
 
 ### Example: publish an HTML page for a user
 
@@ -45,8 +62,7 @@ In partner mode:
 curl -X POST 'https://brewpage.app/api/html?format=html' \
   -H 'Content-Type: application/json' \
   -H "X-Partner-Key: $BREWPAGE_PARTNER_KEY" \
-  -H 'X-Partner-Client-Ip: 203.0.113.7' \
-  -H 'X-Partner-User: user-42' \
+  -H 'X-Partner-User: tg:123456789' \
   -H 'X-Partner-User-Name: Anna' \
   -d '{"content": "<!doctype html><title>Hello</title><h1>Hello, Anna</h1>"}'
 ```
@@ -59,7 +75,7 @@ Answer `201` (abridged; full schema `HtmlUploadResponse` in the [API Reference](
   "namespace": "acme",
   "link": "https://acme-k3v9q2m7xa.brewpage.app/",
   "ownerLink": "https://brewpage.app/api/html/acme/aBcDeFgHiJ",
-  "ownerToken": "owner-token-of-user-42",
+  "ownerToken": "owner-token-of-this-user",
   "manageUrl": "https://brewpage.app/manage/html/acme/aBcDeFgHiJ#k=bpm_management-key",
   "expiresAt": "2026-12-09T10:00:00Z",
   "access": "unlisted",
@@ -86,7 +102,7 @@ Your own view of your users and their publications. Every call sends `X-Partner-
 - `publications.items`: `[{type, namespace, id, title, format, link, createdAt, expiresAt, userRef, userName}]`; `userRef` null = your common owner; `link` and `title` null = the publication was taken down.
 
 ```bash
-curl 'https://brewpage.app/api/partner/publications?user=user-42' \
+curl 'https://brewpage.app/api/partner/publications?user=tg:123456789' \
   -H "X-Partner-Key: $BREWPAGE_PARTNER_KEY"
 ```
 
@@ -102,7 +118,7 @@ curl 'https://brewpage.app/api/partner/publications?user=user-42' \
       "link": "https://acme-k3v9q2m7xa.brewpage.app/",
       "createdAt": "2026-11-24T10:00:00Z",
       "expiresAt": "2026-12-09T10:00:00Z",
-      "userRef": "user-42",
+      "userRef": "tg:123456789",
       "userName": "Anna"
     }
   ],
