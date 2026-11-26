@@ -6,7 +6,7 @@ order: 4
 
 # Partners
 
-Last updated: 2026-11-25
+Last updated: 2026-11-26
 
 A partner (a bot, an app, an AI service) calls the ordinary [BrewPage API](/brewpage-openapi/api-reference/) from its own server on behalf of its users. With a partner key, each request names the end user: per-user limits apply to that user, and each user's publications belong to their own owner. Build your own MCP server, proxy, tools and per-user limits on top of the API.
 
@@ -37,6 +37,7 @@ In partner mode:
 - **Owner.** Each `X-Partner-User` value has one stable owner on BrewPage; requests without it act as your common owner. To update, delete, list (`GET /api/publications`) or change settings and Page data of a user's publication, call the standard route with that user's `X-Partner-User`. The partner key and `X-Partner-User` decide the owner: do not send `X-Owner-Token`, `X-Manage-Key` or `Authorization`.
 - **Namespace.** A create without `ns` publishes into your partner namespace: private, unlisted and not indexed. An explicit `ns`, `public` included, works as for any client.
 - **Answers.** The same as for any client, including `link`, `ownerToken` and `manageUrl`. Give your user `link` and `manageUrl`; `manageUrl` is private: whoever holds it can edit or delete that one publication. `ownerToken` is that user's owner token: whoever holds it manages all of the user's publications, can add it to a BrewPage profile and can revoke it. Keep `ownerToken` on your server, and never hand your common owner's token to anyone: every request without `X-Partner-User` shares it.
+- **Badge.** Publications made with your key, in any namespace, carry no BrewPage badge. To show it, turn it on in the [console](#console) or with `PUT /api/partner/badge` (below); the setting covers existing publications too.
 - **Revoked owner token.** An owner token is never issued again: once revoked, that `X-Partner-User` value is refused with `403` `OWNER_TOKEN_REVOKED` for good, and the partner API cannot delete its publications either (they expire on their own). Use a new `X-Partner-User` value for that user.
 
 ### How to send the user
@@ -91,13 +92,15 @@ Your own view of your users and their publications. Every call sends `X-Partner-
 
 | Method and path | What it does | Answer |
 |-----------------|--------------|--------|
-| `GET /api/partner/overview` | Your partner, key hint and totals | `{name, slug, namespace, keyHint, createdAt, users, livePublications, created24h, created7d, top}` |
+| `GET /api/partner/overview` | Your partner, key hint, badge setting and totals | `{name, slug, namespace, keyHint, createdAt, users, livePublications, created24h, created7d, top, badgeHidden}` |
 | `GET /api/partner/users?q=&after=` | Your users, 24 per page; `q` finds a name or user id (up to 128 characters); `after` = `next` of the previous page | `{items, next, common}` |
 | `GET /api/partner/publications?user=&common=&cursor=` | Your publications, newest first, 24 per page: `user=<id>` for one user, `common=true` for your common owner, neither for all; `cursor` = `nextCursor` of the previous page | `{items, nextCursor, total}` |
 | `DELETE /api/partner/publications/{type}/{namespace}/{id}` | Delete one of your publications; `type` as in the list (`html`, `site`, `file`, `json`, `kv`) | `204` |
+| `PUT /api/partner/badge` | Show the BrewPage badge on your publications with `{"hidden": false}`, hide it with `{"hidden": true}` | `{badgeHidden}` |
 | `POST /api/partner/key/rotate` | New key; the old key stops at once and console sessions end | `{key, keyHint}`, the key shown only here |
 
 - `overview.top`: up to 5 users with the most live publications, `[{ref, name, count}]`.
+- `overview.badgeHidden`: `true` = your publications carry no BrewPage badge (the default).
 - `users.items`: `[{ref, name, count, lastAt}]`, `lastAt` = newest live publication (null = none); `common` = `{count, lastAt}` of your common owner, only on the first page without `q`.
 - `publications.items`: `[{type, namespace, id, title, format, link, createdAt, expiresAt, userRef, userName}]`; `userRef` null = your common owner; `link` and `title` null = the publication was taken down.
 
@@ -134,7 +137,7 @@ Errors are the standard `ErrorResponse` (`status`, `error`, `message`, `timestam
 | Status | `code` | When |
 |--------|--------|------|
 | `400` | `PARTNER_USER_INVALID` | `X-Partner-User` does not match `^[A-Za-z0-9._:-]{1,128}$` |
-| `400` | none | Partner API: invalid `q`, `after`, `user` or `cursor`, or `user` with `common=true` |
+| `400` | none | Partner API: invalid `q`, `after`, `user` or `cursor`, `user` with `common=true`, or `hidden` not `true` or `false` |
 | `401` | `PARTNER_AUTH_FAILED` | Key missing (partner API), unknown or revoked |
 | `403` | `PARTNER_DISABLED` | Your partner access is paused: write to partners@brewpage.app |
 | `404` | `PUBLICATION_UNAVAILABLE` | Partner API delete: no such publication of yours |
@@ -143,4 +146,4 @@ Every other answer is the standard one of the route you called.
 
 ## Console
 
-[partners.brewpage.app](https://partners.brewpage.app): sign in with your key to see totals, users and their publications, open or delete a publication and rotate the key.
+[partners.brewpage.app](https://partners.brewpage.app): sign in with your key to see totals, users and their publications, open or delete a publication, turn the BrewPage badge on or off and rotate the key.
