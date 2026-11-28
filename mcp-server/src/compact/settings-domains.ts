@@ -18,8 +18,9 @@ export const SETTINGS_OUTCOME_UNKNOWN = "BrewPage did not confirm the settings c
 export const LINK_NAME_KINDS: readonly PublicationKind[] = ["html", "site", "file"];
 /** Kinds that take comments (app `CommentTargets.TYPES`). */
 const COMMENT_KINDS: readonly PublicationKind[] = ["html", "site", "file", "json"];
-/** Notice of a comment-mode ask on a publication outside a profile (app `CommentOwnerService.NOTICE_FIXED`). */
+/** Notices of an unwritten comment-mode ask (app `CommentOwnerService`): outside a profile, or not account credentials (R21). */
 const COMMENTS_FIXED = "comments-need-profile";
+const COMMENTS_ACCOUNT = "comments-need-account";
 const ACCOUNT_TOKENS_PAGE = "https://account.brewpage.app/tokens";
 export const LINK_NAME_FORWARDS = "Give the user the exact new link; the previous address forwards to it.";
 
@@ -44,11 +45,16 @@ export function linkNameHint(code: unknown, retryAfter: unknown, proof: "ownerTo
   }
 }
 
-/** Next step when a comment mode is fixed: the publication is outside a profile. */
-function commentsNeedProfile(proof: "ownerToken" | "manageKey", fromEnv: boolean): string {
+/** Next step after an unwritten comment-mode ask: [inProfile] false = outside a profile, else only account credentials change it. */
+function commentsNotChanged(context: CompactContext, target: Target, inProfile: boolean, proof: "ownerToken" | "manageKey", fromEnv: boolean): string {
+  if (inProfile) {
+    const page = `${context.accountOrigin}/p/${SEGMENT[target.kind]}/${encodeURIComponent(target.namespace)}/${encodeURIComponent(target.id)}#comments`;
+    return `Not changed: comments change only in the owner's BrewPage account. The user opens ${page} while signed in and chooses there, ` +
+      "or connect BrewPage in this client and repeat this change.";
+  }
   return proof === "manageKey"
-    ? "To choose who can comment, the user opens https://account.brewpage.app/claim while signed in and enters this management link, then repeat this change."
-    : `To choose who can comment, ${linkNameNeedsProfile(fromEnv, "repeat this change")}`;
+    ? `Not changed: the publication is outside a profile. To choose who can comment, the user opens ${context.accountOrigin}/claim while signed in and enters this management link, then changes it in the account.`
+    : `Not changed: the publication is outside a profile. To choose who can comment, ${linkNameNeedsProfile(fromEnv, "repeat this change")}`;
 }
 
 export const ownerAddress = {
@@ -123,6 +129,7 @@ const ordinaryFields = {
     "saved lowercase. Needs a profile publication"),
   comments: z.enum(["off", "signed_in", "everyone"]).nullable().optional().describe("Who may comment on a page, site, file or JSON: off, " +
     "signed_in (people signed in to BrewPage) or everyone (with a human check); null reports it. People comment in the browser. " +
+    "Only the owning account changes it (connected account or a token held by the profile); a management link only reports it. " +
     "Outside a profile it is fixed: public everyone, private off"),
 };
 const settingsSchema = {
@@ -193,7 +200,9 @@ async function unsignedSetting(context: CompactContext, target: Target, proof: O
   }
   if (name === "comments") {
     const path = context.apiPath("publications", target.kind, target.namespace, target.id, "discussion");
-    return changes.comments === null ? context.api("GET", path, undefined, headers) : context.api("PUT", path, { comments: changes.comments }, headers);
+    // A management link never changes the mode (R21): it only reads it.
+    return changes.comments === null || "manageKey" in proof ? context.api("GET", path, undefined, headers)
+      : context.api("PUT", path, { comments: changes.comments }, headers);
   }
   if (name === "deliveryMode") {
     return context.api("PATCH", context.apiPath(...prefix, "hosting"),
@@ -341,10 +350,15 @@ function registerSettings(context: CompactContext) {
         }
         if (step === "comments") {
           if (!settingConfirmed("comments", answer.data)) return failed("BrewPage did not confirm the comment mode. Read it with comments null before retrying.");
-          const { comments, locked, count, notices } = record(answer.data);
-          const fixed = Array.isArray(notices) && notices.some((notice) => record(notice).code === COMMENTS_FIXED);
-          applied.push(`comments: ${JSON.stringify({ comments, locked, count, ...(Array.isArray(notices) && notices.length ? { notices } : {}) })}`,
-            ...(fixed ? [commentsNeedProfile("manageKey" in proof ? "manageKey" : "ownerToken", context.ownerToken(ownerToken).fromEnv)] : []));
+          const { comments, locked, count, notes, notices } = record(answer.data);
+          const codes = Array.isArray(notices) ? notices.map((notice) => record(notice).code) : [];
+          // A management link only read the mode: a different ask is unwritten; `notes` exists only inside a profile.
+          const notSent = "manageKey" in proof && changes.comments !== null && comments !== changes.comments;
+          const inProfile = codes.includes(COMMENTS_ACCOUNT) || (notSent && typeof notes === "number");
+          const unwritten = inProfile || codes.includes(COMMENTS_FIXED) || notSent;
+          applied.push(`comments: ${JSON.stringify({ comments, locked, count, ...(codes.length ? { notices } : {}) })}`,
+            ...(unwritten ? [commentsNotChanged(context, target, inProfile, "manageKey" in proof ? "manageKey" : "ownerToken",
+              context.ownerToken(ownerToken).fromEnv)] : []));
           continue;
         }
         if (step === "state" && steps.length === 1) {

@@ -228,22 +228,33 @@ test("Compact link names and visibility actions refuse locally and travel the ac
   ]);
 });
 
-test("Compact comment modes set and report through the owner route, refuse KV locally and travel the account bridge", async (t) => {
-  const discussion = (comments: string, locked: boolean, count: number, extra = {}) => ({ mode: comments === "off" ? "owner" : comments,
-    comments, locked, count, notes: locked ? undefined : 0, ...extra });
+test("Compact comment modes change only with account credentials, report otherwise, refuse KV locally and travel the account bridge", async (t) => {
+  // notes: a number inside a profile, absent outside one (app CommentOwnerService.Discussion)
+  const discussion = (comments: string, locked: boolean, count: number, extra: Record<string, unknown> = {}) => ({
+    mode: comments === "off" ? "owner" : comments, comments, locked, count, ...extra });
   const fixed = { code: "comments-need-profile", message: "Comments stay open on a public page outside a profile. Add it to your profile to choose who can comment." };
+  const account = { code: "comments-need-account", message: "Change comments in your account." };
   const path = `/api/publications/html/public/${id}/discussion`;
+  const accountStep = `Not changed: comments change only in the owner's BrewPage account. The user opens https://account.brewpage.app/p/html/public/${id}#comments ` +
+    "while signed in and chooses there, or connect BrewPage in this client and repeat this change.";
   const rows = [
-    { name: "set by profile owner token", args: { ...target, comments: "signed_in" }, response: Response.json(discussion("signed_in", false, 2)),
+    { name: "set by profile owner token", args: { ...target, comments: "signed_in" }, response: Response.json(discussion("signed_in", false, 2, { notes: 0 })),
       request: { method: "PUT", url: path, body: { comments: "signed_in" }, proof: owner, ifMatch: null },
       result: { content: [{ type: "text", text: 'comments: {"comments":"signed_in","locked":false,"count":2}' }] } },
     { name: "reported by management link", args: { manageUrl, comments: null }, response: Response.json(discussion("everyone", true, 0)),
       request: { method: "GET", url: path, body: undefined, proof: ["X-Manage-Key", manageKey], ifMatch: null },
       result: { content: [{ type: "text", text: 'comments: {"comments":"everyone","locked":true,"count":0}' }] } },
+    { name: "management link in a profile only reads", args: { manageUrl, comments: "off" }, response: Response.json(discussion("everyone", true, 1, { notes: 0 })),
+      request: { method: "GET", url: path, body: undefined, proof: ["X-Manage-Key", manageKey], ifMatch: null },
+      result: { content: [{ type: "text", text: ['comments: {"comments":"everyone","locked":true,"count":1}', accountStep].join("\n") }] } },
+    { name: "page token no account holds", args: { ...target, comments: "off" }, response: Response.json(discussion("everyone", true, 1, { notes: 0, notices: [account] })),
+      request: { method: "PUT", url: path, body: { comments: "off" }, proof: owner, ifMatch: null },
+      result: { content: [{ type: "text", text: [`comments: ${JSON.stringify({ comments: "everyone", locked: true, count: 1, notices: [account] })}`,
+        accountStep].join("\n") }] } },
     { name: "fixed outside a profile", args: { ...target, comments: "off" }, response: Response.json(discussion("everyone", true, 0, { notices: [fixed] })),
       request: { method: "PUT", url: path, body: { comments: "off" }, proof: owner, ifMatch: null },
       result: { content: [{ type: "text", text: [`comments: ${JSON.stringify({ comments: "everyone", locked: true, count: 0, notices: [fixed] })}`,
-        `To choose who can comment, ${profileStep}`].join("\n") }] } },
+        `Not changed: the publication is outside a profile. To choose who can comment, ${profileStep}`].join("\n") }] } },
   ];
   await Promise.all([
     ...rows.map((row) => t.test(row.name, async (subtest) => {
