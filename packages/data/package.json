@@ -1,6 +1,6 @@
 {
   "name": "brewpage-data",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Typed loader and React, Vue, Svelte, Angular and custom-element wrappers for BrewPage Page data: pages that save what visitors enter",
   "type": "module",
   "sideEffects": [

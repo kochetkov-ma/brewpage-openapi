@@ -1,5 +1,17 @@
 # Release Notes
 
+## MCP 3.4.0 — Choose who can comment
+
+- Pages, sites, files and JSON can now get comments from people. `publication_settings` with `comments` chooses who may comment: `off`, `signed_in` (people signed in to BrewPage) or `everyone`; `comments: null` tells you the current choice and the comment count.
+- Only your BrewPage account changes it: connect BrewPage in the client, or use an owner token added to your profile. A management link only reads it, and the answer says where to change it.
+- `notifications` shows new comments on your publications and can turn that group off.
+- The Page data guide mentions lists only signed-in visitors write to (`"write":"accounts"`).
+- Local installations can pin `brewpage-mcp@3.4.0`. The remote endpoint is `https://brewpage.app/mcp`. The 13 tool names are unchanged and existing calls keep their arguments.
+
+## Page data packages 0.1.2 — 2026-11-28
+
+- The types cover visitor sign-in on a page: `identity`, `saved`, `accountOffer`, `claim`, `onIdentity`, `signIn`, `signOut`, `claimAnonymous`, and the error code `account_required`. No change to how the wrappers work.
+
 ## API contract 2.88.0 — 2026-11-28
 
 - Synced from the integration-tested contract of brewpage-app release v2.88.0 (source `913a25ed483d5013437e164271091d49d5539ef3`, the tag), clean tree. 83 paths and 113 operations (was 82 and 111).
