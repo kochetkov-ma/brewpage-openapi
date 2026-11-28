@@ -28,6 +28,7 @@ The JSON is exported from the BrewPage backend together with the main contract a
 - A visitor is known by the cookie `__Host-bp-v`, which `POST /_bp/state/v1` sets; the browser sends it.
 - Errors are `ErrorResponse` with a `STATE_*` code.
 - Each visitor reads and writes only their own entries unless a list is shared; the page's owner reads them all.
+- A visitor signed in to BrewPage on the page keeps their entries on every device; a list with `write: "accounts"` takes writes only from signed-in visitors (`STATE_ACCOUNT_REQUIRED` otherwise).
 
 ## Operations
 
@@ -36,6 +37,10 @@ The JSON is exported from the BrewPage backend together with the main contract a
 | `GET /_bp/state/v1` | Read the page's Page data status |
 | `POST /_bp/state/v1` | Get a visitor cookie |
 | `POST /_bp/state/v1/_session` | Open the owner view on the page |
+| `POST /_bp/state/v1/_account/start` | Start signing in to BrewPage for this page (opens in a new tab) |
+| `POST /_bp/state/v1/_account` | Finish signing in on this page with the one-time code |
+| `DELETE /_bp/state/v1/_account` | Sign out on this page; nothing is deleted |
+| `POST /_bp/state/v1/_account/claim` | Move this browser's guest entries to the account |
 | `GET /_bp/state/v1/{col}` | List entries of a list |
 | `GET /_bp/state/v1/{col}/_stats` | Count the entries of a list |
 | `GET /_bp/state/v1/{col}/{key}` | Read one entry |

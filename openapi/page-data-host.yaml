@@ -99,7 +99,7 @@ components:
             $ref: '#/components/schemas/ErrorResponse'
       description: >-
         STATE_COOKIE_REQUIRED: get a visitor cookie first; STATE_MODE_FORBIDDEN: only the page's owner writes this list;
-        STATE_CROSS_ORIGIN
+        STATE_ACCOUNT_REQUIRED: only visitors signed in to BrewPage write this list; STATE_CROSS_ORIGIN
     WriteLimited:
       content:
         application/json:
@@ -112,6 +112,72 @@ components:
         Retry-After:
           $ref: '#/components/headers/RetryAfter'
   schemas:
+    AccountClaim:
+      description: Present only while signed in with guest entries of this browser not yet moved
+      properties:
+        accountAt:
+          description: Latest change of a colliding account entry
+          format: date-time
+          type:
+            - string
+            - 'null'
+        browserAt:
+          description: Latest change of a colliding guest entry
+          format: date-time
+          type:
+            - string
+            - 'null'
+        conflicts:
+          description: Guest entries whose list and key the account also holds
+          minimum: 0
+          type: integer
+        entries:
+          description: Guest entries and files of this browser
+          minimum: 1
+          type: integer
+      required:
+        - entries
+        - conflicts
+        - browserAt
+        - accountAt
+      type: object
+    AccountClaimed:
+      properties:
+        moved:
+          description: Guest entries and files moved
+          minimum: 0
+          type: integer
+      required:
+        - moved
+      type: object
+    AccountSignedIn:
+      properties:
+        claim:
+          $ref: '#/components/schemas/AccountClaim'
+        identity:
+          enum:
+            - account
+          type: string
+        moved:
+          description: Guest entries and files moved to the account now
+          minimum: 0
+          type: integer
+      required:
+        - identity
+        - moved
+      type: object
+    AccountStart:
+      properties:
+        expiresIn:
+          description: Seconds the address stays valid
+          type: integer
+        url:
+          description: BrewPage sign-in page for this browser; open it in a new tab
+          type: string
+      required:
+        - url
+        - expiresIn
+      type: object
     Entry:
       properties:
         createdAt:
@@ -189,6 +255,7 @@ components:
             - STATE_MODE_WIDENING
             - STATE_COOKIE_REQUIRED
             - STATE_OWNER_REQUIRED
+            - STATE_ACCOUNT_REQUIRED
             - STATE_FILES_OFF
             - STATE_FILE_TYPE
             - STATE_FILE_TOO_LARGE
@@ -272,6 +339,13 @@ components:
       type: object
     Ping:
       properties:
+        accountOffer:
+          description: Present only when this page shows no offer to sign in
+          enum:
+            - false
+          type: boolean
+        claim:
+          $ref: '#/components/schemas/AccountClaim'
         demo:
           description: Present only on a BrewPage demo template
           enum:
@@ -282,12 +356,21 @@ components:
             type: boolean
           description: Present only when a list takes files; one member per declared list, true when it takes uploads now
           type: object
+        identity:
+          description: account when this browser is signed in to BrewPage on this page; absent while sign-in is paused
+          enum:
+            - anonymous
+            - account
+          type: string
         role:
           description: owner with an open owner session or on a demo template's own address, else visitor
           enum:
             - owner
             - visitor
           type: string
+        saved:
+          description: With identity; this visitor holds an entry or file on this page
+          type: boolean
         statsEvery:
           description: Whole seconds between totals re-reads; 0 = do not poll
           minimum: 0
@@ -399,7 +482,7 @@ info:
   summary: What a published page's own script calls to save and read visitor entries and files.
   termsOfService: https://brewpage.app/terms
   title: BrewPage Page data host API
-  version: 2.87.0
+  version: 2.88.0
 openapi: 3.1.0
 paths:
   /_bp/state/v1:
@@ -465,6 +548,157 @@ paths:
         - {}
         - VisitorCookie: []
       summary: Get a visitor cookie
+      tags:
+        - Page data
+  /_bp/state/v1/_account:
+    delete:
+      description: This browser stops acting as the signed-in visitor here and is its own guest again; nothing is deleted.
+      operationId: signOutOfAccount
+      parameters:
+        - $ref: '#/components/parameters/StateHeader'
+      responses:
+        '204':
+          description: Signed out on this page
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: STATE_COOKIE_REQUIRED; STATE_CROSS_ORIGIN
+        '404':
+          $ref: '#/components/responses/Unavailable'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/Off'
+      security:
+        - VisitorCookie: []
+      summary: Sign out on this page
+      tags:
+        - Page data
+    post:
+      description: >-
+        No body. Exchanges the one-time code from #bp-account= (valid 60 seconds) in the browser that started the
+        sign-in; from then on this browser saves and reads as the signed-in visitor on this page. Guest entries move to
+        the account unless both hold an entry under the same list and key: then claim says so and nothing moves until
+        POST /_bp/state/v1/_account/claim. Any other browser, a used or expired code is refused and the code is spent.
+      operationId: completeAccountSignIn
+      parameters:
+        - $ref: '#/components/parameters/StateHeader'
+        - description: The one-time code from the page address
+          in: header
+          name: X-BP-Code
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountSignedIn'
+          description: Signed in on this page
+        '400':
+          $ref: '#/components/responses/Invalid'
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: 'STATE_ACCOUNT_REQUIRED: missing, used or expired code, or another browser; STATE_CROSS_ORIGIN'
+        '404':
+          $ref: '#/components/responses/Unavailable'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/Off'
+      security:
+        - VisitorCookie: []
+      summary: Finish signing in on this page
+      tags:
+        - Page data
+  /_bp/state/v1/_account/claim:
+    post:
+      description: >-
+        No body; signed in on this page only. keep=browser replaces the account's colliding entries with this browser's;
+        keep=account drops this browser's colliding entries. Then every remaining guest entry and file moves.
+      operationId: claimGuestEntries
+      parameters:
+        - $ref: '#/components/parameters/StateHeader'
+        - in: query
+          name: keep
+          required: true
+          schema:
+            enum:
+              - browser
+              - account
+            type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountClaimed'
+          description: Guest entries moved
+        '400':
+          $ref: '#/components/responses/Invalid'
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: 'STATE_ACCOUNT_REQUIRED: not signed in on this page; STATE_COOKIE_REQUIRED; STATE_CROSS_ORIGIN'
+        '404':
+          $ref: '#/components/responses/Unavailable'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/Off'
+      security:
+        - VisitorCookie: []
+      summary: Move this browser's guest entries to the account
+      tags:
+        - Page data
+  /_bp/state/v1/_account/start:
+    post:
+      description: >-
+        No body; needs the visitor cookie. Answers the address of BrewPage's sign-in page for this browser, valid 30
+        minutes; open it in a new tab. A new start replaces this browser's earlier one. After sign-in that tab returns
+        to the page with #bp-account=<code> in its address, which the page's script sends to POST
+        /_bp/state/v1/_account.
+      operationId: startAccountSignIn
+      parameters:
+        - $ref: '#/components/parameters/StateHeader'
+        - description: Path of the page to return to, starting with one /, at most 1024 characters; anything else returns to /
+          in: header
+          name: X-BP-Return
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountStart'
+          description: Sign-in address
+        '400':
+          $ref: '#/components/responses/Invalid'
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: 'STATE_COOKIE_REQUIRED: get a visitor cookie first; STATE_CROSS_ORIGIN'
+        '404':
+          $ref: '#/components/responses/Unavailable'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/Off'
+      security:
+        - VisitorCookie: []
+      summary: Start signing in to BrewPage for this page
       tags:
         - Page data
   /_bp/state/v1/_session:

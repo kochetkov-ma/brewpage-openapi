@@ -2963,7 +2963,8 @@
             "description": "Settings group of a notice; null for activity, news and domain notices",
             "enum": [
               "pages",
-              "entries"
+              "entries",
+              "comments"
             ],
             "type": [
               "string",
@@ -3028,6 +3029,7 @@
               "page_deleted",
               "page_extended",
               "entries_new",
+              "comments_new",
               "quota_close",
               "quota_reached",
               "published",
@@ -3273,7 +3275,7 @@
             "additionalProperties": {
               "type": "boolean"
             },
-            "description": "Groups to turn on or off: pages, entries; absent keeps them",
+            "description": "Groups to turn on or off: pages, entries, comments; absent keeps them",
             "type": [
               "object",
               "null"
@@ -3308,7 +3310,7 @@
             "additionalProperties": {
               "type": "boolean"
             },
-            "description": "Notice groups on or off: pages (expiring, removed, full) and entries (new entries)",
+            "description": "Notice groups on or off: pages (expiring, removed, full), entries (new entries) and comments (new comments)",
             "type": "object"
           }
         },
@@ -3512,6 +3514,15 @@
                 "$ref": "#/components/schemas/PublicationPageData"
               }
             ]
+          },
+          "pageDataHint": {
+            "description": "Page data would help this page or site: form (answers not saved), local (saves only in the visitor's browser) or game (saved progress); absent while page data is on or nothing suggests it",
+            "enum": [
+              "form",
+              "local",
+              "game"
+            ],
+            "type": "string"
           },
           "preview": {
             "oneOf": [
@@ -4967,7 +4978,8 @@
           "write": {
             "enum": [
               "visitors",
-              "author"
+              "author",
+              "accounts"
             ],
             "type": "string"
           }
@@ -5015,6 +5027,15 @@
               "$ref": "#/components/schemas/PublishNotice"
             },
             "type": "array"
+          },
+          "pageDataHint": {
+            "description": "Page data would help this page or site: form (answers not saved), local (saves only in the visitor's browser) or game (saved progress); absent while page data is on or nothing suggests it",
+            "enum": [
+              "form",
+              "local",
+              "game"
+            ],
+            "type": "string"
           },
           "tier": {
             "description": "Quota tier: account (publication of an active profile) or anonymous",
@@ -5263,10 +5284,11 @@
             "type": "boolean"
           },
           "write": {
-            "description": "visitors: each visitor writes their own entries; author: only you write",
+            "description": "visitors: each visitor writes their own entries; author: only you write; accounts: only signed-in visitors write",
             "enum": [
               "visitors",
-              "author"
+              "author",
+              "accounts"
             ],
             "type": "string"
           }
@@ -5338,10 +5360,11 @@
             ]
           },
           "write": {
-            "description": "visitors: each visitor writes their own entries; author: only you write (needs mode shared)",
+            "description": "visitors: each visitor writes their own entries; author: only you write (needs mode shared); accounts: only visitors signed in to BrewPage write",
             "enum": [
               "visitors",
-              "author"
+              "author",
+              "accounts"
             ],
             "type": [
               "string",
@@ -5353,6 +5376,10 @@
       },
       "StateSettings": {
         "properties": {
+          "accountOffer": {
+            "description": "false: visitors see no offer to sign in to BrewPage on this page; absent = the offer shows",
+            "type": "boolean"
+          },
           "captcha": {
             "description": "Human check for new visitors who save: auto or always",
             "enum": [
@@ -5395,6 +5422,13 @@
       },
       "StateSettingsRequest": {
         "properties": {
+          "accountOffer": {
+            "description": "false: no offer to sign in to BrewPage on this page; absent or null = true",
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
           "captcha": {
             "description": "Human check for new visitors who save: auto (default) or always",
             "enum": [
@@ -6164,7 +6198,7 @@
     },
     "termsOfService": "https://brewpage.app/terms",
     "title": "BrewPage API",
-    "version": "2.87.0"
+    "version": "2.88.0"
   },
   "openapi": "3.1.0",
   "paths": {

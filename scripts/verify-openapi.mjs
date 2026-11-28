@@ -198,6 +198,12 @@ function publicContract(spec) {
   assert.deepEqual([schemas.StateListResponse.required, schemas.StateDeleteResponse.required, schemas.StateWriteResponse.required],
     [['items', 'next'], ['deleted'], ['createdAt', 'id', 'key', 'updatedAt', 'version']],
     'Page data answers: an entry page with next, a delete count, a write receipt with its version');
+  assert.deepEqual([schemas.StateListSettings.properties.write.enum, schemas.StateListSettingsRequest.properties.write.enum,
+    schemas.StateSettings.properties.accountOffer?.type, schemas.StateSettingsRequest.properties.accountOffer?.type,
+    schemas.StateConfigResponse.properties.pageDataHint?.enum, schemas.PublicationListItemResponse.properties.pageDataHint?.enum],
+    [['visitors', 'author', 'accounts'], ['visitors', 'author', 'accounts'], 'boolean', ['boolean', 'null'], ['form', 'local', 'game'],
+      ['form', 'local', 'game']],
+    'A list may take writes only from signed-in visitors, the sign-in offer can be turned off, and a page without Page data names its hint');
   assert.deepEqual(schemas.StateEntry.required, ['createdAt', 'id', 'key', 'sizeBytes', 'updatedAt', 'value', 'version', 'visitor'],
     'A page data entry carries key, id, visitor, version, size, times and value');
   for (const [suffix, operationId, answer] of [['badge', 'setBadge', 'BadgeResponse'], ['private', 'makePrivate', 'PublicationRotateResponse'],
@@ -261,9 +267,11 @@ function newsNoticeContract(spec) {
   const schemas = spec.components.schemas;
   const item = schemas.NotificationItem;
   assert.deepEqual(item.properties.type.enum, ['page_expiring', 'page_removed', 'page_taken_down', 'page_restored', 'page_link_changed',
-    'page_deleted', 'page_extended', 'entries_new', 'quota_close', 'quota_reached', 'published', 'updated', 'domain_problem', 'domain_paused',
-    'domain_setup', 'domain_active', 'domain_lost', 'domain_released', 'secret_opened', 'secret_expired', 'secret_deleted', 'news'],
-  'A notification type is one of the twelve page types, six custom-domain types, three secret types or news');
+    'page_deleted', 'page_extended', 'entries_new', 'comments_new', 'quota_close', 'quota_reached', 'published', 'updated', 'domain_problem',
+    'domain_paused', 'domain_setup', 'domain_active', 'domain_lost', 'domain_released', 'secret_opened', 'secret_expired', 'secret_deleted', 'news'],
+  'A notification type is one of the thirteen page types, six custom-domain types, three secret types or news');
+  assert.deepEqual(item.properties.group.enum, ['pages', 'entries', 'comments'],
+    'A notice group is pages, entries or comments; activity, news and domain notices have none');
   assert.deepEqual([item.properties.news?.oneOf, item.required.includes('news')], [[{ $ref: '#/components/schemas/NotificationNews' }], false],
     'A notification carries the optional news body, absent for other types');
   const news = schemas.NotificationNews;
@@ -321,7 +329,7 @@ function hostContract(spec) {
   assert.equal(spec.info.title, 'BrewPage Page data host API', 'Host document keeps its title');
   assert.deepEqual(spec.servers.map((server) => server.url), ['https://{host}'], "Host document is served on the page's own address");
   assert.deepEqual(operations(spec).map(({ method, path }) => `${method.toUpperCase()} ${path}`).sort(), HOST_ROUTES,
-    'Host document publishes its twelve operations on eight paths');
+    'Host document publishes its sixteen operations on eleven paths');
   const schemes = spec.components.securitySchemes;
   assert.deepEqual([schemes.VisitorCookie.type, schemes.VisitorCookie.in, schemes.VisitorCookie.name], ['apiKey', 'cookie', '__Host-bp-v'],
     'Visitors are known by the host-only visitor cookie');
@@ -333,15 +341,21 @@ function hostContract(spec) {
   }
   assert.ok(spec.components.schemas.ErrorResponse.properties.code.enum.every((code) => /^STATE_[A-Z_]+$/.test(code)),
     'Host errors carry a STATE_* code');
+  const ping = spec.components.schemas.Ping?.properties ?? {};
+  assert.deepEqual([spec.components.schemas.ErrorResponse.properties.code.enum.includes('STATE_ACCOUNT_REQUIRED'), ping.identity?.enum,
+    ping.accountOffer?.enum, spec.paths[`${HOST_BASE}/_account/claim`]?.post?.parameters?.find((p) => p.name === 'keep')?.schema?.enum],
+    [true, ['anonymous', 'account'], [false], ['browser', 'account']],
+    'Signed-in page data: STATE_ACCOUNT_REQUIRED, ping identity and offer, claim keeps the browser or the account side');
 }
 
 const HOST_DOCUMENT_URL = 'https://kochetkov-ma.github.io/brewpage-openapi/page-data-host.json';
 const NOTIFICATION_OPERATIONS = ['countUnreadNotifications', 'deleteNotification', 'getNotificationPageSwitch', 'getNotificationSettings',
   'listNotifications', 'markNotificationsRead', 'setNotificationPageSwitch', 'updateNotificationSettings'];
 const HOST_ROUTES = [
-  `DELETE ${HOST_BASE}/{col}/_files/{id}`, `DELETE ${HOST_BASE}/{col}/_id/{id}`, `DELETE ${HOST_BASE}/{col}/{key}`,
+  `DELETE ${HOST_BASE}/_account`, `DELETE ${HOST_BASE}/{col}/_files/{id}`, `DELETE ${HOST_BASE}/{col}/_id/{id}`, `DELETE ${HOST_BASE}/{col}/{key}`,
   `GET ${HOST_BASE}`, `GET ${HOST_BASE}/{col}`, `GET ${HOST_BASE}/{col}/_files/{id}`, `GET ${HOST_BASE}/{col}/_stats`,
-  `GET ${HOST_BASE}/{col}/{key}`, `POST ${HOST_BASE}`, `POST ${HOST_BASE}/_session`, `POST ${HOST_BASE}/{col}/_files`,
+  `GET ${HOST_BASE}/{col}/{key}`, `POST ${HOST_BASE}`, `POST ${HOST_BASE}/_account`, `POST ${HOST_BASE}/_account/claim`,
+  `POST ${HOST_BASE}/_account/start`, `POST ${HOST_BASE}/_session`, `POST ${HOST_BASE}/{col}/_files`,
   `PUT ${HOST_BASE}/{col}/{key}`,
 ];
 /** Committed document name -> its label and own rules. */

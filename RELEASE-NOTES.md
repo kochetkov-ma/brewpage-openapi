@@ -1,5 +1,13 @@
 # Release Notes
 
+## API contract 2.88.0 — 2026-11-28
+
+- Synced from the integration-tested contract of brewpage-app 2.88.0 (source `8e64ae6e89be18163e3d1be0db07eeb6102477e9`, the release branch head), clean tree. 82 paths and 111 operations, unchanged.
+- Page data: a list can take writes only from visitors signed in to BrewPage (`write: "accounts"`), and `accountOffer: false` hides the offer to sign in on the page. A page or site without Page data names what would help it in `pageDataHint` (`form`, `local` or `game`) on the owner list and the Page data settings; a create may say the same in a `page-data-hint-*` notice.
+- Notifications add the type `comments_new` and the settings group `comments` (new comments on your publications).
+- The Page data host document adds sign-in for visitors: start, finish with the one-time code, sign out, and move guest entries to the account (`/_bp/state/v1/_account`, 16 operations on 11 paths). The status read adds `identity`, `saved`, `accountOffer` and `claim`; a list for signed-in visitors refuses others with `STATE_ACCOUNT_REQUIRED`.
+- MCP: `publication_settings` takes `comments` (`off`, `signed_in`, `everyone`; `null` reports it) and `notifications` the `comments` group, in the next brewpage-mcp release. The brewpage-data types add the sign-in members of the SDK.
+
 ## API contract 2.87.0 — 2026-11-28
 
 - Synced from the integration-tested contract of brewpage-app release v2.87.0 (source `a406f4a651f7f2334484d5247c5af34e3db8b92f`, the tag), clean tree. 82 paths and 111 operations, unchanged.

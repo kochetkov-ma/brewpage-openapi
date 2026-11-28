@@ -6,6 +6,10 @@ order: 5
 
 # Changelog
 
+## API contract 2.88.0 — signed-in Page data and comment notices
+
+Page data lists can take writes only from visitors signed in to BrewPage (`write: "accounts"`); `accountOffer: false` hides the sign-in offer on the page. Pages and sites without Page data name what would help in `pageDataHint` (`form`, `local`, `game`) on `GET /api/publications` and the Page data settings, and a create may add a `page-data-hint-*` notice. Notifications add `comments_new` and the `comments` settings group. The [Page data host API](/brewpage-openapi/page-data-host-api/) adds visitor sign-in under `/_bp/state/v1/_account` (start, finish, sign out, move guest entries) and `STATE_ACCOUNT_REQUIRED`; 16 operations. The main contract keeps 82 paths and 111 operations. The next MCP release adds `comments` to `publication_settings`.
+
 ## API contract 2.87.0 — custom domains keep checking
 
 A pending custom domain is never paused: BrewPage checks it on its own at least about hourly and turns it on once the records are right, so the check route only speeds it up. `nextCheckAt` is always the next automatic check; `CHECK_PAUSED` remains only on older rows until the next automatic check. Notifications add `domain_setup` (a domain still not set up a day after adding, with the records to change). `LINK_NAME_PUBLIC_ONLY` says to make the publication public first. 82 paths and 111 operations.
