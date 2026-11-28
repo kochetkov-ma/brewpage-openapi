@@ -127,6 +127,60 @@
         ],
         "type": "object"
       },
+      "CommentModeRequest": {
+        "properties": {
+          "comments": {
+            "description": "Who can comment",
+            "enum": [
+              "off",
+              "signed_in",
+              "everyone"
+            ],
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "type": "object"
+      },
+      "CommentModeResponse": {
+        "properties": {
+          "comments": {
+            "description": "Who can comment",
+            "enum": [
+              "off",
+              "signed_in",
+              "everyone"
+            ],
+            "type": "string"
+          },
+          "count": {
+            "description": "Comments shown on the page",
+            "format": "int32",
+            "type": "integer"
+          },
+          "locked": {
+            "description": "true when these credentials cannot change it: outside a profile public pages always everyone, private ones off; inside one only account credentials change it",
+            "type": "boolean"
+          },
+          "notes": {
+            "description": "Number of your private notes; absent outside a profile",
+            "format": "int32",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "notices": {
+            "items": {
+              "$ref": "#/components/schemas/PublishNotice"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
       "CustomDomainsBlock": {
         "description": "Custom domains for this caller; present only when custom domains are available",
         "properties": {
@@ -10979,6 +11033,240 @@
           }
         ],
         "summary": "List my tags",
+        "tags": [
+          "Publications"
+        ]
+      }
+    },
+    "/api/publications/{type}/{ns}/{id}/discussion": {
+      "get": {
+        "description": "`comments`: off, signed_in or everyone. Outside a profile the mode is locked: public pages always everyone, private ones off.",
+        "operationId": "getCommentMode",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "type",
+            "required": true,
+            "schema": {
+              "enum": [
+                "html",
+                "site",
+                "file",
+                "json"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "ns",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Owner token",
+            "in": "header",
+            "name": "X-Owner-Token"
+          },
+          {
+            "description": "Management key",
+            "in": "header",
+            "name": "X-Manage-Key"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommentModeResponse"
+                }
+              }
+            },
+            "description": "Comment mode"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Missing or wrong owner token or management key; token revoked or expired"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Publication unavailable (outside public also for wrong credentials)"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Comments unavailable or busy; retry after Retry-After seconds"
+          }
+        },
+        "security": [
+          {
+            "OwnerToken": []
+          },
+          {
+            "ManageKey": []
+          }
+        ],
+        "summary": "Get who can comment on your publication",
+        "tags": [
+          "Publications"
+        ]
+      },
+      "put": {
+        "description": "Send `comments`: off, signed_in or everyone. Account credentials only: profile token or signed-in account. Outside a profile the mode is locked: public pages always everyone, private ones off.",
+        "operationId": "setCommentMode",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "type",
+            "required": true,
+            "schema": {
+              "enum": [
+                "html",
+                "site",
+                "file",
+                "json"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "ns",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Profile token (a token added to your account)",
+            "in": "header",
+            "name": "X-Owner-Token",
+            "required": true
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CommentModeRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommentModeResponse"
+                }
+              }
+            },
+            "description": "Comment mode now in effect"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "DISCUSSION_MODE_INVALID: comments is not off, signed_in or everyone"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Missing or wrong owner token or management key; token revoked or expired"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Publication unavailable (outside public also for wrong credentials)"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Old publication is read-only (code: OLD_PUBLICATION_READ_ONLY); publish anew via createUrl"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Rate limited: wait Retry-After (= retryAfterSeconds)"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Comments unavailable or busy; retry after Retry-After seconds"
+          }
+        },
+        "security": [
+          {
+            "OwnerToken": []
+          }
+        ],
+        "summary": "Set who can comment on your publication",
         "tags": [
           "Publications"
         ]

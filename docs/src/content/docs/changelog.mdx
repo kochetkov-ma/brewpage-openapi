@@ -6,9 +6,9 @@ order: 5
 
 # Changelog
 
-## API contract 2.88.0 — signed-in Page data and comment notices
+## API contract 2.88.0 — comment mode, signed-in Page data and comment notices
 
-Page data lists can take writes only from visitors signed in to BrewPage (`write: "accounts"`); `accountOffer: false` hides the sign-in offer on the page. Pages and sites without Page data name what would help in `pageDataHint` (`form`, `local`, `game`) on `GET /api/publications` and the Page data settings, and a create may add a `page-data-hint-*` notice. Notifications add `comments_new` and the `comments` settings group. The [Page data host API](/brewpage-openapi/page-data-host-api/) adds visitor sign-in under `/_bp/state/v1/_account` (start, finish, sign out, move guest entries) and `STATE_ACCOUNT_REQUIRED`; 16 operations. The main contract keeps 82 paths and 111 operations. The next MCP release adds `comments` to `publication_settings`.
+New `GET`/`PUT /api/publications/{type}/{ns}/{id}/discussion` (`getCommentMode`, `setCommentMode`): who can comment (`off`, `signed_in`, `everyone`), `locked` and the comment count; only account credentials change it, a management key or a page token no profile holds gets the current value and the notice `comments-need-account`. Page data lists can take writes only from visitors signed in to BrewPage (`write: "accounts"`); `accountOffer: false` hides the sign-in offer on the page. Pages and sites without Page data name what would help in `pageDataHint` (`form`, `local`, `game`) on `GET /api/publications` and the Page data settings, and a create may add a `page-data-hint-*` notice. Notifications add `comments_new` and the `comments` settings group. The [Page data host API](/brewpage-openapi/page-data-host-api/) adds visitor sign-in under `/_bp/state/v1/_account` (start, finish, sign out, move guest entries) and `STATE_ACCOUNT_REQUIRED`; 16 operations. 83 paths and 113 operations. MCP 3.4.0 adds `comments` to `publication_settings`.
 
 ## API contract 2.87.0 — custom domains keep checking
 

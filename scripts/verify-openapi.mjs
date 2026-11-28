@@ -185,6 +185,7 @@ function publicContract(spec) {
   assert.ok(spec.tags.some((tag) => tag.name === 'Notifications'), 'Notifications is a described top-level tag');
   newsNoticeContract(spec);
   secretsTagsContract(spec);
+  commentModeContract(spec);
   assert.deepEqual([taggedIds(spec, 'Templates'), spec.paths['/api/templates']?.get?.security], [['templates'], [{}]],
     'Templates publishes the anonymous template catalogue');
   assert.deepEqual(Object.keys(spec.paths).filter((path) => path.startsWith('/api/stats/')), [],
@@ -322,6 +323,20 @@ function secretsTagsContract(spec) {
   'Tags are read and replaced with owner authority, and listed for autocomplete');
   const tags = schemas.TagsRequest.properties.tags;
   assert.deepEqual([tags.maxItems, tags.items.minLength, tags.items.maxLength], [10, 1, 32], 'A tag set is up to 10 tags of 1-32 characters');
+}
+
+/** Comment mode: read with owner token or management key, set with an owner token only (account credentials, R21); notes stay out. */
+function commentModeContract(spec) {
+  const schemas = spec.components.schemas;
+  const route = spec.paths['/api/publications/{type}/{ns}/{id}/discussion'];
+  assert.deepEqual([route?.get?.operationId, route?.get?.security, route?.put?.operationId, route?.put?.security,
+    schemas.CommentModeRequest?.properties?.comments?.enum, schemas.CommentModeResponse?.properties?.comments?.enum,
+    schemas.CommentModeResponse?.properties?.locked?.type],
+    ['getCommentMode', [{ OwnerToken: [] }, { ManageKey: [] }], 'setCommentMode', [{ OwnerToken: [] }],
+      ['off', 'signed_in', 'everyone'], ['off', 'signed_in', 'everyone'], 'boolean'],
+    'Comment mode is read by either owner proof, set by an owner token, off, signed_in or everyone, with locked');
+  assert.deepEqual(Object.keys(spec.paths).filter((path) => /\/notes|\/comments/.test(path)), [],
+    'Owner notes and reader comment routes stay out of the contract paths');
 }
 
 /** The host document: only visitor routes of one page, cookie security, the state header on all but the file read. */
