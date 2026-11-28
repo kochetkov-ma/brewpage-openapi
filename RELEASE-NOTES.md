@@ -1,5 +1,13 @@
 # Release Notes
 
+## API contract 2.87.0 — 2026-11-28
+
+- Synced from the integration-tested contract of brewpage-app release v2.87.0 (source `a406f4a651f7f2334484d5247c5af34e3db8b92f`, the tag), clean tree. 82 paths and 111 operations, unchanged.
+- Custom domains are never paused: BrewPage keeps checking a pending domain on its own, at least about hourly, and turns it on once the records are right. The check route only speeds this up. `nextCheckAt` is always the next automatic check; `CHECK_PAUSED` appears only on older rows and the next automatic check replaces it.
+- Notifications add the type `domain_setup`: a custom domain still not set up a day after adding, with the records still to change.
+- `LINK_NAME_PUBLIC_ONLY` names the next step: make the publication public first, then set the name on the new id.
+- The Page data host document changes only its version. MCP 3.3.1 is unchanged.
+
 ## API contract 2.80.4 — 2026-11-23
 
 - Synced from the integration-tested contract of brewpage-app release v2.80.4 (source `8e206ea27ab5196933d655e5b51f9593d4734165`, the tag), clean tree. 82 paths and 111 operations (was 81 and 110).

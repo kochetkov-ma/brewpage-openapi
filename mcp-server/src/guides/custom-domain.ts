@@ -20,7 +20,7 @@ export const DOMAIN_PROBLEMS: Record<string, string> = {
   "CERT_PENDING": "HTTPS certificate on its way: nothing to do",
   "CERT_FAILED": "the certificate could not be issued: check the DNS records, then check again",
   "DNS_LOST": "DNS records stayed broken past `graceEndsAt`, so the domain was disconnected: restore them, then check again",
-  "CHECK_PAUSED": "automatic checks paused, records not right a week after adding: fix DNS, then check again (resumes them)",
+  "CHECK_PAUSED": "left from an earlier pause: automatic checks have resumed, nothing to do",
   "RESOLVER_UNAVAILABLE": "DNS did not answer: retried automatically",
   "PUBLICATION_GONE": "the publication is gone: connect the custom domain to another one",
 };

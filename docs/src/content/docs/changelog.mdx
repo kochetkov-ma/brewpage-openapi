@@ -6,6 +6,10 @@ order: 5
 
 # Changelog
 
+## API contract 2.87.0 — custom domains keep checking
+
+A pending custom domain is never paused: BrewPage checks it on its own at least about hourly and turns it on once the records are right, so the check route only speeds it up. `nextCheckAt` is always the next automatic check; `CHECK_PAUSED` remains only on older rows until the next automatic check. Notifications add `domain_setup` (a domain still not set up a day after adding, with the records to change). `LINK_NAME_PUBLIC_ONLY` says to make the publication public first. 82 paths and 111 operations.
+
 ## API contract 2.80.4 — delete a notification
 
 New `DELETE /api/profile/notifications/{id}` (`deleteNotification`, a profile's owner token) removes one notice from the profile's list and answers the unread count, also when nothing was deleted. The notice is shown again when something new happens on the same item; activity stays. 82 paths and 111 operations.

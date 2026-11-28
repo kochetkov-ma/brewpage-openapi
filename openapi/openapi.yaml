@@ -172,7 +172,7 @@ components:
           description: Hostname in ASCII (A-label), lowercase, e.g. www.example.com
           type: string
         nextCheckAt:
-          description: Next automatic DNS check; absent while checks are paused
+          description: Next automatic DNS check
           format: date-time
           type: string
         nextStep:
@@ -189,9 +189,9 @@ components:
             not available: use another hostname or write to info@brewpage.app), QUEUE_FULL (DNS is right, verification
             waits its turn; retried automatically), CERT_PENDING (certificate on its way), CERT_FAILED (certificate
             could not be issued; check DNS, then check again), DNS_LOST (records stayed broken past graceEndsAt, so the
-            domain was disconnected; restore them and check again), CHECK_PAUSED (checks paused after long failure; the
-            check route resumes them), RESOLVER_UNAVAILABLE (DNS did not answer; retried), PUBLICATION_GONE (attach
-            another publication), NOT_ELIGIBLE_<reason> (the publication cannot take a custom domain; reasons as
+            domain was disconnected; restore them and check again), CHECK_PAUSED (older rows only; the next automatic
+            check replaces it), RESOLVER_UNAVAILABLE (DNS did not answer; retried), PUBLICATION_GONE (attach another
+            publication), NOT_ELIGIBLE_<reason> (the publication cannot take a custom domain; reasons as
             ErrorResponse.reason)
           type: string
         provider:
@@ -2446,6 +2446,7 @@ components:
             - updated
             - domain_problem
             - domain_paused
+            - domain_setup
             - domain_active
             - domain_lost
             - domain_released
@@ -4816,7 +4817,7 @@ info:
     url: https://www.apache.org/licenses/LICENSE-2.0
   termsOfService: https://brewpage.app/terms
   title: BrewPage API
-  version: 2.80.4
+  version: 2.87.0
 openapi: 3.1.0
 paths:
   /api/domains:
@@ -5165,8 +5166,8 @@ paths:
     post:
       description: >-
         Runs a DNS check now and returns the updated state; call it after creating the records in `records[]`. BrewPage
-        also checks on its own (`nextCheckAt`) and resumes paused checks (CHECK_PAUSED) on this call. Checks are spaced:
-        a repeat too soon answers 429 DOMAIN_CHECK_TOO_SOON; wait Retry-After.
+        also checks on its own (`nextCheckAt`; a pending domain at least about hourly), so this call only speeds it up.
+        Checks are spaced: a repeat too soon answers 429 DOMAIN_CHECK_TOO_SOON; wait Retry-After.
       operationId: checkDomain
       parameters:
         - description: Hostname, e.g. www.example.com (Unicode or ASCII form)
@@ -8285,8 +8286,8 @@ paths:
     post:
       description: >-
         Runs a DNS check now and returns the updated state; call it after creating the records in `records[]`. BrewPage
-        also checks on its own (`nextCheckAt`) and resumes paused checks (CHECK_PAUSED) on this call. Checks are spaced:
-        a repeat too soon answers 429 DOMAIN_CHECK_TOO_SOON; wait Retry-After.
+        also checks on its own (`nextCheckAt`; a pending domain at least about hourly), so this call only speeds it up.
+        Checks are spaced: a repeat too soon answers 429 DOMAIN_CHECK_TOO_SOON; wait Retry-After.
       operationId: checkPublicationDomain
       parameters:
         - description: html (pages of format html) or site; only these take a custom domain
@@ -11184,8 +11185,9 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
           description: >-
             LINK_NAME_UNAVAILABLE: this link name is not available; LINK_NAME_PUBLIC_ONLY: only public publications can
-            have a link name; LINK_NAME_LIMIT: this publication can't take another link name (`used`, `limit`);
-            OLD_PUBLICATION_READ_ONLY; PUBLICATION_CHANGED: try again
+            have a link name: make it public first (POST /api/{type}/{ns}/{id}/public), then set the name on the new id;
+            LINK_NAME_LIMIT: this publication can't take another link name (`used`, `limit`); OLD_PUBLICATION_READ_ONLY;
+            PUBLICATION_CHANGED: try again
         '429':
           content:
             application/json:
