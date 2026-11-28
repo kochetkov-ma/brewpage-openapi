@@ -228,6 +228,55 @@ test("Compact link names and visibility actions refuse locally and travel the ac
   ]);
 });
 
+test("Compact comment modes set and report through the owner route, refuse KV locally and travel the account bridge", async (t) => {
+  const discussion = (comments: string, locked: boolean, count: number, extra = {}) => ({ mode: comments === "off" ? "owner" : comments,
+    comments, locked, count, notes: locked ? undefined : 0, ...extra });
+  const fixed = { code: "comments-need-profile", message: "Comments stay open on a public page outside a profile. Add it to your profile to choose who can comment." };
+  const path = `/api/publications/html/public/${id}/discussion`;
+  const rows = [
+    { name: "set by profile owner token", args: { ...target, comments: "signed_in" }, response: Response.json(discussion("signed_in", false, 2)),
+      request: { method: "PUT", url: path, body: { comments: "signed_in" }, proof: owner, ifMatch: null },
+      result: { content: [{ type: "text", text: 'comments: {"comments":"signed_in","locked":false,"count":2}' }] } },
+    { name: "reported by management link", args: { manageUrl, comments: null }, response: Response.json(discussion("everyone", true, 0)),
+      request: { method: "GET", url: path, body: undefined, proof: ["X-Manage-Key", manageKey], ifMatch: null },
+      result: { content: [{ type: "text", text: 'comments: {"comments":"everyone","locked":true,"count":0}' }] } },
+    { name: "fixed outside a profile", args: { ...target, comments: "off" }, response: Response.json(discussion("everyone", true, 0, { notices: [fixed] })),
+      request: { method: "PUT", url: path, body: { comments: "off" }, proof: owner, ifMatch: null },
+      result: { content: [{ type: "text", text: [`comments: ${JSON.stringify({ comments: "everyone", locked: true, count: 0, notices: [fixed] })}`,
+        `To choose who can comment, ${profileStep}`].join("\n") }] } },
+  ];
+  await Promise.all([
+    ...rows.map((row) => t.test(row.name, async (subtest) => {
+      // GIVEN BrewPage's discussion answer for one comment-mode call
+      const { fetch, calls } = fixture(row.response);
+      // WHEN the compact settings tool runs it with direct owner proof
+      const result = await call(subtest, "publication_settings", row.args, { fetch });
+      // THEN only the owner route is called and the receipt carries mode, lock, count and the next step
+      assert.deepEqual(calls, [row.request], "The comment mode should reach only the discussion route with its exact body and proof");
+      assert.deepEqual(result, row.result, "The receipt should carry the projected discussion and any next step");
+    })),
+    t.test("KV refusal, bridge and scopes", async (row) => {
+      // GIVEN a KV target and a connected account whose bridge confirms the mode
+      const { fetch, calls } = fixture();
+      const operations: unknown[] = [];
+      const answer = { kind: "html", ...address, applied: [{ field: "comments", result: { comments: "off", locked: false, count: 3 } }] };
+      const bridge: ServerOptions["bridge"] = async (operation, args) => {
+        operations.push({ operation, args: JSON.parse(JSON.stringify(args)) });
+        return bridgeAnswer(answer);
+      };
+      // WHEN comments are asked on KV and through the bridge
+      const kv = await call(row, "publication_settings", { ...target, kind: "kv", comments: "everyone" }, { fetch });
+      const signed = await call(row, "publication_settings", { kind: "html", ...address, comments: "off" }, { authority: "account", bridge });
+      // THEN KV is refused before any request, the bridge gets comments verbatim, and null reads while a mode writes
+      assert.deepEqual({ kv: kv.isError, calls, operations, signed, scopes: [null, "off"].map((comments) =>
+        toolAuthority("publication_settings", { comments }).scopes) }, {
+        kv: true, calls: [], operations: [{ operation: "publication_settings", args: { kind: "html", ...address, comments: "off" } }],
+        signed: { content: [{ type: "text", text: JSON.stringify(answer) }] }, scopes: [["publications:read"], ["publications:write"]],
+      }, "KV is refused locally, the bridge receipt passes through and comments null needs only the read scope");
+    }),
+  ]);
+});
+
 test("Compact domains do one requested operation and return the observed DNS state", async (t) => {
   const hostname = "schedule.example.org";
   const pending = { hostname, status: "pending_dns", serving: false, records: [{ type: "TXT", value: "bp-verify=fixture" }],

@@ -16,6 +16,10 @@ const ACTIONS = {
 export const SETTINGS_OUTCOME_UNKNOWN = "BrewPage did not confirm the settings change. Read the current publication settings before deciding which changes to request again.";
 /** Kinds a link name exists on; it also needs namespace public. */
 export const LINK_NAME_KINDS: readonly PublicationKind[] = ["html", "site", "file"];
+/** Kinds that take comments (app `CommentTargets.TYPES`). */
+const COMMENT_KINDS: readonly PublicationKind[] = ["html", "site", "file", "json"];
+/** Notice of a comment-mode ask on a publication outside a profile (app `CommentOwnerService.NOTICE_FIXED`). */
+const COMMENTS_FIXED = "comments-need-profile";
 const ACCOUNT_TOKENS_PAGE = "https://account.brewpage.app/tokens";
 export const LINK_NAME_FORWARDS = "Give the user the exact new link; the previous address forwards to it.";
 
@@ -38,6 +42,13 @@ export function linkNameHint(code: unknown, retryAfter: unknown, proof: "ownerTo
     case "LINK_NAME_UNAVAILABLE": return ["That name cannot be used: ask the user for another name."];
     default: return [];
   }
+}
+
+/** Next step when a comment mode is fixed: the publication is outside a profile. */
+function commentsNeedProfile(proof: "ownerToken" | "manageKey", fromEnv: boolean): string {
+  return proof === "manageKey"
+    ? "To choose who can comment, the user opens https://account.brewpage.app/claim while signed in and enters this management link, then repeat this change."
+    : `To choose who can comment, ${linkNameNeedsProfile(fromEnv, "repeat this change")}`;
 }
 
 export const ownerAddress = {
@@ -110,6 +121,9 @@ const ordinaryFields = {
   state: z.record(z.string(), z.unknown()).nullable().optional().describe("{} enables Page data, named rules merge, null disables and keeps entries"),
   tags: z.array(z.string()).optional().describe("Your private tags, replacing the set; [] clears. Up to 10, 1-32 characters, no commas, " +
     "saved lowercase. Needs a profile publication"),
+  comments: z.enum(["off", "signed_in", "everyone"]).nullable().optional().describe("Who may comment on a page, site, file or JSON: off, " +
+    "signed_in (people signed in to BrewPage) or everyone (with a human check); null reports it. People comment in the browser. " +
+    "Outside a profile it is fixed: public everyone, private off"),
 };
 const settingsSchema = {
   ...ownerAddress,
@@ -132,7 +146,7 @@ const ROUTES = {
   linkName: ["link-name", "linkName"],
 } as const;
 // Bridge apply order (app McpPublicationSettingsController.steps): a signed receipt lists `applied` in it.
-const SETTINGS_ORDER = ["listed", "badgeHidden", "title", "tags", "password", "extend", "deliveryMode", "state", "linkName"] as const;
+const SETTINGS_ORDER = ["listed", "badgeHidden", "title", "tags", "password", "extend", "deliveryMode", "state", "linkName", "comments"] as const;
 type SettingName = typeof SETTINGS_ORDER[number];
 
 function settingConfirmed(field: string, value: unknown): boolean {
@@ -147,6 +161,7 @@ function settingConfirmed(field: string, value: unknown): boolean {
     case "linkName": return typeof data.link === "string" && Boolean(data.link) && "linkName" in data;
     case "tags": return Array.isArray(data.tags) && data.tags.every((tag) => typeof tag === "string");
     case "state": return typeof data.declared === "boolean";
+    case "comments": return typeof data.comments === "string" && typeof data.locked === "boolean" && Number.isSafeInteger(data.count);
     case "make_private":
     case "make_public":
     case "rotate_link":
@@ -175,6 +190,10 @@ async function unsignedSetting(context: CompactContext, target: Target, proof: O
   if (name === "extend") return context.api("POST", context.apiPath(...prefix, "extend"), undefined, headers);
   if (name === "tags") {
     return context.api("POST", context.apiPath("publications", target.kind, target.namespace, target.id, "tags"), { tags: changes.tags }, headers);
+  }
+  if (name === "comments") {
+    const path = context.apiPath("publications", target.kind, target.namespace, target.id, "discussion");
+    return changes.comments === null ? context.api("GET", path, undefined, headers) : context.api("PUT", path, { comments: changes.comments }, headers);
   }
   if (name === "deliveryMode") {
     return context.api("PATCH", context.apiPath(...prefix, "hosting"),
@@ -243,12 +262,12 @@ async function disruptiveSetting(context: CompactContext, target: Target, action
 function registerSettings(context: CompactContext) {
   context.register("publication_settings", {
     title: "Change publication settings",
-    description: "Change listing, badge, title, tags, password, storage, hosting, link name or Page data on an owned publication. " +
+    description: "Change listing, badge, title, tags, password, storage, hosting, link name, comments or Page data on an owned publication. " +
       "Use a disruptive action alone. Ask before make_private or make_public: the current address stops working " +
       "(after make_public it leads to the new one for 30 days). A secret ({\"kind\":\"secret\",\"id\":<ref>} or its manage link) takes title, note and tags only.",
     annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: true },
     inputSchema: settingsSchema,
-    oauthScopes: ["publications:write", "page-data:write"],
+    oauthScopes: ["publications:read", "publications:write", "page-data:write"],
   }, async ({ kind, namespace, id, manageUrl, ownerToken, note, ...changes }) => {
     const secret = selectSecret(context, { kind, namespace, id, manageUrl, ownerToken });
     if (secret && "refusal" in secret) return context.refuse("change secret", secret.refusal);
@@ -296,6 +315,9 @@ function registerSettings(context: CompactContext) {
     if (changes.linkName !== undefined && (!LINK_NAME_KINDS.includes(target.kind) || target.namespace !== "public")) {
       return refuse("linkName is available on public pages, sites and files.", "Use a public html, site or file target, or make it public first with make_public.");
     }
+    if (changes.comments !== undefined && !COMMENT_KINDS.includes(target.kind)) {
+      return refuse("comments are available on pages, sites, files and JSON.", "Use an html, site, file or json target.");
+    }
     if (action === "reset_manage_link" && proof && "manageKey" in proof) {
       return refuse("A management link cannot reset itself.", "Use the publication's owner token or the owning account.");
     }
@@ -316,6 +338,14 @@ function registerSettings(context: CompactContext) {
         }
         if (step === "linkName" && !settingConfirmed("linkName", answer.data)) {
           return failed("BrewPage did not confirm the link name. Read the current settings before retrying.");
+        }
+        if (step === "comments") {
+          if (!settingConfirmed("comments", answer.data)) return failed("BrewPage did not confirm the comment mode. Read it with comments null before retrying.");
+          const { comments, locked, count, notices } = record(answer.data);
+          const fixed = Array.isArray(notices) && notices.some((notice) => record(notice).code === COMMENTS_FIXED);
+          applied.push(`comments: ${JSON.stringify({ comments, locked, count, ...(Array.isArray(notices) && notices.length ? { notices } : {}) })}`,
+            ...(fixed ? [commentsNeedProfile("manageKey" in proof ? "manageKey" : "ownerToken", context.ownerToken(ownerToken).fromEnv)] : []));
+          continue;
         }
         if (step === "state" && steps.length === 1) {
           const mergedState = record(answer.data);

@@ -84,7 +84,10 @@ interface PublicationChanges {
   linkName?: string | null;
   tags?: string[];
   state?: StateConfig;
+  comments?: CommentMode | null;
 }
+/** Who may comment (app `CommentOwnerService.parseMode`); null on the bridge reports the mode. */
+export type CommentMode = "off" | "signed_in" | "everyone";
 interface PageAddress { kind?: "html" | "site"; namespace: string; id: string }
 /** A secret on the bridge: kind secret, id = its 10-character ref, no namespace (app McpSecretOwnerAdapter.ref). */
 export interface SecretTarget { kind: "secret"; id: string }
@@ -116,7 +119,7 @@ export interface BridgeInputs {
     tokenId?: string; label?: string; scope?: "publish" | "admin"; expiresIn?: "30d" | "90d" | "1y" | "never"; keep?: string[] };
   notifications: Partial<Target> & { action?: "list" | "unread_count" | "mark_read" | "get_settings" | "set_settings" | "get_page_switch" | "set_page_switch";
     section?: "notices" | "activity"; unread?: boolean; limit?: number; cursor?: string; ids?: number[]; all?: boolean; entries?: boolean | null;
-    settings?: { enabled?: boolean; channel?: "site" | "site_email"; groups?: Partial<Record<"pages" | "entries", boolean>> } };
+    settings?: { enabled?: boolean; channel?: "site" | "site_email"; groups?: Partial<Record<"pages" | "entries" | "comments", boolean>> } };
 }
 export type BridgeOperation = keyof BridgeInputs;
 export type BridgeOptions<Operation> = Operation extends "publish_file" | "update_file" ? { file: Blob }

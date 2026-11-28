@@ -145,14 +145,14 @@ The compact catalog advertises 13 tools on HTTP and stdio. Check the tool list t
 | `list_publications` | List publications you own (optional exact `tag`; items carry your private `tags`), or search the public gallery with `scope: "gallery"`. The first page adds `secretCounts` and your active one-time `secrets`; `kind: "secret"` lists only them (`ended: true` for ended ones) |
 | `read_publication` | Read content, original source, settings or statistics. A secret (`kind: "secret"`, `id` = its ref, or its manage link) returns its state, views and open times, never its content |
 | `update_publication` | Replace content on the existing publication |
-| `publication_settings` | Change listing, title, private `tags` (replaces the set of a profile publication), password, retention, hosting mode, link name or Page data. Disruptive actions are separate: `make_private`, `make_public`, `rotate_link`, `reset_manage_link`, `revoke_reader_access`. A secret takes only `title`, `note` (`""` clears) and `tags` |
+| `publication_settings` | Change listing, title, private `tags` (replaces the set of a profile publication), password, retention, hosting mode, link name, who may comment (`comments`: `off`, `signed_in` or `everyone`; `null` reports it) or Page data. Disruptive actions are separate: `make_private`, `make_public`, `rotate_link`, `reset_manage_link`, `revoke_reader_access`. A secret takes only `title`, `note` (`""` clears) and `tags` |
 | `delete_publication` | Delete a publication or one specified key in a KV store. A secret's link stops working at once and its record leaves your list |
 | `read_page_data` | Read settings, saved entries, uploaded files or totals. Also provides protected download instructions |
 | `write_page_data` | Save author entries, optionally guarded by their versions |
 | `delete_page_data` | Remove entries or files by ID, time range or an explicit `all: true` |
 | `domains` | Attach an owned hostname, read its DNS state or check it once after DNS changes |
 | `account` | Check the connection and manage account publishing access |
-| `notifications` | Read notices (expiry, removal, takedown and restore, new entries, quota, custom-domain status, secrets opened, expired or deleted, news) and publication activity; manage notification preferences |
+| `notifications` | Read notices (expiry, removal, takedown and restore, new entries, new comments, quota, custom-domain status, secrets opened, expired or deleted, news) and publication activity; manage notification preferences |
 | `get_guide` | Read a focused recipe, search templates or retrieve current limits and stats |
 
 ### Publish and update

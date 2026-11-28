@@ -117,7 +117,7 @@ function registerAccount(context: CompactContext): void {
 const SETTINGS = z.strictObject({
   enabled: z.boolean().optional(),
   channel: z.enum(["site", "site_email"]).optional(),
-  groups: z.strictObject({ pages: z.boolean().optional(), entries: z.boolean().optional() }).optional(),
+  groups: z.strictObject({ pages: z.boolean().optional(), entries: z.boolean().optional(), comments: z.boolean().optional() }).optional(),
 });
 const NOTIFICATION_READBACK: Partial<Record<typeof NOTIFICATION_ACTIONS[number], string>> = {
   mark_read: "the current notifications with notifications(action=list)",
@@ -137,7 +137,7 @@ function registerNotifications(context: CompactContext): void {
   context.register("notifications", {
     title: "Manage BrewPage notifications",
     description: "List your profile notices and publication activity, mark items read, or change profile and page notification settings. " +
-      "Types: page_expiring, page_removed, page_taken_down, page_restored, page_link_changed, page_deleted, page_extended, entries_new, " +
+      "Types: page_expiring, page_removed, page_taken_down, page_restored, page_link_changed, page_deleted, page_extended, entries_new, comments_new, " +
       "quota_close, quota_reached, published, updated, " +
       "domain_problem, domain_paused, domain_setup, domain_active, domain_lost, domain_released, secret_opened, secret_expired, secret_deleted, news. " +
       "Links with rel page, data, manage or domain open the owner's signed-in pages (a secret's manage link: its account page): give them only to the user, privately.",

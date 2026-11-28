@@ -204,8 +204,11 @@ export function toolAuthority(name: string | undefined, sent: Record<string, unk
         || (typeof args.namespace === "string" && args.namespace !== "public") || args.kind === "secret" || linked !== undefined
         || (args.kind === "site" && args.path === undefined) ? ["publications:read"] : []);
     case "publication_settings": {
-      const changes = Object.keys(args).some((key) => SETTINGS_FIELDS.has(key));
-      return selected([...(changes ? ["publications:write" as const] : []), ...(Object.hasOwn(args, "state") ? ["page-data:write" as const] : [])]);
+      // comments null only reads the mode (app McpSetting.Comments scope).
+      const reads = Object.hasOwn(args, "comments") && args.comments === null;
+      const changes = Object.keys(args).some((key) => SETTINGS_FIELDS.has(key)) || (Object.hasOwn(args, "comments") && !reads);
+      return selected([...(reads ? ["publications:read" as const] : []), ...(changes ? ["publications:write" as const] : []),
+        ...(Object.hasOwn(args, "state") ? ["page-data:write" as const] : [])]);
     }
     case "delete_publication":
       return selected(["publications:write"]);
