@@ -84,6 +84,54 @@
           "params": [
             "fn"
           ]
+        },
+        {
+          "name": "identity",
+          "kind": "getter",
+          "type": "string"
+        },
+        {
+          "name": "saved",
+          "kind": "getter",
+          "type": "boolean"
+        },
+        {
+          "name": "accountOffer",
+          "kind": "getter",
+          "type": "boolean"
+        },
+        {
+          "name": "claim",
+          "kind": "getter",
+          "type": "object"
+        },
+        {
+          "name": "onIdentity",
+          "kind": "method",
+          "type": "function",
+          "params": [
+            "fn"
+          ]
+        },
+        {
+          "name": "signIn",
+          "kind": "method",
+          "type": "function",
+          "params": []
+        },
+        {
+          "name": "signOut",
+          "kind": "method",
+          "type": "function",
+          "params": []
+        },
+        {
+          "name": "claimAnonymous",
+          "kind": "method",
+          "type": "function",
+          "params": [
+            "opts"
+          ]
         }
       ]
     },
@@ -302,6 +350,52 @@
           "params": [
             "fn"
           ]
+        },
+        {
+          "name": "identity",
+          "kind": "value",
+          "type": "undefined"
+        },
+        {
+          "name": "saved",
+          "kind": "value",
+          "type": "boolean"
+        },
+        {
+          "name": "accountOffer",
+          "kind": "value",
+          "type": "boolean"
+        },
+        {
+          "name": "claim",
+          "kind": "value",
+          "type": "object"
+        },
+        {
+          "name": "onIdentity",
+          "kind": "method",
+          "type": "function",
+          "params": [
+            "fn"
+          ]
+        },
+        {
+          "name": "signIn",
+          "kind": "method",
+          "type": "function",
+          "params": []
+        },
+        {
+          "name": "signOut",
+          "kind": "method",
+          "type": "function",
+          "params": []
+        },
+        {
+          "name": "claimAnonymous",
+          "kind": "method",
+          "type": "function",
+          "params": []
         }
       ]
     },
@@ -479,6 +573,7 @@
     }
   },
   "codes": [
+    "account_required",
     "challenge_cancelled",
     "challenge_failed",
     "challenge_unavailable",

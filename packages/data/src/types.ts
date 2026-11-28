@@ -6,6 +6,7 @@ export type Reason = "unavailable" | "needs_subdomain" | "embedded";
 export type Role = "owner" | "visitor";
 
 export type StateErrorCode =
+  | "account_required"
   | "challenge_cancelled"
   | "challenge_failed"
   | "challenge_unavailable"
@@ -111,11 +112,42 @@ export interface State {
   readonly role: Role;
   /** `fn(role)` at once, then once per change. */
   onRole(fn: (role: string) => void): void;
+  /** BrewPage sign-in on this page; `undefined` while it is unavailable here. */
+  readonly identity: Identity | undefined;
+  /** This visitor holds an entry or file on this page. */
+  readonly saved: boolean;
+  /** `false` when the page shows no offer to sign in. */
+  readonly accountOffer: boolean;
+  /** Guest entries of this browser not yet moved to the account; `null` when none. */
+  readonly claim: AccountClaim | null;
+  /** `fn(identity)` at once, then once per change. */
+  onIdentity(fn: (identity: Identity | undefined) => void): void;
+  /** Call inside a tap: opens BrewPage sign-in in a new tab; a blocked tab answers its `url`. */
+  signIn(): Promise<SignInResult>;
+  /** This browser is its own guest again on this page; nothing is deleted. */
+  signOut(): Promise<void>;
+  /** `browser` replaces the account's colliding entries, `account` drops this browser's. */
+  claimAnonymous(opts: { keep: "browser" | "account" }): Promise<{ moved: number }>;
 }
+
+export type Identity = "anonymous" | "account";
+
+export interface AccountClaim {
+  entries: number;
+  conflicts: number;
+  browserAt: string | null;
+  accountAt: string | null;
+}
+
+export type SignInResult = { blocked: false } | { blocked: true; url: string };
 
 /** Stand-in on `file:` and loopback addresses: data stays in the browser. */
 export interface LocalState extends State {
   readonly local: boolean;
+  /** No BrewPage sign-in here: always `undefined`. */
+  readonly identity: undefined;
+  /** Rejects `unavailable`, like `signIn` and `signOut`. */
+  claimAnonymous(): Promise<never>;
 }
 
 export interface LocalCollection extends Collection {}
